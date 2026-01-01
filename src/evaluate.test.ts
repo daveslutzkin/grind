@@ -203,5 +203,19 @@ describe('Evaluation APIs', () => {
       expect(result.violations.length).toBeGreaterThan(0);
       expect(result.violations.some(v => v.reason.includes('SESSION_ENDED') || v.reason.includes('time'))).toBe(true);
     });
+
+    it('should reject 0-tick action when session has ended', () => {
+      const state = createToyWorld('test-seed');
+      state.time.sessionRemainingTicks = 0; // Session already ended
+      const actions: Action[] = [
+        { type: 'AcceptContract', contractId: 'miners-guild-1' }, // 0 ticks but session ended
+      ];
+
+      const result = evaluatePlan(state, actions);
+
+      expect(result.violations).toHaveLength(1);
+      expect(result.violations[0].actionIndex).toBe(0);
+      expect(result.violations[0].reason).toContain('SESSION_ENDED');
+    });
   });
 });
