@@ -11,21 +11,11 @@ import type {
   CraftAction,
   StoreAction,
   DropAction,
-  ItemStack,
 } from "./types.js"
+import { hasItems, canGatherItem } from "./helpers.js"
 
 function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj))
-}
-
-function hasItems(inventory: ItemStack[], required: ItemStack[]): boolean {
-  for (const req of required) {
-    const item = inventory.find((i) => i.itemId === req.itemId)
-    if (!item || item.quantity < req.quantity) {
-      return false
-    }
-  }
-  return true
 }
 
 function evaluateMoveAction(state: WorldState, action: MoveAction): ActionEvaluation {
@@ -79,10 +69,6 @@ function evaluateAcceptContractAction(
   }
 }
 
-function getInventorySlotCount(state: WorldState): number {
-  return state.player.inventory.length
-}
-
 function evaluateGatherAction(state: WorldState, action: GatherAction): ActionEvaluation {
   const node = state.world.resourceNodes.find((n) => n.id === action.nodeId)
 
@@ -99,13 +85,9 @@ function evaluateGatherAction(state: WorldState, action: GatherAction): ActionEv
     return { expectedTime: 0, expectedXP: 0, successProbability: 0 }
   }
 
-  // Check inventory capacity (slot-based)
-  if (getInventorySlotCount(state) >= state.player.inventoryCapacity) {
-    // Only fail if this item would need a new slot
-    const existingItem = state.player.inventory.find((i) => i.itemId === node.itemId)
-    if (!existingItem) {
-      return { expectedTime: 0, expectedXP: 0, successProbability: 0 }
-    }
+  // Check inventory capacity (slot-based) - uses shared helper
+  if (!canGatherItem(state, node.itemId)) {
+    return { expectedTime: 0, expectedXP: 0, successProbability: 0 }
   }
 
   return {
@@ -259,12 +241,9 @@ function getFailureReason(state: WorldState, action: Action): string {
       if (state.player.skills[node.skillType] < node.requiredSkillLevel) {
         return "INSUFFICIENT_SKILL"
       }
-      // Slot-based inventory capacity
-      if (state.player.inventory.length >= state.player.inventoryCapacity) {
-        const existingItem = state.player.inventory.find((i) => i.itemId === node.itemId)
-        if (!existingItem) {
-          return "INVENTORY_FULL"
-        }
+      // Slot-based inventory capacity - uses shared helper
+      if (!canGatherItem(state, node.itemId)) {
+        return "INVENTORY_FULL"
       }
       return "NODE_NOT_FOUND"
     }

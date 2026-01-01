@@ -12,10 +12,10 @@ import type {
   DropAction,
   FailureType,
   ItemID,
-  ItemStack,
   ContractCompletion,
 } from "./types.js"
 import { roll } from "./rng.js"
+import { hasItems, canGatherItem } from "./helpers.js"
 
 function createFailureLog(
   state: WorldState,
@@ -158,10 +158,6 @@ function addToInventory(state: WorldState, itemId: ItemID, quantity: number): vo
   }
 }
 
-function getInventorySlotCount(state: WorldState): number {
-  return state.player.inventory.length
-}
-
 function checkContractCompletion(state: WorldState): ContractCompletion[] {
   const completions: ContractCompletion[] = []
 
@@ -217,12 +213,8 @@ function executeGather(state: WorldState, action: GatherAction, rolls: RngRoll[]
   }
 
   // Check inventory capacity (slot-based)
-  if (getInventorySlotCount(state) >= state.player.inventoryCapacity) {
-    // Only check if this item would need a new slot
-    const existingItem = state.player.inventory.find((i) => i.itemId === node.itemId)
-    if (!existingItem) {
-      return createFailureLog(state, action, "INVENTORY_FULL")
-    }
+  if (!canGatherItem(state, node.itemId)) {
+    return createFailureLog(state, action, "INVENTORY_FULL")
   }
 
   // Check if enough time remaining
@@ -342,16 +334,6 @@ function executeFight(state: WorldState, action: FightAction, rolls: RngRoll[]):
   }
 }
 
-function hasItems(inventory: ItemStack[], required: ItemStack[]): boolean {
-  for (const req of required) {
-    const item = inventory.find((i) => i.itemId === req.itemId)
-    if (!item || item.quantity < req.quantity) {
-      return false
-    }
-  }
-  return true
-}
-
 function removeFromInventory(state: WorldState, itemId: ItemID, quantity: number): void {
   const item = state.player.inventory.find((i) => i.itemId === itemId)
   if (item) {
@@ -378,8 +360,8 @@ function executeCraft(state: WorldState, action: CraftAction, rolls: RngRoll[]):
     return createFailureLog(state, action, "WRONG_LOCATION")
   }
 
-  // Check skill requirement
-  if (state.player.skills.Crafting < recipe.requiredSkillLevel) {
+  // Check skill requirement (Smithing)
+  if (state.player.skills.Smithing < recipe.requiredSkillLevel) {
     return createFailureLog(state, action, "INSUFFICIENT_SKILL")
   }
 
@@ -473,6 +455,9 @@ function executeStore(state: WorldState, action: StoreAction, rolls: RngRoll[]):
   // Grant XP
   state.player.skills.Logistics += 1
 
+  // Check for contract completion (storage counts toward requirements)
+  const contractsCompleted = checkContractCompletion(state)
+
   return {
     tickBefore,
     actionType: "Store",
@@ -480,6 +465,7 @@ function executeStore(state: WorldState, action: StoreAction, rolls: RngRoll[]):
     success: true,
     timeConsumed: storeTime,
     skillGained: { skill: "Logistics", amount: 1 },
+    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
     stateDeltaSummary: `Stored ${quantity} ${itemId}`,
   }

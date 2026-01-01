@@ -13,10 +13,10 @@ describe("Types", () => {
         inventoryCapacity: 10,
         storage: [],
         skills: {
-          Travel: 0,
-          Gathering: 0,
+          Mining: 0,
+          Woodcutting: 0,
           Combat: 0,
-          Crafting: 0,
+          Smithing: 0,
           Logistics: 0,
         },
         guildReputation: 0,
@@ -62,16 +62,16 @@ describe("Types", () => {
   it("should allow creating valid ActionLog", () => {
     const log: ActionLog = {
       tickBefore: 0,
-      actionType: "Move",
-      parameters: { destination: "MINE" },
+      actionType: "Gather",
+      parameters: { nodeId: "iron-node" },
       success: true,
       timeConsumed: 2,
-      skillGained: { skill: "Travel", amount: 1 },
+      skillGained: { skill: "Mining", amount: 1 },
       rngRolls: [],
-      stateDeltaSummary: "Moved from TOWN to MINE",
+      stateDeltaSummary: "Gathered 1 IRON_ORE from iron-node",
     }
 
     expect(log.success).toBe(true)
-    expect(log.skillGained?.skill).toBe("Travel")
+    expect(log.skillGained?.skill).toBe("Mining")
   })
 })
