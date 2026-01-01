@@ -75,6 +75,7 @@ export interface WorldState {
     recipes: Recipe[];
     contracts: Contract[];
     storageLocation: LocationID;
+    storageRequiredSkillLevel: number;
   };
 
   rng: RngState;

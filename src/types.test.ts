@@ -37,6 +37,7 @@ describe('Types', () => {
         recipes: [],
         contracts: [],
         storageLocation: 'TOWN',
+        storageRequiredSkillLevel: 1,
       },
       rng: {
         seed: 'test-seed',

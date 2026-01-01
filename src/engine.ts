@@ -394,6 +394,11 @@ function executeStore(
     return createFailureLog(state, action, 'WRONG_LOCATION');
   }
 
+  // Check skill requirement
+  if (state.player.skills.Logistics < state.world.storageRequiredSkillLevel) {
+    return createFailureLog(state, action, 'INSUFFICIENT_SKILL');
+  }
+
   // Check if item exists in inventory
   const item = state.player.inventory.find(i => i.itemId === itemId);
   if (!item) {

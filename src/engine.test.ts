@@ -466,6 +466,7 @@ describe('Engine', () => {
   describe('Store action', () => {
     it('should move item from inventory to storage', () => {
       const state = createToyWorld('test-seed');
+      state.player.skills.Logistics = 1; // Need Logistics >= storageRequiredSkillLevel (1)
       state.player.inventory.push({ itemId: 'IRON_ORE', quantity: 5 });
       const action: StoreAction = { type: 'Store', itemId: 'IRON_ORE', quantity: 3 };
 
@@ -480,6 +481,7 @@ describe('Engine', () => {
 
     it('should consume 1 tick', () => {
       const state = createToyWorld('test-seed');
+      state.player.skills.Logistics = 1; // Need Logistics >= storageRequiredSkillLevel (1)
       state.player.inventory.push({ itemId: 'IRON_ORE', quantity: 1 });
       const initialTicks = state.time.sessionRemainingTicks;
       const action: StoreAction = { type: 'Store', itemId: 'IRON_ORE', quantity: 1 };
@@ -492,17 +494,19 @@ describe('Engine', () => {
 
     it('should grant Logistics XP', () => {
       const state = createToyWorld('test-seed');
+      state.player.skills.Logistics = 1; // Need Logistics >= storageRequiredSkillLevel (1)
       state.player.inventory.push({ itemId: 'IRON_ORE', quantity: 1 });
       const action: StoreAction = { type: 'Store', itemId: 'IRON_ORE', quantity: 1 };
 
       const log = executeAction(state, action);
 
       expect(log.skillGained).toEqual({ skill: 'Logistics', amount: 1 });
-      expect(state.player.skills.Logistics).toBe(1);
+      expect(state.player.skills.Logistics).toBe(2); // Started at 1, gained 1
     });
 
     it('should fail if not at storage location', () => {
       const state = createToyWorld('test-seed');
+      state.player.skills.Logistics = 1; // Need Logistics >= storageRequiredSkillLevel (1)
       state.player.location = 'MINE';
       state.player.inventory.push({ itemId: 'IRON_ORE', quantity: 1 });
       const action: StoreAction = { type: 'Store', itemId: 'IRON_ORE', quantity: 1 };
@@ -515,6 +519,7 @@ describe('Engine', () => {
 
     it('should fail if item not in inventory', () => {
       const state = createToyWorld('test-seed');
+      state.player.skills.Logistics = 1; // Need Logistics >= storageRequiredSkillLevel (1)
       const action: StoreAction = { type: 'Store', itemId: 'IRON_ORE', quantity: 1 };
 
       const log = executeAction(state, action);
@@ -525,6 +530,7 @@ describe('Engine', () => {
 
     it('should fail if not enough quantity', () => {
       const state = createToyWorld('test-seed');
+      state.player.skills.Logistics = 1; // Need Logistics >= storageRequiredSkillLevel (1)
       state.player.inventory.push({ itemId: 'IRON_ORE', quantity: 2 });
       const action: StoreAction = { type: 'Store', itemId: 'IRON_ORE', quantity: 5 };
 
@@ -532,6 +538,18 @@ describe('Engine', () => {
 
       expect(log.success).toBe(false);
       expect(log.failureType).toBe('MISSING_ITEMS');
+    });
+
+    it('should fail if insufficient Logistics skill', () => {
+      const state = createToyWorld('test-seed');
+      state.player.skills.Logistics = 0; // Need Logistics >= 1
+      state.player.inventory.push({ itemId: 'IRON_ORE', quantity: 1 });
+      const action: StoreAction = { type: 'Store', itemId: 'IRON_ORE', quantity: 1 };
+
+      const log = executeAction(state, action);
+
+      expect(log.success).toBe(false);
+      expect(log.failureType).toBe('INSUFFICIENT_SKILL');
     });
   });
 

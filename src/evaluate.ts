@@ -183,6 +183,11 @@ function evaluateStoreAction(
     return { expectedTime: 0, expectedXP: 0, successProbability: 0 };
   }
 
+  // Check skill requirement
+  if (state.player.skills.Logistics < state.world.storageRequiredSkillLevel) {
+    return { expectedTime: 0, expectedXP: 0, successProbability: 0 };
+  }
+
   const item = state.player.inventory.find(i => i.itemId === action.itemId);
   if (!item || item.quantity < action.quantity) {
     return { expectedTime: 0, expectedXP: 0, successProbability: 0 };

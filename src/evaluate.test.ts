@@ -65,6 +65,7 @@ describe('Evaluation APIs', () => {
 
     it('should evaluate Store action', () => {
       const state = createToyWorld('test-seed');
+      state.player.skills.Logistics = 1; // Need Logistics >= storageRequiredSkillLevel (1)
       state.player.inventory.push({ itemId: 'IRON_ORE', quantity: 1 });
       const action: Action = { type: 'Store', itemId: 'IRON_ORE', quantity: 1 };
 

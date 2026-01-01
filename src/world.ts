@@ -83,6 +83,7 @@ export function createToyWorld(seed: string): WorldState {
         },
       ],
       storageLocation: 'TOWN',
+      storageRequiredSkillLevel: 1,
     },
 
     rng: createRng(seed),
