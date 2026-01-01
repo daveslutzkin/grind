@@ -98,6 +98,17 @@ describe('Evaluation APIs', () => {
       expect(result.successProbability).toBe(0);
     });
 
+    it('should return 0 probability for Store with insufficient Logistics skill', () => {
+      const state = createToyWorld('test-seed');
+      state.player.skills.Logistics = 0; // Need Logistics >= 1
+      state.player.inventory.push({ itemId: 'IRON_ORE', quantity: 1 });
+      const action: Action = { type: 'Store', itemId: 'IRON_ORE', quantity: 1 };
+
+      const result = evaluateAction(state, action);
+
+      expect(result.successProbability).toBe(0);
+    });
+
     it('should not mutate state', () => {
       const state = createToyWorld('test-seed');
       const stateBefore = JSON.stringify(state);
