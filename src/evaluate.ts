@@ -352,8 +352,8 @@ function simulateAction(state: WorldState, action: Action): string | null {
     return getFailureReason(state, action);
   }
 
-  // Check if session would end
-  if (state.time.sessionRemainingTicks < eval_.expectedTime) {
+  // Check if session has ended or would end before action completes
+  if (state.time.sessionRemainingTicks <= 0 || state.time.sessionRemainingTicks < eval_.expectedTime) {
     return 'SESSION_ENDED';
   }
 
@@ -475,8 +475,8 @@ export function evaluatePlan(
       continue;
     }
 
-    // Check if we have enough time
-    if (simState.time.sessionRemainingTicks < eval_.expectedTime) {
+    // Check if session has ended or would end before action completes
+    if (simState.time.sessionRemainingTicks <= 0 || simState.time.sessionRemainingTicks < eval_.expectedTime) {
       violations.push({
         actionIndex: i,
         reason: 'SESSION_ENDED: Not enough time remaining',
