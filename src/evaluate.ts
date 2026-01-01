@@ -238,28 +238,118 @@ export function evaluateAction(
   }
 }
 
+// Determine failure reason for an action
+function getFailureReason(state: WorldState, action: Action): string {
+  switch (action.type) {
+    case 'Move': {
+      const fromLocation = state.player.location;
+      if (fromLocation === action.destination) {
+        return 'WRONG_LOCATION';
+      }
+      const travelKey = `${fromLocation}->${action.destination}`;
+      const travelCost = state.world.travelCosts[travelKey];
+      if (travelCost === undefined) {
+        return 'WRONG_LOCATION';
+      }
+      if (state.player.skills.Travel < travelCost) {
+        return 'INSUFFICIENT_SKILL';
+      }
+      return 'WRONG_LOCATION';
+    }
+    case 'AcceptContract': {
+      const contract = state.world.contracts.find(c => c.id === action.contractId);
+      if (!contract) {
+        return 'CONTRACT_NOT_FOUND';
+      }
+      if (state.player.location !== contract.guildLocation) {
+        return 'WRONG_LOCATION';
+      }
+      if (state.player.activeContracts.includes(action.contractId)) {
+        return 'ALREADY_HAS_CONTRACT';
+      }
+      return 'CONTRACT_NOT_FOUND';
+    }
+    case 'Gather': {
+      const node = state.world.resourceNodes.find(n => n.id === action.nodeId);
+      if (!node) {
+        return 'NODE_NOT_FOUND';
+      }
+      if (state.player.location !== node.location) {
+        return 'WRONG_LOCATION';
+      }
+      if (state.player.skills.Gathering < node.requiredSkillLevel) {
+        return 'INSUFFICIENT_SKILL';
+      }
+      const invCount = state.player.inventory.reduce((sum, item) => sum + item.quantity, 0);
+      if (invCount >= state.player.inventoryCapacity) {
+        return 'INVENTORY_FULL';
+      }
+      return 'NODE_NOT_FOUND';
+    }
+    case 'Fight': {
+      const enemy = state.world.enemies.find(e => e.id === action.enemyId);
+      if (!enemy) {
+        return 'ENEMY_NOT_FOUND';
+      }
+      if (state.player.location !== enemy.location) {
+        return 'WRONG_LOCATION';
+      }
+      if (state.player.skills.Combat < enemy.requiredSkillLevel) {
+        return 'INSUFFICIENT_SKILL';
+      }
+      return 'ENEMY_NOT_FOUND';
+    }
+    case 'Craft': {
+      const recipe = state.world.recipes.find(r => r.id === action.recipeId);
+      if (!recipe) {
+        return 'RECIPE_NOT_FOUND';
+      }
+      if (state.player.location !== recipe.requiredLocation) {
+        return 'WRONG_LOCATION';
+      }
+      if (state.player.skills.Crafting < recipe.requiredSkillLevel) {
+        return 'INSUFFICIENT_SKILL';
+      }
+      if (!hasItems(state.player.inventory, recipe.inputs)) {
+        return 'MISSING_ITEMS';
+      }
+      return 'RECIPE_NOT_FOUND';
+    }
+    case 'Store': {
+      if (state.player.location !== state.world.storageLocation) {
+        return 'WRONG_LOCATION';
+      }
+      if (state.player.skills.Logistics < state.world.storageRequiredSkillLevel) {
+        return 'INSUFFICIENT_SKILL';
+      }
+      const item = state.player.inventory.find(i => i.itemId === action.itemId);
+      if (!item) {
+        return 'ITEM_NOT_FOUND';
+      }
+      if (item.quantity < action.quantity) {
+        return 'MISSING_ITEMS';
+      }
+      return 'ITEM_NOT_FOUND';
+    }
+    case 'Drop': {
+      const item = state.player.inventory.find(i => i.itemId === action.itemId);
+      if (!item) {
+        return 'ITEM_NOT_FOUND';
+      }
+      if (item.quantity < action.quantity) {
+        return 'MISSING_ITEMS';
+      }
+      return 'ITEM_NOT_FOUND';
+    }
+  }
+}
+
 // Simulate applying an action to state (for plan evaluation)
 function simulateAction(state: WorldState, action: Action): string | null {
   const eval_ = evaluateAction(state, action);
 
   if (eval_.successProbability === 0) {
-    // Determine the failure reason
-    switch (action.type) {
-      case 'Move':
-        return 'WRONG_LOCATION';
-      case 'AcceptContract':
-        return 'CONTRACT_NOT_FOUND';
-      case 'Gather':
-        return 'WRONG_LOCATION';
-      case 'Fight':
-        return 'WRONG_LOCATION';
-      case 'Craft':
-        return 'MISSING_ITEMS';
-      case 'Store':
-        return 'WRONG_LOCATION';
-      case 'Drop':
-        return 'ITEM_NOT_FOUND';
-    }
+    return getFailureReason(state, action);
   }
 
   // Check if session would end

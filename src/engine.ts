@@ -67,6 +67,11 @@ function executeMove(state: WorldState, action: MoveAction, rolls: RngRoll[]): A
     return createFailureLog(state, action, 'INSUFFICIENT_SKILL');
   }
 
+  // Check if enough time remaining
+  if (state.time.sessionRemainingTicks < travelCost) {
+    return createFailureLog(state, action, 'SESSION_ENDED');
+  }
+
   // Move player
   state.player.location = destination;
   consumeTime(state, travelCost);
@@ -192,6 +197,11 @@ function executeGather(
     return createFailureLog(state, action, 'INVENTORY_FULL');
   }
 
+  // Check if enough time remaining
+  if (state.time.sessionRemainingTicks < node.gatherTime) {
+    return createFailureLog(state, action, 'SESSION_ENDED');
+  }
+
   // Consume time
   consumeTime(state, node.gatherTime);
 
@@ -251,6 +261,11 @@ function executeFight(
   // Check skill requirement
   if (state.player.skills.Combat < enemy.requiredSkillLevel) {
     return createFailureLog(state, action, 'INSUFFICIENT_SKILL');
+  }
+
+  // Check if enough time remaining
+  if (state.time.sessionRemainingTicks < enemy.fightTime) {
+    return createFailureLog(state, action, 'SESSION_ENDED');
   }
 
   // Consume time
@@ -345,6 +360,11 @@ function executeCraft(
     return createFailureLog(state, action, 'MISSING_ITEMS');
   }
 
+  // Check if enough time remaining
+  if (state.time.sessionRemainingTicks < recipe.craftTime) {
+    return createFailureLog(state, action, 'SESSION_ENDED');
+  }
+
   // Consume inputs
   for (const input of recipe.inputs) {
     removeFromInventory(state, input.itemId, input.quantity);
@@ -410,6 +430,11 @@ function executeStore(
     return createFailureLog(state, action, 'MISSING_ITEMS');
   }
 
+  // Check if enough time remaining
+  if (state.time.sessionRemainingTicks < storeTime) {
+    return createFailureLog(state, action, 'SESSION_ENDED');
+  }
+
   // Consume time
   consumeTime(state, storeTime);
 
@@ -450,6 +475,11 @@ function executeDrop(
   // Check if has enough quantity
   if (item.quantity < quantity) {
     return createFailureLog(state, action, 'MISSING_ITEMS');
+  }
+
+  // Check if enough time remaining
+  if (state.time.sessionRemainingTicks < dropTime) {
+    return createFailureLog(state, action, 'SESSION_ENDED');
   }
 
   // Consume time
