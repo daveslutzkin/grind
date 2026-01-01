@@ -6,7 +6,14 @@ import * as readline from "readline"
 import { createToyWorld } from "./world.js"
 import { executeAction } from "./engine.js"
 import { evaluateAction } from "./evaluate.js"
-import type { Action, ActionLog, WorldState } from "./types.js"
+import type { Action, ActionLog, WorldState, SkillID } from "./types.js"
+
+// Session tracking
+interface SessionStats {
+  logs: ActionLog[]
+  startingSkills: Record<SkillID, number>
+  totalSession: number
+}
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -92,7 +99,8 @@ function printHelp(state: WorldState): void {
   console.log("│ state               - Show current world state              │")
   console.log("│ world               - Show world data (nodes, enemies, etc) │")
   console.log("│ help                - Show this help                        │")
-  console.log("│ quit                - Exit                                  │")
+  console.log("│ end                 - End session and show summary          │")
+  console.log("│ quit                - Exit without summary                  │")
   console.log("└─────────────────────────────────────────────────────────────┘")
 
   // Show what's available at current location
@@ -141,6 +149,122 @@ function printWorld(state: WorldState): void {
     console.log(`│     Rewards: ${contract.rewards.map((r) => `${r.quantity}x ${r.itemId}`).join(", ")} + ${contract.reputationReward} rep`.padEnd(62) + "│")
   }
   console.log("└─────────────────────────────────────────────────────────────┘")
+}
+
+function printSummary(state: WorldState, stats: SessionStats): void {
+  const W = 120
+  const line = "─".repeat(W - 2)
+  const dline = "═".repeat(W - 2)
+  const pad = (s: string) => "│ " + s.padEnd(W - 4) + " │"
+
+  const ticksUsed = stats.totalSession - state.time.sessionRemainingTicks
+
+  // Action counts
+  const actionCounts: Record<string, { success: number; fail: number; time: number }> = {}
+  for (const log of stats.logs) {
+    if (!actionCounts[log.actionType]) {
+      actionCounts[log.actionType] = { success: 0, fail: 0, time: 0 }
+    }
+    if (log.success) {
+      actionCounts[log.actionType].success++
+    } else {
+      actionCounts[log.actionType].fail++
+    }
+    actionCounts[log.actionType].time += log.timeConsumed
+  }
+
+  // XP gained
+  const xpGained: Record<string, number> = {}
+  let totalXP = 0
+  for (const log of stats.logs) {
+    if (log.skillGained) {
+      xpGained[log.skillGained.skill] = (xpGained[log.skillGained.skill] || 0) + log.skillGained.amount
+      totalXP += log.skillGained.amount
+    }
+  }
+
+  // RNG luck analysis
+  let expectedSuccesses = 0
+  let actualSuccesses = 0
+  let totalRngRolls = 0
+  for (const log of stats.logs) {
+    for (const roll of log.rngRolls) {
+      totalRngRolls++
+      expectedSuccesses += roll.probability
+      if (roll.result) actualSuccesses++
+    }
+  }
+  const luckPercent = totalRngRolls > 0 ? ((actualSuccesses - expectedSuccesses) / totalRngRolls) * 100 : 0
+  const luckStr =
+    totalRngRolls === 0
+      ? "N/A (no RNG actions)"
+      : `${actualSuccesses}/${totalRngRolls} successes (expected ${expectedSuccesses.toFixed(1)}) → ${luckPercent >= 0 ? "+" : ""}${luckPercent.toFixed(1)}% luck`
+
+  // Contracts completed
+  let contractsCompleted = 0
+  let repGained = 0
+  for (const log of stats.logs) {
+    if (log.contractsCompleted) {
+      contractsCompleted += log.contractsCompleted.length
+      for (const c of log.contractsCompleted) {
+        repGained += c.reputationGained
+      }
+    }
+  }
+
+  // Skill progression
+  const skillDelta: string[] = []
+  const skills: SkillID[] = ["Mining", "Woodcutting", "Combat", "Smithing", "Logistics"]
+  for (const skill of skills) {
+    const start = stats.startingSkills[skill]
+    const end = state.player.skills[skill]
+    if (end > start) {
+      skillDelta.push(`${skill}: ${start}→${end} (+${end - start})`)
+    }
+  }
+
+  // Items in inventory + storage
+  const allItems: Record<string, number> = {}
+  for (const item of state.player.inventory) {
+    allItems[item.itemId] = (allItems[item.itemId] || 0) + item.quantity
+  }
+  for (const item of state.player.storage) {
+    allItems[item.itemId] = (allItems[item.itemId] || 0) + item.quantity
+  }
+  const itemsStr = Object.entries(allItems)
+    .map(([id, qty]) => `${qty}x ${id}`)
+    .join(", ") || "(none)"
+
+  console.log(`\n╔${dline}╗`)
+  console.log(`║${"SESSION SUMMARY".padStart(W / 2 + 7).padEnd(W - 2)}║`)
+  console.log(`╠${dline}╣`)
+
+  // Time & Efficiency
+  console.log(pad(`⏱  TIME: ${ticksUsed}/${stats.totalSession} ticks used  │  XP/tick: ${ticksUsed > 0 ? (totalXP / ticksUsed).toFixed(2) : "0.00"}  │  Total XP: ${totalXP}`))
+  console.log(`├${line}┤`)
+
+  // Actions breakdown
+  const actionStrs = Object.entries(actionCounts).map(
+    ([type, { success, fail, time }]) => `${type}: ${success}✓${fail > 0 ? ` ${fail}✗` : ""} (${time}t)`
+  )
+  console.log(pad(`📋 ACTIONS: ${stats.logs.length} total  │  ${actionStrs.join("  │  ")}`))
+  console.log(`├${line}┤`)
+
+  // Luck
+  console.log(pad(`🎲 LUCK: ${luckStr}`))
+  console.log(`├${line}┤`)
+
+  // Skills
+  console.log(pad(`📈 SKILLS: ${skillDelta.length > 0 ? skillDelta.join("  │  ") : "(no gains)"}`))
+  console.log(`├${line}┤`)
+
+  // Contracts & Rep
+  console.log(pad(`🏆 CONTRACTS: ${contractsCompleted} completed  │  Reputation: ${state.player.guildReputation} (+${repGained} this session)`))
+  console.log(`├${line}┤`)
+
+  // Final inventory
+  console.log(pad(`🎒 FINAL ITEMS: ${itemsStr}`))
+  console.log(`╚${dline}╝`)
 }
 
 function parseAction(input: string, state: WorldState): Action | null {
@@ -221,14 +345,28 @@ async function main(): Promise<void> {
 
   const state = createToyWorld(seed)
 
+  // Initialize session tracking
+  const stats: SessionStats = {
+    logs: [],
+    startingSkills: { ...state.player.skills },
+    totalSession: state.time.sessionRemainingTicks,
+  }
+
   printState(state)
   printHelp(state)
+
+  let showSummary = true
 
   while (state.time.sessionRemainingTicks > 0) {
     const input = await prompt("\n> ")
     const trimmed = input.trim().toLowerCase()
 
     if (trimmed === "quit" || trimmed === "exit" || trimmed === "q") {
+      showSummary = false
+      break
+    }
+
+    if (trimmed === "end" || trimmed === "summary") {
       break
     }
 
@@ -264,14 +402,17 @@ async function main(): Promise<void> {
     }
 
     const log = executeAction(state, action)
+    stats.logs.push(log)
     printLog(log)
     printState(state)
   }
 
-  console.log("\n╔═════════════════════════════════════════════════════════════╗")
-  console.log("║                    SESSION ENDED                            ║")
-  console.log("╚═════════════════════════════════════════════════════════════╝")
-  printState(state)
+  if (showSummary) {
+    if (state.time.sessionRemainingTicks <= 0) {
+      console.log("\n⏰ Session time exhausted!")
+    }
+    printSummary(state, stats)
+  }
 
   rl.close()
 }
