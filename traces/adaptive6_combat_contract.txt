@@ -1,0 +1,44 @@
+=== Plan Execution (seed: adaptive6) ===
+🎯 Objective: Complete miners-guild-1
+
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ 📍 TOWN  │  ⏱ 25 ticks left  │  🎒 (empty)                                                                           │
+│ 📊 Mining:1 Woodcut:1 Combat:1 Smith:1 Logistics:1                                                                   │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  ✓ AcceptContract: Accepted contract miners-guild-1  │  ⏱ 0t
+  ✓ Move: Moved from TOWN to MINE  │  ⏱ 2t
+  ✓ Fight: Defeated cave-rat, gained loot  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat
+  ✗ Fight: Lost fight to cave-rat, relocated to TOWN  │  ⏱ 3t  │  🎲 70%→miss  │  ❌ COMBAT_FAILURE
+  ✗ Fight: Failed: WRONG_LOCATION  │  ⏱ 0t  │  ❌ WRONG_LOCATION
+  ✗ Fight: Failed: WRONG_LOCATION  │  ⏱ 0t  │  ❌ WRONG_LOCATION
+  ✗ Fight: Failed: WRONG_LOCATION  │  ⏱ 0t  │  ❌ WRONG_LOCATION
+  ✗ Fight: Failed: WRONG_LOCATION  │  ⏱ 0t  │  ❌ WRONG_LOCATION
+  ✗ Move: Failed: WRONG_LOCATION  │  ⏱ 0t  │  ❌ WRONG_LOCATION
+  ✓ Move: Moved from TOWN to MINE  │  ⏱ 2t
+  ✓ Fight: Defeated cave-rat, gained loot  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat
+  ✗ Fight: Lost fight to cave-rat, relocated to TOWN  │  ⏱ 3t  │  🎲 70%→miss  │  ❌ COMBAT_FAILURE
+  ✗ Move: Failed: WRONG_LOCATION  │  ⏱ 0t  │  ❌ WRONG_LOCATION
+  ✓ Move: Moved from TOWN to MINE  │  ⏱ 2t
+  ✓ Fight: Defeated cave-rat, gained loot  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat
+  ✓ Fight: Defeated cave-rat, gained loot  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat
+
+╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                                    SESSION SUMMARY                                                   ║
+╠══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+│ ⏱  TIME: 24/25 ticks  │  XP: 4 actual, 4.2 expected  │  XP/tick: 0.17 actual, 0.18 expected                          │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 📋 ACTIONS: 16 total  │  AcceptContract: 1✓ (0t)  │  Move: 3✓ 2✗ (6t)  │  Fight: 4✓ 6✗ (18t)                         │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 🎲 LUCK: Bottom 58% (typical) — 4/6 vs 4.2 expected (-0.2σ)                                                          │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 📉 VOLATILITY: Medium (±1.1 XP)                                                                                      │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 🎯 RISK TO OBJECTIVE: High (100% fail) — complete miners-guild-1                                                     │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 📈 SKILLS: Combat: 1→5 (+4)                                                                                          │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 🏆 CONTRACTS: 0 completed  │  Reputation: 0 (+0 this session)                                                        │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 🎒 FINAL ITEMS: 4x IRON_ORE                                                                                          │
+╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝

@@ -6,7 +6,8 @@ import * as readline from "readline"
 import { createToyWorld } from "./world.js"
 import { executeAction } from "./engine.js"
 import { evaluateAction } from "./evaluate.js"
-import type { Action, ActionLog, WorldState, SkillID } from "./types.js"
+import type { Action, ActionLog, WorldState, SkillID, Objective } from "./types.js"
+import { OBJECTIVES } from "./types.js"
 
 // Session tracking
 interface SessionStats {
@@ -217,32 +218,103 @@ function poissonBinomialProbAtMost(probabilities: number[], k: number): number {
 }
 
 /**
- * Compute Risk/Volatility string for the plan
+ * Compute Volatility string for the plan (objective-agnostic)
  * Volatility = σ of total XP (standard deviation)
- * Risk = P(XP ≤ 70% of expected) bucketed as Low/Medium/High
  */
-function computeRiskVolatility(xpProbabilities: number[], expectedXP: number): string {
+function computeVolatility(xpProbabilities: number[]): string {
   if (xpProbabilities.length === 0) return "N/A"
 
   // Volatility: σ = sqrt(sum of p*(1-p) for each action)
   const totalVariance = xpProbabilities.reduce((sum, p) => sum + p * (1 - p), 0)
   const sigma = Math.sqrt(totalVariance)
 
-  // Risk: P(XP ≤ 70% of expected)
-  const threshold = Math.floor(0.7 * expectedXP)
-  const downsideProb = poissonBinomialProbAtMost(xpProbabilities, threshold)
+  // Bucket volatility
+  let volLabel: string
+  if (sigma < 1.0) {
+    volLabel = "Low"
+  } else if (sigma <= 2.0) {
+    volLabel = "Medium"
+  } else {
+    volLabel = "High"
+  }
+
+  return `${volLabel} (±${sigma.toFixed(1)} XP)`
+}
+
+/**
+ * Compute Risk to Objective (objective-specific)
+ * Returns probability that objective is NOT achieved
+ */
+function computeRiskToObjective(
+  objective: Objective,
+  state: WorldState,
+  stats: SessionStats,
+  startingSkills: Record<SkillID, number>
+): string {
+  let failProb = 0
+  let description = ""
+
+  switch (objective.type) {
+    case "maximize_xp":
+      // Always succeeds by definition
+      failProb = 0
+      description = "maximize XP"
+      break
+
+    case "complete_contract": {
+      // Check if contract was completed
+      let completed = false
+      for (const log of stats.logs) {
+        if (log.contractsCompleted) {
+          for (const c of log.contractsCompleted) {
+            if (c.contractId === objective.contractId) {
+              completed = true
+            }
+          }
+        }
+      }
+      failProb = completed ? 0 : 1
+      description = `complete ${objective.contractId}`
+      break
+    }
+
+    case "reach_skill": {
+      const currentLevel = state.player.skills[objective.skill]
+      const achieved = currentLevel >= objective.target
+      failProb = achieved ? 0 : 1
+      description = `reach ${objective.skill} ${objective.target}`
+      break
+    }
+
+    case "diversify_skills": {
+      // Check if all listed skills advanced at least 1
+      let allAdvanced = true
+      for (const skill of objective.skills) {
+        const start = startingSkills[skill as SkillID]
+        const end = state.player.skills[skill as SkillID]
+        if (end <= start) {
+          allAdvanced = false
+          break
+        }
+      }
+      failProb = allAdvanced ? 0 : 1
+      description = `diversify ${objective.skills.length} skills`
+      break
+    }
+  }
 
   // Bucket risk
   let riskLabel: string
-  if (downsideProb < 0.2) {
+  if (failProb < 0.2) {
     riskLabel = "Low"
-  } else if (downsideProb <= 0.5) {
+  } else if (failProb <= 0.5) {
     riskLabel = "Medium"
   } else {
     riskLabel = "High"
   }
 
-  return `${riskLabel} (±${sigma.toFixed(1)} XP)`
+  const pct = (failProb * 100).toFixed(0)
+  return `${riskLabel} (${pct}% fail) — ${description}`
 }
 
 /**
@@ -316,7 +388,7 @@ function computeLuckString(probabilities: number[], actualSuccesses: number): st
   return `${position} (${label}) — ${actualSuccesses}/${n} vs ${expected.toFixed(1)} expected (${sigmaStr})`
 }
 
-function printSummary(state: WorldState, stats: SessionStats): void {
+function printSummary(state: WorldState, stats: SessionStats, objective: Objective): void {
   const W = 120
   const line = "─".repeat(W - 2)
   const dline = "═".repeat(W - 2)
@@ -372,8 +444,11 @@ function printSummary(state: WorldState, stats: SessionStats): void {
     }
   }
 
-  // Risk/Volatility calculation
-  const riskVolatilityStr = computeRiskVolatility(xpProbabilities, expectedXP)
+  // Volatility calculation (objective-agnostic)
+  const volatilityStr = computeVolatility(xpProbabilities)
+
+  // Risk to Objective calculation (objective-specific)
+  const riskToObjectiveStr = computeRiskToObjective(objective, state, stats, stats.startingSkills)
 
   // RNG luck analysis using Poisson binomial distribution
   const probabilities: number[] = []
@@ -442,8 +517,12 @@ function printSummary(state: WorldState, stats: SessionStats): void {
   console.log(pad(`🎲 LUCK: ${luckStr}`))
   console.log(`├${line}┤`)
 
-  // Risk/Volatility
-  console.log(pad(`⚠️  RISK: ${riskVolatilityStr}`))
+  // Volatility
+  console.log(pad(`📉 VOLATILITY: ${volatilityStr}`))
+  console.log(`├${line}┤`)
+
+  // Risk to Objective
+  console.log(pad(`🎯 RISK TO OBJECTIVE: ${riskToObjectiveStr}`))
   console.log(`├${line}┤`)
 
   // Skills
@@ -603,7 +682,7 @@ async function main(): Promise<void> {
     if (state.time.sessionRemainingTicks <= 0) {
       console.log("\n⏰ Session time exhausted!")
     }
-    printSummary(state, stats)
+    printSummary(state, stats, OBJECTIVES.MAXIMIZE_XP)
   }
 
   rl.close()
