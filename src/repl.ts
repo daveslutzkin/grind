@@ -151,6 +151,128 @@ function printWorld(state: WorldState): void {
   console.log("└─────────────────────────────────────────────────────────────┘")
 }
 
+/**
+ * Compute P(X >= k) for Poisson binomial distribution using DP.
+ * probabilities: array of success probabilities for each trial
+ * k: number of successes to compute P(X >= k) for
+ */
+function poissonBinomialProbAtLeast(probabilities: number[], k: number): number {
+  const n = probabilities.length
+  if (k > n) return 0
+  if (k <= 0) return 1
+
+  // dp[j] = probability of exactly j successes
+  let dp = new Array(n + 1).fill(0)
+  dp[0] = 1
+
+  for (const p of probabilities) {
+    const newDp = new Array(n + 1).fill(0)
+    for (let j = 0; j <= n; j++) {
+      if (dp[j] === 0) continue
+      newDp[j] += dp[j] * (1 - p) // failure
+      if (j + 1 <= n) {
+        newDp[j + 1] += dp[j] * p // success
+      }
+    }
+    dp = newDp
+  }
+
+  // Sum P(X >= k)
+  let prob = 0
+  for (let j = k; j <= n; j++) {
+    prob += dp[j]
+  }
+  return prob
+}
+
+/**
+ * Compute P(X <= k) for Poisson binomial distribution
+ */
+function poissonBinomialProbAtMost(probabilities: number[], k: number): number {
+  const n = probabilities.length
+  if (k < 0) return 0
+  if (k >= n) return 1
+
+  let dp = new Array(n + 1).fill(0)
+  dp[0] = 1
+
+  for (const p of probabilities) {
+    const newDp = new Array(n + 1).fill(0)
+    for (let j = 0; j <= n; j++) {
+      if (dp[j] === 0) continue
+      newDp[j] += dp[j] * (1 - p)
+      if (j + 1 <= n) {
+        newDp[j + 1] += dp[j] * p
+      }
+    }
+    dp = newDp
+  }
+
+  let prob = 0
+  for (let j = 0; j <= k; j++) {
+    prob += dp[j]
+  }
+  return prob
+}
+
+/**
+ * Compute luck string with percentile, label, and sigma
+ */
+function computeLuckString(probabilities: number[], actualSuccesses: number): string {
+  const n = probabilities.length
+  if (n === 0) return "N/A (no RNG actions)"
+
+  // Expected value and standard deviation
+  const expected = probabilities.reduce((sum, p) => sum + p, 0)
+  const variance = probabilities.reduce((sum, p) => sum + p * (1 - p), 0)
+  const sigma = Math.sqrt(variance)
+
+  // Z-score
+  const zScore = sigma > 0 ? (actualSuccesses - expected) / sigma : 0
+
+  // Compute percentile based on whether we're above or below expected
+  let percentile: number
+  let label: string
+  let position: string
+
+  if (actualSuccesses >= expected) {
+    // Lucky side: compute P(X >= actual)
+    const probAtLeast = poissonBinomialProbAtLeast(probabilities, actualSuccesses)
+    percentile = probAtLeast * 100
+
+    if (percentile <= 5) {
+      label = "extremely lucky"
+    } else if (percentile <= 20) {
+      label = "very lucky"
+    } else {
+      label = "typical"
+    }
+    position = `Top ${percentile.toFixed(0)}%`
+  } else {
+    // Unlucky side: compute P(X <= actual)
+    const probAtMost = poissonBinomialProbAtMost(probabilities, actualSuccesses)
+    percentile = probAtMost * 100
+
+    if (percentile <= 5) {
+      label = "extremely unlucky"
+    } else if (percentile <= 20) {
+      label = "unlucky"
+    } else {
+      label = "typical"
+    }
+    position = `Bottom ${percentile.toFixed(0)}%`
+  }
+
+  // Format sigma with sign
+  const sigmaStr = zScore >= 0 ? `+${zScore.toFixed(1)}σ` : `${zScore.toFixed(1)}σ`
+
+  // Build final string
+  if (label === "typical") {
+    return `Typical — ${actualSuccesses}/${n} successes vs ${expected.toFixed(1)} expected (${sigmaStr})`
+  }
+  return `${position} (${label}) — ${actualSuccesses}/${n} successes vs ${expected.toFixed(1)} expected (${sigmaStr})`
+}
+
 function printSummary(state: WorldState, stats: SessionStats): void {
   const W = 120
   const line = "─".repeat(W - 2)
@@ -183,22 +305,16 @@ function printSummary(state: WorldState, stats: SessionStats): void {
     }
   }
 
-  // RNG luck analysis
-  let expectedSuccesses = 0
+  // RNG luck analysis using Poisson binomial distribution
+  const probabilities: number[] = []
   let actualSuccesses = 0
-  let totalRngRolls = 0
   for (const log of stats.logs) {
     for (const roll of log.rngRolls) {
-      totalRngRolls++
-      expectedSuccesses += roll.probability
+      probabilities.push(roll.probability)
       if (roll.result) actualSuccesses++
     }
   }
-  const luckPercent = totalRngRolls > 0 ? ((actualSuccesses - expectedSuccesses) / totalRngRolls) * 100 : 0
-  const luckStr =
-    totalRngRolls === 0
-      ? "N/A (no RNG actions)"
-      : `${actualSuccesses}/${totalRngRolls} successes (expected ${expectedSuccesses.toFixed(1)}) → ${luckPercent >= 0 ? "+" : ""}${luckPercent.toFixed(1)}% luck`
+  const luckStr = computeLuckString(probabilities, actualSuccesses)
 
   // Contracts completed
   let contractsCompleted = 0
