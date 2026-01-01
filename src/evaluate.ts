@@ -364,9 +364,11 @@ function simulateAction(state: WorldState, action: Action): string | null {
   switch (action.type) {
     case 'Move':
       state.player.location = action.destination;
+      state.player.skills.Travel += 1;
       break;
     case 'AcceptContract':
       state.player.activeContracts.push(action.contractId);
+      // No skill gain for AcceptContract
       break;
     case 'Gather': {
       const node = state.world.resourceNodes.find(n => n.id === action.nodeId);
@@ -377,6 +379,7 @@ function simulateAction(state: WorldState, action: Action): string | null {
         } else {
           state.player.inventory.push({ itemId: node.itemId, quantity: 1 });
         }
+        state.player.skills.Gathering += 1;
       }
       break;
     }
@@ -391,6 +394,7 @@ function simulateAction(state: WorldState, action: Action): string | null {
             state.player.inventory.push({ itemId: loot.itemId, quantity: loot.quantity });
           }
         }
+        state.player.skills.Combat += 1;
       }
       break;
     }
@@ -415,6 +419,7 @@ function simulateAction(state: WorldState, action: Action): string | null {
         } else {
           state.player.inventory.push({ itemId: recipe.output.itemId, quantity: recipe.output.quantity });
         }
+        state.player.skills.Crafting += 1;
       }
       break;
     }
@@ -432,6 +437,7 @@ function simulateAction(state: WorldState, action: Action): string | null {
         } else {
           state.player.storage.push({ itemId: action.itemId, quantity: action.quantity });
         }
+        state.player.skills.Logistics += 1;
       }
       break;
     }
@@ -444,6 +450,7 @@ function simulateAction(state: WorldState, action: Action): string | null {
           state.player.inventory.splice(index, 1);
         }
       }
+      // No skill gain for Drop
       break;
     }
   }
