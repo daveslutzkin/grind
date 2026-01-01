@@ -1,0 +1,239 @@
+// Shared action validation logic used by both engine execution and evaluation
+// This ensures consistency: "Evaluation must call the same logic paths as execution"
+
+import type {
+  WorldState,
+  Action,
+  MoveAction,
+  AcceptContractAction,
+  GatherAction,
+  FightAction,
+  CraftAction,
+  StoreAction,
+  DropAction,
+  FailureType,
+  ItemStack,
+} from "./types.js"
+
+/**
+ * Result of checking action preconditions
+ */
+export interface ActionCheckResult {
+  valid: boolean
+  failureType?: FailureType
+  timeCost: number
+  successProbability: number
+}
+
+/**
+ * Check if inventory has all required items
+ */
+export function hasItems(inventory: ItemStack[], required: ItemStack[]): boolean {
+  for (const req of required) {
+    const item = inventory.find((i) => i.itemId === req.itemId)
+    if (!item || item.quantity < req.quantity) {
+      return false
+    }
+  }
+  return true
+}
+
+/**
+ * Get the number of inventory slots used (slot-based capacity)
+ */
+export function getInventorySlotCount(state: WorldState): number {
+  return state.player.inventory.length
+}
+
+/**
+ * Check if gathering would exceed inventory capacity
+ */
+export function canGatherItem(state: WorldState, itemId: string): boolean {
+  if (getInventorySlotCount(state) < state.player.inventoryCapacity) {
+    return true
+  }
+  const existingItem = state.player.inventory.find((i) => i.itemId === itemId)
+  return existingItem !== undefined
+}
+
+/**
+ * Check Move action preconditions
+ */
+export function checkMoveAction(state: WorldState, action: MoveAction): ActionCheckResult {
+  const fromLocation = state.player.location
+  const destination = action.destination
+
+  if (fromLocation === destination) {
+    return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
+  }
+
+  const travelKey = `${fromLocation}->${destination}`
+  const travelCost = state.world.travelCosts[travelKey]
+
+  if (travelCost === undefined) {
+    return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
+  }
+
+  return { valid: true, timeCost: travelCost, successProbability: 1 }
+}
+
+/**
+ * Check AcceptContract action preconditions
+ */
+export function checkAcceptContractAction(
+  state: WorldState,
+  action: AcceptContractAction
+): ActionCheckResult {
+  const contract = state.world.contracts.find((c) => c.id === action.contractId)
+
+  if (!contract) {
+    return { valid: false, failureType: "CONTRACT_NOT_FOUND", timeCost: 0, successProbability: 0 }
+  }
+
+  if (state.player.location !== contract.guildLocation) {
+    return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
+  }
+
+  if (state.player.activeContracts.includes(action.contractId)) {
+    return { valid: false, failureType: "ALREADY_HAS_CONTRACT", timeCost: 0, successProbability: 0 }
+  }
+
+  return { valid: true, timeCost: 0, successProbability: 1 }
+}
+
+/**
+ * Check Gather action preconditions
+ */
+export function checkGatherAction(state: WorldState, action: GatherAction): ActionCheckResult {
+  const node = state.world.resourceNodes.find((n) => n.id === action.nodeId)
+
+  if (!node) {
+    return { valid: false, failureType: "NODE_NOT_FOUND", timeCost: 0, successProbability: 0 }
+  }
+
+  if (state.player.location !== node.location) {
+    return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
+  }
+
+  if (state.player.skills[node.skillType] < node.requiredSkillLevel) {
+    return { valid: false, failureType: "INSUFFICIENT_SKILL", timeCost: 0, successProbability: 0 }
+  }
+
+  if (!canGatherItem(state, node.itemId)) {
+    return { valid: false, failureType: "INVENTORY_FULL", timeCost: 0, successProbability: 0 }
+  }
+
+  return { valid: true, timeCost: node.gatherTime, successProbability: node.successProbability }
+}
+
+/**
+ * Check Fight action preconditions
+ */
+export function checkFightAction(state: WorldState, action: FightAction): ActionCheckResult {
+  const enemy = state.world.enemies.find((e) => e.id === action.enemyId)
+
+  if (!enemy) {
+    return { valid: false, failureType: "ENEMY_NOT_FOUND", timeCost: 0, successProbability: 0 }
+  }
+
+  if (state.player.location !== enemy.location) {
+    return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
+  }
+
+  if (state.player.skills.Combat < enemy.requiredSkillLevel) {
+    return { valid: false, failureType: "INSUFFICIENT_SKILL", timeCost: 0, successProbability: 0 }
+  }
+
+  return { valid: true, timeCost: enemy.fightTime, successProbability: enemy.successProbability }
+}
+
+/**
+ * Check Craft action preconditions
+ */
+export function checkCraftAction(state: WorldState, action: CraftAction): ActionCheckResult {
+  const recipe = state.world.recipes.find((r) => r.id === action.recipeId)
+
+  if (!recipe) {
+    return { valid: false, failureType: "RECIPE_NOT_FOUND", timeCost: 0, successProbability: 0 }
+  }
+
+  if (state.player.location !== recipe.requiredLocation) {
+    return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
+  }
+
+  if (state.player.skills.Smithing < recipe.requiredSkillLevel) {
+    return { valid: false, failureType: "INSUFFICIENT_SKILL", timeCost: 0, successProbability: 0 }
+  }
+
+  if (!hasItems(state.player.inventory, recipe.inputs)) {
+    return { valid: false, failureType: "MISSING_ITEMS", timeCost: 0, successProbability: 0 }
+  }
+
+  return { valid: true, timeCost: recipe.craftTime, successProbability: 1 }
+}
+
+/**
+ * Check Store action preconditions
+ */
+export function checkStoreAction(state: WorldState, action: StoreAction): ActionCheckResult {
+  const storeTime = 1
+
+  if (state.player.location !== state.world.storageLocation) {
+    return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
+  }
+
+  if (state.player.skills.Logistics < state.world.storageRequiredSkillLevel) {
+    return { valid: false, failureType: "INSUFFICIENT_SKILL", timeCost: 0, successProbability: 0 }
+  }
+
+  const item = state.player.inventory.find((i) => i.itemId === action.itemId)
+  if (!item) {
+    return { valid: false, failureType: "ITEM_NOT_FOUND", timeCost: 0, successProbability: 0 }
+  }
+
+  if (item.quantity < action.quantity) {
+    return { valid: false, failureType: "MISSING_ITEMS", timeCost: 0, successProbability: 0 }
+  }
+
+  return { valid: true, timeCost: storeTime, successProbability: 1 }
+}
+
+/**
+ * Check Drop action preconditions
+ */
+export function checkDropAction(state: WorldState, action: DropAction): ActionCheckResult {
+  const dropTime = 1
+
+  const item = state.player.inventory.find((i) => i.itemId === action.itemId)
+  if (!item) {
+    return { valid: false, failureType: "ITEM_NOT_FOUND", timeCost: 0, successProbability: 0 }
+  }
+
+  if (item.quantity < action.quantity) {
+    return { valid: false, failureType: "MISSING_ITEMS", timeCost: 0, successProbability: 0 }
+  }
+
+  return { valid: true, timeCost: dropTime, successProbability: 1 }
+}
+
+/**
+ * Check any action's preconditions
+ */
+export function checkAction(state: WorldState, action: Action): ActionCheckResult {
+  switch (action.type) {
+    case "Move":
+      return checkMoveAction(state, action)
+    case "AcceptContract":
+      return checkAcceptContractAction(state, action)
+    case "Gather":
+      return checkGatherAction(state, action)
+    case "Fight":
+      return checkFightAction(state, action)
+    case "Craft":
+      return checkCraftAction(state, action)
+    case "Store":
+      return checkStoreAction(state, action)
+    case "Drop":
+      return checkDropAction(state, action)
+  }
+}

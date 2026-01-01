@@ -15,7 +15,15 @@ import type {
   ContractCompletion,
 } from "./types.js"
 import { roll } from "./rng.js"
-import { hasItems, canGatherItem } from "./helpers.js"
+import {
+  checkMoveAction,
+  checkAcceptContractAction,
+  checkGatherAction,
+  checkFightAction,
+  checkCraftAction,
+  checkStoreAction,
+  checkDropAction,
+} from "./actionChecks.js"
 
 function createFailureLog(
   state: WorldState,
@@ -45,41 +53,99 @@ function consumeTime(state: WorldState, ticks: number): void {
   state.time.sessionRemainingTicks -= ticks
 }
 
+function addToInventory(state: WorldState, itemId: ItemID, quantity: number): void {
+  const existing = state.player.inventory.find((i) => i.itemId === itemId)
+  if (existing) {
+    existing.quantity += quantity
+  } else {
+    state.player.inventory.push({ itemId, quantity })
+  }
+}
+
+function removeFromInventory(state: WorldState, itemId: ItemID, quantity: number): void {
+  const item = state.player.inventory.find((i) => i.itemId === itemId)
+  if (item) {
+    item.quantity -= quantity
+    if (item.quantity <= 0) {
+      const index = state.player.inventory.indexOf(item)
+      state.player.inventory.splice(index, 1)
+    }
+  }
+}
+
+function addToStorage(state: WorldState, itemId: ItemID, quantity: number): void {
+  const existing = state.player.storage.find((i) => i.itemId === itemId)
+  if (existing) {
+    existing.quantity += quantity
+  } else {
+    state.player.storage.push({ itemId, quantity })
+  }
+}
+
+function checkContractCompletion(state: WorldState): ContractCompletion[] {
+  const completions: ContractCompletion[] = []
+
+  // Check each active contract
+  for (const contractId of [...state.player.activeContracts]) {
+    const contract = state.world.contracts.find((c) => c.id === contractId)
+    if (!contract) continue
+
+    // Check if all requirements are met (in inventory or storage)
+    const allRequirementsMet = contract.requirements.every((req) => {
+      const inInventory = state.player.inventory.find((i) => i.itemId === req.itemId)
+      const inStorage = state.player.storage.find((i) => i.itemId === req.itemId)
+      const totalQuantity = (inInventory?.quantity ?? 0) + (inStorage?.quantity ?? 0)
+      return totalQuantity >= req.quantity
+    })
+
+    if (allRequirementsMet) {
+      // Award reputation
+      state.player.guildReputation += contract.reputationReward
+
+      // Remove from active contracts
+      const index = state.player.activeContracts.indexOf(contractId)
+      state.player.activeContracts.splice(index, 1)
+
+      completions.push({
+        contractId,
+        reputationGained: contract.reputationReward,
+      })
+    }
+  }
+
+  return completions
+}
+
 function executeMove(state: WorldState, action: MoveAction, rolls: RngRoll[]): ActionLog {
   const tickBefore = state.time.currentTick
   const fromLocation = state.player.location
   const destination = action.destination
 
-  // Check if already at destination
-  if (fromLocation === destination) {
-    return createFailureLog(state, action, "WRONG_LOCATION")
-  }
-
-  // Get travel cost (only check reachability, no skill gating)
-  const travelKey = `${fromLocation}->${destination}`
-  const travelCost = state.world.travelCosts[travelKey]
-
-  if (travelCost === undefined) {
-    return createFailureLog(state, action, "WRONG_LOCATION")
+  // Use shared precondition check
+  const check = checkMoveAction(state, action)
+  if (!check.valid) {
+    return createFailureLog(state, action, check.failureType!)
   }
 
   // Check if enough time remaining
-  if (state.time.sessionRemainingTicks < travelCost) {
+  if (state.time.sessionRemainingTicks < check.timeCost) {
     return createFailureLog(state, action, "SESSION_ENDED")
   }
 
   // Move player
   state.player.location = destination
-  consumeTime(state, travelCost)
+  consumeTime(state, check.timeCost)
 
-  // No XP for Move - Travel is purely logistical
+  // Check for contract completion (after every successful action)
+  const contractsCompleted = checkContractCompletion(state)
 
   return {
     tickBefore,
     actionType: "Move",
     parameters: { destination },
     success: true,
-    timeConsumed: travelCost,
+    timeConsumed: check.timeCost,
+    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
     stateDeltaSummary: `Moved from ${fromLocation} to ${destination}`,
   }
@@ -119,24 +185,17 @@ function executeAcceptContract(
   const tickBefore = state.time.currentTick
   const contractId = action.contractId
 
-  // Find contract
-  const contract = state.world.contracts.find((c) => c.id === contractId)
-  if (!contract) {
-    return createFailureLog(state, action, "CONTRACT_NOT_FOUND")
-  }
-
-  // Check if at guild location
-  if (state.player.location !== contract.guildLocation) {
-    return createFailureLog(state, action, "WRONG_LOCATION")
-  }
-
-  // Check if already has contract
-  if (state.player.activeContracts.includes(contractId)) {
-    return createFailureLog(state, action, "ALREADY_HAS_CONTRACT")
+  // Use shared precondition check
+  const check = checkAcceptContractAction(state, action)
+  if (!check.valid) {
+    return createFailureLog(state, action, check.failureType!)
   }
 
   // Accept contract
   state.player.activeContracts.push(contractId)
+
+  // Check for contract completion (after every successful action)
+  const contractsCompleted = checkContractCompletion(state)
 
   return {
     tickBefore,
@@ -144,89 +203,35 @@ function executeAcceptContract(
     parameters: { contractId },
     success: true,
     timeConsumed: 0,
+    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
     stateDeltaSummary: `Accepted contract ${contractId}`,
   }
-}
-
-function addToInventory(state: WorldState, itemId: ItemID, quantity: number): void {
-  const existing = state.player.inventory.find((i) => i.itemId === itemId)
-  if (existing) {
-    existing.quantity += quantity
-  } else {
-    state.player.inventory.push({ itemId, quantity })
-  }
-}
-
-function checkContractCompletion(state: WorldState): ContractCompletion[] {
-  const completions: ContractCompletion[] = []
-
-  // Check each active contract
-  for (const contractId of [...state.player.activeContracts]) {
-    const contract = state.world.contracts.find((c) => c.id === contractId)
-    if (!contract) continue
-
-    // Check if all requirements are met (in inventory or storage)
-    const allRequirementsMet = contract.requirements.every((req) => {
-      const inInventory = state.player.inventory.find((i) => i.itemId === req.itemId)
-      const inStorage = state.player.storage.find((i) => i.itemId === req.itemId)
-      const totalQuantity = (inInventory?.quantity ?? 0) + (inStorage?.quantity ?? 0)
-      return totalQuantity >= req.quantity
-    })
-
-    if (allRequirementsMet) {
-      // Award reputation
-      state.player.guildReputation += contract.reputationReward
-
-      // Remove from active contracts
-      const index = state.player.activeContracts.indexOf(contractId)
-      state.player.activeContracts.splice(index, 1)
-
-      completions.push({
-        contractId,
-        reputationGained: contract.reputationReward,
-      })
-    }
-  }
-
-  return completions
 }
 
 function executeGather(state: WorldState, action: GatherAction, rolls: RngRoll[]): ActionLog {
   const tickBefore = state.time.currentTick
   const nodeId = action.nodeId
 
-  // Find node
-  const node = state.world.resourceNodes.find((n) => n.id === nodeId)
-  if (!node) {
-    return createFailureLog(state, action, "NODE_NOT_FOUND")
-  }
-
-  // Check if at node location
-  if (state.player.location !== node.location) {
-    return createFailureLog(state, action, "WRONG_LOCATION")
-  }
-
-  // Check skill requirement (uses node-specific skill type)
-  if (state.player.skills[node.skillType] < node.requiredSkillLevel) {
-    return createFailureLog(state, action, "INSUFFICIENT_SKILL")
-  }
-
-  // Check inventory capacity (slot-based)
-  if (!canGatherItem(state, node.itemId)) {
-    return createFailureLog(state, action, "INVENTORY_FULL")
+  // Use shared precondition check
+  const check = checkGatherAction(state, action)
+  if (!check.valid) {
+    return createFailureLog(state, action, check.failureType!)
   }
 
   // Check if enough time remaining
-  if (state.time.sessionRemainingTicks < node.gatherTime) {
+  if (state.time.sessionRemainingTicks < check.timeCost) {
     return createFailureLog(state, action, "SESSION_ENDED")
   }
 
+  // Get node for additional info
+  const node = state.world.resourceNodes.find((n) => n.id === nodeId)!
+
   // Consume time
-  consumeTime(state, node.gatherTime)
+  consumeTime(state, check.timeCost)
 
   // Roll for success
-  const success = roll(state.rng, node.successProbability, `gather:${nodeId}`, rolls)
+  const success = roll(state.rng, check.successProbability, `gather:${nodeId}`, rolls)
 
   if (!success) {
     return {
@@ -235,7 +240,7 @@ function executeGather(state: WorldState, action: GatherAction, rolls: RngRoll[]
       parameters: { nodeId },
       success: false,
       failureType: "GATHER_FAILURE",
-      timeConsumed: node.gatherTime,
+      timeConsumed: check.timeCost,
       rngRolls: rolls,
       stateDeltaSummary: `Failed to gather from ${nodeId}`,
     }
@@ -247,7 +252,7 @@ function executeGather(state: WorldState, action: GatherAction, rolls: RngRoll[]
   // Grant XP (uses node-specific skill type)
   state.player.skills[node.skillType] += 1
 
-  // Check for contract completion
+  // Check for contract completion (after every successful action)
   const contractsCompleted = checkContractCompletion(state)
 
   return {
@@ -255,7 +260,7 @@ function executeGather(state: WorldState, action: GatherAction, rolls: RngRoll[]
     actionType: "Gather",
     parameters: { nodeId },
     success: true,
-    timeConsumed: node.gatherTime,
+    timeConsumed: check.timeCost,
     skillGained: { skill: node.skillType, amount: 1 },
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
@@ -267,32 +272,25 @@ function executeFight(state: WorldState, action: FightAction, rolls: RngRoll[]):
   const tickBefore = state.time.currentTick
   const enemyId = action.enemyId
 
-  // Find enemy
-  const enemy = state.world.enemies.find((e) => e.id === enemyId)
-  if (!enemy) {
-    return createFailureLog(state, action, "ENEMY_NOT_FOUND")
-  }
-
-  // Check if at enemy location
-  if (state.player.location !== enemy.location) {
-    return createFailureLog(state, action, "WRONG_LOCATION")
-  }
-
-  // Check skill requirement
-  if (state.player.skills.Combat < enemy.requiredSkillLevel) {
-    return createFailureLog(state, action, "INSUFFICIENT_SKILL")
+  // Use shared precondition check
+  const check = checkFightAction(state, action)
+  if (!check.valid) {
+    return createFailureLog(state, action, check.failureType!)
   }
 
   // Check if enough time remaining
-  if (state.time.sessionRemainingTicks < enemy.fightTime) {
+  if (state.time.sessionRemainingTicks < check.timeCost) {
     return createFailureLog(state, action, "SESSION_ENDED")
   }
 
+  // Get enemy for additional info
+  const enemy = state.world.enemies.find((e) => e.id === enemyId)!
+
   // Consume time
-  consumeTime(state, enemy.fightTime)
+  consumeTime(state, check.timeCost)
 
   // Roll for success
-  const success = roll(state.rng, enemy.successProbability, `fight:${enemyId}`, rolls)
+  const success = roll(state.rng, check.successProbability, `fight:${enemyId}`, rolls)
 
   if (!success) {
     // Relocate player on failure
@@ -304,7 +302,7 @@ function executeFight(state: WorldState, action: FightAction, rolls: RngRoll[]):
       parameters: { enemyId },
       success: false,
       failureType: "COMBAT_FAILURE",
-      timeConsumed: enemy.fightTime,
+      timeConsumed: check.timeCost,
       rngRolls: rolls,
       stateDeltaSummary: `Lost fight to ${enemyId}, relocated to ${enemy.failureRelocation}`,
     }
@@ -318,7 +316,7 @@ function executeFight(state: WorldState, action: FightAction, rolls: RngRoll[]):
   // Grant XP
   state.player.skills.Combat += 1
 
-  // Check for contract completion
+  // Check for contract completion (after every successful action)
   const contractsCompleted = checkContractCompletion(state)
 
   return {
@@ -326,7 +324,7 @@ function executeFight(state: WorldState, action: FightAction, rolls: RngRoll[]):
     actionType: "Fight",
     parameters: { enemyId },
     success: true,
-    timeConsumed: enemy.fightTime,
+    timeConsumed: check.timeCost,
     skillGained: { skill: "Combat", amount: 1 },
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
@@ -334,46 +332,23 @@ function executeFight(state: WorldState, action: FightAction, rolls: RngRoll[]):
   }
 }
 
-function removeFromInventory(state: WorldState, itemId: ItemID, quantity: number): void {
-  const item = state.player.inventory.find((i) => i.itemId === itemId)
-  if (item) {
-    item.quantity -= quantity
-    if (item.quantity <= 0) {
-      const index = state.player.inventory.indexOf(item)
-      state.player.inventory.splice(index, 1)
-    }
-  }
-}
-
 function executeCraft(state: WorldState, action: CraftAction, rolls: RngRoll[]): ActionLog {
   const tickBefore = state.time.currentTick
   const recipeId = action.recipeId
 
-  // Find recipe
-  const recipe = state.world.recipes.find((r) => r.id === recipeId)
-  if (!recipe) {
-    return createFailureLog(state, action, "RECIPE_NOT_FOUND")
-  }
-
-  // Check if at required location
-  if (state.player.location !== recipe.requiredLocation) {
-    return createFailureLog(state, action, "WRONG_LOCATION")
-  }
-
-  // Check skill requirement (Smithing)
-  if (state.player.skills.Smithing < recipe.requiredSkillLevel) {
-    return createFailureLog(state, action, "INSUFFICIENT_SKILL")
-  }
-
-  // Check if has required inputs
-  if (!hasItems(state.player.inventory, recipe.inputs)) {
-    return createFailureLog(state, action, "MISSING_ITEMS")
+  // Use shared precondition check
+  const check = checkCraftAction(state, action)
+  if (!check.valid) {
+    return createFailureLog(state, action, check.failureType!)
   }
 
   // Check if enough time remaining
-  if (state.time.sessionRemainingTicks < recipe.craftTime) {
+  if (state.time.sessionRemainingTicks < check.timeCost) {
     return createFailureLog(state, action, "SESSION_ENDED")
   }
+
+  // Get recipe for additional info
+  const recipe = state.world.recipes.find((r) => r.id === recipeId)!
 
   // Consume inputs
   for (const input of recipe.inputs) {
@@ -381,7 +356,7 @@ function executeCraft(state: WorldState, action: CraftAction, rolls: RngRoll[]):
   }
 
   // Consume time
-  consumeTime(state, recipe.craftTime)
+  consumeTime(state, check.timeCost)
 
   // Produce output
   addToInventory(state, recipe.output.itemId, recipe.output.quantity)
@@ -389,7 +364,7 @@ function executeCraft(state: WorldState, action: CraftAction, rolls: RngRoll[]):
   // Grant XP
   state.player.skills.Smithing += 1
 
-  // Check for contract completion
+  // Check for contract completion (after every successful action)
   const contractsCompleted = checkContractCompletion(state)
 
   return {
@@ -397,7 +372,7 @@ function executeCraft(state: WorldState, action: CraftAction, rolls: RngRoll[]):
     actionType: "Craft",
     parameters: { recipeId },
     success: true,
-    timeConsumed: recipe.craftTime,
+    timeConsumed: check.timeCost,
     skillGained: { skill: "Smithing", amount: 1 },
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
@@ -405,48 +380,23 @@ function executeCraft(state: WorldState, action: CraftAction, rolls: RngRoll[]):
   }
 }
 
-function addToStorage(state: WorldState, itemId: ItemID, quantity: number): void {
-  const existing = state.player.storage.find((i) => i.itemId === itemId)
-  if (existing) {
-    existing.quantity += quantity
-  } else {
-    state.player.storage.push({ itemId, quantity })
-  }
-}
-
 function executeStore(state: WorldState, action: StoreAction, rolls: RngRoll[]): ActionLog {
   const tickBefore = state.time.currentTick
   const { itemId, quantity } = action
-  const storeTime = 1
 
-  // Check if at storage location
-  if (state.player.location !== state.world.storageLocation) {
-    return createFailureLog(state, action, "WRONG_LOCATION")
-  }
-
-  // Check skill requirement
-  if (state.player.skills.Logistics < state.world.storageRequiredSkillLevel) {
-    return createFailureLog(state, action, "INSUFFICIENT_SKILL")
-  }
-
-  // Check if item exists in inventory
-  const item = state.player.inventory.find((i) => i.itemId === itemId)
-  if (!item) {
-    return createFailureLog(state, action, "ITEM_NOT_FOUND")
-  }
-
-  // Check if has enough quantity
-  if (item.quantity < quantity) {
-    return createFailureLog(state, action, "MISSING_ITEMS")
+  // Use shared precondition check
+  const check = checkStoreAction(state, action)
+  if (!check.valid) {
+    return createFailureLog(state, action, check.failureType!)
   }
 
   // Check if enough time remaining
-  if (state.time.sessionRemainingTicks < storeTime) {
+  if (state.time.sessionRemainingTicks < check.timeCost) {
     return createFailureLog(state, action, "SESSION_ENDED")
   }
 
   // Consume time
-  consumeTime(state, storeTime)
+  consumeTime(state, check.timeCost)
 
   // Move item to storage
   removeFromInventory(state, itemId, quantity)
@@ -455,7 +405,7 @@ function executeStore(state: WorldState, action: StoreAction, rolls: RngRoll[]):
   // Grant XP
   state.player.skills.Logistics += 1
 
-  // Check for contract completion (storage counts toward requirements)
+  // Check for contract completion (after every successful action)
   const contractsCompleted = checkContractCompletion(state)
 
   return {
@@ -463,7 +413,7 @@ function executeStore(state: WorldState, action: StoreAction, rolls: RngRoll[]):
     actionType: "Store",
     parameters: { itemId, quantity },
     success: true,
-    timeConsumed: storeTime,
+    timeConsumed: check.timeCost,
     skillGained: { skill: "Logistics", amount: 1 },
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
@@ -474,36 +424,34 @@ function executeStore(state: WorldState, action: StoreAction, rolls: RngRoll[]):
 function executeDrop(state: WorldState, action: DropAction, rolls: RngRoll[]): ActionLog {
   const tickBefore = state.time.currentTick
   const { itemId, quantity } = action
-  const dropTime = 1
 
-  // Check if item exists in inventory
-  const item = state.player.inventory.find((i) => i.itemId === itemId)
-  if (!item) {
-    return createFailureLog(state, action, "ITEM_NOT_FOUND")
-  }
-
-  // Check if has enough quantity
-  if (item.quantity < quantity) {
-    return createFailureLog(state, action, "MISSING_ITEMS")
+  // Use shared precondition check
+  const check = checkDropAction(state, action)
+  if (!check.valid) {
+    return createFailureLog(state, action, check.failureType!)
   }
 
   // Check if enough time remaining
-  if (state.time.sessionRemainingTicks < dropTime) {
+  if (state.time.sessionRemainingTicks < check.timeCost) {
     return createFailureLog(state, action, "SESSION_ENDED")
   }
 
   // Consume time
-  consumeTime(state, dropTime)
+  consumeTime(state, check.timeCost)
 
   // Remove item from inventory
   removeFromInventory(state, itemId, quantity)
+
+  // Check for contract completion (after every successful action)
+  const contractsCompleted = checkContractCompletion(state)
 
   return {
     tickBefore,
     actionType: "Drop",
     parameters: { itemId, quantity },
     success: true,
-    timeConsumed: dropTime,
+    timeConsumed: check.timeCost,
+    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
     stateDeltaSummary: `Dropped ${quantity} ${itemId}`,
   }
