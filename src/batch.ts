@@ -4,12 +4,12 @@
 
 import { createToyWorld } from "./world.js"
 import { executeAction } from "./engine.js"
-import type { Action, ActionLog, WorldState, SkillID, Objective } from "./types.js"
-import { OBJECTIVES } from "./types.js"
+import type { Action, ActionLog, WorldState, SkillID, Objective, SkillState } from "./types.js"
+import { OBJECTIVES, getTotalXP } from "./types.js"
 
 interface SessionStats {
   logs: ActionLog[]
-  startingSkills: Record<SkillID, number>
+  startingSkills: Record<SkillID, SkillState>
   totalSession: number
 }
 
@@ -22,7 +22,7 @@ function printState(state: WorldState): void {
     state.player.inventory.length === 0
       ? "(empty)"
       : state.player.inventory.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")
-  const skills = `Mining:${state.player.skills.Mining} Woodcut:${state.player.skills.Woodcutting} Combat:${state.player.skills.Combat} Smith:${state.player.skills.Smithing} Logistics:${state.player.skills.Logistics}`
+  const skills = `Mining:${state.player.skills.Mining.level} Woodcut:${state.player.skills.Woodcutting.level} Combat:${state.player.skills.Combat.level} Smith:${state.player.skills.Smithing.level} Logistics:${state.player.skills.Logistics.level}`
 
   console.log(`┌${line}┐`)
   console.log(`│${pad(` 📍 ${state.player.location}  │  ⏱ ${state.time.sessionRemainingTicks} ticks left  │  🎒 ${invStr}`)}`)
@@ -45,6 +45,13 @@ function printLog(log: ActionLog): void {
     log.failureType ? `❌ ${log.failureType}` : "",
   ].filter(Boolean)
   console.log(`  ${parts.join("  │  ")}`)
+
+  // Show level-ups
+  if (log.levelUps) {
+    for (const lu of log.levelUps) {
+      console.log(`    📈 LEVEL UP: ${lu.skill} ${lu.fromLevel} → ${lu.toLevel}`)
+    }
+  }
 
   // Show contract completions
   if (log.contractsCompleted) {
@@ -149,7 +156,7 @@ function computeRiskToObjective(
   objective: Objective,
   state: WorldState,
   stats: SessionStats,
-  startingSkills: Record<SkillID, number>
+  startingSkills: Record<SkillID, SkillState>
 ): string {
   let failProb = 0
   let description = ""
@@ -179,7 +186,7 @@ function computeRiskToObjective(
     }
 
     case "reach_skill": {
-      const currentLevel = state.player.skills[objective.skill]
+      const currentLevel = state.player.skills[objective.skill].level
       const achieved = currentLevel >= objective.target
       failProb = achieved ? 0 : 1
       description = `reach ${objective.skill} ${objective.target}`
@@ -187,12 +194,12 @@ function computeRiskToObjective(
     }
 
     case "diversify_skills": {
-      // Check if all listed skills advanced at least 1
+      // Check if all listed skills advanced at least 1 XP
       let allAdvanced = true
       for (const skill of objective.skills) {
-        const start = startingSkills[skill as SkillID]
-        const end = state.player.skills[skill as SkillID]
-        if (end <= start) {
+        const startXP = getTotalXP(startingSkills[skill as SkillID])
+        const endXP = getTotalXP(state.player.skills[skill as SkillID])
+        if (endXP <= startXP) {
           allAdvanced = false
           break
         }
@@ -359,9 +366,13 @@ function printSummary(state: WorldState, stats: SessionStats, objective: Objecti
   const skillDelta: string[] = []
   const skills: SkillID[] = ["Mining", "Woodcutting", "Combat", "Smithing", "Logistics"]
   for (const skill of skills) {
-    const start = stats.startingSkills[skill]
-    const end = state.player.skills[skill]
-    if (end > start) skillDelta.push(`${skill}: ${start}→${end} (+${end - start})`)
+    const startXP = getTotalXP(stats.startingSkills[skill])
+    const endXP = getTotalXP(state.player.skills[skill])
+    if (endXP > startXP) {
+      const startLevel = stats.startingSkills[skill].level
+      const endLevel = state.player.skills[skill].level
+      skillDelta.push(`${skill}: ${startLevel}→${endLevel} (+${endXP - startXP} XP)`)
+    }
   }
 
   const actionStrs = Object.entries(actionCounts).map(

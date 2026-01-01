@@ -191,7 +191,7 @@ function simulateAction(state: WorldState, action: Action): string | null {
         } else {
           state.player.inventory.push({ itemId: node.itemId, quantity: 1 })
         }
-        state.player.skills[node.skillType] += 1
+        state.player.skills[node.skillType].xp += 1
       }
       break
     }
@@ -206,7 +206,7 @@ function simulateAction(state: WorldState, action: Action): string | null {
             state.player.inventory.push({ itemId: loot.itemId, quantity: loot.quantity })
           }
         }
-        state.player.skills.Combat += 1
+        state.player.skills.Combat.xp += 1
       }
       break
     }
@@ -234,7 +234,7 @@ function simulateAction(state: WorldState, action: Action): string | null {
             quantity: recipe.output.quantity,
           })
         }
-        state.player.skills.Smithing += 1
+        state.player.skills.Smithing.xp += 1
       }
       break
     }
@@ -252,7 +252,7 @@ function simulateAction(state: WorldState, action: Action): string | null {
         } else {
           state.player.storage.push({ itemId: action.itemId, quantity: action.quantity })
         }
-        state.player.skills.Logistics += 1
+        state.player.skills.Logistics.xp += 1
       }
       break
     }

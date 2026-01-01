@@ -115,7 +115,7 @@ export function checkGatherAction(state: WorldState, action: GatherAction): Acti
     return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
   }
 
-  if (state.player.skills[node.skillType] < node.requiredSkillLevel) {
+  if (state.player.skills[node.skillType].level < node.requiredSkillLevel) {
     return { valid: false, failureType: "INSUFFICIENT_SKILL", timeCost: 0, successProbability: 0 }
   }
 
@@ -140,7 +140,7 @@ export function checkFightAction(state: WorldState, action: FightAction): Action
     return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
   }
 
-  if (state.player.skills.Combat < enemy.requiredSkillLevel) {
+  if (state.player.skills.Combat.level < enemy.requiredSkillLevel) {
     return { valid: false, failureType: "INSUFFICIENT_SKILL", timeCost: 0, successProbability: 0 }
   }
 
@@ -161,7 +161,7 @@ export function checkCraftAction(state: WorldState, action: CraftAction): Action
     return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
   }
 
-  if (state.player.skills.Smithing < recipe.requiredSkillLevel) {
+  if (state.player.skills.Smithing.level < recipe.requiredSkillLevel) {
     return { valid: false, failureType: "INSUFFICIENT_SKILL", timeCost: 0, successProbability: 0 }
   }
 
@@ -182,7 +182,7 @@ export function checkStoreAction(state: WorldState, action: StoreAction): Action
     return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
   }
 
-  if (state.player.skills.Logistics < state.world.storageRequiredSkillLevel) {
+  if (state.player.skills.Logistics.level < state.world.storageRequiredSkillLevel) {
     return { valid: false, failureType: "INSUFFICIENT_SKILL", timeCost: 0, successProbability: 0 }
   }
 

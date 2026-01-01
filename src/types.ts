@@ -6,6 +6,19 @@ export type SkillID = "Mining" | "Woodcutting" | "Combat" | "Smithing" | "Logist
 export type GatheringSkillID = "Mining" | "Woodcutting"
 export type ContractID = string
 
+// Skill state with level and XP
+export interface SkillState {
+  level: number  // starts at 1
+  xp: number     // XP within current level (toward next level)
+}
+
+// Level-up event
+export interface LevelUp {
+  skill: SkillID
+  fromLevel: number
+  toLevel: number
+}
+
 export interface ItemStack {
   itemId: ItemID
   quantity: number
@@ -65,7 +78,7 @@ export interface WorldState {
     inventory: ItemStack[]
     inventoryCapacity: number
     storage: ItemStack[]
-    skills: Record<SkillID, number>
+    skills: Record<SkillID, SkillState>
     guildReputation: number
     activeContracts: ContractID[]
   }
@@ -175,6 +188,7 @@ export interface ActionLog {
   failureType?: FailureType
   timeConsumed: number
   skillGained?: { skill: SkillID; amount: number }
+  levelUps?: LevelUp[]
   contractsCompleted?: ContractCompletion[]
   rngRolls: RngRoll[]
   stateDeltaSummary: string
@@ -217,4 +231,59 @@ export const OBJECTIVES = {
   COMBAT_HEAVY: { type: "reach_skill", skill: "Combat", target: 3 } as Objective,
   CONTRACT_VIA_COMBAT: { type: "complete_contract", contractId: "miners-guild-1" } as Objective,
   BALANCED_PROGRESS: { type: "diversify_skills", skills: ["Mining", "Smithing", "Combat"] } as Objective,
+}
+
+// Level calculation utilities
+// XP required to reach level N is N²
+// Level 1 → 2 requires 4 XP (2²)
+// Level 2 → 3 requires 9 XP (3²)
+// Level 3 → 4 requires 16 XP (4²)
+
+/**
+ * Get XP threshold to reach the next level from current level
+ * To go from level N to level N+1, you need (N+1)² XP
+ */
+export function getXPThresholdForNextLevel(currentLevel: number): number {
+  return (currentLevel + 1) * (currentLevel + 1)
+}
+
+/**
+ * Add XP to a skill and handle level-ups
+ * Returns the updated skill state and any level-ups that occurred
+ */
+export function addXPToSkill(skill: SkillState, xpGain: number): { skill: SkillState; levelUps: LevelUp[]; skillId?: SkillID } {
+  const levelUps: LevelUp[] = []
+  let { level, xp } = skill
+  xp += xpGain
+
+  // Check for level-ups (can be multiple)
+  let threshold = getXPThresholdForNextLevel(level)
+  while (xp >= threshold) {
+    const fromLevel = level
+    xp -= threshold
+    level++
+    levelUps.push({ skill: "" as SkillID, fromLevel, toLevel: level }) // skillId filled in by caller
+    threshold = getXPThresholdForNextLevel(level)
+  }
+
+  return { skill: { level, xp }, levelUps }
+}
+
+/**
+ * Get total XP earned for a skill (level + current XP)
+ * This is the sum of all thresholds passed plus current XP
+ */
+export function getTotalXP(skill: SkillState): number {
+  let total = skill.xp
+  for (let l = 1; l < skill.level; l++) {
+    total += getXPThresholdForNextLevel(l)
+  }
+  return total
+}
+
+/**
+ * Create initial skill state (level 1, 0 XP)
+ */
+export function createInitialSkillState(): SkillState {
+  return { level: 1, xp: 0 }
 }

@@ -13,8 +13,12 @@ import type {
   FailureType,
   ItemID,
   ContractCompletion,
+  SkillID,
+  LevelUp,
 } from "./types.js"
+import { addXPToSkill } from "./types.js"
 import { roll } from "./rng.js"
+
 import {
   checkMoveAction,
   checkAcceptContractAction,
@@ -24,6 +28,17 @@ import {
   checkStoreAction,
   checkDropAction,
 } from "./actionChecks.js"
+
+/**
+ * Grant XP to a skill and handle level-ups
+ * Returns any level-ups that occurred
+ */
+function grantXP(state: WorldState, skill: SkillID, amount: number): LevelUp[] {
+  const result = addXPToSkill(state.player.skills[skill], amount)
+  state.player.skills[skill] = result.skill
+  // Fill in the skill ID for each level-up
+  return result.levelUps.map(lu => ({ ...lu, skill }))
+}
 
 function createFailureLog(
   state: WorldState,
@@ -190,9 +205,9 @@ function checkContractCompletion(state: WorldState): ContractCompletion[] {
       // Award reputation
       state.player.guildReputation += contract.reputationReward
 
-      // Award XP if contract has xpReward
+      // Award XP if contract has xpReward (level-ups tracked but not returned from here)
       if (contract.xpReward) {
-        state.player.skills[contract.xpReward.skill] += contract.xpReward.amount
+        grantXP(state, contract.xpReward.skill, contract.xpReward.amount)
       }
 
       // Remove from active contracts
@@ -346,7 +361,7 @@ function executeGather(state: WorldState, action: GatherAction, rolls: RngRoll[]
   addToInventory(state, node.itemId, 1)
 
   // Grant XP (uses node-specific skill type)
-  state.player.skills[node.skillType] += 1
+  const levelUps = grantXP(state, node.skillType, 1)
 
   // Check for contract completion (after every successful action)
   const contractsCompleted = checkContractCompletion(state)
@@ -358,6 +373,7 @@ function executeGather(state: WorldState, action: GatherAction, rolls: RngRoll[]
     success: true,
     timeConsumed: check.timeCost,
     skillGained: { skill: node.skillType, amount: 1 },
+    levelUps: levelUps.length > 0 ? levelUps : undefined,
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
     stateDeltaSummary: `Gathered 1 ${node.itemId} from ${nodeId}`,
@@ -410,7 +426,7 @@ function executeFight(state: WorldState, action: FightAction, rolls: RngRoll[]):
   }
 
   // Grant XP
-  state.player.skills.Combat += 1
+  const levelUps = grantXP(state, "Combat", 1)
 
   // Check for contract completion (after every successful action)
   const contractsCompleted = checkContractCompletion(state)
@@ -422,6 +438,7 @@ function executeFight(state: WorldState, action: FightAction, rolls: RngRoll[]):
     success: true,
     timeConsumed: check.timeCost,
     skillGained: { skill: "Combat", amount: 1 },
+    levelUps: levelUps.length > 0 ? levelUps : undefined,
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
     stateDeltaSummary: `Defeated ${enemyId}, gained loot`,
@@ -458,7 +475,7 @@ function executeCraft(state: WorldState, action: CraftAction, rolls: RngRoll[]):
   addToInventory(state, recipe.output.itemId, recipe.output.quantity)
 
   // Grant XP
-  state.player.skills.Smithing += 1
+  const levelUps = grantXP(state, "Smithing", 1)
 
   // Check for contract completion (after every successful action)
   const contractsCompleted = checkContractCompletion(state)
@@ -470,6 +487,7 @@ function executeCraft(state: WorldState, action: CraftAction, rolls: RngRoll[]):
     success: true,
     timeConsumed: check.timeCost,
     skillGained: { skill: "Smithing", amount: 1 },
+    levelUps: levelUps.length > 0 ? levelUps : undefined,
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
     stateDeltaSummary: `Crafted ${recipe.output.quantity} ${recipe.output.itemId}`,
@@ -499,7 +517,7 @@ function executeStore(state: WorldState, action: StoreAction, rolls: RngRoll[]):
   addToStorage(state, itemId, quantity)
 
   // Grant XP
-  state.player.skills.Logistics += 1
+  const levelUps = grantXP(state, "Logistics", 1)
 
   // Check for contract completion (after every successful action)
   const contractsCompleted = checkContractCompletion(state)
@@ -511,6 +529,7 @@ function executeStore(state: WorldState, action: StoreAction, rolls: RngRoll[]):
     success: true,
     timeConsumed: check.timeCost,
     skillGained: { skill: "Logistics", amount: 1 },
+    levelUps: levelUps.length > 0 ? levelUps : undefined,
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
     stateDeltaSummary: `Stored ${quantity} ${itemId}`,

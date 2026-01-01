@@ -64,7 +64,7 @@ describe("Evaluation APIs", () => {
 
     it("should evaluate Store action", () => {
       const state = createToyWorld("test-seed")
-      state.player.skills.Logistics = 1 // Need Logistics >= storageRequiredSkillLevel (1)
+      state.player.skills.Logistics = { level: 1, xp: 0 } // Need Logistics >= storageRequiredSkillLevel (1)
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const action: Action = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
 
@@ -99,7 +99,7 @@ describe("Evaluation APIs", () => {
 
     it("should return 0 probability for Store with insufficient Logistics skill", () => {
       const state = createToyWorld("test-seed")
-      state.player.skills.Logistics = 0 // Need Logistics >= 1
+      state.player.skills.Logistics = { level: 0, xp: 0 } // Need Logistics >= 1
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const action: Action = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
 
