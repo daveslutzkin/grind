@@ -20,70 +20,61 @@ function prompt(question: string): Promise<string> {
 }
 
 function printState(state: WorldState): void {
-  console.log("\n┌─────────────────────────────────────────────────────────────┐")
-  console.log("│ WORLD STATE                                                 │")
-  console.log("├─────────────────────────────────────────────────────────────┤")
-  console.log(`│ Location: ${state.player.location.padEnd(49)}│`)
-  console.log(`│ Time: ${state.time.currentTick} / ${state.time.currentTick + state.time.sessionRemainingTicks} ticks (${state.time.sessionRemainingTicks} remaining)`.padEnd(62) + "│")
-  console.log("├─────────────────────────────────────────────────────────────┤")
-  console.log("│ INVENTORY" + " ".repeat(51) + "│")
-  if (state.player.inventory.length === 0) {
-    console.log("│   (empty)".padEnd(62) + "│")
-  } else {
-    for (const item of state.player.inventory) {
-      console.log(`│   ${item.quantity}x ${item.itemId}`.padEnd(62) + "│")
-    }
-  }
-  console.log(`│   [${state.player.inventory.length}/${state.player.inventoryCapacity} slots]`.padEnd(62) + "│")
-  console.log("├─────────────────────────────────────────────────────────────┤")
-  console.log("│ STORAGE" + " ".repeat(53) + "│")
-  if (state.player.storage.length === 0) {
-    console.log("│   (empty)".padEnd(62) + "│")
-  } else {
-    for (const item of state.player.storage) {
-      console.log(`│   ${item.quantity}x ${item.itemId}`.padEnd(62) + "│")
-    }
-  }
-  console.log("├─────────────────────────────────────────────────────────────┤")
-  console.log("│ SKILLS" + " ".repeat(54) + "│")
-  console.log(`│   Mining: ${state.player.skills.Mining}  Woodcutting: ${state.player.skills.Woodcutting}  Combat: ${state.player.skills.Combat}`.padEnd(62) + "│")
-  console.log(`│   Smithing: ${state.player.skills.Smithing}  Logistics: ${state.player.skills.Logistics}`.padEnd(62) + "│")
-  console.log("├─────────────────────────────────────────────────────────────┤")
-  console.log(`│ Reputation: ${state.player.guildReputation}`.padEnd(62) + "│")
-  console.log(`│ Active Contracts: ${state.player.activeContracts.join(", ") || "(none)"}`.padEnd(62) + "│")
-  console.log("└─────────────────────────────────────────────────────────────┘")
+  const W = 120
+  const line = "─".repeat(W - 2)
+  const pad = (s: string) => s.padEnd(W - 2) + "│"
+
+  const invStr =
+    state.player.inventory.length === 0
+      ? "(empty)"
+      : state.player.inventory.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")
+  const storStr =
+    state.player.storage.length === 0
+      ? "(empty)"
+      : state.player.storage.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")
+  const skills = `Mining:${state.player.skills.Mining} Woodcut:${state.player.skills.Woodcutting} Combat:${state.player.skills.Combat} Smith:${state.player.skills.Smithing} Logistics:${state.player.skills.Logistics}`
+  const contracts = state.player.activeContracts.join(", ") || "(none)"
+
+  console.log(`\n┌${line}┐`)
+  console.log(`│${pad(` 📍 ${state.player.location}  │  ⏱ ${state.time.sessionRemainingTicks} ticks left  │  ⭐ Rep: ${state.player.guildReputation}  │  📜 Contracts: ${contracts}`)}`)
+  console.log(`├${line}┤`)
+  console.log(`│${pad(` 🎒 Inventory [${state.player.inventory.length}/${state.player.inventoryCapacity}]: ${invStr}`)}`)
+  console.log(`│${pad(` 📦 Storage: ${storStr}`)}`)
+  console.log(`│${pad(` 📊 Skills: ${skills}`)}`)
+  console.log(`└${line}┘`)
 }
 
 function printLog(log: ActionLog): void {
-  console.log("\n┌─────────────────────────────────────────────────────────────┐")
-  console.log(`│ ACTION: ${log.actionType}`.padEnd(62) + "│")
-  console.log("├─────────────────────────────────────────────────────────────┤")
-  const status = log.success ? "✓ SUCCESS" : "✗ FAILED"
-  console.log(`│ ${status}`.padEnd(62) + "│")
-  console.log(`│ ${log.stateDeltaSummary}`.padEnd(62) + "│")
-  if (log.failureType) {
-    console.log(`│ Reason: ${log.failureType}`.padEnd(62) + "│")
-  }
-  console.log(`│ Time consumed: ${log.timeConsumed} ticks`.padEnd(62) + "│")
-  if (log.skillGained) {
-    console.log(`│ Skill: +${log.skillGained.amount} ${log.skillGained.skill}`.padEnd(62) + "│")
-  }
-  if (log.rngRolls.length > 0) {
-    for (const roll of log.rngRolls) {
-      const result = roll.result ? "SUCCESS" : "FAIL"
-      console.log(`│ RNG: ${(roll.probability * 100).toFixed(0)}% chance → ${result}`.padEnd(62) + "│")
-    }
-  }
+  const W = 120
+  const line = "─".repeat(W - 2)
+  const pad = (s: string) => s.padEnd(W - 2) + "│"
+
+  const status = log.success ? "✓" : "✗"
+  const rngStr =
+    log.rngRolls.length > 0
+      ? log.rngRolls.map((r) => `${(r.probability * 100).toFixed(0)}%→${r.result ? "hit" : "miss"}`).join(" ")
+      : ""
+  const skillStr = log.skillGained ? `+1 ${log.skillGained.skill}` : ""
+  const parts = [
+    `${status} ${log.actionType}: ${log.stateDeltaSummary}`,
+    `⏱ ${log.timeConsumed}t`,
+    rngStr ? `🎲 ${rngStr}` : "",
+    skillStr ? `📈 ${skillStr}` : "",
+    log.failureType ? `❌ ${log.failureType}` : "",
+  ].filter(Boolean)
+
+  console.log(`\n┌${line}┐`)
+  console.log(`│${pad(` ${parts.join("  │  ")}`)}`)
+
   if (log.contractsCompleted) {
     for (const c of log.contractsCompleted) {
-      console.log("├─────────────────────────────────────────────────────────────┤")
-      console.log(`│ CONTRACT COMPLETE: ${c.contractId}`.padEnd(62) + "│")
-      console.log(`│   Consumed: ${c.itemsConsumed.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")}`.padEnd(62) + "│")
-      console.log(`│   Granted: ${c.rewardsGranted.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")}`.padEnd(62) + "│")
-      console.log(`│   Reputation: +${c.reputationGained}`.padEnd(62) + "│")
+      console.log(`├${line}┤`)
+      const consumed = c.itemsConsumed.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")
+      const granted = c.rewardsGranted.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")
+      console.log(`│${pad(` 🏆 CONTRACT COMPLETE: ${c.contractId}  │  Consumed: ${consumed}  │  Granted: ${granted}  │  +${c.reputationGained} rep`)}`)
     }
   }
-  console.log("└─────────────────────────────────────────────────────────────┘")
+  console.log(`└${line}┘`)
 }
 
 function printHelp(state: WorldState): void {
