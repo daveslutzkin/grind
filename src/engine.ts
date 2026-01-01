@@ -99,6 +99,12 @@ function checkContractCompletion(state: WorldState): ContractCompletion[] {
     })
 
     if (allRequirementsMet) {
+      // Record what we're consuming for the log
+      const itemsConsumed = contract.requirements.map((req) => ({
+        itemId: req.itemId,
+        quantity: req.quantity,
+      }))
+
       // Consume required items (from inventory first, then storage)
       for (const req of contract.requirements) {
         let remaining = req.quantity
@@ -128,6 +134,12 @@ function checkContractCompletion(state: WorldState): ContractCompletion[] {
         }
       }
 
+      // Record what we're granting for the log
+      const rewardsGranted = contract.rewards.map((reward) => ({
+        itemId: reward.itemId,
+        quantity: reward.quantity,
+      }))
+
       // Grant contract rewards (items go to inventory)
       for (const reward of contract.rewards) {
         addToInventory(state, reward.itemId, reward.quantity)
@@ -142,6 +154,8 @@ function checkContractCompletion(state: WorldState): ContractCompletion[] {
 
       completions.push({
         contractId,
+        itemsConsumed,
+        rewardsGranted,
         reputationGained: contract.reputationReward,
       })
     }

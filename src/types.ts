@@ -159,6 +159,8 @@ export interface RngRoll {
 // Contract completion info
 export interface ContractCompletion {
   contractId: ContractID
+  itemsConsumed: ItemStack[]
+  rewardsGranted: ItemStack[]
   reputationGained: number
 }
 

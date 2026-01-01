@@ -178,6 +178,68 @@ describe("Integration: Full Session Flow", () => {
     // Gathering appears more efficient for pure XP gain
     // This is the kind of insight that reveals dominant strategies
   })
+
+  it("should demonstrate contract completion consumes items and cannot be exploited", () => {
+    const state = createToyWorld("contract-exploit-test")
+
+    // Give player 2 IRON_BAR directly (simulating they crafted them)
+    state.player.inventory.push({ itemId: "IRON_BAR", quantity: 2 })
+
+    // Accept the miners-guild-1 contract (requires 2 IRON_BAR, rewards 5 IRON_ORE, 10 rep)
+    // Since requirements are already met, contract completes immediately
+    const acceptLog = executeAction(state, {
+      type: "AcceptContract",
+      contractId: "miners-guild-1",
+    })
+    expect(acceptLog.success).toBe(true)
+
+    // Contract completes immediately since requirements were met
+    expect(acceptLog.contractsCompleted).toBeDefined()
+    expect(acceptLog.contractsCompleted).toHaveLength(1)
+    expect(acceptLog.contractsCompleted![0].contractId).toBe("miners-guild-1")
+
+    // Verify log shows what was consumed and granted
+    expect(acceptLog.contractsCompleted![0].itemsConsumed).toEqual([
+      { itemId: "IRON_BAR", quantity: 2 },
+    ])
+    expect(acceptLog.contractsCompleted![0].rewardsGranted).toEqual([
+      { itemId: "IRON_ORE", quantity: 5 },
+    ])
+    expect(acceptLog.contractsCompleted![0].reputationGained).toBe(10)
+
+    // Verify state changes:
+    // - IRON_BAR consumed (should be gone)
+    expect(state.player.inventory.find((i) => i.itemId === "IRON_BAR")).toBeUndefined()
+
+    // - IRON_ORE granted (should have 5)
+    expect(state.player.inventory.find((i) => i.itemId === "IRON_ORE")?.quantity).toBe(5)
+
+    // - Reputation awarded
+    expect(state.player.guildReputation).toBe(10)
+
+    // - Contract removed from active (it completed)
+    expect(state.player.activeContracts).not.toContain("miners-guild-1")
+
+    // EXPLOIT TEST: Try to accept the same contract again
+    // This should succeed (contract can be re-accepted after completion)
+    const acceptLog2 = executeAction(state, {
+      type: "AcceptContract",
+      contractId: "miners-guild-1",
+    })
+    expect(acceptLog2.success).toBe(true)
+
+    // Contract does NOT complete because we don't have the required items anymore
+    expect(acceptLog2.contractsCompleted).toBeUndefined()
+
+    // Contract is now active, waiting for items
+    expect(state.player.activeContracts).toContain("miners-guild-1")
+
+    // Reputation should still be 10 (no double reward without items)
+    expect(state.player.guildReputation).toBe(10)
+
+    // This proves the exploit is fixed: you can't get infinite reputation
+    // because items are consumed on completion
+  })
 })
 
 // Helper function to run a standard session
