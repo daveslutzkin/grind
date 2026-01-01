@@ -200,7 +200,7 @@ describe("Engine", () => {
 
       if (log.success) {
         expect(log.skillGained).toEqual({ skill: "Mining", amount: 1 })
-        expect(state.player.skills.Mining).toBe(1)
+        expect(state.player.skills.Mining).toBe(2) // Started at 1, gained 1
       }
     })
 
@@ -433,7 +433,7 @@ describe("Engine", () => {
       const log = executeAction(state, action)
 
       expect(log.skillGained).toEqual({ skill: "Smithing", amount: 1 })
-      expect(state.player.skills.Smithing).toBe(1)
+      expect(state.player.skills.Smithing).toBe(2) // Started at 1, gained 1
     })
 
     it("should fail if not at required location", () => {

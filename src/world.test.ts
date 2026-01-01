@@ -63,13 +63,13 @@ describe("World", () => {
       expect(contract?.guildLocation).toBe("TOWN")
     })
 
-    it("should initialize all skills to 0", () => {
+    it("should initialize all skills to 1", () => {
       const state = createToyWorld("test-seed")
-      expect(state.player.skills.Mining).toBe(0)
-      expect(state.player.skills.Woodcutting).toBe(0)
-      expect(state.player.skills.Combat).toBe(0)
-      expect(state.player.skills.Smithing).toBe(0)
-      expect(state.player.skills.Logistics).toBe(0)
+      expect(state.player.skills.Mining).toBe(1)
+      expect(state.player.skills.Woodcutting).toBe(1)
+      expect(state.player.skills.Combat).toBe(1)
+      expect(state.player.skills.Smithing).toBe(1)
+      expect(state.player.skills.Logistics).toBe(1)
     })
 
     it("should use provided seed for RNG", () => {

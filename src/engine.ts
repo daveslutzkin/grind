@@ -99,6 +99,40 @@ function checkContractCompletion(state: WorldState): ContractCompletion[] {
     })
 
     if (allRequirementsMet) {
+      // Consume required items (from inventory first, then storage)
+      for (const req of contract.requirements) {
+        let remaining = req.quantity
+
+        // Take from inventory first
+        const invItem = state.player.inventory.find((i) => i.itemId === req.itemId)
+        if (invItem) {
+          const takeFromInv = Math.min(invItem.quantity, remaining)
+          invItem.quantity -= takeFromInv
+          remaining -= takeFromInv
+          if (invItem.quantity <= 0) {
+            const index = state.player.inventory.indexOf(invItem)
+            state.player.inventory.splice(index, 1)
+          }
+        }
+
+        // Take remainder from storage
+        if (remaining > 0) {
+          const storageItem = state.player.storage.find((i) => i.itemId === req.itemId)
+          if (storageItem) {
+            storageItem.quantity -= remaining
+            if (storageItem.quantity <= 0) {
+              const index = state.player.storage.indexOf(storageItem)
+              state.player.storage.splice(index, 1)
+            }
+          }
+        }
+      }
+
+      // Grant contract rewards (items go to inventory)
+      for (const reward of contract.rewards) {
+        addToInventory(state, reward.itemId, reward.quantity)
+      }
+
       // Award reputation
       state.player.guildReputation += contract.reputationReward
 
