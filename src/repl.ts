@@ -78,7 +78,8 @@ function printLog(log: ActionLog): void {
       console.log(`├${line}┤`)
       const consumed = c.itemsConsumed.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")
       const granted = c.rewardsGranted.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")
-      console.log(`│${pad(` 🏆 CONTRACT COMPLETE: ${c.contractId}  │  Consumed: ${consumed}  │  Granted: ${granted}  │  +${c.reputationGained} rep`)}`)
+      const xpStr = c.xpGained ? `  │  📈 +${c.xpGained.amount} ${c.xpGained.skill}` : ""
+      console.log(`│${pad(` 🏆 CONTRACT COMPLETE: ${c.contractId}  │  Consumed: ${consumed}  │  Granted: ${granted}  │  +${c.reputationGained} rep${xpStr}`)}`)
     }
   }
   console.log(`└${line}┘`)
@@ -357,6 +358,17 @@ function printSummary(state: WorldState, stats: SessionStats): void {
       // Deterministic action that granted XP (Move, Craft, Store)
       expectedXP += 1
       xpProbabilities.push(1) // deterministic success
+    }
+    // Add contract completion XP
+    if (log.contractsCompleted) {
+      for (const c of log.contractsCompleted) {
+        if (c.xpGained) {
+          xpGained[c.xpGained.skill] = (xpGained[c.xpGained.skill] || 0) + c.xpGained.amount
+          totalXP += c.xpGained.amount
+          expectedXP += c.xpGained.amount // Contract XP is deterministic once contract completes
+          // Note: We don't add to xpProbabilities since contract XP is bonus on top of the triggering action
+        }
+      }
     }
   }
 

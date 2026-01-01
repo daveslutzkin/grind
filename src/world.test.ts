@@ -2,9 +2,9 @@ import { createToyWorld } from "./world.js"
 
 describe("World", () => {
   describe("createToyWorld", () => {
-    it("should create world with 20 tick session", () => {
+    it("should create world with 25 tick session", () => {
       const state = createToyWorld("test-seed")
-      expect(state.time.sessionRemainingTicks).toBe(20)
+      expect(state.time.sessionRemainingTicks).toBe(25)
       expect(state.time.currentTick).toBe(0)
     })
 

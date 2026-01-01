@@ -5,7 +5,7 @@ export function createToyWorld(seed: string): WorldState {
   return {
     time: {
       currentTick: 0,
-      sessionRemainingTicks: 20,
+      sessionRemainingTicks: 25,
     },
 
     player: {
@@ -82,6 +82,7 @@ export function createToyWorld(seed: string): WorldState {
           requirements: [{ itemId: "IRON_BAR", quantity: 2 }],
           rewards: [{ itemId: "IRON_ORE", quantity: 5 }],
           reputationReward: 10,
+          xpReward: { skill: "Mining", amount: 2 },
         },
       ],
       storageLocation: "TOWN",

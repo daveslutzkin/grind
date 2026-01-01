@@ -46,6 +46,7 @@ export interface Contract {
   requirements: ItemStack[]
   rewards: ItemStack[]
   reputationReward: number
+  xpReward?: { skill: SkillID; amount: number }
 }
 
 export interface RngState {
@@ -162,6 +163,7 @@ export interface ContractCompletion {
   itemsConsumed: ItemStack[]
   rewardsGranted: ItemStack[]
   reputationGained: number
+  xpGained?: { skill: SkillID; amount: number }
 }
 
 // Action log

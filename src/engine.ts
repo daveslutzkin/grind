@@ -190,6 +190,11 @@ function checkContractCompletion(state: WorldState): ContractCompletion[] {
       // Award reputation
       state.player.guildReputation += contract.reputationReward
 
+      // Award XP if contract has xpReward
+      if (contract.xpReward) {
+        state.player.skills[contract.xpReward.skill] += contract.xpReward.amount
+      }
+
       // Remove from active contracts
       const index = state.player.activeContracts.indexOf(contractId)
       state.player.activeContracts.splice(index, 1)
@@ -199,6 +204,7 @@ function checkContractCompletion(state: WorldState): ContractCompletion[] {
         itemsConsumed,
         rewardsGranted,
         reputationGained: contract.reputationReward,
+        xpGained: contract.xpReward,
       })
     }
   }
