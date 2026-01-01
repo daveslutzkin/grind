@@ -12,6 +12,72 @@ function deepClone<T>(obj: T): T {
 }
 
 /**
+ * Simulate contract completion (matches engine checkContractCompletion)
+ */
+function simulateContractCompletion(state: WorldState): void {
+  for (const contractId of [...state.player.activeContracts]) {
+    const contract = state.world.contracts.find((c) => c.id === contractId)
+    if (!contract) continue
+
+    // Check if all requirements are met (in inventory or storage)
+    const allRequirementsMet = contract.requirements.every((req) => {
+      const inInventory = state.player.inventory.find((i) => i.itemId === req.itemId)
+      const inStorage = state.player.storage.find((i) => i.itemId === req.itemId)
+      const totalQuantity = (inInventory?.quantity ?? 0) + (inStorage?.quantity ?? 0)
+      return totalQuantity >= req.quantity
+    })
+
+    if (allRequirementsMet) {
+      // Consume required items (from inventory first, then storage)
+      for (const req of contract.requirements) {
+        let remaining = req.quantity
+
+        // Take from inventory first
+        const invItem = state.player.inventory.find((i) => i.itemId === req.itemId)
+        if (invItem) {
+          const takeFromInv = Math.min(invItem.quantity, remaining)
+          invItem.quantity -= takeFromInv
+          remaining -= takeFromInv
+          if (invItem.quantity <= 0) {
+            const index = state.player.inventory.indexOf(invItem)
+            state.player.inventory.splice(index, 1)
+          }
+        }
+
+        // Take remainder from storage
+        if (remaining > 0) {
+          const storageItem = state.player.storage.find((i) => i.itemId === req.itemId)
+          if (storageItem) {
+            storageItem.quantity -= remaining
+            if (storageItem.quantity <= 0) {
+              const index = state.player.storage.indexOf(storageItem)
+              state.player.storage.splice(index, 1)
+            }
+          }
+        }
+      }
+
+      // Grant contract rewards (items go to inventory)
+      for (const reward of contract.rewards) {
+        const existing = state.player.inventory.find((i) => i.itemId === reward.itemId)
+        if (existing) {
+          existing.quantity += reward.quantity
+        } else {
+          state.player.inventory.push({ itemId: reward.itemId, quantity: reward.quantity })
+        }
+      }
+
+      // Award reputation
+      state.player.guildReputation += contract.reputationReward
+
+      // Remove from active contracts
+      const index = state.player.activeContracts.indexOf(contractId)
+      state.player.activeContracts.splice(index, 1)
+    }
+  }
+}
+
+/**
  * Evaluate a single action using shared precondition checks
  */
 export function evaluateAction(state: WorldState, action: Action): ActionEvaluation {
@@ -165,6 +231,9 @@ function simulateAction(state: WorldState, action: Action): string | null {
       break
     }
   }
+
+  // Check for contract completion (after every successful action)
+  simulateContractCompletion(state)
 
   return null
 }
