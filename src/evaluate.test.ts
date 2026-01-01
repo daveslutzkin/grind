@@ -6,6 +6,7 @@ describe('Evaluation APIs', () => {
   describe('evaluateAction', () => {
     it('should evaluate Move action', () => {
       const state = createToyWorld('test-seed');
+      state.player.skills.Travel = 2; // Need Travel >= travel cost (2)
       const action: Action = { type: 'Move', destination: 'MINE' };
 
       const result = evaluateAction(state, action);
@@ -69,7 +70,7 @@ describe('Evaluation APIs', () => {
 
       const result = evaluateAction(state, action);
 
-      expect(result.expectedTime).toBe(0);
+      expect(result.expectedTime).toBe(1); // Store takes 1 tick
       expect(result.expectedXP).toBe(1);
       expect(result.successProbability).toBe(1);
     });
@@ -81,7 +82,7 @@ describe('Evaluation APIs', () => {
 
       const result = evaluateAction(state, action);
 
-      expect(result.expectedTime).toBe(0);
+      expect(result.expectedTime).toBe(1); // Drop takes 1 tick
       expect(result.expectedXP).toBe(0); // No XP for drop
       expect(result.successProbability).toBe(1);
     });
@@ -120,6 +121,7 @@ describe('Evaluation APIs', () => {
 
     it('should evaluate simple plan', () => {
       const state = createToyWorld('test-seed');
+      state.player.skills.Travel = 2; // Need Travel >= travel cost (2)
       const actions: Action[] = [
         { type: 'Move', destination: 'MINE' },
         { type: 'Gather', nodeId: 'iron-node' },
@@ -147,6 +149,7 @@ describe('Evaluation APIs', () => {
 
     it('should track state changes through plan', () => {
       const state = createToyWorld('test-seed');
+      state.player.skills.Travel = 2; // Need Travel >= travel cost (2)
       const actions: Action[] = [
         { type: 'Move', destination: 'MINE' },
         { type: 'Gather', nodeId: 'iron-node' },
@@ -162,6 +165,7 @@ describe('Evaluation APIs', () => {
 
     it('should not mutate state', () => {
       const state = createToyWorld('test-seed');
+      state.player.skills.Travel = 2; // Need Travel >= travel cost (2)
       const stateBefore = JSON.stringify(state);
       const actions: Action[] = [
         { type: 'Move', destination: 'MINE' },
@@ -175,6 +179,7 @@ describe('Evaluation APIs', () => {
 
     it('should detect session time exceeded', () => {
       const state = createToyWorld('test-seed');
+      state.player.skills.Travel = 2; // Need Travel >= travel cost (2)
       state.time.sessionRemainingTicks = 3; // Only 3 ticks remaining
       const actions: Action[] = [
         { type: 'Move', destination: 'MINE' }, // 2 ticks

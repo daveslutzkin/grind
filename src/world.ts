@@ -11,6 +11,7 @@ export function createToyWorld(seed: string): WorldState {
     player: {
       location: 'TOWN',
       inventory: [],
+      inventoryCapacity: 10,
       storage: [],
       skills: {
         Travel: 0,

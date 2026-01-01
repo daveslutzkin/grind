@@ -62,6 +62,11 @@ function executeMove(state: WorldState, action: MoveAction, rolls: RngRoll[]): A
     return createFailureLog(state, action, 'WRONG_LOCATION');
   }
 
+  // Check skill requirement (Travel >= travel cost)
+  if (state.player.skills.Travel < travelCost) {
+    return createFailureLog(state, action, 'INSUFFICIENT_SKILL');
+  }
+
   // Move player
   state.player.location = destination;
   consumeTime(state, travelCost);
@@ -154,6 +159,10 @@ function addToInventory(state: WorldState, itemId: ItemID, quantity: number): vo
   }
 }
 
+function getInventoryCount(state: WorldState): number {
+  return state.player.inventory.reduce((sum, item) => sum + item.quantity, 0);
+}
+
 function executeGather(
   state: WorldState,
   action: GatherAction,
@@ -171,6 +180,16 @@ function executeGather(
   // Check if at node location
   if (state.player.location !== node.location) {
     return createFailureLog(state, action, 'WRONG_LOCATION');
+  }
+
+  // Check skill requirement
+  if (state.player.skills.Gathering < node.requiredSkillLevel) {
+    return createFailureLog(state, action, 'INSUFFICIENT_SKILL');
+  }
+
+  // Check inventory capacity
+  if (getInventoryCount(state) >= state.player.inventoryCapacity) {
+    return createFailureLog(state, action, 'INVENTORY_FULL');
   }
 
   // Consume time
@@ -227,6 +246,11 @@ function executeFight(
   // Check if at enemy location
   if (state.player.location !== enemy.location) {
     return createFailureLog(state, action, 'WRONG_LOCATION');
+  }
+
+  // Check skill requirement
+  if (state.player.skills.Combat < enemy.requiredSkillLevel) {
+    return createFailureLog(state, action, 'INSUFFICIENT_SKILL');
   }
 
   // Consume time
@@ -311,6 +335,11 @@ function executeCraft(
     return createFailureLog(state, action, 'WRONG_LOCATION');
   }
 
+  // Check skill requirement
+  if (state.player.skills.Crafting < recipe.requiredSkillLevel) {
+    return createFailureLog(state, action, 'INSUFFICIENT_SKILL');
+  }
+
   // Check if has required inputs
   if (!hasItems(state.player.inventory, recipe.inputs)) {
     return createFailureLog(state, action, 'MISSING_ITEMS');
@@ -358,6 +387,7 @@ function executeStore(
 ): ActionLog {
   const tickBefore = state.time.currentTick;
   const { itemId, quantity } = action;
+  const storeTime = 1;
 
   // Check if at storage location
   if (state.player.location !== state.world.storageLocation) {
@@ -375,6 +405,9 @@ function executeStore(
     return createFailureLog(state, action, 'MISSING_ITEMS');
   }
 
+  // Consume time
+  consumeTime(state, storeTime);
+
   // Move item to storage
   removeFromInventory(state, itemId, quantity);
   addToStorage(state, itemId, quantity);
@@ -387,7 +420,7 @@ function executeStore(
     actionType: 'Store',
     parameters: { itemId, quantity },
     success: true,
-    timeConsumed: 0,
+    timeConsumed: storeTime,
     skillGained: { skill: 'Logistics', amount: 1 },
     rngRolls: rolls,
     stateDeltaSummary: `Stored ${quantity} ${itemId}`,
@@ -401,6 +434,7 @@ function executeDrop(
 ): ActionLog {
   const tickBefore = state.time.currentTick;
   const { itemId, quantity } = action;
+  const dropTime = 1;
 
   // Check if item exists in inventory
   const item = state.player.inventory.find(i => i.itemId === itemId);
@@ -413,6 +447,9 @@ function executeDrop(
     return createFailureLog(state, action, 'MISSING_ITEMS');
   }
 
+  // Consume time
+  consumeTime(state, dropTime);
+
   // Remove item from inventory
   removeFromInventory(state, itemId, quantity);
 
@@ -421,7 +458,7 @@ function executeDrop(
     actionType: 'Drop',
     parameters: { itemId, quantity },
     success: true,
-    timeConsumed: 0,
+    timeConsumed: dropTime,
     rngRolls: rolls,
     stateDeltaSummary: `Dropped ${quantity} ${itemId}`,
   };

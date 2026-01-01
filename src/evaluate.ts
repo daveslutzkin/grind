@@ -47,6 +47,11 @@ function evaluateMoveAction(
     return { expectedTime: 0, expectedXP: 0, successProbability: 0 };
   }
 
+  // Check skill requirement (Travel >= travel cost)
+  if (state.player.skills.Travel < travelCost) {
+    return { expectedTime: 0, expectedXP: 0, successProbability: 0 };
+  }
+
   return {
     expectedTime: travelCost,
     expectedXP: 1,
@@ -79,6 +84,10 @@ function evaluateAcceptContractAction(
   };
 }
 
+function getInventoryCount(state: WorldState): number {
+  return state.player.inventory.reduce((sum, item) => sum + item.quantity, 0);
+}
+
 function evaluateGatherAction(
   state: WorldState,
   action: GatherAction
@@ -90,6 +99,16 @@ function evaluateGatherAction(
   }
 
   if (state.player.location !== node.location) {
+    return { expectedTime: 0, expectedXP: 0, successProbability: 0 };
+  }
+
+  // Check skill requirement
+  if (state.player.skills.Gathering < node.requiredSkillLevel) {
+    return { expectedTime: 0, expectedXP: 0, successProbability: 0 };
+  }
+
+  // Check inventory capacity
+  if (getInventoryCount(state) >= state.player.inventoryCapacity) {
     return { expectedTime: 0, expectedXP: 0, successProbability: 0 };
   }
 
@@ -114,6 +133,11 @@ function evaluateFightAction(
     return { expectedTime: 0, expectedXP: 0, successProbability: 0 };
   }
 
+  // Check skill requirement
+  if (state.player.skills.Combat < enemy.requiredSkillLevel) {
+    return { expectedTime: 0, expectedXP: 0, successProbability: 0 };
+  }
+
   return {
     expectedTime: enemy.fightTime,
     expectedXP: 1 * enemy.successProbability,
@@ -132,6 +156,11 @@ function evaluateCraftAction(
   }
 
   if (state.player.location !== recipe.requiredLocation) {
+    return { expectedTime: 0, expectedXP: 0, successProbability: 0 };
+  }
+
+  // Check skill requirement
+  if (state.player.skills.Crafting < recipe.requiredSkillLevel) {
     return { expectedTime: 0, expectedXP: 0, successProbability: 0 };
   }
 
@@ -160,7 +189,7 @@ function evaluateStoreAction(
   }
 
   return {
-    expectedTime: 0,
+    expectedTime: 1,
     expectedXP: 1,
     successProbability: 1,
   };
@@ -176,7 +205,7 @@ function evaluateDropAction(
   }
 
   return {
-    expectedTime: 0,
+    expectedTime: 1,
     expectedXP: 0,
     successProbability: 1,
   };

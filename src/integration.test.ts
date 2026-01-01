@@ -6,6 +6,7 @@ import type { Action, ActionLog, LocationID } from './types.js';
 describe('Integration: Full Session Flow', () => {
   it('should run a complete session with various actions', () => {
     const state = createToyWorld('integration-test-seed');
+    state.player.skills.Travel = 4; // Need Travel >= travel cost (max 4 for MINE<->FOREST)
     const logs: ActionLog[] = [];
 
     // Accept a contract at TOWN
@@ -62,6 +63,7 @@ describe('Integration: Full Session Flow', () => {
 
   it('should demonstrate logging shows what happened and why', () => {
     const state = createToyWorld('logging-test');
+    state.player.skills.Travel = 2; // Need Travel >= travel cost (2)
     const logs: ActionLog[] = [];
 
     // Move to mine
@@ -93,6 +95,7 @@ describe('Integration: Full Session Flow', () => {
 
   it('should demonstrate plan evaluation finds violations', () => {
     const state = createToyWorld('plan-test');
+    state.player.skills.Travel = 2; // Need Travel >= travel cost (2)
 
     // Valid plan: move to mine, gather, move back, craft
     const validPlan: Action[] = [
@@ -117,6 +120,7 @@ describe('Integration: Full Session Flow', () => {
 
   it('should demonstrate session ends when ticks run out', () => {
     const state = createToyWorld('session-end-test');
+    state.player.skills.Travel = 4; // Need Travel >= travel cost (max 4 for MINE<->FOREST)
     const logs: ActionLog[] = [];
 
     // Keep moving until session ends
@@ -144,6 +148,7 @@ describe('Integration: Full Session Flow', () => {
   it('should show how dominant strategies might form', () => {
     // This test demonstrates that we can evaluate different strategies
     const state = createToyWorld('strategy-test');
+    state.player.skills.Travel = 2; // Need Travel >= travel cost (2)
 
     // Strategy 1: Pure gathering
     const gatherStrategy: Action[] = [
@@ -183,6 +188,7 @@ describe('Integration: Full Session Flow', () => {
 // Helper function to run a standard session
 function runSession(seed: string): { logs: ActionLog[]; state: ReturnType<typeof createToyWorld> } {
   const state = createToyWorld(seed);
+  state.player.skills.Travel = 2; // Need Travel >= travel cost (2)
   const logs: ActionLog[] = [];
 
   logs.push(executeAction(state, { type: 'Move', destination: 'MINE' }));

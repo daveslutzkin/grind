@@ -60,6 +60,7 @@ export interface WorldState {
   player: {
     location: LocationID;
     inventory: ItemStack[];
+    inventoryCapacity: number;
     storage: ItemStack[];
     skills: Record<SkillID, number>;
     guildReputation: number;

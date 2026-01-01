@@ -6,6 +6,7 @@ describe('Engine', () => {
   describe('Move action', () => {
     it('should move player to destination', () => {
       const state = createToyWorld('test-seed');
+      state.player.skills.Travel = 2; // Need Travel >= travel cost (2)
       const action: MoveAction = { type: 'Move', destination: 'MINE' };
 
       const log = executeAction(state, action);
@@ -16,6 +17,7 @@ describe('Engine', () => {
 
     it('should consume travel time', () => {
       const state = createToyWorld('test-seed');
+      state.player.skills.Travel = 2;
       const initialTicks = state.time.sessionRemainingTicks;
       const action: MoveAction = { type: 'Move', destination: 'MINE' };
 
@@ -28,12 +30,13 @@ describe('Engine', () => {
 
     it('should grant Travel XP on success', () => {
       const state = createToyWorld('test-seed');
+      state.player.skills.Travel = 2;
       const action: MoveAction = { type: 'Move', destination: 'MINE' };
 
       const log = executeAction(state, action);
 
       expect(log.skillGained).toEqual({ skill: 'Travel', amount: 1 });
-      expect(state.player.skills.Travel).toBe(1);
+      expect(state.player.skills.Travel).toBe(3); // Was 2, gained 1
     });
 
     it('should fail if already at destination', () => {
@@ -50,6 +53,7 @@ describe('Engine', () => {
 
     it('should fail if session has ended', () => {
       const state = createToyWorld('test-seed');
+      state.player.skills.Travel = 2;
       state.time.sessionRemainingTicks = 0;
       const action: MoveAction = { type: 'Move', destination: 'MINE' };
 
@@ -59,8 +63,21 @@ describe('Engine', () => {
       expect(log.failureType).toBe('SESSION_ENDED');
     });
 
+    it('should fail if insufficient Travel skill', () => {
+      const state = createToyWorld('test-seed');
+      state.player.skills.Travel = 1; // Need 2 for TOWN->MINE
+      const action: MoveAction = { type: 'Move', destination: 'MINE' };
+
+      const log = executeAction(state, action);
+
+      expect(log.success).toBe(false);
+      expect(log.failureType).toBe('INSUFFICIENT_SKILL');
+      expect(log.timeConsumed).toBe(0);
+    });
+
     it('should log action details', () => {
       const state = createToyWorld('test-seed');
+      state.player.skills.Travel = 2;
       const action: MoveAction = { type: 'Move', destination: 'MINE' };
 
       const log = executeAction(state, action);
@@ -74,14 +91,15 @@ describe('Engine', () => {
 
     it('should work for all location pairs', () => {
       const state = createToyWorld('test-seed');
+      state.player.skills.Travel = 4; // Need 4 for FOREST->MINE
 
-      // TOWN -> FOREST
+      // TOWN -> FOREST (cost 3)
       let log = executeAction(state, { type: 'Move', destination: 'FOREST' });
       expect(log.success).toBe(true);
       expect(log.timeConsumed).toBe(3);
       expect(state.player.location).toBe('FOREST');
 
-      // FOREST -> MINE
+      // FOREST -> MINE (cost 4)
       log = executeAction(state, { type: 'Move', destination: 'MINE' });
       expect(log.success).toBe(true);
       expect(log.timeConsumed).toBe(4);
@@ -269,6 +287,20 @@ describe('Engine', () => {
         expect(state.player.inventory.filter(i => i.itemId === 'IRON_ORE')).toHaveLength(1);
       }
     });
+
+    it('should fail if inventory is full', () => {
+      const state = createToyWorld('test-seed');
+      state.player.location = 'MINE';
+      // Fill inventory to capacity
+      state.player.inventory.push({ itemId: 'IRON_ORE', quantity: 10 });
+      const action: GatherAction = { type: 'Gather', nodeId: 'iron-node' };
+
+      const log = executeAction(state, action);
+
+      expect(log.success).toBe(false);
+      expect(log.failureType).toBe('INVENTORY_FULL');
+      expect(log.timeConsumed).toBe(0);
+    });
   });
 
   describe('Fight action', () => {
@@ -446,6 +478,18 @@ describe('Engine', () => {
       expect(storageOre?.quantity).toBe(3);
     });
 
+    it('should consume 1 tick', () => {
+      const state = createToyWorld('test-seed');
+      state.player.inventory.push({ itemId: 'IRON_ORE', quantity: 1 });
+      const initialTicks = state.time.sessionRemainingTicks;
+      const action: StoreAction = { type: 'Store', itemId: 'IRON_ORE', quantity: 1 };
+
+      const log = executeAction(state, action);
+
+      expect(log.timeConsumed).toBe(1);
+      expect(state.time.sessionRemainingTicks).toBe(initialTicks - 1);
+    });
+
     it('should grant Logistics XP', () => {
       const state = createToyWorld('test-seed');
       state.player.inventory.push({ itemId: 'IRON_ORE', quantity: 1 });
@@ -502,6 +546,18 @@ describe('Engine', () => {
       expect(log.success).toBe(true);
       const invOre = state.player.inventory.find(i => i.itemId === 'IRON_ORE');
       expect(invOre?.quantity).toBe(2);
+    });
+
+    it('should consume 1 tick', () => {
+      const state = createToyWorld('test-seed');
+      state.player.inventory.push({ itemId: 'IRON_ORE', quantity: 1 });
+      const initialTicks = state.time.sessionRemainingTicks;
+      const action: DropAction = { type: 'Drop', itemId: 'IRON_ORE', quantity: 1 };
+
+      const log = executeAction(state, action);
+
+      expect(log.timeConsumed).toBe(1);
+      expect(state.time.sessionRemainingTicks).toBe(initialTicks - 1);
     });
 
     it('should not grant XP', () => {

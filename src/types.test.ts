@@ -10,6 +10,7 @@ describe('Types', () => {
       player: {
         location: 'TOWN',
         inventory: [],
+        inventoryCapacity: 10,
         storage: [],
         skills: {
           Travel: 0,
