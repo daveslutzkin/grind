@@ -205,9 +205,10 @@ function checkContractCompletion(state: WorldState): ContractCompletion[] {
       // Award reputation
       state.player.guildReputation += contract.reputationReward
 
-      // Award XP if contract has xpReward (level-ups tracked but not returned from here)
+      // Award XP if contract has xpReward and capture level-ups
+      let contractLevelUps: LevelUp[] = []
       if (contract.xpReward) {
-        grantXP(state, contract.xpReward.skill, contract.xpReward.amount)
+        contractLevelUps = grantXP(state, contract.xpReward.skill, contract.xpReward.amount)
       }
 
       // Remove from active contracts
@@ -220,6 +221,7 @@ function checkContractCompletion(state: WorldState): ContractCompletion[] {
         rewardsGranted,
         reputationGained: contract.reputationReward,
         xpGained: contract.xpReward,
+        levelUps: contractLevelUps.length > 0 ? contractLevelUps : undefined,
       })
     }
   }

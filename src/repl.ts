@@ -7,13 +7,48 @@ import { createToyWorld } from "./world.js"
 import { executeAction } from "./engine.js"
 import { evaluateAction } from "./evaluate.js"
 import type { Action, ActionLog, WorldState, SkillID, Objective, SkillState } from "./types.js"
-import { OBJECTIVES, getTotalXP } from "./types.js"
+import { OBJECTIVES, getTotalXP, getXPThresholdForNextLevel } from "./types.js"
 
 // Session tracking
 interface SessionStats {
   logs: ActionLog[]
   startingSkills: Record<SkillID, SkillState>
   totalSession: number
+}
+
+/**
+ * Compute expected level gains from expected XP per skill, given starting skill state.
+ */
+function computeExpectedLevelGains(
+  startingSkills: Record<SkillID, SkillState>,
+  expectedXPPerSkill: Record<SkillID, number>
+): Record<SkillID, number> {
+  const result: Record<SkillID, number> = {
+    Mining: 0,
+    Woodcutting: 0,
+    Combat: 0,
+    Smithing: 0,
+    Logistics: 0,
+  }
+
+  for (const skill of Object.keys(expectedXPPerSkill) as SkillID[]) {
+    const start = startingSkills[skill]
+    const expectedXP = expectedXPPerSkill[skill]
+    if (expectedXP <= 0) continue
+
+    let level = start.level
+    let xp = start.xp + expectedXP
+
+    let threshold = getXPThresholdForNextLevel(level)
+    while (xp >= threshold) {
+      xp -= threshold
+      level++
+      result[skill]++
+      threshold = getXPThresholdForNextLevel(level)
+    }
+  }
+
+  return result
 }
 
 const rl = readline.createInterface({
@@ -89,6 +124,12 @@ function printLog(log: ActionLog): void {
       const granted = c.rewardsGranted.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")
       const xpStr = c.xpGained ? `  │  📈 +${c.xpGained.amount} ${c.xpGained.skill}` : ""
       console.log(`│${pad(` 🏆 CONTRACT COMPLETE: ${c.contractId}  │  Consumed: ${consumed}  │  Granted: ${granted}  │  +${c.reputationGained} rep${xpStr}`)}`)
+      // Show level-ups from contract XP
+      if (c.levelUps) {
+        for (const lu of c.levelUps) {
+          console.log(`│${pad(`   📈 LEVEL UP: ${lu.skill} ${lu.fromLevel} → ${lu.toLevel}`)}`)
+        }
+      }
     }
   }
   console.log(`└${line}┘`)
@@ -423,6 +464,13 @@ function printSummary(state: WorldState, stats: SessionStats, objective: Objecti
   let totalXP = 0
   let expectedXP = 0
   const xpProbabilities: number[] = [] // probabilities for all XP-granting actions
+  const expectedXPPerSkill: Record<SkillID, number> = {
+    Mining: 0,
+    Woodcutting: 0,
+    Combat: 0,
+    Smithing: 0,
+    Logistics: 0,
+  }
   for (const log of stats.logs) {
     if (log.skillGained) {
       xpGained[log.skillGained.skill] = (xpGained[log.skillGained.skill] || 0) + log.skillGained.amount
@@ -434,10 +482,17 @@ function printSummary(state: WorldState, stats: SessionStats, objective: Objecti
       const p = log.rngRolls[0].probability
       expectedXP += p
       xpProbabilities.push(p)
+      // Track per-skill expected XP
+      if (log.actionType === "Gather" || log.actionType === "Fight") {
+        const skill = log.actionType === "Fight" ? "Combat" :
+          (log.parameters.nodeId === "iron-node" ? "Mining" : "Woodcutting")
+        expectedXPPerSkill[skill as SkillID] += p
+      }
     } else if (log.skillGained) {
-      // Deterministic action that granted XP (Move, Craft, Store)
+      // Deterministic action that granted XP (Craft, Store)
       expectedXP += 1
       xpProbabilities.push(1) // deterministic success
+      expectedXPPerSkill[log.skillGained.skill] += 1
     }
     // Add contract completion XP
     if (log.contractsCompleted) {
@@ -446,11 +501,15 @@ function printSummary(state: WorldState, stats: SessionStats, objective: Objecti
           xpGained[c.xpGained.skill] = (xpGained[c.xpGained.skill] || 0) + c.xpGained.amount
           totalXP += c.xpGained.amount
           expectedXP += c.xpGained.amount // Contract XP is deterministic once contract completes
+          expectedXPPerSkill[c.xpGained.skill] += c.xpGained.amount
           // Note: We don't add to xpProbabilities since contract XP is bonus on top of the triggering action
         }
       }
     }
   }
+
+  // Compute expected level gains
+  const expectedLevels = computeExpectedLevelGains(stats.startingSkills, expectedXPPerSkill)
 
   // Volatility calculation (objective-agnostic)
   const volatilityStr = computeVolatility(xpProbabilities)
@@ -537,6 +596,16 @@ function printSummary(state: WorldState, stats: SessionStats, objective: Objecti
 
   // Skills
   console.log(pad(`📈 SKILLS: ${skillDelta.length > 0 ? skillDelta.join("  │  ") : "(no gains)"}`))
+  // Expected levels line
+  const allSkills: SkillID[] = ["Mining", "Woodcutting", "Combat", "Smithing", "Logistics"]
+  const expectedLevelStrs: string[] = []
+  for (const sk of allSkills) {
+    if (expectedLevels[sk] > 0) {
+      expectedLevelStrs.push(`${sk} +${expectedLevels[sk]}`)
+    }
+  }
+  console.log(`├${line}┤`)
+  console.log(pad(`📊 EXPECTED LEVELS: ${expectedLevelStrs.length > 0 ? expectedLevelStrs.join("  │  ") : "(none)"}`))
   console.log(`├${line}┤`)
 
   // Contracts & Rep

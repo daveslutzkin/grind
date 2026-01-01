@@ -4,11 +4,51 @@ import type {
   ActionEvaluation,
   PlanEvaluation,
   PlanViolation,
+  SkillID,
 } from "./types.js"
 import { checkAction } from "./actionChecks.js"
+import { getXPThresholdForNextLevel } from "./types.js"
 
 function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj))
+}
+
+/**
+ * Compute expected level gains from expected XP, given starting skill state.
+ * This is approximate: we assume expected XP is gained and check threshold crossings.
+ */
+function computeExpectedLevelGains(
+  startingSkills: Record<SkillID, { level: number; xp: number }>,
+  expectedXPPerSkill: Record<SkillID, number>
+): Record<SkillID, number> {
+  const result: Record<SkillID, number> = {
+    Mining: 0,
+    Woodcutting: 0,
+    Combat: 0,
+    Smithing: 0,
+    Logistics: 0,
+  }
+
+  for (const skill of Object.keys(expectedXPPerSkill) as SkillID[]) {
+    const start = startingSkills[skill]
+    const expectedXP = expectedXPPerSkill[skill]
+    if (expectedXP <= 0) continue
+
+    // Simulate adding expected XP to see how many levels we'd gain
+    let level = start.level
+    let xp = start.xp + expectedXP
+
+    // Count level-ups
+    let threshold = getXPThresholdForNextLevel(level)
+    while (xp >= threshold) {
+      xp -= threshold
+      level++
+      result[skill]++
+      threshold = getXPThresholdForNextLevel(level)
+    }
+  }
+
+  return result
 }
 
 /**
@@ -279,9 +319,17 @@ function simulateAction(state: WorldState, action: Action): string | null {
 export function evaluatePlan(state: WorldState, actions: Action[]): PlanEvaluation {
   // Clone state to avoid mutation
   const simState = deepClone(state)
+  const startingSkills = deepClone(state.player.skills)
 
   let expectedTime = 0
   let expectedXP = 0
+  const expectedXPPerSkill: Record<SkillID, number> = {
+    Mining: 0,
+    Woodcutting: 0,
+    Combat: 0,
+    Smithing: 0,
+    Logistics: 0,
+  }
   const violations: PlanViolation[] = []
 
   for (let i = 0; i < actions.length; i++) {
@@ -312,13 +360,38 @@ export function evaluatePlan(state: WorldState, actions: Action[]): PlanEvaluati
     expectedTime += eval_.expectedTime
     expectedXP += eval_.expectedXP
 
+    // Track per-skill expected XP
+    switch (action.type) {
+      case "Gather": {
+        const node = simState.world.resourceNodes.find((n) => n.id === action.nodeId)
+        if (node) {
+          expectedXPPerSkill[node.skillType] += eval_.expectedXP
+        }
+        break
+      }
+      case "Fight":
+        expectedXPPerSkill.Combat += eval_.expectedXP
+        break
+      case "Craft":
+        expectedXPPerSkill.Smithing += eval_.expectedXP
+        break
+      case "Store":
+        expectedXPPerSkill.Logistics += eval_.expectedXP
+        break
+      // Move, AcceptContract, Drop don't grant XP
+    }
+
     // Simulate the action
     simulateAction(simState, action)
   }
 
+  // Compute expected levels from expected XP per skill
+  const expectedLevels = computeExpectedLevelGains(startingSkills, expectedXPPerSkill)
+
   return {
     expectedTime,
     expectedXP,
+    expectedLevels,
     violations,
   }
 }
