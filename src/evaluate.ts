@@ -12,6 +12,41 @@ function deepClone<T>(obj: T): T {
 }
 
 /**
+ * Check if contract rewards will fit in inventory after consuming requirements.
+ * Returns true if rewards will fit, false otherwise.
+ */
+function canFitContractRewards(
+  state: WorldState,
+  requirements: { itemId: string; quantity: number }[],
+  rewards: { itemId: string; quantity: number }[]
+): boolean {
+  // Simulate inventory state after consuming requirements
+  const simulatedInventory = new Map<string, number>()
+  for (const item of state.player.inventory) {
+    simulatedInventory.set(item.itemId, item.quantity)
+  }
+
+  // Simulate consuming requirements from inventory
+  for (const req of requirements) {
+    const current = simulatedInventory.get(req.itemId) ?? 0
+    const toConsume = Math.min(current, req.quantity)
+    if (toConsume >= current) {
+      simulatedInventory.delete(req.itemId)
+    } else {
+      simulatedInventory.set(req.itemId, current - toConsume)
+    }
+  }
+
+  // Simulate adding rewards
+  for (const reward of rewards) {
+    const current = simulatedInventory.get(reward.itemId) ?? 0
+    simulatedInventory.set(reward.itemId, current + reward.quantity)
+  }
+
+  return simulatedInventory.size <= state.player.inventoryCapacity
+}
+
+/**
  * Simulate contract completion (matches engine checkContractCompletion)
  */
 function simulateContractCompletion(state: WorldState): void {
@@ -27,7 +62,10 @@ function simulateContractCompletion(state: WorldState): void {
       return totalQuantity >= req.quantity
     })
 
-    if (allRequirementsMet) {
+    // Check if rewards will fit in inventory (respecting slot capacity)
+    const rewardsWillFit = canFitContractRewards(state, contract.requirements, contract.rewards)
+
+    if (allRequirementsMet && rewardsWillFit) {
       // Consume required items (from inventory first, then storage)
       for (const req of contract.requirements) {
         let remaining = req.quantity

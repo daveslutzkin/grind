@@ -82,6 +82,45 @@ function addToStorage(state: WorldState, itemId: ItemID, quantity: number): void
   }
 }
 
+/**
+ * Check if contract rewards will fit in inventory after consuming requirements.
+ * Returns true if rewards will fit, false otherwise.
+ */
+function canFitContractRewards(
+  state: WorldState,
+  requirements: { itemId: ItemID; quantity: number }[],
+  rewards: { itemId: ItemID; quantity: number }[]
+): boolean {
+  // Simulate inventory state after consuming requirements
+  // Track which item types will be completely removed (freeing slots)
+  const simulatedInventory = new Map<ItemID, number>()
+  for (const item of state.player.inventory) {
+    simulatedInventory.set(item.itemId, item.quantity)
+  }
+
+  // Simulate consuming requirements from inventory
+  for (const req of requirements) {
+    const current = simulatedInventory.get(req.itemId) ?? 0
+    // We consume from inventory first; if not enough, remainder comes from storage
+    // For slot calculation, we only care about inventory
+    const toConsume = Math.min(current, req.quantity)
+    if (toConsume >= current) {
+      simulatedInventory.delete(req.itemId) // Slot freed
+    } else {
+      simulatedInventory.set(req.itemId, current - toConsume)
+    }
+  }
+
+  // Simulate adding rewards
+  for (const reward of rewards) {
+    const current = simulatedInventory.get(reward.itemId) ?? 0
+    simulatedInventory.set(reward.itemId, current + reward.quantity)
+  }
+
+  // Check if simulated inventory fits in capacity
+  return simulatedInventory.size <= state.player.inventoryCapacity
+}
+
 function checkContractCompletion(state: WorldState): ContractCompletion[] {
   const completions: ContractCompletion[] = []
 
@@ -98,7 +137,10 @@ function checkContractCompletion(state: WorldState): ContractCompletion[] {
       return totalQuantity >= req.quantity
     })
 
-    if (allRequirementsMet) {
+    // Check if rewards will fit in inventory (respecting slot capacity)
+    const rewardsWillFit = canFitContractRewards(state, contract.requirements, contract.rewards)
+
+    if (allRequirementsMet && rewardsWillFit) {
       // Record what we're consuming for the log
       const itemsConsumed = contract.requirements.map((req) => ({
         itemId: req.itemId,

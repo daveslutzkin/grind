@@ -240,6 +240,73 @@ describe("Integration: Full Session Flow", () => {
     // This proves the exploit is fixed: you can't get infinite reputation
     // because items are consumed on completion
   })
+
+  it("should not complete contract if rewards would overflow inventory", () => {
+    const state = createToyWorld("true-overflow-test")
+
+    // Create a custom contract that would overflow
+    // Requires: 2 IRON_BAR (1 slot)
+    // Rewards: 5 IRON_ORE + 3 WOOD_LOG (2 new slots)
+    // Net: -1 slot + 2 slots = +1 slot overflow
+
+    state.world.contracts.push({
+      id: "overflow-contract",
+      guildLocation: "TOWN",
+      requirements: [{ itemId: "IRON_BAR", quantity: 2 }],
+      rewards: [
+        { itemId: "IRON_ORE", quantity: 5 },
+        { itemId: "WOOD_LOG", quantity: 3 },
+      ],
+      reputationReward: 20,
+    })
+
+    // Fill inventory to capacity with different items
+    for (let i = 0; i < 9; i++) {
+      state.player.inventory.push({ itemId: `FILLER_${i}` as never, quantity: 1 })
+    }
+    state.player.inventory.push({ itemId: "IRON_BAR", quantity: 2 })
+    expect(state.player.inventory.length).toBe(10)
+
+    // Accept the overflow contract
+    const acceptLog = executeAction(state, {
+      type: "AcceptContract",
+      contractId: "overflow-contract",
+    })
+    expect(acceptLog.success).toBe(true)
+
+    // Contract should NOT complete because rewards would overflow
+    // - Consuming IRON_BAR frees 1 slot (9 slots used)
+    // - Adding IRON_ORE needs 1 new slot (10 slots)
+    // - Adding WOOD_LOG needs 1 more slot (11 slots) - OVERFLOW!
+    expect(acceptLog.contractsCompleted).toBeUndefined()
+
+    // Contract stays active
+    expect(state.player.activeContracts).toContain("overflow-contract")
+
+    // Reputation unchanged
+    expect(state.player.guildReputation).toBe(0)
+
+    // Items not consumed
+    expect(state.player.inventory.find((i) => i.itemId === "IRON_BAR")?.quantity).toBe(2)
+
+    // Now free up a slot and try again
+    state.player.inventory.splice(0, 1) // Remove one filler item
+    expect(state.player.inventory.length).toBe(9)
+
+    // Do any action to trigger contract completion check
+    const moveLog = executeAction(state, { type: "Move", destination: "MINE" })
+    expect(moveLog.success).toBe(true)
+
+    // NOW the contract should complete
+    expect(moveLog.contractsCompleted).toBeDefined()
+    expect(moveLog.contractsCompleted![0].contractId).toBe("overflow-contract")
+
+    // Verify items consumed and rewards granted
+    expect(state.player.inventory.find((i) => i.itemId === "IRON_BAR")).toBeUndefined()
+    expect(state.player.inventory.find((i) => i.itemId === "IRON_ORE")?.quantity).toBe(5)
+    expect(state.player.inventory.find((i) => i.itemId === "WOOD_LOG")?.quantity).toBe(3)
+    expect(state.player.guildReputation).toBe(20)
+  })
 })
 
 // Helper function to run a standard session
