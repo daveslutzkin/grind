@@ -216,6 +216,35 @@ function poissonBinomialProbAtMost(probabilities: number[], k: number): number {
 }
 
 /**
+ * Compute Risk/Volatility string for the plan
+ * Volatility = σ of total XP (standard deviation)
+ * Risk = P(XP ≤ 70% of expected) bucketed as Low/Medium/High
+ */
+function computeRiskVolatility(xpProbabilities: number[], expectedXP: number): string {
+  if (xpProbabilities.length === 0) return "N/A"
+
+  // Volatility: σ = sqrt(sum of p*(1-p) for each action)
+  const totalVariance = xpProbabilities.reduce((sum, p) => sum + p * (1 - p), 0)
+  const sigma = Math.sqrt(totalVariance)
+
+  // Risk: P(XP ≤ 70% of expected)
+  const threshold = Math.floor(0.7 * expectedXP)
+  const downsideProb = poissonBinomialProbAtMost(xpProbabilities, threshold)
+
+  // Bucket risk
+  let riskLabel: string
+  if (downsideProb < 0.2) {
+    riskLabel = "Low"
+  } else if (downsideProb <= 0.5) {
+    riskLabel = "Medium"
+  } else {
+    riskLabel = "High"
+  }
+
+  return `${riskLabel} (±${sigma.toFixed(1)} XP)`
+}
+
+/**
  * Compute luck string with percentile, label, and sigma
  */
 function computeLuckString(probabilities: number[], actualSuccesses: number): string {
@@ -239,38 +268,51 @@ function computeLuckString(probabilities: number[], actualSuccesses: number): st
     // Lucky side: compute P(X >= actual)
     const probAtLeast = poissonBinomialProbAtLeast(probabilities, actualSuccesses)
     percentile = probAtLeast * 100
+    position = `Top ${percentile.toFixed(0)}%`
 
     if (percentile <= 5) {
       label = "extremely lucky"
     } else if (percentile <= 20) {
       label = "very lucky"
+    } else if (percentile <= 35) {
+      label = "mildly lucky"
+    } else if (percentile <= 65) {
+      label = "typical"
+    } else if (percentile <= 80) {
+      label = "mildly lucky"
+    } else if (percentile <= 95) {
+      label = "typical"
     } else {
       label = "typical"
     }
-    position = `Top ${percentile.toFixed(0)}%`
   } else {
     // Unlucky side: compute P(X <= actual)
     const probAtMost = poissonBinomialProbAtMost(probabilities, actualSuccesses)
     percentile = probAtMost * 100
+    position = `Bottom ${percentile.toFixed(0)}%`
 
     if (percentile <= 5) {
       label = "extremely unlucky"
     } else if (percentile <= 20) {
-      label = "unlucky"
+      label = "very unlucky"
+    } else if (percentile <= 35) {
+      label = "mildly unlucky"
+    } else if (percentile <= 65) {
+      label = "typical"
+    } else if (percentile <= 80) {
+      label = "mildly unlucky"
+    } else if (percentile <= 95) {
+      label = "typical"
     } else {
       label = "typical"
     }
-    position = `Bottom ${percentile.toFixed(0)}%`
   }
 
   // Format sigma with sign
   const sigmaStr = zScore >= 0 ? `+${zScore.toFixed(1)}σ` : `${zScore.toFixed(1)}σ`
 
-  // Build final string
-  if (label === "typical") {
-    return `Typical — ${actualSuccesses}/${n} successes vs ${expected.toFixed(1)} expected (${sigmaStr})`
-  }
-  return `${position} (${label}) — ${actualSuccesses}/${n} successes vs ${expected.toFixed(1)} expected (${sigmaStr})`
+  // Build final string - always show position and label
+  return `${position} (${label}) — ${actualSuccesses}/${n} vs ${expected.toFixed(1)} expected (${sigmaStr})`
 }
 
 function printSummary(state: WorldState, stats: SessionStats): void {
@@ -298,12 +340,28 @@ function printSummary(state: WorldState, stats: SessionStats): void {
   // XP gained
   const xpGained: Record<string, number> = {}
   let totalXP = 0
+  let expectedXP = 0
+  const xpProbabilities: number[] = [] // probabilities for all XP-granting actions
   for (const log of stats.logs) {
     if (log.skillGained) {
       xpGained[log.skillGained.skill] = (xpGained[log.skillGained.skill] || 0) + log.skillGained.amount
       totalXP += log.skillGained.amount
     }
+    // Calculate expected XP: RNG actions contribute their probability, deterministic XP actions contribute 1
+    if (log.rngRolls.length > 0) {
+      // RNG action - expected XP is the success probability
+      const p = log.rngRolls[0].probability
+      expectedXP += p
+      xpProbabilities.push(p)
+    } else if (log.skillGained) {
+      // Deterministic action that granted XP (Move, Craft, Store)
+      expectedXP += 1
+      xpProbabilities.push(1) // deterministic success
+    }
   }
+
+  // Risk/Volatility calculation
+  const riskVolatilityStr = computeRiskVolatility(xpProbabilities, expectedXP)
 
   // RNG luck analysis using Poisson binomial distribution
   const probabilities: number[] = []
@@ -356,7 +414,9 @@ function printSummary(state: WorldState, stats: SessionStats): void {
   console.log(`╠${dline}╣`)
 
   // Time & Efficiency
-  console.log(pad(`⏱  TIME: ${ticksUsed}/${stats.totalSession} ticks used  │  XP/tick: ${ticksUsed > 0 ? (totalXP / ticksUsed).toFixed(2) : "0.00"}  │  Total XP: ${totalXP}`))
+  const expectedXPTick = ticksUsed > 0 ? (expectedXP / ticksUsed).toFixed(2) : "0.00"
+  const actualXPTick = ticksUsed > 0 ? (totalXP / ticksUsed).toFixed(2) : "0.00"
+  console.log(pad(`⏱  TIME: ${ticksUsed}/${stats.totalSession} ticks  │  XP: ${totalXP} actual, ${expectedXP.toFixed(1)} expected  │  XP/tick: ${actualXPTick} actual, ${expectedXPTick} expected`))
   console.log(`├${line}┤`)
 
   // Actions breakdown
@@ -368,6 +428,10 @@ function printSummary(state: WorldState, stats: SessionStats): void {
 
   // Luck
   console.log(pad(`🎲 LUCK: ${luckStr}`))
+  console.log(`├${line}┤`)
+
+  // Risk/Volatility
+  console.log(pad(`⚠️  RISK: ${riskVolatilityStr}`))
   console.log(`├${line}┤`)
 
   // Skills
