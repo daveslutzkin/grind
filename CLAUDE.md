@@ -71,6 +71,8 @@ These are read-only and must not mutate state.
 - Node.js / TypeScript
 - Jest for testing
 - ESM modules
+- ESLint for linting
+- Prettier for formatting
 
 ## Build & Test Commands
 
@@ -79,9 +81,13 @@ npm install          # Install dependencies
 npm test             # Run all tests
 npm test -- --watch  # Run tests in watch mode
 npm run build        # Compile TypeScript
+npm run lint         # Run ESLint
+npm run format       # Format with Prettier
+npm run check        # Run format:check, lint, and test (use before commits)
 ```
 
 ## Development Workflow
 
 - **Test-driven development**: Write tests first, then implement to make them pass
-- **Commit checkpoints**: Commit (but don't push) each time functionality is complete and tests pass
+- **Quality checks**: Run `npm run check` (format, lint, test) after every change
+- **Commit checkpoints**: Commit (but don't push) each time functionality is complete and all checks pass

@@ -1,5 +1,5 @@
-import type { WorldState } from './types.js';
-import { createRng } from './rng.js';
+import type { WorldState } from "./types.js"
+import { createRng } from "./rng.js"
 
 export function createToyWorld(seed: string): WorldState {
   return {
@@ -9,7 +9,7 @@ export function createToyWorld(seed: string): WorldState {
     },
 
     player: {
-      location: 'TOWN',
+      location: "TOWN",
       inventory: [],
       inventoryCapacity: 10,
       storage: [],
@@ -25,28 +25,28 @@ export function createToyWorld(seed: string): WorldState {
     },
 
     world: {
-      locations: ['TOWN', 'MINE', 'FOREST'],
+      locations: ["TOWN", "MINE", "FOREST"],
       travelCosts: {
-        'TOWN->MINE': 2,
-        'MINE->TOWN': 2,
-        'TOWN->FOREST': 3,
-        'FOREST->TOWN': 3,
-        'MINE->FOREST': 4,
-        'FOREST->MINE': 4,
+        "TOWN->MINE": 2,
+        "MINE->TOWN": 2,
+        "TOWN->FOREST": 3,
+        "FOREST->TOWN": 3,
+        "MINE->FOREST": 4,
+        "FOREST->MINE": 4,
       },
       resourceNodes: [
         {
-          id: 'iron-node',
-          location: 'MINE',
-          itemId: 'IRON_ORE',
+          id: "iron-node",
+          location: "MINE",
+          itemId: "IRON_ORE",
           gatherTime: 2,
           successProbability: 0.8,
           requiredSkillLevel: 0,
         },
         {
-          id: 'wood-node',
-          location: 'FOREST',
-          itemId: 'WOOD_LOG',
+          id: "wood-node",
+          location: "FOREST",
+          itemId: "WOOD_LOG",
           gatherTime: 2,
           successProbability: 0.9,
           requiredSkillLevel: 0,
@@ -54,38 +54,38 @@ export function createToyWorld(seed: string): WorldState {
       ],
       enemies: [
         {
-          id: 'cave-rat',
-          location: 'MINE',
+          id: "cave-rat",
+          location: "MINE",
           fightTime: 3,
           successProbability: 0.7,
           requiredSkillLevel: 0,
-          loot: [{ itemId: 'IRON_ORE', quantity: 1 }],
-          failureRelocation: 'TOWN',
+          loot: [{ itemId: "IRON_ORE", quantity: 1 }],
+          failureRelocation: "TOWN",
         },
       ],
       recipes: [
         {
-          id: 'iron-bar-recipe',
-          inputs: [{ itemId: 'IRON_ORE', quantity: 2 }],
-          output: { itemId: 'IRON_BAR', quantity: 1 },
+          id: "iron-bar-recipe",
+          inputs: [{ itemId: "IRON_ORE", quantity: 2 }],
+          output: { itemId: "IRON_BAR", quantity: 1 },
           craftTime: 3,
-          requiredLocation: 'TOWN',
+          requiredLocation: "TOWN",
           requiredSkillLevel: 0,
         },
       ],
       contracts: [
         {
-          id: 'miners-guild-1',
-          guildLocation: 'TOWN',
-          requirements: [{ itemId: 'IRON_BAR', quantity: 2 }],
-          rewards: [{ itemId: 'IRON_ORE', quantity: 5 }],
+          id: "miners-guild-1",
+          guildLocation: "TOWN",
+          requirements: [{ itemId: "IRON_BAR", quantity: 2 }],
+          rewards: [{ itemId: "IRON_ORE", quantity: 5 }],
           reputationReward: 10,
         },
       ],
-      storageLocation: 'TOWN',
+      storageLocation: "TOWN",
       storageRequiredSkillLevel: 1,
     },
 
     rng: createRng(seed),
-  };
+  }
 }

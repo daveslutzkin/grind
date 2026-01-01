@@ -13,8 +13,8 @@ import type {
   FailureType,
   ItemID,
   ItemStack,
-} from './types.js';
-import { roll } from './rng.js';
+} from "./types.js"
+import { roll } from "./rng.js"
 
 function createFailureLog(
   state: WorldState,
@@ -31,89 +31,89 @@ function createFailureLog(
     timeConsumed,
     rngRolls: [],
     stateDeltaSummary: `Failed: ${failureType}`,
-  };
+  }
 }
 
 function extractParameters(action: Action): Record<string, unknown> {
-  const { type, ...params } = action;
-  return params;
+  const { type: _type, ...params } = action
+  return params
 }
 
 function consumeTime(state: WorldState, ticks: number): void {
-  state.time.currentTick += ticks;
-  state.time.sessionRemainingTicks -= ticks;
+  state.time.currentTick += ticks
+  state.time.sessionRemainingTicks -= ticks
 }
 
 function executeMove(state: WorldState, action: MoveAction, rolls: RngRoll[]): ActionLog {
-  const tickBefore = state.time.currentTick;
-  const fromLocation = state.player.location;
-  const destination = action.destination;
+  const tickBefore = state.time.currentTick
+  const fromLocation = state.player.location
+  const destination = action.destination
 
   // Check if already at destination
   if (fromLocation === destination) {
-    return createFailureLog(state, action, 'WRONG_LOCATION');
+    return createFailureLog(state, action, "WRONG_LOCATION")
   }
 
   // Get travel cost
-  const travelKey = `${fromLocation}->${destination}`;
-  const travelCost = state.world.travelCosts[travelKey];
+  const travelKey = `${fromLocation}->${destination}`
+  const travelCost = state.world.travelCosts[travelKey]
 
   if (travelCost === undefined) {
-    return createFailureLog(state, action, 'WRONG_LOCATION');
+    return createFailureLog(state, action, "WRONG_LOCATION")
   }
 
   // Check skill requirement (Travel >= travel cost)
   if (state.player.skills.Travel < travelCost) {
-    return createFailureLog(state, action, 'INSUFFICIENT_SKILL');
+    return createFailureLog(state, action, "INSUFFICIENT_SKILL")
   }
 
   // Check if enough time remaining
   if (state.time.sessionRemainingTicks < travelCost) {
-    return createFailureLog(state, action, 'SESSION_ENDED');
+    return createFailureLog(state, action, "SESSION_ENDED")
   }
 
   // Move player
-  state.player.location = destination;
-  consumeTime(state, travelCost);
+  state.player.location = destination
+  consumeTime(state, travelCost)
 
   // Grant XP
-  state.player.skills.Travel += 1;
+  state.player.skills.Travel += 1
 
   return {
     tickBefore,
-    actionType: 'Move',
+    actionType: "Move",
     parameters: { destination },
     success: true,
     timeConsumed: travelCost,
-    skillGained: { skill: 'Travel', amount: 1 },
+    skillGained: { skill: "Travel", amount: 1 },
     rngRolls: rolls,
     stateDeltaSummary: `Moved from ${fromLocation} to ${destination}`,
-  };
+  }
 }
 
 export function executeAction(state: WorldState, action: Action): ActionLog {
-  const rolls: RngRoll[] = [];
+  const rolls: RngRoll[] = []
 
   // Check if session has ended
   if (state.time.sessionRemainingTicks <= 0) {
-    return createFailureLog(state, action, 'SESSION_ENDED');
+    return createFailureLog(state, action, "SESSION_ENDED")
   }
 
   switch (action.type) {
-    case 'Move':
-      return executeMove(state, action, rolls);
-    case 'AcceptContract':
-      return executeAcceptContract(state, action, rolls);
-    case 'Gather':
-      return executeGather(state, action, rolls);
-    case 'Fight':
-      return executeFight(state, action, rolls);
-    case 'Craft':
-      return executeCraft(state, action, rolls);
-    case 'Store':
-      return executeStore(state, action, rolls);
-    case 'Drop':
-      return executeDrop(state, action, rolls);
+    case "Move":
+      return executeMove(state, action, rolls)
+    case "AcceptContract":
+      return executeAcceptContract(state, action, rolls)
+    case "Gather":
+      return executeGather(state, action, rolls)
+    case "Fight":
+      return executeFight(state, action, rolls)
+    case "Craft":
+      return executeCraft(state, action, rolls)
+    case "Store":
+      return executeStore(state, action, rolls)
+    case "Drop":
+      return executeDrop(state, action, rolls)
   }
 }
 
@@ -122,379 +122,359 @@ function executeAcceptContract(
   action: AcceptContractAction,
   rolls: RngRoll[]
 ): ActionLog {
-  const tickBefore = state.time.currentTick;
-  const contractId = action.contractId;
+  const tickBefore = state.time.currentTick
+  const contractId = action.contractId
 
   // Find contract
-  const contract = state.world.contracts.find(c => c.id === contractId);
+  const contract = state.world.contracts.find((c) => c.id === contractId)
   if (!contract) {
-    return createFailureLog(state, action, 'CONTRACT_NOT_FOUND');
+    return createFailureLog(state, action, "CONTRACT_NOT_FOUND")
   }
 
   // Check if at guild location
   if (state.player.location !== contract.guildLocation) {
-    return createFailureLog(state, action, 'WRONG_LOCATION');
+    return createFailureLog(state, action, "WRONG_LOCATION")
   }
 
   // Check if already has contract
   if (state.player.activeContracts.includes(contractId)) {
-    return createFailureLog(state, action, 'ALREADY_HAS_CONTRACT');
+    return createFailureLog(state, action, "ALREADY_HAS_CONTRACT")
   }
 
   // Accept contract
-  state.player.activeContracts.push(contractId);
+  state.player.activeContracts.push(contractId)
 
   return {
     tickBefore,
-    actionType: 'AcceptContract',
+    actionType: "AcceptContract",
     parameters: { contractId },
     success: true,
     timeConsumed: 0,
     rngRolls: rolls,
     stateDeltaSummary: `Accepted contract ${contractId}`,
-  };
+  }
 }
 
 function addToInventory(state: WorldState, itemId: ItemID, quantity: number): void {
-  const existing = state.player.inventory.find(i => i.itemId === itemId);
+  const existing = state.player.inventory.find((i) => i.itemId === itemId)
   if (existing) {
-    existing.quantity += quantity;
+    existing.quantity += quantity
   } else {
-    state.player.inventory.push({ itemId, quantity });
+    state.player.inventory.push({ itemId, quantity })
   }
 }
 
 function getInventoryCount(state: WorldState): number {
-  return state.player.inventory.reduce((sum, item) => sum + item.quantity, 0);
+  return state.player.inventory.reduce((sum, item) => sum + item.quantity, 0)
 }
 
-function executeGather(
-  state: WorldState,
-  action: GatherAction,
-  rolls: RngRoll[]
-): ActionLog {
-  const tickBefore = state.time.currentTick;
-  const nodeId = action.nodeId;
+function executeGather(state: WorldState, action: GatherAction, rolls: RngRoll[]): ActionLog {
+  const tickBefore = state.time.currentTick
+  const nodeId = action.nodeId
 
   // Find node
-  const node = state.world.resourceNodes.find(n => n.id === nodeId);
+  const node = state.world.resourceNodes.find((n) => n.id === nodeId)
   if (!node) {
-    return createFailureLog(state, action, 'NODE_NOT_FOUND');
+    return createFailureLog(state, action, "NODE_NOT_FOUND")
   }
 
   // Check if at node location
   if (state.player.location !== node.location) {
-    return createFailureLog(state, action, 'WRONG_LOCATION');
+    return createFailureLog(state, action, "WRONG_LOCATION")
   }
 
   // Check skill requirement
   if (state.player.skills.Gathering < node.requiredSkillLevel) {
-    return createFailureLog(state, action, 'INSUFFICIENT_SKILL');
+    return createFailureLog(state, action, "INSUFFICIENT_SKILL")
   }
 
   // Check inventory capacity
   if (getInventoryCount(state) >= state.player.inventoryCapacity) {
-    return createFailureLog(state, action, 'INVENTORY_FULL');
+    return createFailureLog(state, action, "INVENTORY_FULL")
   }
 
   // Check if enough time remaining
   if (state.time.sessionRemainingTicks < node.gatherTime) {
-    return createFailureLog(state, action, 'SESSION_ENDED');
+    return createFailureLog(state, action, "SESSION_ENDED")
   }
 
   // Consume time
-  consumeTime(state, node.gatherTime);
+  consumeTime(state, node.gatherTime)
 
   // Roll for success
-  const success = roll(state.rng, node.successProbability, `gather:${nodeId}`, rolls);
+  const success = roll(state.rng, node.successProbability, `gather:${nodeId}`, rolls)
 
   if (!success) {
     return {
       tickBefore,
-      actionType: 'Gather',
+      actionType: "Gather",
       parameters: { nodeId },
       success: false,
-      failureType: 'RNG_FAILURE',
+      failureType: "RNG_FAILURE",
       timeConsumed: node.gatherTime,
       rngRolls: rolls,
       stateDeltaSummary: `Failed to gather from ${nodeId}`,
-    };
+    }
   }
 
   // Add item to inventory
-  addToInventory(state, node.itemId, 1);
+  addToInventory(state, node.itemId, 1)
 
   // Grant XP
-  state.player.skills.Gathering += 1;
+  state.player.skills.Gathering += 1
 
   return {
     tickBefore,
-    actionType: 'Gather',
+    actionType: "Gather",
     parameters: { nodeId },
     success: true,
     timeConsumed: node.gatherTime,
-    skillGained: { skill: 'Gathering', amount: 1 },
+    skillGained: { skill: "Gathering", amount: 1 },
     rngRolls: rolls,
     stateDeltaSummary: `Gathered 1 ${node.itemId} from ${nodeId}`,
-  };
+  }
 }
 
-function executeFight(
-  state: WorldState,
-  action: FightAction,
-  rolls: RngRoll[]
-): ActionLog {
-  const tickBefore = state.time.currentTick;
-  const enemyId = action.enemyId;
+function executeFight(state: WorldState, action: FightAction, rolls: RngRoll[]): ActionLog {
+  const tickBefore = state.time.currentTick
+  const enemyId = action.enemyId
 
   // Find enemy
-  const enemy = state.world.enemies.find(e => e.id === enemyId);
+  const enemy = state.world.enemies.find((e) => e.id === enemyId)
   if (!enemy) {
-    return createFailureLog(state, action, 'ENEMY_NOT_FOUND');
+    return createFailureLog(state, action, "ENEMY_NOT_FOUND")
   }
 
   // Check if at enemy location
   if (state.player.location !== enemy.location) {
-    return createFailureLog(state, action, 'WRONG_LOCATION');
+    return createFailureLog(state, action, "WRONG_LOCATION")
   }
 
   // Check skill requirement
   if (state.player.skills.Combat < enemy.requiredSkillLevel) {
-    return createFailureLog(state, action, 'INSUFFICIENT_SKILL');
+    return createFailureLog(state, action, "INSUFFICIENT_SKILL")
   }
 
   // Check if enough time remaining
   if (state.time.sessionRemainingTicks < enemy.fightTime) {
-    return createFailureLog(state, action, 'SESSION_ENDED');
+    return createFailureLog(state, action, "SESSION_ENDED")
   }
 
   // Consume time
-  consumeTime(state, enemy.fightTime);
+  consumeTime(state, enemy.fightTime)
 
   // Roll for success
-  const success = roll(state.rng, enemy.successProbability, `fight:${enemyId}`, rolls);
+  const success = roll(state.rng, enemy.successProbability, `fight:${enemyId}`, rolls)
 
   if (!success) {
     // Relocate player on failure
-    state.player.location = enemy.failureRelocation;
+    state.player.location = enemy.failureRelocation
 
     return {
       tickBefore,
-      actionType: 'Fight',
+      actionType: "Fight",
       parameters: { enemyId },
       success: false,
-      failureType: 'RNG_FAILURE',
+      failureType: "RNG_FAILURE",
       timeConsumed: enemy.fightTime,
       rngRolls: rolls,
       stateDeltaSummary: `Lost fight to ${enemyId}, relocated to ${enemy.failureRelocation}`,
-    };
+    }
   }
 
   // Add loot to inventory
   for (const loot of enemy.loot) {
-    addToInventory(state, loot.itemId, loot.quantity);
+    addToInventory(state, loot.itemId, loot.quantity)
   }
 
   // Grant XP
-  state.player.skills.Combat += 1;
+  state.player.skills.Combat += 1
 
   return {
     tickBefore,
-    actionType: 'Fight',
+    actionType: "Fight",
     parameters: { enemyId },
     success: true,
     timeConsumed: enemy.fightTime,
-    skillGained: { skill: 'Combat', amount: 1 },
+    skillGained: { skill: "Combat", amount: 1 },
     rngRolls: rolls,
     stateDeltaSummary: `Defeated ${enemyId}, gained loot`,
-  };
+  }
 }
 
 function hasItems(inventory: ItemStack[], required: ItemStack[]): boolean {
   for (const req of required) {
-    const item = inventory.find(i => i.itemId === req.itemId);
+    const item = inventory.find((i) => i.itemId === req.itemId)
     if (!item || item.quantity < req.quantity) {
-      return false;
+      return false
     }
   }
-  return true;
+  return true
 }
 
 function removeFromInventory(state: WorldState, itemId: ItemID, quantity: number): void {
-  const item = state.player.inventory.find(i => i.itemId === itemId);
+  const item = state.player.inventory.find((i) => i.itemId === itemId)
   if (item) {
-    item.quantity -= quantity;
+    item.quantity -= quantity
     if (item.quantity <= 0) {
-      const index = state.player.inventory.indexOf(item);
-      state.player.inventory.splice(index, 1);
+      const index = state.player.inventory.indexOf(item)
+      state.player.inventory.splice(index, 1)
     }
   }
 }
 
-function executeCraft(
-  state: WorldState,
-  action: CraftAction,
-  rolls: RngRoll[]
-): ActionLog {
-  const tickBefore = state.time.currentTick;
-  const recipeId = action.recipeId;
+function executeCraft(state: WorldState, action: CraftAction, rolls: RngRoll[]): ActionLog {
+  const tickBefore = state.time.currentTick
+  const recipeId = action.recipeId
 
   // Find recipe
-  const recipe = state.world.recipes.find(r => r.id === recipeId);
+  const recipe = state.world.recipes.find((r) => r.id === recipeId)
   if (!recipe) {
-    return createFailureLog(state, action, 'RECIPE_NOT_FOUND');
+    return createFailureLog(state, action, "RECIPE_NOT_FOUND")
   }
 
   // Check if at required location
   if (state.player.location !== recipe.requiredLocation) {
-    return createFailureLog(state, action, 'WRONG_LOCATION');
+    return createFailureLog(state, action, "WRONG_LOCATION")
   }
 
   // Check skill requirement
   if (state.player.skills.Crafting < recipe.requiredSkillLevel) {
-    return createFailureLog(state, action, 'INSUFFICIENT_SKILL');
+    return createFailureLog(state, action, "INSUFFICIENT_SKILL")
   }
 
   // Check if has required inputs
   if (!hasItems(state.player.inventory, recipe.inputs)) {
-    return createFailureLog(state, action, 'MISSING_ITEMS');
+    return createFailureLog(state, action, "MISSING_ITEMS")
   }
 
   // Check if enough time remaining
   if (state.time.sessionRemainingTicks < recipe.craftTime) {
-    return createFailureLog(state, action, 'SESSION_ENDED');
+    return createFailureLog(state, action, "SESSION_ENDED")
   }
 
   // Consume inputs
   for (const input of recipe.inputs) {
-    removeFromInventory(state, input.itemId, input.quantity);
+    removeFromInventory(state, input.itemId, input.quantity)
   }
 
   // Consume time
-  consumeTime(state, recipe.craftTime);
+  consumeTime(state, recipe.craftTime)
 
   // Produce output
-  addToInventory(state, recipe.output.itemId, recipe.output.quantity);
+  addToInventory(state, recipe.output.itemId, recipe.output.quantity)
 
   // Grant XP
-  state.player.skills.Crafting += 1;
+  state.player.skills.Crafting += 1
 
   return {
     tickBefore,
-    actionType: 'Craft',
+    actionType: "Craft",
     parameters: { recipeId },
     success: true,
     timeConsumed: recipe.craftTime,
-    skillGained: { skill: 'Crafting', amount: 1 },
+    skillGained: { skill: "Crafting", amount: 1 },
     rngRolls: rolls,
     stateDeltaSummary: `Crafted ${recipe.output.quantity} ${recipe.output.itemId}`,
-  };
-}
-
-function addToStorage(state: WorldState, itemId: ItemID, quantity: number): void {
-  const existing = state.player.storage.find(i => i.itemId === itemId);
-  if (existing) {
-    existing.quantity += quantity;
-  } else {
-    state.player.storage.push({ itemId, quantity });
   }
 }
 
-function executeStore(
-  state: WorldState,
-  action: StoreAction,
-  rolls: RngRoll[]
-): ActionLog {
-  const tickBefore = state.time.currentTick;
-  const { itemId, quantity } = action;
-  const storeTime = 1;
+function addToStorage(state: WorldState, itemId: ItemID, quantity: number): void {
+  const existing = state.player.storage.find((i) => i.itemId === itemId)
+  if (existing) {
+    existing.quantity += quantity
+  } else {
+    state.player.storage.push({ itemId, quantity })
+  }
+}
+
+function executeStore(state: WorldState, action: StoreAction, rolls: RngRoll[]): ActionLog {
+  const tickBefore = state.time.currentTick
+  const { itemId, quantity } = action
+  const storeTime = 1
 
   // Check if at storage location
   if (state.player.location !== state.world.storageLocation) {
-    return createFailureLog(state, action, 'WRONG_LOCATION');
+    return createFailureLog(state, action, "WRONG_LOCATION")
   }
 
   // Check skill requirement
   if (state.player.skills.Logistics < state.world.storageRequiredSkillLevel) {
-    return createFailureLog(state, action, 'INSUFFICIENT_SKILL');
+    return createFailureLog(state, action, "INSUFFICIENT_SKILL")
   }
 
   // Check if item exists in inventory
-  const item = state.player.inventory.find(i => i.itemId === itemId);
+  const item = state.player.inventory.find((i) => i.itemId === itemId)
   if (!item) {
-    return createFailureLog(state, action, 'ITEM_NOT_FOUND');
+    return createFailureLog(state, action, "ITEM_NOT_FOUND")
   }
 
   // Check if has enough quantity
   if (item.quantity < quantity) {
-    return createFailureLog(state, action, 'MISSING_ITEMS');
+    return createFailureLog(state, action, "MISSING_ITEMS")
   }
 
   // Check if enough time remaining
   if (state.time.sessionRemainingTicks < storeTime) {
-    return createFailureLog(state, action, 'SESSION_ENDED');
+    return createFailureLog(state, action, "SESSION_ENDED")
   }
 
   // Consume time
-  consumeTime(state, storeTime);
+  consumeTime(state, storeTime)
 
   // Move item to storage
-  removeFromInventory(state, itemId, quantity);
-  addToStorage(state, itemId, quantity);
+  removeFromInventory(state, itemId, quantity)
+  addToStorage(state, itemId, quantity)
 
   // Grant XP
-  state.player.skills.Logistics += 1;
+  state.player.skills.Logistics += 1
 
   return {
     tickBefore,
-    actionType: 'Store',
+    actionType: "Store",
     parameters: { itemId, quantity },
     success: true,
     timeConsumed: storeTime,
-    skillGained: { skill: 'Logistics', amount: 1 },
+    skillGained: { skill: "Logistics", amount: 1 },
     rngRolls: rolls,
     stateDeltaSummary: `Stored ${quantity} ${itemId}`,
-  };
+  }
 }
 
-function executeDrop(
-  state: WorldState,
-  action: DropAction,
-  rolls: RngRoll[]
-): ActionLog {
-  const tickBefore = state.time.currentTick;
-  const { itemId, quantity } = action;
-  const dropTime = 1;
+function executeDrop(state: WorldState, action: DropAction, rolls: RngRoll[]): ActionLog {
+  const tickBefore = state.time.currentTick
+  const { itemId, quantity } = action
+  const dropTime = 1
 
   // Check if item exists in inventory
-  const item = state.player.inventory.find(i => i.itemId === itemId);
+  const item = state.player.inventory.find((i) => i.itemId === itemId)
   if (!item) {
-    return createFailureLog(state, action, 'ITEM_NOT_FOUND');
+    return createFailureLog(state, action, "ITEM_NOT_FOUND")
   }
 
   // Check if has enough quantity
   if (item.quantity < quantity) {
-    return createFailureLog(state, action, 'MISSING_ITEMS');
+    return createFailureLog(state, action, "MISSING_ITEMS")
   }
 
   // Check if enough time remaining
   if (state.time.sessionRemainingTicks < dropTime) {
-    return createFailureLog(state, action, 'SESSION_ENDED');
+    return createFailureLog(state, action, "SESSION_ENDED")
   }
 
   // Consume time
-  consumeTime(state, dropTime);
+  consumeTime(state, dropTime)
 
   // Remove item from inventory
-  removeFromInventory(state, itemId, quantity);
+  removeFromInventory(state, itemId, quantity)
 
   return {
     tickBefore,
-    actionType: 'Drop',
+    actionType: "Drop",
     parameters: { itemId, quantity },
     success: true,
     timeConsumed: dropTime,
     rngRolls: rolls,
     stateDeltaSummary: `Dropped ${quantity} ${itemId}`,
-  };
+  }
 }
