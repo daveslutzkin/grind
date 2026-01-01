@@ -6,7 +6,6 @@ import type { Action, ActionLog, LocationID } from "./types.js"
 describe("Integration: Full Session Flow", () => {
   it("should run a complete session with various actions", () => {
     const state = createToyWorld("integration-test-seed")
-    state.player.skills.Travel = 4 // Need Travel >= travel cost (max 4 for MINE<->FOREST)
     const logs: ActionLog[] = []
 
     // Accept a contract at TOWN
@@ -63,7 +62,6 @@ describe("Integration: Full Session Flow", () => {
 
   it("should demonstrate logging shows what happened and why", () => {
     const state = createToyWorld("logging-test")
-    state.player.skills.Travel = 2 // Need Travel >= travel cost (2)
     const logs: ActionLog[] = []
 
     // Move to mine
@@ -85,7 +83,7 @@ describe("Integration: Full Session Flow", () => {
 
     // - What skill advanced (if success)
     if (gatherLog.success) {
-      expect(gatherLog.skillGained?.skill).toBe("Gathering")
+      expect(gatherLog.skillGained?.skill).toBe("Mining") // iron-node grants Mining XP
       expect(gatherLog.skillGained?.amount).toBe(1)
     }
 
@@ -95,7 +93,6 @@ describe("Integration: Full Session Flow", () => {
 
   it("should demonstrate plan evaluation finds violations", () => {
     const state = createToyWorld("plan-test")
-    state.player.skills.Travel = 2 // Need Travel >= travel cost (2)
 
     // Valid plan: move to mine, gather, move back, craft
     const validPlan: Action[] = [
@@ -120,7 +117,6 @@ describe("Integration: Full Session Flow", () => {
 
   it("should demonstrate session ends when ticks run out", () => {
     const state = createToyWorld("session-end-test")
-    state.player.skills.Travel = 4 // Need Travel >= travel cost (max 4 for MINE<->FOREST)
     const logs: ActionLog[] = []
 
     // Keep moving until session ends
@@ -148,7 +144,6 @@ describe("Integration: Full Session Flow", () => {
   it("should show how dominant strategies might form", () => {
     // This test demonstrates that we can evaluate different strategies
     const state = createToyWorld("strategy-test")
-    state.player.skills.Travel = 2 // Need Travel >= travel cost (2)
 
     // Strategy 1: Pure gathering
     const gatherStrategy: Action[] = [
@@ -171,14 +166,14 @@ describe("Integration: Full Session Flow", () => {
     const fightEval = evaluatePlan(state, fightStrategy)
 
     // We can compare strategies
-    // Gathering: 2 + 4*2 = 10 ticks, expected XP = 1 + 4*0.8 = 4.2
-    // Fighting: 2 + 3*3 = 11 ticks, expected XP = 1 + 3*0.7 = 3.1
+    // Gathering: 2 + 4*2 = 10 ticks, expected XP = 0 (Move) + 4*0.8 = 3.2
+    // Fighting: 2 + 3*3 = 11 ticks, expected XP = 0 (Move) + 3*0.7 = 2.1
 
     expect(gatherEval.expectedTime).toBe(10)
-    expect(gatherEval.expectedXP).toBeCloseTo(4.2)
+    expect(gatherEval.expectedXP).toBeCloseTo(3.2)
 
     expect(fightEval.expectedTime).toBe(11)
-    expect(fightEval.expectedXP).toBeCloseTo(3.1)
+    expect(fightEval.expectedXP).toBeCloseTo(2.1)
 
     // Gathering appears more efficient for pure XP gain
     // This is the kind of insight that reveals dominant strategies
@@ -188,7 +183,6 @@ describe("Integration: Full Session Flow", () => {
 // Helper function to run a standard session
 function runSession(seed: string): { logs: ActionLog[]; state: ReturnType<typeof createToyWorld> } {
   const state = createToyWorld(seed)
-  state.player.skills.Travel = 2 // Need Travel >= travel cost (2)
   const logs: ActionLog[] = []
 
   logs.push(executeAction(state, { type: "Move", destination: "MINE" }))

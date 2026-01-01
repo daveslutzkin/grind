@@ -44,14 +44,12 @@ function evaluateMoveAction(state: WorldState, action: MoveAction): ActionEvalua
     return { expectedTime: 0, expectedXP: 0, successProbability: 0 }
   }
 
-  // Check skill requirement (Travel >= travel cost)
-  if (state.player.skills.Travel < travelCost) {
-    return { expectedTime: 0, expectedXP: 0, successProbability: 0 }
-  }
+  // No skill requirement for Move - just map connectivity
+  // No XP for Move - Travel is purely logistical
 
   return {
     expectedTime: travelCost,
-    expectedXP: 1,
+    expectedXP: 0,
     successProbability: 1,
   }
 }
@@ -81,8 +79,8 @@ function evaluateAcceptContractAction(
   }
 }
 
-function getInventoryCount(state: WorldState): number {
-  return state.player.inventory.reduce((sum, item) => sum + item.quantity, 0)
+function getInventorySlotCount(state: WorldState): number {
+  return state.player.inventory.length
 }
 
 function evaluateGatherAction(state: WorldState, action: GatherAction): ActionEvaluation {
@@ -96,14 +94,18 @@ function evaluateGatherAction(state: WorldState, action: GatherAction): ActionEv
     return { expectedTime: 0, expectedXP: 0, successProbability: 0 }
   }
 
-  // Check skill requirement
-  if (state.player.skills.Gathering < node.requiredSkillLevel) {
+  // Check skill requirement (uses node-specific skill type)
+  if (state.player.skills[node.skillType] < node.requiredSkillLevel) {
     return { expectedTime: 0, expectedXP: 0, successProbability: 0 }
   }
 
-  // Check inventory capacity
-  if (getInventoryCount(state) >= state.player.inventoryCapacity) {
-    return { expectedTime: 0, expectedXP: 0, successProbability: 0 }
+  // Check inventory capacity (slot-based)
+  if (getInventorySlotCount(state) >= state.player.inventoryCapacity) {
+    // Only fail if this item would need a new slot
+    const existingItem = state.player.inventory.find((i) => i.itemId === node.itemId)
+    if (!existingItem) {
+      return { expectedTime: 0, expectedXP: 0, successProbability: 0 }
+    }
   }
 
   return {
@@ -147,8 +149,8 @@ function evaluateCraftAction(state: WorldState, action: CraftAction): ActionEval
     return { expectedTime: 0, expectedXP: 0, successProbability: 0 }
   }
 
-  // Check skill requirement
-  if (state.player.skills.Crafting < recipe.requiredSkillLevel) {
+  // Check skill requirement (Smithing)
+  if (state.player.skills.Smithing < recipe.requiredSkillLevel) {
     return { expectedTime: 0, expectedXP: 0, successProbability: 0 }
   }
 
@@ -230,9 +232,7 @@ function getFailureReason(state: WorldState, action: Action): string {
       if (travelCost === undefined) {
         return "WRONG_LOCATION"
       }
-      if (state.player.skills.Travel < travelCost) {
-        return "INSUFFICIENT_SKILL"
-      }
+      // No skill requirement for Move - just map connectivity
       return "WRONG_LOCATION"
     }
     case "AcceptContract": {
@@ -256,12 +256,15 @@ function getFailureReason(state: WorldState, action: Action): string {
       if (state.player.location !== node.location) {
         return "WRONG_LOCATION"
       }
-      if (state.player.skills.Gathering < node.requiredSkillLevel) {
+      if (state.player.skills[node.skillType] < node.requiredSkillLevel) {
         return "INSUFFICIENT_SKILL"
       }
-      const invCount = state.player.inventory.reduce((sum, item) => sum + item.quantity, 0)
-      if (invCount >= state.player.inventoryCapacity) {
-        return "INVENTORY_FULL"
+      // Slot-based inventory capacity
+      if (state.player.inventory.length >= state.player.inventoryCapacity) {
+        const existingItem = state.player.inventory.find((i) => i.itemId === node.itemId)
+        if (!existingItem) {
+          return "INVENTORY_FULL"
+        }
       }
       return "NODE_NOT_FOUND"
     }
@@ -286,7 +289,7 @@ function getFailureReason(state: WorldState, action: Action): string {
       if (state.player.location !== recipe.requiredLocation) {
         return "WRONG_LOCATION"
       }
-      if (state.player.skills.Crafting < recipe.requiredSkillLevel) {
+      if (state.player.skills.Smithing < recipe.requiredSkillLevel) {
         return "INSUFFICIENT_SKILL"
       }
       if (!hasItems(state.player.inventory, recipe.inputs)) {
@@ -346,7 +349,7 @@ function simulateAction(state: WorldState, action: Action): string | null {
   switch (action.type) {
     case "Move":
       state.player.location = action.destination
-      state.player.skills.Travel += 1
+      // No skill gain for Move - Travel is purely logistical
       break
     case "AcceptContract":
       state.player.activeContracts.push(action.contractId)
@@ -361,7 +364,7 @@ function simulateAction(state: WorldState, action: Action): string | null {
         } else {
           state.player.inventory.push({ itemId: node.itemId, quantity: 1 })
         }
-        state.player.skills.Gathering += 1
+        state.player.skills[node.skillType] += 1
       }
       break
     }
@@ -404,7 +407,7 @@ function simulateAction(state: WorldState, action: Action): string | null {
             quantity: recipe.output.quantity,
           })
         }
-        state.player.skills.Crafting += 1
+        state.player.skills.Smithing += 1
       }
       break
     }

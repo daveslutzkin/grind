@@ -14,10 +14,10 @@ export function createToyWorld(seed: string): WorldState {
       inventoryCapacity: 10,
       storage: [],
       skills: {
-        Travel: 0,
-        Gathering: 0,
+        Mining: 0,
+        Woodcutting: 0,
         Combat: 0,
-        Crafting: 0,
+        Smithing: 0,
         Logistics: 0,
       },
       guildReputation: 0,
@@ -42,6 +42,7 @@ export function createToyWorld(seed: string): WorldState {
           gatherTime: 2,
           successProbability: 0.8,
           requiredSkillLevel: 0,
+          skillType: "Mining",
         },
         {
           id: "wood-node",
@@ -50,6 +51,7 @@ export function createToyWorld(seed: string): WorldState {
           gatherTime: 2,
           successProbability: 0.9,
           requiredSkillLevel: 0,
+          skillType: "Woodcutting",
         },
       ],
       enemies: [

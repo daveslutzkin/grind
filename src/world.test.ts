@@ -65,10 +65,10 @@ describe("World", () => {
 
     it("should initialize all skills to 0", () => {
       const state = createToyWorld("test-seed")
-      expect(state.player.skills.Travel).toBe(0)
-      expect(state.player.skills.Gathering).toBe(0)
+      expect(state.player.skills.Mining).toBe(0)
+      expect(state.player.skills.Woodcutting).toBe(0)
       expect(state.player.skills.Combat).toBe(0)
-      expect(state.player.skills.Crafting).toBe(0)
+      expect(state.player.skills.Smithing).toBe(0)
       expect(state.player.skills.Logistics).toBe(0)
     })
 

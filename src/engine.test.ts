@@ -14,7 +14,6 @@ describe("Engine", () => {
   describe("Move action", () => {
     it("should move player to destination", () => {
       const state = createToyWorld("test-seed")
-      state.player.skills.Travel = 2 // Need Travel >= travel cost (2)
       const action: MoveAction = { type: "Move", destination: "MINE" }
 
       const log = executeAction(state, action)
@@ -25,7 +24,6 @@ describe("Engine", () => {
 
     it("should consume travel time", () => {
       const state = createToyWorld("test-seed")
-      state.player.skills.Travel = 2
       const initialTicks = state.time.sessionRemainingTicks
       const action: MoveAction = { type: "Move", destination: "MINE" }
 
@@ -36,15 +34,13 @@ describe("Engine", () => {
       expect(state.time.currentTick).toBe(2)
     })
 
-    it("should grant Travel XP on success", () => {
+    it("should not grant XP (travel is purely logistical)", () => {
       const state = createToyWorld("test-seed")
-      state.player.skills.Travel = 2
       const action: MoveAction = { type: "Move", destination: "MINE" }
 
       const log = executeAction(state, action)
 
-      expect(log.skillGained).toEqual({ skill: "Travel", amount: 1 })
-      expect(state.player.skills.Travel).toBe(3) // Was 2, gained 1
+      expect(log.skillGained).toBeUndefined()
     })
 
     it("should fail if already at destination", () => {
@@ -61,7 +57,6 @@ describe("Engine", () => {
 
     it("should fail if session has ended", () => {
       const state = createToyWorld("test-seed")
-      state.player.skills.Travel = 2
       state.time.sessionRemainingTicks = 0
       const action: MoveAction = { type: "Move", destination: "MINE" }
 
@@ -71,21 +66,8 @@ describe("Engine", () => {
       expect(log.failureType).toBe("SESSION_ENDED")
     })
 
-    it("should fail if insufficient Travel skill", () => {
-      const state = createToyWorld("test-seed")
-      state.player.skills.Travel = 1 // Need 2 for TOWN->MINE
-      const action: MoveAction = { type: "Move", destination: "MINE" }
-
-      const log = executeAction(state, action)
-
-      expect(log.success).toBe(false)
-      expect(log.failureType).toBe("INSUFFICIENT_SKILL")
-      expect(log.timeConsumed).toBe(0)
-    })
-
     it("should log action details", () => {
       const state = createToyWorld("test-seed")
-      state.player.skills.Travel = 2
       const action: MoveAction = { type: "Move", destination: "MINE" }
 
       const log = executeAction(state, action)
@@ -99,7 +81,6 @@ describe("Engine", () => {
 
     it("should work for all location pairs", () => {
       const state = createToyWorld("test-seed")
-      state.player.skills.Travel = 4 // Need 4 for FOREST->MINE
 
       // TOWN -> FOREST (cost 3)
       let log = executeAction(state, { type: "Move", destination: "FOREST" })
@@ -210,7 +191,7 @@ describe("Engine", () => {
       expect(state.time.sessionRemainingTicks).toBe(initialTicks - 2)
     })
 
-    it("should grant Gathering XP on success", () => {
+    it("should grant Mining XP on success (for iron-node)", () => {
       const state = createToyWorld("test-seed")
       state.player.location = "MINE"
       const action: GatherAction = { type: "Gather", nodeId: "iron-node" }
@@ -218,8 +199,8 @@ describe("Engine", () => {
       const log = executeAction(state, action)
 
       if (log.success) {
-        expect(log.skillGained).toEqual({ skill: "Gathering", amount: 1 })
-        expect(state.player.skills.Gathering).toBe(1)
+        expect(log.skillGained).toEqual({ skill: "Mining", amount: 1 })
+        expect(state.player.skills.Mining).toBe(1)
       }
     })
 
@@ -274,7 +255,7 @@ describe("Engine", () => {
       expect(state.time.sessionRemainingTicks).toBe(initialTicks - 2)
 
       if (!log.success) {
-        expect(log.failureType).toBe("RNG_FAILURE")
+        expect(log.failureType).toBe("GATHER_FAILURE")
         expect(log.skillGained).toBeUndefined()
       }
     })
@@ -296,11 +277,13 @@ describe("Engine", () => {
       }
     })
 
-    it("should fail if inventory is full", () => {
+    it("should fail if inventory slots are full with different items", () => {
       const state = createToyWorld("test-seed")
       state.player.location = "MINE"
-      // Fill inventory to capacity
-      state.player.inventory.push({ itemId: "IRON_ORE", quantity: 10 })
+      // Fill all 10 inventory slots with different items (slot-based capacity)
+      for (let i = 0; i < 10; i++) {
+        state.player.inventory.push({ itemId: "WOOD_LOG", quantity: 1 })
+      }
       const action: GatherAction = { type: "Gather", nodeId: "iron-node" }
 
       const log = executeAction(state, action)
@@ -308,6 +291,22 @@ describe("Engine", () => {
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("INVENTORY_FULL")
       expect(log.timeConsumed).toBe(0)
+    })
+
+    it("should succeed if inventory full but already has that item (slot-based)", () => {
+      const state = createToyWorld("test-seed")
+      state.player.location = "MINE"
+      // Fill 9 slots with other items, 1 slot with IRON_ORE
+      for (let i = 0; i < 9; i++) {
+        state.player.inventory.push({ itemId: "WOOD_LOG", quantity: 1 })
+      }
+      state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
+      const action: GatherAction = { type: "Gather", nodeId: "iron-node" }
+
+      const log = executeAction(state, action)
+
+      // Should not fail with INVENTORY_FULL because we can stack on existing IRON_ORE
+      expect(log.failureType).not.toBe("INVENTORY_FULL")
     })
   })
 
@@ -382,7 +381,7 @@ describe("Engine", () => {
 
       const log = executeAction(state, action)
 
-      if (!log.success && log.failureType === "RNG_FAILURE") {
+      if (!log.success && log.failureType === "COMBAT_FAILURE") {
         expect(state.player.location).toBe("TOWN") // failureRelocation
       }
     })
@@ -426,15 +425,15 @@ describe("Engine", () => {
       expect(state.time.sessionRemainingTicks).toBe(initialTicks - 3)
     })
 
-    it("should grant Crafting XP", () => {
+    it("should grant Smithing XP", () => {
       const state = createToyWorld("test-seed")
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
 
       const log = executeAction(state, action)
 
-      expect(log.skillGained).toEqual({ skill: "Crafting", amount: 1 })
-      expect(state.player.skills.Crafting).toBe(1)
+      expect(log.skillGained).toEqual({ skill: "Smithing", amount: 1 })
+      expect(state.player.skills.Smithing).toBe(1)
     })
 
     it("should fail if not at required location", () => {

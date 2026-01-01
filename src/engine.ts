@@ -13,6 +13,7 @@ import type {
   FailureType,
   ItemID,
   ItemStack,
+  ContractCompletion,
 } from "./types.js"
 import { roll } from "./rng.js"
 
@@ -54,17 +55,12 @@ function executeMove(state: WorldState, action: MoveAction, rolls: RngRoll[]): A
     return createFailureLog(state, action, "WRONG_LOCATION")
   }
 
-  // Get travel cost
+  // Get travel cost (only check reachability, no skill gating)
   const travelKey = `${fromLocation}->${destination}`
   const travelCost = state.world.travelCosts[travelKey]
 
   if (travelCost === undefined) {
     return createFailureLog(state, action, "WRONG_LOCATION")
-  }
-
-  // Check skill requirement (Travel >= travel cost)
-  if (state.player.skills.Travel < travelCost) {
-    return createFailureLog(state, action, "INSUFFICIENT_SKILL")
   }
 
   // Check if enough time remaining
@@ -76,8 +72,7 @@ function executeMove(state: WorldState, action: MoveAction, rolls: RngRoll[]): A
   state.player.location = destination
   consumeTime(state, travelCost)
 
-  // Grant XP
-  state.player.skills.Travel += 1
+  // No XP for Move - Travel is purely logistical
 
   return {
     tickBefore,
@@ -85,7 +80,6 @@ function executeMove(state: WorldState, action: MoveAction, rolls: RngRoll[]): A
     parameters: { destination },
     success: true,
     timeConsumed: travelCost,
-    skillGained: { skill: "Travel", amount: 1 },
     rngRolls: rolls,
     stateDeltaSummary: `Moved from ${fromLocation} to ${destination}`,
   }
@@ -164,8 +158,42 @@ function addToInventory(state: WorldState, itemId: ItemID, quantity: number): vo
   }
 }
 
-function getInventoryCount(state: WorldState): number {
-  return state.player.inventory.reduce((sum, item) => sum + item.quantity, 0)
+function getInventorySlotCount(state: WorldState): number {
+  return state.player.inventory.length
+}
+
+function checkContractCompletion(state: WorldState): ContractCompletion[] {
+  const completions: ContractCompletion[] = []
+
+  // Check each active contract
+  for (const contractId of [...state.player.activeContracts]) {
+    const contract = state.world.contracts.find((c) => c.id === contractId)
+    if (!contract) continue
+
+    // Check if all requirements are met (in inventory or storage)
+    const allRequirementsMet = contract.requirements.every((req) => {
+      const inInventory = state.player.inventory.find((i) => i.itemId === req.itemId)
+      const inStorage = state.player.storage.find((i) => i.itemId === req.itemId)
+      const totalQuantity = (inInventory?.quantity ?? 0) + (inStorage?.quantity ?? 0)
+      return totalQuantity >= req.quantity
+    })
+
+    if (allRequirementsMet) {
+      // Award reputation
+      state.player.guildReputation += contract.reputationReward
+
+      // Remove from active contracts
+      const index = state.player.activeContracts.indexOf(contractId)
+      state.player.activeContracts.splice(index, 1)
+
+      completions.push({
+        contractId,
+        reputationGained: contract.reputationReward,
+      })
+    }
+  }
+
+  return completions
 }
 
 function executeGather(state: WorldState, action: GatherAction, rolls: RngRoll[]): ActionLog {
@@ -183,14 +211,18 @@ function executeGather(state: WorldState, action: GatherAction, rolls: RngRoll[]
     return createFailureLog(state, action, "WRONG_LOCATION")
   }
 
-  // Check skill requirement
-  if (state.player.skills.Gathering < node.requiredSkillLevel) {
+  // Check skill requirement (uses node-specific skill type)
+  if (state.player.skills[node.skillType] < node.requiredSkillLevel) {
     return createFailureLog(state, action, "INSUFFICIENT_SKILL")
   }
 
-  // Check inventory capacity
-  if (getInventoryCount(state) >= state.player.inventoryCapacity) {
-    return createFailureLog(state, action, "INVENTORY_FULL")
+  // Check inventory capacity (slot-based)
+  if (getInventorySlotCount(state) >= state.player.inventoryCapacity) {
+    // Only check if this item would need a new slot
+    const existingItem = state.player.inventory.find((i) => i.itemId === node.itemId)
+    if (!existingItem) {
+      return createFailureLog(state, action, "INVENTORY_FULL")
+    }
   }
 
   // Check if enough time remaining
@@ -210,7 +242,7 @@ function executeGather(state: WorldState, action: GatherAction, rolls: RngRoll[]
       actionType: "Gather",
       parameters: { nodeId },
       success: false,
-      failureType: "RNG_FAILURE",
+      failureType: "GATHER_FAILURE",
       timeConsumed: node.gatherTime,
       rngRolls: rolls,
       stateDeltaSummary: `Failed to gather from ${nodeId}`,
@@ -220,8 +252,11 @@ function executeGather(state: WorldState, action: GatherAction, rolls: RngRoll[]
   // Add item to inventory
   addToInventory(state, node.itemId, 1)
 
-  // Grant XP
-  state.player.skills.Gathering += 1
+  // Grant XP (uses node-specific skill type)
+  state.player.skills[node.skillType] += 1
+
+  // Check for contract completion
+  const contractsCompleted = checkContractCompletion(state)
 
   return {
     tickBefore,
@@ -229,7 +264,8 @@ function executeGather(state: WorldState, action: GatherAction, rolls: RngRoll[]
     parameters: { nodeId },
     success: true,
     timeConsumed: node.gatherTime,
-    skillGained: { skill: "Gathering", amount: 1 },
+    skillGained: { skill: node.skillType, amount: 1 },
+    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
     stateDeltaSummary: `Gathered 1 ${node.itemId} from ${nodeId}`,
   }
@@ -275,7 +311,7 @@ function executeFight(state: WorldState, action: FightAction, rolls: RngRoll[]):
       actionType: "Fight",
       parameters: { enemyId },
       success: false,
-      failureType: "RNG_FAILURE",
+      failureType: "COMBAT_FAILURE",
       timeConsumed: enemy.fightTime,
       rngRolls: rolls,
       stateDeltaSummary: `Lost fight to ${enemyId}, relocated to ${enemy.failureRelocation}`,
@@ -290,6 +326,9 @@ function executeFight(state: WorldState, action: FightAction, rolls: RngRoll[]):
   // Grant XP
   state.player.skills.Combat += 1
 
+  // Check for contract completion
+  const contractsCompleted = checkContractCompletion(state)
+
   return {
     tickBefore,
     actionType: "Fight",
@@ -297,6 +336,7 @@ function executeFight(state: WorldState, action: FightAction, rolls: RngRoll[]):
     success: true,
     timeConsumed: enemy.fightTime,
     skillGained: { skill: "Combat", amount: 1 },
+    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
     stateDeltaSummary: `Defeated ${enemyId}, gained loot`,
   }
@@ -365,7 +405,10 @@ function executeCraft(state: WorldState, action: CraftAction, rolls: RngRoll[]):
   addToInventory(state, recipe.output.itemId, recipe.output.quantity)
 
   // Grant XP
-  state.player.skills.Crafting += 1
+  state.player.skills.Smithing += 1
+
+  // Check for contract completion
+  const contractsCompleted = checkContractCompletion(state)
 
   return {
     tickBefore,
@@ -373,7 +416,8 @@ function executeCraft(state: WorldState, action: CraftAction, rolls: RngRoll[]):
     parameters: { recipeId },
     success: true,
     timeConsumed: recipe.craftTime,
-    skillGained: { skill: "Crafting", amount: 1 },
+    skillGained: { skill: "Smithing", amount: 1 },
+    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
     stateDeltaSummary: `Crafted ${recipe.output.quantity} ${recipe.output.itemId}`,
   }

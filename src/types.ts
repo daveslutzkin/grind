@@ -2,7 +2,8 @@
 
 export type LocationID = "TOWN" | "MINE" | "FOREST"
 export type ItemID = "IRON_ORE" | "WOOD_LOG" | "IRON_BAR"
-export type SkillID = "Travel" | "Gathering" | "Combat" | "Crafting" | "Logistics"
+export type SkillID = "Mining" | "Woodcutting" | "Combat" | "Smithing" | "Logistics"
+export type GatheringSkillID = "Mining" | "Woodcutting"
 export type ContractID = string
 
 export interface ItemStack {
@@ -17,6 +18,7 @@ export interface ResourceNode {
   gatherTime: number
   successProbability: number
   requiredSkillLevel: number
+  skillType: GatheringSkillID
 }
 
 export interface Enemy {
@@ -136,7 +138,8 @@ export type FailureType =
   | "WRONG_LOCATION"
   | "MISSING_ITEMS"
   | "INVENTORY_FULL"
-  | "RNG_FAILURE"
+  | "GATHER_FAILURE"
+  | "COMBAT_FAILURE"
   | "CONTRACT_NOT_FOUND"
   | "ALREADY_HAS_CONTRACT"
   | "NODE_NOT_FOUND"
@@ -153,6 +156,12 @@ export interface RngRoll {
   rngCounter: number
 }
 
+// Contract completion info
+export interface ContractCompletion {
+  contractId: ContractID
+  reputationGained: number
+}
+
 // Action log
 export interface ActionLog {
   tickBefore: number
@@ -162,6 +171,7 @@ export interface ActionLog {
   failureType?: FailureType
   timeConsumed: number
   skillGained?: { skill: SkillID; amount: number }
+  contractsCompleted?: ContractCompletion[]
   rngRolls: RngRoll[]
   stateDeltaSummary: string
 }
