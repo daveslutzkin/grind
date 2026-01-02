@@ -216,5 +216,48 @@ describe("Evaluation APIs", () => {
       expect(result.violations[0].actionIndex).toBe(0)
       expect(result.violations[0].reason).toContain("SESSION_ENDED")
     })
+
+    it("should compute expected levels from expected XP", () => {
+      const state = createToyWorld("test-seed")
+      // At level 1, need 4 XP to reach level 2
+      // 5 Gather actions with 80% success = 4 expected XP
+      const actions: Action[] = [
+        { type: "Move", destination: "MINE" },
+        { type: "Gather", nodeId: "iron-node" },
+        { type: "Gather", nodeId: "iron-node" },
+        { type: "Gather", nodeId: "iron-node" },
+        { type: "Gather", nodeId: "iron-node" },
+        { type: "Gather", nodeId: "iron-node" },
+      ]
+
+      const result = evaluatePlan(state, actions)
+
+      // Expected XP for Mining: 5 * 0.8 = 4.0
+      // Starting at level 1 with 0 xp, need 4 xp for level 2
+      // So expectedLevels.Mining should be 1
+      expect(result.expectedLevels.Mining).toBe(1)
+      expect(result.expectedLevels.Combat).toBe(0)
+      expect(result.expectedLevels.Smithing).toBe(0)
+    })
+
+    it("should track expected levels for multiple skills", () => {
+      const state = createToyWorld("test-seed")
+      // Move to mine, gather, move to town, craft
+      const actions: Action[] = [
+        { type: "Move", destination: "MINE" },
+        { type: "Gather", nodeId: "iron-node" },
+        { type: "Gather", nodeId: "iron-node" },
+        { type: "Gather", nodeId: "iron-node" },
+        { type: "Gather", nodeId: "iron-node" },
+        { type: "Gather", nodeId: "iron-node" }, // 5 gathers = 4 expected Mining XP
+        { type: "Move", destination: "TOWN" },
+        { type: "Craft", recipeId: "iron-bar-recipe" }, // 1 Smithing XP (deterministic)
+      ]
+
+      const result = evaluatePlan(state, actions)
+
+      expect(result.expectedLevels.Mining).toBe(1) // 4 expected XP crosses threshold
+      expect(result.expectedLevels.Smithing).toBe(0) // Only 1 XP, need 4 for level 2
+    })
   })
 })

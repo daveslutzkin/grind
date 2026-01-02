@@ -40,6 +40,28 @@ function grantXP(state: WorldState, skill: SkillID, amount: number): LevelUp[] {
   return result.levelUps.map(lu => ({ ...lu, skill }))
 }
 
+/**
+ * Collect all level-ups from contract completions
+ */
+function collectContractLevelUps(completions: ContractCompletion[]): LevelUp[] {
+  const allLevelUps: LevelUp[] = []
+  for (const c of completions) {
+    if (c.levelUps) {
+      allLevelUps.push(...c.levelUps)
+    }
+  }
+  return allLevelUps
+}
+
+/**
+ * Merge action level-ups with contract level-ups
+ */
+function mergeLevelUps(actionLevelUps: LevelUp[], contractCompletions: ContractCompletion[]): LevelUp[] | undefined {
+  const contractLevelUps = collectContractLevelUps(contractCompletions)
+  const allLevelUps = [...actionLevelUps, ...contractLevelUps]
+  return allLevelUps.length > 0 ? allLevelUps : undefined
+}
+
 function createFailureLog(
   state: WorldState,
   action: Action,
@@ -258,6 +280,7 @@ function executeMove(state: WorldState, action: MoveAction, rolls: RngRoll[]): A
     parameters: { destination },
     success: true,
     timeConsumed: check.timeCost,
+    levelUps: mergeLevelUps([], contractsCompleted),
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
     stateDeltaSummary: `Moved from ${fromLocation} to ${destination}`,
@@ -316,6 +339,7 @@ function executeAcceptContract(
     parameters: { contractId },
     success: true,
     timeConsumed: 0,
+    levelUps: mergeLevelUps([], contractsCompleted),
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
     stateDeltaSummary: `Accepted contract ${contractId}`,
@@ -375,7 +399,7 @@ function executeGather(state: WorldState, action: GatherAction, rolls: RngRoll[]
     success: true,
     timeConsumed: check.timeCost,
     skillGained: { skill: node.skillType, amount: 1 },
-    levelUps: levelUps.length > 0 ? levelUps : undefined,
+    levelUps: mergeLevelUps(levelUps, contractsCompleted),
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
     stateDeltaSummary: `Gathered 1 ${node.itemId} from ${nodeId}`,
@@ -440,7 +464,7 @@ function executeFight(state: WorldState, action: FightAction, rolls: RngRoll[]):
     success: true,
     timeConsumed: check.timeCost,
     skillGained: { skill: "Combat", amount: 1 },
-    levelUps: levelUps.length > 0 ? levelUps : undefined,
+    levelUps: mergeLevelUps(levelUps, contractsCompleted),
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
     stateDeltaSummary: `Defeated ${enemyId}, gained loot`,
@@ -489,7 +513,7 @@ function executeCraft(state: WorldState, action: CraftAction, rolls: RngRoll[]):
     success: true,
     timeConsumed: check.timeCost,
     skillGained: { skill: "Smithing", amount: 1 },
-    levelUps: levelUps.length > 0 ? levelUps : undefined,
+    levelUps: mergeLevelUps(levelUps, contractsCompleted),
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
     stateDeltaSummary: `Crafted ${recipe.output.quantity} ${recipe.output.itemId}`,
@@ -531,7 +555,7 @@ function executeStore(state: WorldState, action: StoreAction, rolls: RngRoll[]):
     success: true,
     timeConsumed: check.timeCost,
     skillGained: { skill: "Logistics", amount: 1 },
-    levelUps: levelUps.length > 0 ? levelUps : undefined,
+    levelUps: mergeLevelUps(levelUps, contractsCompleted),
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
     stateDeltaSummary: `Stored ${quantity} ${itemId}`,
@@ -568,6 +592,7 @@ function executeDrop(state: WorldState, action: DropAction, rolls: RngRoll[]): A
     parameters: { itemId, quantity },
     success: true,
     timeConsumed: check.timeCost,
+    levelUps: mergeLevelUps([], contractsCompleted),
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
     stateDeltaSummary: `Dropped ${quantity} ${itemId}`,

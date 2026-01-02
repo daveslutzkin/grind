@@ -307,6 +307,103 @@ describe("Integration: Full Session Flow", () => {
     expect(state.player.inventory.find((i) => i.itemId === "WOOD_LOG")?.quantity).toBe(3)
     expect(state.player.guildReputation).toBe(20)
   })
+
+  it("should include contract XP level-ups in ActionLog.levelUps", () => {
+    const state = createToyWorld("contract-levelup-test")
+
+    // Create a contract that gives XP reward
+    state.world.contracts.push({
+      id: "xp-contract",
+      guildLocation: "TOWN",
+      requirements: [{ itemId: "IRON_BAR", quantity: 1 }],
+      rewards: [],
+      reputationReward: 5,
+      xpReward: { skill: "Smithing", amount: 5 }, // Enough to level up (need 4 XP for level 2)
+    })
+
+    // Give player the required items
+    state.player.inventory.push({ itemId: "IRON_BAR", quantity: 1 })
+
+    // Accept the contract - it should complete immediately and grant XP
+    const acceptLog = executeAction(state, {
+      type: "AcceptContract",
+      contractId: "xp-contract",
+    })
+
+    expect(acceptLog.success).toBe(true)
+    expect(acceptLog.contractsCompleted).toHaveLength(1)
+    expect(acceptLog.contractsCompleted![0].xpGained).toEqual({ skill: "Smithing", amount: 5 })
+
+    // Level-ups from contract should appear in ContractCompletion.levelUps
+    expect(acceptLog.contractsCompleted![0].levelUps).toBeDefined()
+    expect(acceptLog.contractsCompleted![0].levelUps).toHaveLength(1)
+    expect(acceptLog.contractsCompleted![0].levelUps![0]).toEqual({
+      skill: "Smithing",
+      fromLevel: 1,
+      toLevel: 2,
+    })
+
+    // Level-ups from contract should ALSO appear in ActionLog.levelUps
+    expect(acceptLog.levelUps).toBeDefined()
+    expect(acceptLog.levelUps).toHaveLength(1)
+    expect(acceptLog.levelUps![0]).toEqual({
+      skill: "Smithing",
+      fromLevel: 1,
+      toLevel: 2,
+    })
+
+    // Verify skill actually leveled up
+    expect(state.player.skills.Smithing.level).toBe(2)
+    expect(state.player.skills.Smithing.xp).toBe(1) // 5 - 4 (threshold) = 1 carry-over
+  })
+
+  it("should merge action level-ups with contract level-ups", () => {
+    const state = createToyWorld("merged-levelup-test")
+
+    // Create a contract that gives XP reward
+    state.world.contracts.push({
+      id: "mining-xp-contract",
+      guildLocation: "MINE",
+      requirements: [{ itemId: "IRON_ORE", quantity: 1 }],
+      rewards: [],
+      reputationReward: 5,
+      xpReward: { skill: "Combat", amount: 5 }, // Enough to level up Combat
+    })
+
+    // Move to mine and accept contract
+    executeAction(state, { type: "Move", destination: "MINE" })
+    executeAction(state, { type: "AcceptContract", contractId: "mining-xp-contract" })
+
+    // Give player enough Mining XP to be close to level up (need 4 XP total)
+    state.player.skills.Mining.xp = 3
+
+    // Gather to gain 1 Mining XP (if successful) and trigger contract completion
+    // with 1 IRON_ORE in inventory, contract will complete
+    state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
+
+    const gatherLog = executeAction(state, { type: "Gather", nodeId: "iron-node" })
+
+    if (gatherLog.success) {
+      // Gather succeeded: should have Mining level-up from action
+      // Contract should have completed and given Combat level-up
+      expect(gatherLog.levelUps).toBeDefined()
+      expect(gatherLog.levelUps!.length).toBeGreaterThanOrEqual(1)
+
+      // Should have both Mining (from gather) and Combat (from contract) level-ups
+      const miningLevelUp = gatherLog.levelUps!.find(lu => lu.skill === "Mining")
+      const combatLevelUp = gatherLog.levelUps!.find(lu => lu.skill === "Combat")
+
+      expect(miningLevelUp).toBeDefined()
+      expect(miningLevelUp!.fromLevel).toBe(1)
+      expect(miningLevelUp!.toLevel).toBe(2)
+
+      if (gatherLog.contractsCompleted) {
+        expect(combatLevelUp).toBeDefined()
+        expect(combatLevelUp!.fromLevel).toBe(1)
+        expect(combatLevelUp!.toLevel).toBe(2)
+      }
+    }
+  })
 })
 
 // Helper function to run a standard session

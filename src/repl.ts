@@ -482,11 +482,14 @@ function printSummary(state: WorldState, stats: SessionStats, objective: Objecti
       const p = log.rngRolls[0].probability
       expectedXP += p
       xpProbabilities.push(p)
-      // Track per-skill expected XP
-      if (log.actionType === "Gather" || log.actionType === "Fight") {
-        const skill = log.actionType === "Fight" ? "Combat" :
-          (log.parameters.nodeId === "iron-node" ? "Mining" : "Woodcutting")
-        expectedXPPerSkill[skill as SkillID] += p
+      // Track per-skill expected XP - use skillGained if available, else look up from world data
+      if (log.actionType === "Fight") {
+        expectedXPPerSkill.Combat += p
+      } else if (log.actionType === "Gather") {
+        // Use skillGained if action succeeded, otherwise look up node's skillType
+        const skill = log.skillGained?.skill ??
+          state.world.resourceNodes.find(n => n.id === log.parameters.nodeId)?.skillType
+        if (skill) expectedXPPerSkill[skill] += p
       }
     } else if (log.skillGained) {
       // Deterministic action that granted XP (Craft, Store)
