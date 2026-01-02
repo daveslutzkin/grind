@@ -4,8 +4,8 @@
 
 import { createToyWorld } from "./world.js"
 import { executeAction } from "./engine.js"
-import type { Action, ActionLog, WorldState, SkillID, Objective, SkillState } from "./types.js"
-import { OBJECTIVES, getTotalXP, getXPThresholdForNextLevel } from "./types.js"
+import type { Action, ActionLog, WorldState, SkillID, SkillState } from "./types.js"
+import { getTotalXP, getXPThresholdForNextLevel } from "./types.js"
 
 interface SessionStats {
   logs: ActionLog[]
@@ -190,82 +190,6 @@ function computeVolatility(xpProbabilities: number[]): string {
 }
 
 /**
- * Compute Risk to Objective (objective-specific)
- * Returns probability that objective is NOT achieved
- */
-function computeRiskToObjective(
-  objective: Objective,
-  state: WorldState,
-  stats: SessionStats,
-  startingSkills: Record<SkillID, SkillState>
-): string {
-  let failProb = 0
-  let description = ""
-
-  switch (objective.type) {
-    case "maximize_xp":
-      // Always succeeds by definition
-      failProb = 0
-      description = "maximize XP"
-      break
-
-    case "complete_contract": {
-      // Check if contract was completed
-      let completed = false
-      for (const log of stats.logs) {
-        if (log.contractsCompleted) {
-          for (const c of log.contractsCompleted) {
-            if (c.contractId === objective.contractId) {
-              completed = true
-            }
-          }
-        }
-      }
-      failProb = completed ? 0 : 1
-      description = `complete ${objective.contractId}`
-      break
-    }
-
-    case "reach_skill": {
-      const currentLevel = state.player.skills[objective.skill].level
-      const achieved = currentLevel >= objective.target
-      failProb = achieved ? 0 : 1
-      description = `reach ${objective.skill} ${objective.target}`
-      break
-    }
-
-    case "diversify_skills": {
-      // Check if all listed skills advanced at least 1 XP
-      let allAdvanced = true
-      for (const skill of objective.skills) {
-        const startXP = getTotalXP(startingSkills[skill as SkillID])
-        const endXP = getTotalXP(state.player.skills[skill as SkillID])
-        if (endXP <= startXP) {
-          allAdvanced = false
-          break
-        }
-      }
-      failProb = allAdvanced ? 0 : 1
-      description = `diversify ${objective.skills.length} skills`
-      break
-    }
-  }
-
-  // Bucket risk
-  let riskLabel: string
-  if (failProb < 0.2) {
-    riskLabel = "Low"
-  } else if (failProb <= 0.5) {
-    riskLabel = "Medium"
-  } else {
-    riskLabel = "High"
-  }
-
-  const pct = (failProb * 100).toFixed(0)
-  return `${riskLabel} (${pct}% fail) — ${description}`
-}
-
-/**
  * Compute luck string with percentile, label, and sigma
  */
 
@@ -329,7 +253,7 @@ function computeLuckString(probabilities: number[], actualSuccesses: number): st
   return `${position} (${label}) — ${actualSuccesses}/${n} vs ${expected.toFixed(1)} expected (${sigmaStr})`
 }
 
-function printSummary(state: WorldState, stats: SessionStats, objective: Objective): void {
+function printSummary(state: WorldState, stats: SessionStats): void {
   const W = 120
   const line = "─".repeat(W - 2)
   const dline = "═".repeat(W - 2)
@@ -396,11 +320,8 @@ function printSummary(state: WorldState, stats: SessionStats, objective: Objecti
   // Compute expected level gains
   const expectedLevels = computeExpectedLevelGains(stats.startingSkills, expectedXPPerSkill)
 
-  // Volatility calculation (objective-agnostic)
+  // Volatility calculation
   const volatilityStr = computeVolatility(xpProbabilities)
-
-  // Risk to Objective calculation (objective-specific)
-  const riskToObjectiveStr = computeRiskToObjective(objective, state, stats, stats.startingSkills)
 
   // RNG luck analysis using Poisson binomial distribution
   const probabilities: number[] = []
@@ -453,8 +374,6 @@ function printSummary(state: WorldState, stats: SessionStats, objective: Objecti
   console.log(pad(`🎲 LUCK: ${luckStr}`))
   console.log(`├${line}┤`)
   console.log(pad(`📉 VOLATILITY: ${volatilityStr}`))
-  console.log(`├${line}┤`)
-  console.log(pad(`🎯 RISK TO OBJECTIVE: ${riskToObjectiveStr}`))
   console.log(`├${line}┤`)
   console.log(pad(`📈 SKILLS: ${skillDelta.length > 0 ? skillDelta.join("  │  ") : "(no gains)"}`)
   )
@@ -510,63 +429,18 @@ function parseAction(cmd: string): Action | null {
   }
 }
 
-function parseObjective(str: string): Objective {
-  const lower = str.toLowerCase()
-  switch (lower) {
-    case "maximize_xp":
-    case "max_xp":
-      return OBJECTIVES.MAXIMIZE_XP
-    case "complete_contract":
-    case "contract":
-      return OBJECTIVES.COMPLETE_MINERS_CONTRACT
-    case "mining_5":
-    case "reach_mining_5":
-      return OBJECTIVES.REACH_MINING_5
-    case "combat_3":
-    case "reach_combat_3":
-      return OBJECTIVES.REACH_COMBAT_3
-    case "smithing_3":
-    case "reach_smithing_3":
-      return OBJECTIVES.REACH_SMITHING_3
-    case "diversify":
-    case "diversify_all":
-      return OBJECTIVES.DIVERSIFY_ALL
-    case "balanced":
-    case "balanced_progress":
-      return OBJECTIVES.BALANCED_PROGRESS
-    default:
-      return OBJECTIVES.MAXIMIZE_XP
-  }
-}
-
 function main(): void {
   const args = process.argv.slice(2)
   if (args.length < 2) {
-    console.log("Usage: node dist/batch.js <seed> [--objective <obj>] <command1> <command2> ...")
+    console.log("Usage: node dist/batch.js <seed> <command1> <command2> ...")
     console.log("Example: node dist/batch.js test-seed 'move mine' 'gather iron-node' 'gather iron-node'")
-    console.log("Objectives: maximize_xp, contract, mining_5, combat_3, smithing_3, diversify, balanced")
     process.exit(1)
   }
 
   const seed = args[0]
-  let objective: Objective = OBJECTIVES.MAXIMIZE_XP
-  let commandStartIndex = 1
+  const commands = args.slice(1)
 
-  // Check for --objective flag
-  if (args[1] === "--objective" || args[1] === "-o") {
-    objective = parseObjective(args[2] || "maximize_xp")
-    commandStartIndex = 3
-  }
-
-  const commands = args.slice(commandStartIndex)
-
-  const objectiveDesc = objective.type === "maximize_xp" ? "Maximize XP" :
-    objective.type === "complete_contract" ? `Complete ${(objective as {contractId: string}).contractId}` :
-    objective.type === "reach_skill" ? `Reach ${(objective as {skill: string; target: number}).skill} ${(objective as {skill: string; target: number}).target}` :
-    `Diversify ${(objective as {skills: string[]}).skills.length} skills`
-
-  console.log(`=== Plan Execution (seed: ${seed}) ===`)
-  console.log(`🎯 Objective: ${objectiveDesc}\n`)
+  console.log(`=== Plan Execution (seed: ${seed}) ===\n`)
   const state = createToyWorld(seed)
   const stats: SessionStats = {
     logs: [],
@@ -592,7 +466,7 @@ function main(): void {
     printLog(log)
   }
 
-  printSummary(state, stats, objective)
+  printSummary(state, stats)
 }
 
 main()

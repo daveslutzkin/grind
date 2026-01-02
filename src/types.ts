@@ -214,27 +214,6 @@ export interface PlanEvaluation {
   violations: PlanViolation[]
 }
 
-// Objectives for risk analysis
-export type Objective =
-  | { type: "maximize_xp" }
-  | { type: "complete_contract"; contractId: ContractID }
-  | { type: "reach_skill"; skill: SkillID; target: number }
-  | { type: "diversify_skills"; skills: SkillID[] }
-
-// Canonical objectives
-export const OBJECTIVES = {
-  MAXIMIZE_XP: { type: "maximize_xp" } as Objective,
-  COMPLETE_MINERS_CONTRACT: { type: "complete_contract", contractId: "miners-guild-1" } as Objective,
-  REACH_MINING_5: { type: "reach_skill", skill: "Mining", target: 5 } as Objective,
-  REACH_COMBAT_3: { type: "reach_skill", skill: "Combat", target: 3 } as Objective,
-  REACH_SMITHING_3: { type: "reach_skill", skill: "Smithing", target: 3 } as Objective,
-  DIVERSIFY_ALL: { type: "diversify_skills", skills: ["Mining", "Woodcutting", "Combat", "Smithing", "Logistics"] } as Objective,
-  SAFE_PROGRESS: { type: "maximize_xp" } as Objective,
-  COMBAT_HEAVY: { type: "reach_skill", skill: "Combat", target: 3 } as Objective,
-  CONTRACT_VIA_COMBAT: { type: "complete_contract", contractId: "miners-guild-1" } as Objective,
-  BALANCED_PROGRESS: { type: "diversify_skills", skills: ["Mining", "Smithing", "Combat"] } as Objective,
-}
-
 // Level calculation utilities
 // XP required to reach level N is N²
 // Level 1 → 2 requires 4 XP (2²)

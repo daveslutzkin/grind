@@ -6,8 +6,8 @@ import * as readline from "readline"
 import { createToyWorld } from "./world.js"
 import { executeAction } from "./engine.js"
 import { evaluateAction } from "./evaluate.js"
-import type { Action, ActionLog, WorldState, SkillID, Objective, SkillState } from "./types.js"
-import { OBJECTIVES, getTotalXP, getXPThresholdForNextLevel } from "./types.js"
+import type { Action, ActionLog, WorldState, SkillID, SkillState } from "./types.js"
+import { getTotalXP, getXPThresholdForNextLevel } from "./types.js"
 
 // Session tracking
 interface SessionStats {
@@ -267,7 +267,7 @@ function poissonBinomialProbAtMost(probabilities: number[], k: number): number {
 }
 
 /**
- * Compute Volatility string for the plan (objective-agnostic)
+ * Compute Volatility string for the plan
  * Volatility = σ of total XP (standard deviation)
  */
 function computeVolatility(xpProbabilities: number[]): string {
@@ -288,82 +288,6 @@ function computeVolatility(xpProbabilities: number[]): string {
   }
 
   return `${volLabel} (±${sigma.toFixed(1)} XP)`
-}
-
-/**
- * Compute Risk to Objective (objective-specific)
- * Returns probability that objective is NOT achieved
- */
-function computeRiskToObjective(
-  objective: Objective,
-  state: WorldState,
-  stats: SessionStats,
-  startingSkills: Record<SkillID, SkillState>
-): string {
-  let failProb = 0
-  let description = ""
-
-  switch (objective.type) {
-    case "maximize_xp":
-      // Always succeeds by definition
-      failProb = 0
-      description = "maximize XP"
-      break
-
-    case "complete_contract": {
-      // Check if contract was completed
-      let completed = false
-      for (const log of stats.logs) {
-        if (log.contractsCompleted) {
-          for (const c of log.contractsCompleted) {
-            if (c.contractId === objective.contractId) {
-              completed = true
-            }
-          }
-        }
-      }
-      failProb = completed ? 0 : 1
-      description = `complete ${objective.contractId}`
-      break
-    }
-
-    case "reach_skill": {
-      const currentLevel = state.player.skills[objective.skill].level
-      const achieved = currentLevel >= objective.target
-      failProb = achieved ? 0 : 1
-      description = `reach ${objective.skill} ${objective.target}`
-      break
-    }
-
-    case "diversify_skills": {
-      // Check if all listed skills advanced at least 1 XP
-      let allAdvanced = true
-      for (const skill of objective.skills) {
-        const startXP = getTotalXP(startingSkills[skill as SkillID])
-        const endXP = getTotalXP(state.player.skills[skill as SkillID])
-        if (endXP <= startXP) {
-          allAdvanced = false
-          break
-        }
-      }
-      failProb = allAdvanced ? 0 : 1
-      description = `diversify ${objective.skills.length} skills`
-      break
-    }
-  }
-
-  // Bucket risk
-  let riskLabel: string
-  if (failProb < 0.2) {
-    riskLabel = "Low"
-  } else if (failProb <= 0.5) {
-    riskLabel = "Medium"
-  } else {
-    riskLabel = "High"
-  }
-
-  const pct = (failProb * 100).toFixed(0)
-  return `${riskLabel} (${pct}% fail) — ${description}`
 }
 
 /**
@@ -437,7 +361,7 @@ function computeLuckString(probabilities: number[], actualSuccesses: number): st
   return `${position} (${label}) — ${actualSuccesses}/${n} vs ${expected.toFixed(1)} expected (${sigmaStr})`
 }
 
-function printSummary(state: WorldState, stats: SessionStats, objective: Objective): void {
+function printSummary(state: WorldState, stats: SessionStats): void {
   const W = 120
   const line = "─".repeat(W - 2)
   const dline = "═".repeat(W - 2)
@@ -514,11 +438,8 @@ function printSummary(state: WorldState, stats: SessionStats, objective: Objecti
   // Compute expected level gains
   const expectedLevels = computeExpectedLevelGains(stats.startingSkills, expectedXPPerSkill)
 
-  // Volatility calculation (objective-agnostic)
+  // Volatility calculation
   const volatilityStr = computeVolatility(xpProbabilities)
-
-  // Risk to Objective calculation (objective-specific)
-  const riskToObjectiveStr = computeRiskToObjective(objective, state, stats, stats.startingSkills)
 
   // RNG luck analysis using Poisson binomial distribution
   const probabilities: number[] = []
@@ -591,10 +512,6 @@ function printSummary(state: WorldState, stats: SessionStats, objective: Objecti
 
   // Volatility
   console.log(pad(`📉 VOLATILITY: ${volatilityStr}`))
-  console.log(`├${line}┤`)
-
-  // Risk to Objective
-  console.log(pad(`🎯 RISK TO OBJECTIVE: ${riskToObjectiveStr}`))
   console.log(`├${line}┤`)
 
   // Skills
@@ -764,7 +681,7 @@ async function main(): Promise<void> {
     if (state.time.sessionRemainingTicks <= 0) {
       console.log("\n⏰ Session time exhausted!")
     }
-    printSummary(state, stats, OBJECTIVES.MAXIMIZE_XP)
+    printSummary(state, stats)
   }
 
   rl.close()
