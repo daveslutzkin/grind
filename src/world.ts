@@ -21,6 +21,8 @@ export function createToyWorld(seed: string): WorldState {
       },
       guildReputation: 0,
       activeContracts: [],
+      equippedWeapon: null,
+      contractKillProgress: {},
     },
 
     world: {

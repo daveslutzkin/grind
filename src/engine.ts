@@ -11,6 +11,7 @@ import type {
   StoreAction,
   DropAction,
   GuildEnrolmentAction,
+  TurnInCombatTokenAction,
   FailureType,
   ItemID,
   ContractCompletion,
@@ -29,6 +30,7 @@ import {
   checkStoreAction,
   checkDropAction,
   checkGuildEnrolmentAction,
+  checkTurnInCombatTokenAction,
 } from "./actionChecks.js"
 
 /**
@@ -171,18 +173,24 @@ function checkContractCompletion(state: WorldState): ContractCompletion[] {
     const contract = state.world.contracts.find((c) => c.id === contractId)
     if (!contract) continue
 
-    // Check if all requirements are met (in inventory or storage)
-    const allRequirementsMet = contract.requirements.every((req) => {
+    // Check if all item requirements are met (in inventory or storage)
+    const allItemRequirementsMet = contract.requirements.every((req) => {
       const inInventory = state.player.inventory.find((i) => i.itemId === req.itemId)
       const inStorage = state.player.storage.find((i) => i.itemId === req.itemId)
       const totalQuantity = (inInventory?.quantity ?? 0) + (inStorage?.quantity ?? 0)
       return totalQuantity >= req.quantity
     })
 
+    // Check if all kill requirements are met
+    const allKillRequirementsMet = (contract.killRequirements ?? []).every((req) => {
+      const progress = state.player.contractKillProgress[contractId]?.[req.enemyId] ?? 0
+      return progress >= req.count
+    })
+
     // Check if rewards will fit in inventory (respecting slot capacity)
     const rewardsWillFit = canFitContractRewards(state, contract.requirements, contract.rewards)
 
-    if (allRequirementsMet && rewardsWillFit) {
+    if (allItemRequirementsMet && allKillRequirementsMet && rewardsWillFit) {
       // Record what we're consuming for the log
       const itemsConsumed = contract.requirements.map((req) => ({
         itemId: req.itemId,
@@ -317,6 +325,8 @@ export function executeAction(state: WorldState, action: Action): ActionLog {
       return executeDrop(state, action, rolls)
     case "Enrol":
       return executeGuildEnrolment(state, action, rolls)
+    case "TurnInCombatToken":
+      return executeTurnInCombatToken(state, action, rolls)
   }
 }
 
@@ -438,9 +448,7 @@ function executeFight(state: WorldState, action: FightAction, rolls: RngRoll[]):
   const success = roll(state.rng, check.successProbability, `fight:${enemyId}`, rolls)
 
   if (!success) {
-    // Relocate player on failure
-    state.player.location = enemy.failureRelocation
-
+    // Per spec: On failure, time is consumed but player is NOT relocated
     return {
       tickBefore,
       actionType: "Fight",
@@ -449,13 +457,46 @@ function executeFight(state: WorldState, action: FightAction, rolls: RngRoll[]):
       failureType: "COMBAT_FAILURE",
       timeConsumed: check.timeCost,
       rngRolls: rolls,
-      stateDeltaSummary: `Lost fight to ${enemyId}, relocated to ${enemy.failureRelocation}`,
+      stateDeltaSummary: `Lost fight to ${enemyId}`,
     }
   }
 
-  // Add loot to inventory
+  // Add standard loot to inventory
   for (const loot of enemy.loot) {
     addToInventory(state, loot.itemId, loot.quantity)
+  }
+
+  // Track kills for active contracts with kill requirements
+  for (const contractId of state.player.activeContracts) {
+    const contract = state.world.contracts.find((c) => c.id === contractId)
+    if (contract?.killRequirements) {
+      for (const req of contract.killRequirements) {
+        if (req.enemyId === enemyId) {
+          if (!state.player.contractKillProgress[contractId]) {
+            state.player.contractKillProgress[contractId] = {}
+          }
+          const current = state.player.contractKillProgress[contractId][enemyId] || 0
+          state.player.contractKillProgress[contractId][enemyId] = current + 1
+        }
+      }
+    }
+  }
+
+  // Roll for ImprovedWeapon drop (10%)
+  const improvedWeaponDrop = roll(state.rng, 0.1, "improved-weapon-drop", rolls)
+  if (improvedWeaponDrop) {
+    // Remove CrudeWeapon if present
+    removeFromInventory(state, "CRUDE_WEAPON", 1)
+    // Add ImprovedWeapon
+    addToInventory(state, "IMPROVED_WEAPON", 1)
+    // Auto-equip
+    state.player.equippedWeapon = "IMPROVED_WEAPON"
+  }
+
+  // Roll for CombatGuildToken drop (1%)
+  const tokenDrop = roll(state.rng, 0.01, "combat-token-drop", rolls)
+  if (tokenDrop) {
+    addToInventory(state, "COMBAT_GUILD_TOKEN", 1)
   }
 
   // Grant XP
@@ -596,6 +637,51 @@ function executeDrop(state: WorldState, action: DropAction, rolls: RngRoll[]): A
   }
 }
 
+function executeTurnInCombatToken(
+  state: WorldState,
+  action: TurnInCombatTokenAction,
+  rolls: RngRoll[]
+): ActionLog {
+  const tickBefore = state.time.currentTick
+
+  // Use shared precondition check
+  const check = checkTurnInCombatTokenAction(state, action)
+  if (!check.valid) {
+    return createFailureLog(state, action, check.failureType!)
+  }
+
+  // Consume the token
+  removeFromInventory(state, "COMBAT_GUILD_TOKEN", 1)
+
+  // Add combat-guild-1 contract to the world if not already present
+  if (!state.world.contracts.find((c) => c.id === "combat-guild-1")) {
+    state.world.contracts.push({
+      id: "combat-guild-1",
+      guildLocation: "TOWN",
+      requirements: [],
+      killRequirements: [{ enemyId: "cave-rat", count: 2 }],
+      rewards: [],
+      reputationReward: 0,
+      xpReward: { skill: "Combat", amount: 5 }, // 4-6 XP, using 5 as fixed value
+    })
+  }
+
+  // Check for contract completion (after every successful action)
+  const contractsCompleted = checkContractCompletion(state)
+
+  return {
+    tickBefore,
+    actionType: "TurnInCombatToken",
+    parameters: {},
+    success: true,
+    timeConsumed: 0,
+    levelUps: mergeLevelUps([], contractsCompleted),
+    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+    rngRolls: rolls,
+    stateDeltaSummary: "Turned in Combat Guild Token, unlocked combat-guild-1 contract",
+  }
+}
+
 function executeGuildEnrolment(
   state: WorldState,
   action: GuildEnrolmentAction,
@@ -620,6 +706,12 @@ function executeGuildEnrolment(
 
   // Set skill to level 1 (unlock it)
   state.player.skills[skill] = { level: 1, xp: 0 }
+
+  // Combat enrolment grants and equips CRUDE_WEAPON
+  if (skill === "Combat") {
+    addToInventory(state, "CRUDE_WEAPON", 1)
+    state.player.equippedWeapon = "CRUDE_WEAPON"
+  }
 
   // Check for contract completion (after every successful action)
   const contractsCompleted = checkContractCompletion(state)

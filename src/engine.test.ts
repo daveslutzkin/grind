@@ -320,10 +320,16 @@ describe("Engine", () => {
   })
 
   describe("Fight action", () => {
+    function setupCombatState(state: ReturnType<typeof createToyWorld>): void {
+      state.player.location = "MINE"
+      state.player.skills.Combat = { level: 1, xp: 0 }
+      state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
+      state.player.equippedWeapon = "CRUDE_WEAPON"
+    }
+
     it("should add loot to inventory on success", () => {
       const state = createToyWorld("fight-success")
-      state.player.location = "MINE"
-      state.player.skills.Combat = { level: 1, xp: 0 } // Need level 1 to fight
+      setupCombatState(state)
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
       const log = executeAction(state, action)
@@ -337,21 +343,19 @@ describe("Engine", () => {
 
     it("should consume fight time", () => {
       const state = createToyWorld("test-seed")
-      state.player.location = "MINE"
-      state.player.skills.Combat = { level: 1, xp: 0 } // Need level 1 to fight
+      setupCombatState(state)
       const initialTicks = state.time.sessionRemainingTicks
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
       const log = executeAction(state, action)
 
-      expect(log.timeConsumed).toBe(3) // cave-rat fightTime is 3
+      expect(log.timeConsumed).toBe(3) // CrudeWeapon fightTime is 3
       expect(state.time.sessionRemainingTicks).toBe(initialTicks - 3)
     })
 
     it("should grant Combat XP on success", () => {
       const state = createToyWorld("test-seed")
-      state.player.location = "MINE"
-      state.player.skills.Combat = { level: 1, xp: 0 } // Need level 1 to fight
+      setupCombatState(state)
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
       const log = executeAction(state, action)
@@ -365,6 +369,8 @@ describe("Engine", () => {
     it("should fail if not at enemy location", () => {
       const state = createToyWorld("test-seed")
       // Player starts at TOWN, cave-rat is at MINE
+      state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
+      state.player.equippedWeapon = "CRUDE_WEAPON"
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
       const log = executeAction(state, action)
@@ -377,6 +383,8 @@ describe("Engine", () => {
     it("should fail if enemy not found", () => {
       const state = createToyWorld("test-seed")
       state.player.location = "MINE"
+      state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
+      state.player.equippedWeapon = "CRUDE_WEAPON"
       const action: FightAction = { type: "Fight", enemyId: "nonexistent" }
 
       const log = executeAction(state, action)
@@ -385,30 +393,30 @@ describe("Engine", () => {
       expect(log.failureType).toBe("ENEMY_NOT_FOUND")
     })
 
-    it("should relocate player on RNG failure", () => {
+    it("should NOT relocate player on RNG failure (per spec)", () => {
       const state = createToyWorld("fight-fail")
-      state.player.location = "MINE"
-      state.player.skills.Combat = { level: 1, xp: 0 } // Need level 1 to fight
+      setupCombatState(state)
       state.rng.seed = "force-fight-fail"
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
       const log = executeAction(state, action)
 
       if (!log.success && log.failureType === "COMBAT_FAILURE") {
-        expect(state.player.location).toBe("TOWN") // failureRelocation
+        // Per spec: player stays at location, is NOT relocated
+        expect(state.player.location).toBe("MINE")
       }
     })
 
     it("should log RNG roll", () => {
       const state = createToyWorld("test-seed")
-      state.player.location = "MINE"
-      state.player.skills.Combat = { level: 1, xp: 0 } // Need level 1 to fight
+      setupCombatState(state)
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
       const log = executeAction(state, action)
 
-      expect(log.rngRolls).toHaveLength(1)
-      expect(log.rngRolls[0].probability).toBe(0.7) // cave-rat success probability
+      // At least 1 roll for fight success, possibly more for loot drops
+      expect(log.rngRolls.length).toBeGreaterThanOrEqual(1)
+      expect(log.rngRolls[0].probability).toBe(0.7) // CrudeWeapon success probability
     })
   })
 

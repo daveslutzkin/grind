@@ -12,6 +12,7 @@ import type {
   StoreAction,
   DropAction,
   GuildEnrolmentAction,
+  TurnInCombatTokenAction,
   FailureType,
   ItemStack,
 } from "./types.js"
@@ -128,6 +129,22 @@ export function checkGatherAction(state: WorldState, action: GatherAction): Acti
 }
 
 /**
+ * Get weapon parameters for combat
+ */
+export function getWeaponParameters(
+  equippedWeapon: string | null
+): { timeCost: number; successProbability: number } | null {
+  switch (equippedWeapon) {
+    case "CRUDE_WEAPON":
+      return { timeCost: 3, successProbability: 0.7 }
+    case "IMPROVED_WEAPON":
+      return { timeCost: 2, successProbability: 0.8 }
+    default:
+      return null
+  }
+}
+
+/**
  * Check Fight action preconditions
  */
 export function checkFightAction(state: WorldState, action: FightAction): ActionCheckResult {
@@ -145,7 +162,18 @@ export function checkFightAction(state: WorldState, action: FightAction): Action
     return { valid: false, failureType: "INSUFFICIENT_SKILL", timeCost: 0, successProbability: 0 }
   }
 
-  return { valid: true, timeCost: enemy.fightTime, successProbability: enemy.successProbability }
+  // Check for equipped weapon
+  const weaponParams = getWeaponParameters(state.player.equippedWeapon)
+  if (!weaponParams) {
+    return { valid: false, failureType: "MISSING_WEAPON", timeCost: 0, successProbability: 0 }
+  }
+
+  // Use weapon parameters instead of enemy parameters
+  return {
+    valid: true,
+    timeCost: weaponParams.timeCost,
+    successProbability: weaponParams.successProbability,
+  }
 }
 
 /**
@@ -235,6 +263,28 @@ export function checkGuildEnrolmentAction(
 }
 
 /**
+ * Check TurnInCombatToken action preconditions
+ * Cost: 0 ticks, requires being at TOWN (Combat Guild) and having COMBAT_GUILD_TOKEN
+ */
+export function checkTurnInCombatTokenAction(
+  state: WorldState,
+  _action: TurnInCombatTokenAction
+): ActionCheckResult {
+  // Must be at Combat Guild (TOWN)
+  if (state.player.location !== "TOWN") {
+    return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
+  }
+
+  // Must have COMBAT_GUILD_TOKEN
+  const token = state.player.inventory.find((i) => i.itemId === "COMBAT_GUILD_TOKEN")
+  if (!token || token.quantity < 1) {
+    return { valid: false, failureType: "MISSING_ITEMS", timeCost: 0, successProbability: 0 }
+  }
+
+  return { valid: true, timeCost: 0, successProbability: 1 }
+}
+
+/**
  * Check any action's preconditions
  */
 export function checkAction(state: WorldState, action: Action): ActionCheckResult {
@@ -255,5 +305,7 @@ export function checkAction(state: WorldState, action: Action): ActionCheckResul
       return checkDropAction(state, action)
     case "Enrol":
       return checkGuildEnrolmentAction(state, action)
+    case "TurnInCombatToken":
+      return checkTurnInCombatTokenAction(state, action)
   }
 }

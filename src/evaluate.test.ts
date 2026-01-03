@@ -43,6 +43,8 @@ describe("Evaluation APIs", () => {
       const state = createToyWorld("test-seed")
       state.player.location = "MINE"
       state.player.skills.Combat = { level: 1, xp: 0 } // Need level 1 to fight
+      state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
+      state.player.equippedWeapon = "CRUDE_WEAPON"
       const action: Action = { type: "Fight", enemyId: "cave-rat" }
 
       const result = evaluateAction(state, action)

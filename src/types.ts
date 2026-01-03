@@ -1,7 +1,15 @@
 // Core type definitions for the simulation engine
 
 export type LocationID = "TOWN" | "MINE" | "FOREST"
-export type ItemID = "IRON_ORE" | "WOOD_LOG" | "IRON_BAR"
+export type ItemID =
+  | "IRON_ORE"
+  | "WOOD_LOG"
+  | "IRON_BAR"
+  | "CRUDE_WEAPON"
+  | "IMPROVED_WEAPON"
+  | "COMBAT_GUILD_TOKEN"
+
+export type WeaponID = "CRUDE_WEAPON" | "IMPROVED_WEAPON"
 export type SkillID = "Mining" | "Woodcutting" | "Combat" | "Smithing"
 export type GatheringSkillID = "Mining" | "Woodcutting"
 export type ContractID = string
@@ -53,10 +61,16 @@ export interface Recipe {
   requiredSkillLevel: number
 }
 
+export interface KillRequirement {
+  enemyId: string
+  count: number
+}
+
 export interface Contract {
   id: ContractID
   guildLocation: LocationID
   requirements: ItemStack[]
+  killRequirements?: KillRequirement[]
   rewards: ItemStack[]
   reputationReward: number
   xpReward?: { skill: SkillID; amount: number }
@@ -81,6 +95,8 @@ export interface WorldState {
     skills: Record<SkillID, SkillState>
     guildReputation: number
     activeContracts: ContractID[]
+    equippedWeapon: WeaponID | null
+    contractKillProgress: Record<ContractID, Record<string, number>>
   }
 
   world: {
@@ -106,6 +122,7 @@ export type ActionType =
   | "Store"
   | "Drop"
   | "Enrol"
+  | "TurnInCombatToken"
 
 export interface MoveAction {
   type: "Move"
@@ -149,6 +166,10 @@ export interface GuildEnrolmentAction {
   skill: SkillID
 }
 
+export interface TurnInCombatTokenAction {
+  type: "TurnInCombatToken"
+}
+
 export type Action =
   | MoveAction
   | AcceptContractAction
@@ -158,6 +179,7 @@ export type Action =
   | StoreAction
   | DropAction
   | GuildEnrolmentAction
+  | TurnInCombatTokenAction
 
 // Failure types
 export type FailureType =
@@ -175,6 +197,7 @@ export type FailureType =
   | "ITEM_NOT_FOUND"
   | "SESSION_ENDED"
   | "ALREADY_ENROLLED"
+  | "MISSING_WEAPON"
 
 // RNG roll log entry
 export interface RngRoll {

@@ -151,6 +151,8 @@ describe("Integration: Full Session Flow", () => {
     const state = createToyWorld("strategy-test")
     state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
     state.player.skills.Combat = { level: 1, xp: 0 } // Need level 1 to fight
+    state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
+    state.player.equippedWeapon = "CRUDE_WEAPON" // Need weapon to fight
 
     // Strategy 1: Pure gathering
     const gatherStrategy: Action[] = [
