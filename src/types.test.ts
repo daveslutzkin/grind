@@ -20,6 +20,8 @@ describe("Types", () => {
         },
         guildReputation: 0,
         activeContracts: [],
+        equippedWeapon: null,
+        contractKillProgress: {},
       },
       world: {
         locations: ["TOWN", "MINE", "FOREST"],
