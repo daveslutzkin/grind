@@ -11,6 +11,7 @@ import type {
   CraftAction,
   StoreAction,
   DropAction,
+  GuildEnrolmentAction,
   FailureType,
   ItemStack,
 } from "./types.js"
@@ -174,16 +175,11 @@ export function checkCraftAction(state: WorldState, action: CraftAction): Action
 
 /**
  * Check Store action preconditions
+ * Store is a free action (0 ticks, no skill required)
  */
 export function checkStoreAction(state: WorldState, action: StoreAction): ActionCheckResult {
-  const storeTime = 1
-
   if (state.player.location !== state.world.storageLocation) {
     return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
-  }
-
-  if (state.player.skills.Logistics.level < state.world.storageRequiredSkillLevel) {
-    return { valid: false, failureType: "INSUFFICIENT_SKILL", timeCost: 0, successProbability: 0 }
   }
 
   const item = state.player.inventory.find((i) => i.itemId === action.itemId)
@@ -195,7 +191,7 @@ export function checkStoreAction(state: WorldState, action: StoreAction): Action
     return { valid: false, failureType: "MISSING_ITEMS", timeCost: 0, successProbability: 0 }
   }
 
-  return { valid: true, timeCost: storeTime, successProbability: 1 }
+  return { valid: true, timeCost: 0, successProbability: 1 }
 }
 
 /**
@@ -217,6 +213,24 @@ export function checkDropAction(state: WorldState, action: DropAction): ActionCh
 }
 
 /**
+ * Check GuildEnrolment action preconditions
+ * Takes a skill from level 0 to level 1
+ */
+export function checkGuildEnrolmentAction(
+  state: WorldState,
+  action: GuildEnrolmentAction
+): ActionCheckResult {
+  const enrolTime = 3
+
+  // Check if skill is already level 1 or higher
+  if (state.player.skills[action.skill].level >= 1) {
+    return { valid: false, failureType: "ALREADY_ENROLLED", timeCost: 0, successProbability: 0 }
+  }
+
+  return { valid: true, timeCost: enrolTime, successProbability: 1 }
+}
+
+/**
  * Check any action's preconditions
  */
 export function checkAction(state: WorldState, action: Action): ActionCheckResult {
@@ -235,5 +249,7 @@ export function checkAction(state: WorldState, action: Action): ActionCheckResul
       return checkStoreAction(state, action)
     case "Drop":
       return checkDropAction(state, action)
+    case "Enrol":
+      return checkGuildEnrolmentAction(state, action)
   }
 }

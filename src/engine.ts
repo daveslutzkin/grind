@@ -10,6 +10,7 @@ import type {
   CraftAction,
   StoreAction,
   DropAction,
+  GuildEnrolmentAction,
   FailureType,
   ItemID,
   ContractCompletion,
@@ -27,6 +28,7 @@ import {
   checkCraftAction,
   checkStoreAction,
   checkDropAction,
+  checkGuildEnrolmentAction,
 } from "./actionChecks.js"
 
 /**
@@ -310,6 +312,8 @@ export function executeAction(state: WorldState, action: Action): ActionLog {
       return executeStore(state, action, rolls)
     case "Drop":
       return executeDrop(state, action, rolls)
+    case "Enrol":
+      return executeGuildEnrolment(state, action, rolls)
   }
 }
 
@@ -530,20 +534,11 @@ function executeStore(state: WorldState, action: StoreAction, rolls: RngRoll[]):
     return createFailureLog(state, action, check.failureType!)
   }
 
-  // Check if enough time remaining
-  if (state.time.sessionRemainingTicks < check.timeCost) {
-    return createFailureLog(state, action, "SESSION_ENDED")
-  }
+  // Store is a free action (0 ticks), no time check needed
 
-  // Consume time
-  consumeTime(state, check.timeCost)
-
-  // Move item to storage
+  // Move item to storage (no time consumed, no XP)
   removeFromInventory(state, itemId, quantity)
   addToStorage(state, itemId, quantity)
-
-  // Grant XP
-  const levelUps = grantXP(state, "Logistics", 1)
 
   // Check for contract completion (after every successful action)
   const contractsCompleted = checkContractCompletion(state)
@@ -553,9 +548,8 @@ function executeStore(state: WorldState, action: StoreAction, rolls: RngRoll[]):
     actionType: "Store",
     parameters: { itemId, quantity },
     success: true,
-    timeConsumed: check.timeCost,
-    skillGained: { skill: "Logistics", amount: 1 },
-    levelUps: mergeLevelUps(levelUps, contractsCompleted),
+    timeConsumed: 0,
+    levelUps: mergeLevelUps([], contractsCompleted),
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
     stateDeltaSummary: `Stored ${quantity} ${itemId}`,
@@ -596,5 +590,46 @@ function executeDrop(state: WorldState, action: DropAction, rolls: RngRoll[]): A
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
     stateDeltaSummary: `Dropped ${quantity} ${itemId}`,
+  }
+}
+
+function executeGuildEnrolment(
+  state: WorldState,
+  action: GuildEnrolmentAction,
+  rolls: RngRoll[]
+): ActionLog {
+  const tickBefore = state.time.currentTick
+  const { skill } = action
+
+  // Use shared precondition check
+  const check = checkGuildEnrolmentAction(state, action)
+  if (!check.valid) {
+    return createFailureLog(state, action, check.failureType!)
+  }
+
+  // Check if enough time remaining
+  if (state.time.sessionRemainingTicks < check.timeCost) {
+    return createFailureLog(state, action, "SESSION_ENDED")
+  }
+
+  // Consume time
+  consumeTime(state, check.timeCost)
+
+  // Set skill to level 1 (unlock it)
+  state.player.skills[skill] = { level: 1, xp: 0 }
+
+  // Check for contract completion (after every successful action)
+  const contractsCompleted = checkContractCompletion(state)
+
+  return {
+    tickBefore,
+    actionType: "Enrol",
+    parameters: { skill },
+    success: true,
+    timeConsumed: check.timeCost,
+    levelUps: mergeLevelUps([], contractsCompleted),
+    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+    rngRolls: rolls,
+    stateDeltaSummary: `Enrolled in ${skill} guild`,
   }
 }

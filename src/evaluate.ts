@@ -26,7 +26,6 @@ function computeExpectedLevelGains(
     Woodcutting: 0,
     Combat: 0,
     Smithing: 0,
-    Logistics: 0,
   }
 
   for (const skill of Object.keys(expectedXPPerSkill) as SkillID[]) {
@@ -171,6 +170,8 @@ export function evaluateAction(state: WorldState, action: Action): ActionEvaluat
     case "Move":
     case "AcceptContract":
     case "Drop":
+    case "Store":
+    case "Enrol":
       // These actions grant no XP
       expectedXP = 0
       break
@@ -180,7 +181,6 @@ export function evaluateAction(state: WorldState, action: Action): ActionEvaluat
       expectedXP = 1 * check.successProbability
       break
     case "Craft":
-    case "Store":
       // Deterministic actions: always grant 1 XP
       expectedXP = 1
       break
@@ -292,8 +292,13 @@ function simulateAction(state: WorldState, action: Action): string | null {
         } else {
           state.player.storage.push({ itemId: action.itemId, quantity: action.quantity })
         }
-        state.player.skills.Logistics.xp += 1
+        // Store is a free action - no XP
       }
+      break
+    }
+    case "Enrol": {
+      // Guild enrolment takes skill from 0 to 1
+      state.player.skills[action.skill] = { level: 1, xp: 0 }
       break
     }
     case "Drop": {
@@ -328,7 +333,6 @@ export function evaluatePlan(state: WorldState, actions: Action[]): PlanEvaluati
     Woodcutting: 0,
     Combat: 0,
     Smithing: 0,
-    Logistics: 0,
   }
   const violations: PlanViolation[] = []
 
@@ -375,10 +379,7 @@ export function evaluatePlan(state: WorldState, actions: Action[]): PlanEvaluati
       case "Craft":
         expectedXPPerSkill.Smithing += eval_.expectedXP
         break
-      case "Store":
-        expectedXPPerSkill.Logistics += eval_.expectedXP
-        break
-      // Move, AcceptContract, Drop don't grant XP
+      // Move, AcceptContract, Drop, Store, Enrol don't grant XP
     }
 
     // Simulate the action

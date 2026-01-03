@@ -29,6 +29,7 @@ describe("Evaluation APIs", () => {
     it("should evaluate Gather action", () => {
       const state = createToyWorld("test-seed")
       state.player.location = "MINE"
+      state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const action: Action = { type: "Gather", nodeId: "iron-node" }
 
       const result = evaluateAction(state, action)
@@ -41,6 +42,7 @@ describe("Evaluation APIs", () => {
     it("should evaluate Fight action", () => {
       const state = createToyWorld("test-seed")
       state.player.location = "MINE"
+      state.player.skills.Combat = { level: 1, xp: 0 } // Need level 1 to fight
       const action: Action = { type: "Fight", enemyId: "cave-rat" }
 
       const result = evaluateAction(state, action)
@@ -52,6 +54,7 @@ describe("Evaluation APIs", () => {
 
     it("should evaluate Craft action", () => {
       const state = createToyWorld("test-seed")
+      state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
       const action: Action = { type: "Craft", recipeId: "iron-bar-recipe" }
 
@@ -64,14 +67,13 @@ describe("Evaluation APIs", () => {
 
     it("should evaluate Store action", () => {
       const state = createToyWorld("test-seed")
-      state.player.skills.Logistics = { level: 1, xp: 0 } // Need Logistics >= storageRequiredSkillLevel (1)
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const action: Action = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
 
       const result = evaluateAction(state, action)
 
-      expect(result.expectedTime).toBe(1) // Store takes 1 tick
-      expect(result.expectedXP).toBe(1)
+      expect(result.expectedTime).toBe(0) // Store is free
+      expect(result.expectedXP).toBe(0) // No XP for Store
       expect(result.successProbability).toBe(1)
     })
 
@@ -97,11 +99,11 @@ describe("Evaluation APIs", () => {
       expect(result.successProbability).toBe(0)
     })
 
-    it("should return 0 probability for Store with insufficient Logistics skill", () => {
+    it("should return 0 probability for Gather with insufficient skill level", () => {
       const state = createToyWorld("test-seed")
-      state.player.skills.Logistics = { level: 0, xp: 0 } // Need Logistics >= 1
-      state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
-      const action: Action = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
+      state.player.location = "MINE"
+      // Skills start at 0, so action should fail
+      const action: Action = { type: "Gather", nodeId: "iron-node" }
 
       const result = evaluateAction(state, action)
 
@@ -132,6 +134,7 @@ describe("Evaluation APIs", () => {
 
     it("should evaluate simple plan", () => {
       const state = createToyWorld("test-seed")
+      state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const actions: Action[] = [
         { type: "Move", destination: "MINE" },
         { type: "Gather", nodeId: "iron-node" },
@@ -159,6 +162,8 @@ describe("Evaluation APIs", () => {
 
     it("should track state changes through plan", () => {
       const state = createToyWorld("test-seed")
+      state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
+      state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       const actions: Action[] = [
         { type: "Move", destination: "MINE" },
         { type: "Gather", nodeId: "iron-node" },
@@ -174,6 +179,7 @@ describe("Evaluation APIs", () => {
 
     it("should not mutate state", () => {
       const state = createToyWorld("test-seed")
+      state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const stateBefore = JSON.stringify(state)
       const actions: Action[] = [
         { type: "Move", destination: "MINE" },
@@ -187,6 +193,7 @@ describe("Evaluation APIs", () => {
 
     it("should detect session time exceeded", () => {
       const state = createToyWorld("test-seed")
+      state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       state.time.sessionRemainingTicks = 3 // Only 3 ticks remaining
       const actions: Action[] = [
         { type: "Move", destination: "MINE" }, // 2 ticks
@@ -219,6 +226,7 @@ describe("Evaluation APIs", () => {
 
     it("should compute expected levels from expected XP", () => {
       const state = createToyWorld("test-seed")
+      state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       // At level 1, need 4 XP to reach level 2
       // 5 Gather actions with 80% success = 4 expected XP
       const actions: Action[] = [
@@ -242,6 +250,8 @@ describe("Evaluation APIs", () => {
 
     it("should track expected levels for multiple skills", () => {
       const state = createToyWorld("test-seed")
+      state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
+      state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       // Move to mine, gather, move to town, craft
       const actions: Action[] = [
         { type: "Move", destination: "MINE" },

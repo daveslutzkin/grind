@@ -2,7 +2,7 @@
 
 export type LocationID = "TOWN" | "MINE" | "FOREST"
 export type ItemID = "IRON_ORE" | "WOOD_LOG" | "IRON_BAR"
-export type SkillID = "Mining" | "Woodcutting" | "Combat" | "Smithing" | "Logistics"
+export type SkillID = "Mining" | "Woodcutting" | "Combat" | "Smithing"
 export type GatheringSkillID = "Mining" | "Woodcutting"
 export type ContractID = string
 
@@ -91,14 +91,13 @@ export interface WorldState {
     recipes: Recipe[]
     contracts: Contract[]
     storageLocation: LocationID
-    storageRequiredSkillLevel: number
   }
 
   rng: RngState
 }
 
 // Action types
-export type ActionType = "Move" | "AcceptContract" | "Gather" | "Fight" | "Craft" | "Store" | "Drop"
+export type ActionType = "Move" | "AcceptContract" | "Gather" | "Fight" | "Craft" | "Store" | "Drop" | "Enrol"
 
 export interface MoveAction {
   type: "Move"
@@ -137,6 +136,11 @@ export interface DropAction {
   quantity: number
 }
 
+export interface GuildEnrolmentAction {
+  type: "Enrol"
+  skill: SkillID
+}
+
 export type Action =
   | MoveAction
   | AcceptContractAction
@@ -145,6 +149,7 @@ export type Action =
   | CraftAction
   | StoreAction
   | DropAction
+  | GuildEnrolmentAction
 
 // Failure types
 export type FailureType =
@@ -161,6 +166,7 @@ export type FailureType =
   | "RECIPE_NOT_FOUND"
   | "ITEM_NOT_FOUND"
   | "SESSION_ENDED"
+  | "ALREADY_ENROLLED"
 
 // RNG roll log entry
 export interface RngRoll {
@@ -263,8 +269,9 @@ export function getTotalXP(skill: SkillState): number {
 }
 
 /**
- * Create initial skill state (level 1, 0 XP)
+ * Create initial skill state (level 0, 0 XP)
+ * Skills start at level 0 and must be unlocked via GuildEnrolment
  */
 export function createInitialSkillState(): SkillState {
-  return { level: 1, xp: 0 }
+  return { level: 0, xp: 0 }
 }

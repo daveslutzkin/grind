@@ -6,6 +6,9 @@ import type { Action, ActionLog, LocationID } from "./types.js"
 describe("Integration: Full Session Flow", () => {
   it("should run a complete session with various actions", () => {
     const state = createToyWorld("integration-test-seed")
+    // Set skills to level 1 to allow actions
+    state.player.skills.Mining = { level: 1, xp: 0 }
+    state.player.skills.Smithing = { level: 1, xp: 0 }
     const logs: ActionLog[] = []
 
     // Accept a contract at TOWN
@@ -62,6 +65,7 @@ describe("Integration: Full Session Flow", () => {
 
   it("should demonstrate logging shows what happened and why", () => {
     const state = createToyWorld("logging-test")
+    state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
     const logs: ActionLog[] = []
 
     // Move to mine
@@ -93,6 +97,7 @@ describe("Integration: Full Session Flow", () => {
 
   it("should demonstrate plan evaluation finds violations", () => {
     const state = createToyWorld("plan-test")
+    state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
 
     // Valid plan: move to mine, gather, move back, craft
     const validPlan: Action[] = [
@@ -144,6 +149,8 @@ describe("Integration: Full Session Flow", () => {
   it("should show how dominant strategies might form", () => {
     // This test demonstrates that we can evaluate different strategies
     const state = createToyWorld("strategy-test")
+    state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
+    state.player.skills.Combat = { level: 1, xp: 0 } // Need level 1 to fight
 
     // Strategy 1: Pure gathering
     const gatherStrategy: Action[] = [
@@ -310,6 +317,8 @@ describe("Integration: Full Session Flow", () => {
 
   it("should include contract XP level-ups in ActionLog.levelUps", () => {
     const state = createToyWorld("contract-levelup-test")
+    // Set Smithing to level 1 so contract XP causes level up from 1->2
+    state.player.skills.Smithing = { level: 1, xp: 0 }
 
     // Create a contract that gives XP reward
     state.world.contracts.push({
@@ -359,6 +368,9 @@ describe("Integration: Full Session Flow", () => {
 
   it("should merge action level-ups with contract level-ups", () => {
     const state = createToyWorld("merged-levelup-test")
+    // Set skills to level 1 so we can do actions and level up
+    state.player.skills.Mining = { level: 1, xp: 0 }
+    state.player.skills.Combat = { level: 1, xp: 0 }
 
     // Create a contract that gives XP reward
     state.world.contracts.push({
@@ -409,6 +421,9 @@ describe("Integration: Full Session Flow", () => {
 // Helper function to run a standard session
 function runSession(seed: string): { logs: ActionLog[]; state: ReturnType<typeof createToyWorld> } {
   const state = createToyWorld(seed)
+  // Set skills to level 1 to allow actions
+  state.player.skills.Mining = { level: 1, xp: 0 }
+  state.player.skills.Combat = { level: 1, xp: 0 }
   const logs: ActionLog[] = []
 
   logs.push(executeAction(state, { type: "Move", destination: "MINE" }))

@@ -8,6 +8,7 @@ import type {
   CraftAction,
   StoreAction,
   DropAction,
+  GuildEnrolmentAction,
 } from "./types.js"
 
 describe("Engine", () => {
@@ -164,6 +165,7 @@ describe("Engine", () => {
     it("should add item to inventory on success", () => {
       const state = createToyWorld("gather-success-seed")
       state.player.location = "MINE"
+      state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       // Force RNG to succeed by using a seed that succeeds at counter 0
       state.rng.seed = "always-succeed"
       const action: GatherAction = { type: "Gather", nodeId: "iron-node" }
@@ -182,6 +184,7 @@ describe("Engine", () => {
     it("should consume gather time", () => {
       const state = createToyWorld("test-seed")
       state.player.location = "MINE"
+      state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const initialTicks = state.time.sessionRemainingTicks
       const action: GatherAction = { type: "Gather", nodeId: "iron-node" }
 
@@ -194,6 +197,7 @@ describe("Engine", () => {
     it("should grant Mining XP on success (for iron-node)", () => {
       const state = createToyWorld("test-seed")
       state.player.location = "MINE"
+      state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const action: GatherAction = { type: "Gather", nodeId: "iron-node" }
 
       const log = executeAction(state, action)
@@ -230,6 +234,7 @@ describe("Engine", () => {
     it("should log RNG roll", () => {
       const state = createToyWorld("test-seed")
       state.player.location = "MINE"
+      state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const action: GatherAction = { type: "Gather", nodeId: "iron-node" }
 
       const log = executeAction(state, action)
@@ -242,6 +247,7 @@ describe("Engine", () => {
     it("should fail RNG but still consume time", () => {
       const state = createToyWorld("fail-seed")
       state.player.location = "MINE"
+      state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       // Use a seed that should fail
       state.rng.seed = "rng-fail-gather"
       state.rng.counter = 0
@@ -263,6 +269,7 @@ describe("Engine", () => {
     it("should stack items in inventory", () => {
       const state = createToyWorld("stack-test")
       state.player.location = "MINE"
+      state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 3 })
       // Force success
       state.rng.seed = "force-success-stack"
@@ -280,6 +287,7 @@ describe("Engine", () => {
     it("should fail if inventory slots are full with different items", () => {
       const state = createToyWorld("test-seed")
       state.player.location = "MINE"
+      state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       // Fill all 10 inventory slots with different items (slot-based capacity)
       for (let i = 0; i < 10; i++) {
         state.player.inventory.push({ itemId: "WOOD_LOG", quantity: 1 })
@@ -296,6 +304,7 @@ describe("Engine", () => {
     it("should succeed if inventory full but already has that item (slot-based)", () => {
       const state = createToyWorld("test-seed")
       state.player.location = "MINE"
+      state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       // Fill 9 slots with other items, 1 slot with IRON_ORE
       for (let i = 0; i < 9; i++) {
         state.player.inventory.push({ itemId: "WOOD_LOG", quantity: 1 })
@@ -314,6 +323,7 @@ describe("Engine", () => {
     it("should add loot to inventory on success", () => {
       const state = createToyWorld("fight-success")
       state.player.location = "MINE"
+      state.player.skills.Combat = { level: 1, xp: 0 } // Need level 1 to fight
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
       const log = executeAction(state, action)
@@ -328,6 +338,7 @@ describe("Engine", () => {
     it("should consume fight time", () => {
       const state = createToyWorld("test-seed")
       state.player.location = "MINE"
+      state.player.skills.Combat = { level: 1, xp: 0 } // Need level 1 to fight
       const initialTicks = state.time.sessionRemainingTicks
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
@@ -340,13 +351,14 @@ describe("Engine", () => {
     it("should grant Combat XP on success", () => {
       const state = createToyWorld("test-seed")
       state.player.location = "MINE"
+      state.player.skills.Combat = { level: 1, xp: 0 } // Need level 1 to fight
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
       const log = executeAction(state, action)
 
       if (log.success) {
         expect(log.skillGained).toEqual({ skill: "Combat", amount: 1 })
-        expect(state.player.skills.Combat).toBe(1)
+        expect(state.player.skills.Combat).toEqual({ level: 1, xp: 1 })
       }
     })
 
@@ -376,6 +388,7 @@ describe("Engine", () => {
     it("should relocate player on RNG failure", () => {
       const state = createToyWorld("fight-fail")
       state.player.location = "MINE"
+      state.player.skills.Combat = { level: 1, xp: 0 } // Need level 1 to fight
       state.rng.seed = "force-fight-fail"
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
@@ -389,6 +402,7 @@ describe("Engine", () => {
     it("should log RNG roll", () => {
       const state = createToyWorld("test-seed")
       state.player.location = "MINE"
+      state.player.skills.Combat = { level: 1, xp: 0 } // Need level 1 to fight
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
       const log = executeAction(state, action)
@@ -401,6 +415,7 @@ describe("Engine", () => {
   describe("Craft action", () => {
     it("should consume inputs and produce output", () => {
       const state = createToyWorld("test-seed")
+      state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 5 })
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
 
@@ -415,6 +430,7 @@ describe("Engine", () => {
 
     it("should consume craft time", () => {
       const state = createToyWorld("test-seed")
+      state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
       const initialTicks = state.time.sessionRemainingTicks
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
@@ -427,6 +443,7 @@ describe("Engine", () => {
 
     it("should grant Smithing XP", () => {
       const state = createToyWorld("test-seed")
+      state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
 
@@ -438,6 +455,7 @@ describe("Engine", () => {
 
     it("should fail if not at required location", () => {
       const state = createToyWorld("test-seed")
+      state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       state.player.location = "MINE"
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
@@ -460,6 +478,7 @@ describe("Engine", () => {
 
     it("should fail if missing inputs", () => {
       const state = createToyWorld("test-seed")
+      state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 }) // need 2
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
 
@@ -473,7 +492,6 @@ describe("Engine", () => {
   describe("Store action", () => {
     it("should move item from inventory to storage", () => {
       const state = createToyWorld("test-seed")
-      state.player.skills.Logistics = { level: 1, xp: 0 } // Need Logistics >= storageRequiredSkillLevel (1)
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 5 })
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 3 }
 
@@ -486,34 +504,30 @@ describe("Engine", () => {
       expect(storageOre?.quantity).toBe(3)
     })
 
-    it("should consume 1 tick", () => {
+    it("should consume 0 ticks (free action)", () => {
       const state = createToyWorld("test-seed")
-      state.player.skills.Logistics = { level: 1, xp: 0 } // Need Logistics >= storageRequiredSkillLevel (1)
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const initialTicks = state.time.sessionRemainingTicks
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
 
       const log = executeAction(state, action)
 
-      expect(log.timeConsumed).toBe(1)
-      expect(state.time.sessionRemainingTicks).toBe(initialTicks - 1)
+      expect(log.timeConsumed).toBe(0)
+      expect(state.time.sessionRemainingTicks).toBe(initialTicks)
     })
 
-    it("should grant Logistics XP", () => {
+    it("should not grant XP", () => {
       const state = createToyWorld("test-seed")
-      state.player.skills.Logistics = { level: 1, xp: 0 } // Need Logistics >= storageRequiredSkillLevel (1)
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
 
       const log = executeAction(state, action)
 
-      expect(log.skillGained).toEqual({ skill: "Logistics", amount: 1 })
-      expect(state.player.skills.Logistics).toEqual({ level: 1, xp: 1 }) // Started at level 1/0xp, gained 1 XP
+      expect(log.skillGained).toBeUndefined()
     })
 
     it("should fail if not at storage location", () => {
       const state = createToyWorld("test-seed")
-      state.player.skills.Logistics = { level: 1, xp: 0 } // Need Logistics >= storageRequiredSkillLevel (1)
       state.player.location = "MINE"
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
@@ -526,7 +540,6 @@ describe("Engine", () => {
 
     it("should fail if item not in inventory", () => {
       const state = createToyWorld("test-seed")
-      state.player.skills.Logistics = { level: 1, xp: 0 } // Need Logistics >= storageRequiredSkillLevel (1)
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
 
       const log = executeAction(state, action)
@@ -537,7 +550,6 @@ describe("Engine", () => {
 
     it("should fail if not enough quantity", () => {
       const state = createToyWorld("test-seed")
-      state.player.skills.Logistics = { level: 1, xp: 0 } // Need Logistics >= storageRequiredSkillLevel (1)
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 5 }
 
@@ -545,18 +557,6 @@ describe("Engine", () => {
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("MISSING_ITEMS")
-    })
-
-    it("should fail if insufficient Logistics skill", () => {
-      const state = createToyWorld("test-seed")
-      state.player.skills.Logistics = { level: 0, xp: 0 } // Need Logistics >= 1
-      state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
-      const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
-
-      const log = executeAction(state, action)
-
-      expect(log.success).toBe(false)
-      expect(log.failureType).toBe("INSUFFICIENT_SKILL")
     })
   })
 
@@ -626,6 +626,193 @@ describe("Engine", () => {
       expect(log.success).toBe(true)
       const invOre = state.player.inventory.find((i) => i.itemId === "IRON_ORE")
       expect(invOre).toBeUndefined()
+    })
+  })
+
+  describe("Skills starting at level 0", () => {
+    it("should start all skills at level 0", () => {
+      const state = createToyWorld("test-seed")
+
+      expect(state.player.skills.Mining.level).toBe(0)
+      expect(state.player.skills.Woodcutting.level).toBe(0)
+      expect(state.player.skills.Combat.level).toBe(0)
+      expect(state.player.skills.Smithing.level).toBe(0)
+    })
+
+    it("should not have Logistics skill", () => {
+      const state = createToyWorld("test-seed")
+
+      expect((state.player.skills as Record<string, unknown>).Logistics).toBeUndefined()
+    })
+  })
+
+  describe("Level 0 blocks skill actions", () => {
+    it("should fail Gather when Mining is level 0", () => {
+      const state = createToyWorld("test-seed")
+      state.player.location = "MINE"
+      // Skills start at 0, so Mining should be 0
+      const action: GatherAction = { type: "Gather", nodeId: "iron-node" }
+
+      const log = executeAction(state, action)
+
+      expect(log.success).toBe(false)
+      expect(log.failureType).toBe("INSUFFICIENT_SKILL")
+      expect(log.timeConsumed).toBe(0)
+    })
+
+    it("should fail Gather when Woodcutting is level 0", () => {
+      const state = createToyWorld("test-seed")
+      state.player.location = "FOREST"
+      // Skills start at 0, so Woodcutting should be 0
+      const action: GatherAction = { type: "Gather", nodeId: "wood-node" }
+
+      const log = executeAction(state, action)
+
+      expect(log.success).toBe(false)
+      expect(log.failureType).toBe("INSUFFICIENT_SKILL")
+    })
+
+    it("should fail Fight when Combat is level 0", () => {
+      const state = createToyWorld("test-seed")
+      state.player.location = "MINE"
+      // Skills start at 0, so Combat should be 0
+      const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
+
+      const log = executeAction(state, action)
+
+      expect(log.success).toBe(false)
+      expect(log.failureType).toBe("INSUFFICIENT_SKILL")
+      expect(log.timeConsumed).toBe(0)
+    })
+
+    it("should fail Craft when Smithing is level 0", () => {
+      const state = createToyWorld("test-seed")
+      state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
+      // Skills start at 0, so Smithing should be 0
+      const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
+
+      const log = executeAction(state, action)
+
+      expect(log.success).toBe(false)
+      expect(log.failureType).toBe("INSUFFICIENT_SKILL")
+      expect(log.timeConsumed).toBe(0)
+    })
+
+    it("should succeed Gather when Mining is level 1", () => {
+      const state = createToyWorld("test-seed")
+      state.player.location = "MINE"
+      state.player.skills.Mining = { level: 1, xp: 0 }
+      const action: GatherAction = { type: "Gather", nodeId: "iron-node" }
+
+      const log = executeAction(state, action)
+
+      // Should not fail due to skill (may fail due to RNG)
+      expect(log.failureType).not.toBe("INSUFFICIENT_SKILL")
+      expect(log.timeConsumed).toBe(2)
+    })
+  })
+
+  describe("GuildEnrolment action", () => {
+    it("should take skill from level 0 to level 1", () => {
+      const state = createToyWorld("test-seed")
+      expect(state.player.skills.Mining.level).toBe(0)
+      const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
+
+      const log = executeAction(state, action)
+
+      expect(log.success).toBe(true)
+      expect(state.player.skills.Mining.level).toBe(1)
+      expect(state.player.skills.Mining.xp).toBe(0)
+    })
+
+    it("should consume 3 ticks", () => {
+      const state = createToyWorld("test-seed")
+      const initialTicks = state.time.sessionRemainingTicks
+      const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
+
+      const log = executeAction(state, action)
+
+      expect(log.timeConsumed).toBe(3)
+      expect(state.time.sessionRemainingTicks).toBe(initialTicks - 3)
+    })
+
+    it("should not grant XP (just unlocks the skill)", () => {
+      const state = createToyWorld("test-seed")
+      const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
+
+      const log = executeAction(state, action)
+
+      expect(log.skillGained).toBeUndefined()
+      expect(state.player.skills.Mining.xp).toBe(0)
+    })
+
+    it("should fail if skill is already level 1 or higher", () => {
+      const state = createToyWorld("test-seed")
+      state.player.skills.Mining = { level: 1, xp: 0 }
+      const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
+
+      const log = executeAction(state, action)
+
+      expect(log.success).toBe(false)
+      expect(log.failureType).toBe("ALREADY_ENROLLED")
+      expect(log.timeConsumed).toBe(0)
+    })
+
+    it("should work for all skills", () => {
+      const state = createToyWorld("test-seed")
+
+      // Enrol in Mining
+      let log = executeAction(state, { type: "Enrol", skill: "Mining" })
+      expect(log.success).toBe(true)
+      expect(state.player.skills.Mining.level).toBe(1)
+
+      // Enrol in Woodcutting
+      log = executeAction(state, { type: "Enrol", skill: "Woodcutting" })
+      expect(log.success).toBe(true)
+      expect(state.player.skills.Woodcutting.level).toBe(1)
+
+      // Enrol in Combat
+      log = executeAction(state, { type: "Enrol", skill: "Combat" })
+      expect(log.success).toBe(true)
+      expect(state.player.skills.Combat.level).toBe(1)
+
+      // Enrol in Smithing
+      log = executeAction(state, { type: "Enrol", skill: "Smithing" })
+      expect(log.success).toBe(true)
+      expect(state.player.skills.Smithing.level).toBe(1)
+    })
+
+    it("should log action details", () => {
+      const state = createToyWorld("test-seed")
+      const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
+
+      const log = executeAction(state, action)
+
+      expect(log.actionType).toBe("Enrol")
+      expect(log.parameters).toEqual({ skill: "Mining" })
+      expect(log.stateDeltaSummary).toContain("Mining")
+    })
+
+    it("should fail if session has ended", () => {
+      const state = createToyWorld("test-seed")
+      state.time.sessionRemainingTicks = 0
+      const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
+
+      const log = executeAction(state, action)
+
+      expect(log.success).toBe(false)
+      expect(log.failureType).toBe("SESSION_ENDED")
+    })
+
+    it("should fail if not enough time remaining", () => {
+      const state = createToyWorld("test-seed")
+      state.time.sessionRemainingTicks = 2 // Need 3 ticks
+      const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
+
+      const log = executeAction(state, action)
+
+      expect(log.success).toBe(false)
+      expect(log.failureType).toBe("SESSION_ENDED")
     })
   })
 })
