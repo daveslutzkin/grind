@@ -23,3 +23,5 @@ This file details how you do test runs of the sim.
 -- Pipe the new queue into the batch runner with the known seed.
 
 -- Continue until the session is finished.
+
+- Generally we save traces in the traces directory.
