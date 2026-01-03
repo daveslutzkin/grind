@@ -1,0 +1,39 @@
+=== Plan Execution (seed: trace10-optimal) ===
+
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ 📍 TOWN  │  ⏱ 25 ticks left  │  🎒 (empty)                                                                           │
+│ 📊 Mining:0 Woodcut:0 Combat:0 Smith:0                                                                               │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  ✓ Enrol: Enrolled in Woodcutting guild  │  ⏱ 3t
+  ✓ Move: Moved from TOWN to FOREST  │  ⏱ 3t
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+    📈 LEVEL UP: Woodcutting 1 → 2
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+
+╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                                    SESSION SUMMARY                                                   ║
+╠══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+│ ⏱  TIME: 24/25 ticks  │  XP: 9 actual, 8.1 expected  │  XP/tick: 0.38 actual, 0.34 expected                          │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 📋 ACTIONS: 11 total  │  Enrol: 1✓ (3t)  │  Move: 1✓ (3t)  │  Gather: 9✓ (18t)                                       │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 🎲 LUCK: Top 39% (typical) — 9/9 vs 8.1 expected (+1.0σ)                                                             │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 📉 VOLATILITY: Low (±0.9 XP)                                                                                         │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 📈 SKILLS: Woodcutting: 0→2 (+9 XP)                                                                                  │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 📊 EXPECTED LEVELS: Woodcutting +2                                                                                   │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 🏆 CONTRACTS: 0 completed  │  Reputation: 0 (+0 this session)                                                        │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 🎒 FINAL ITEMS: 9x WOOD_LOG                                                                                          │
+╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝

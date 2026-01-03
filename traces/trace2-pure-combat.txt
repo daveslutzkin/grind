@@ -1,0 +1,40 @@
+=== Plan Execution (seed: trace2-combat) ===
+
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ 📍 TOWN  │  ⏱ 25 ticks left  │  🎒 (empty)                                                                           │
+│ 📊 Mining:0 Woodcut:0 Combat:0 Smith:0                                                                               │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  ✓ Enrol: Enrolled in Combat guild  │  ⏱ 3t
+  ✓ Move: Moved from TOWN to MINE  │  ⏱ 2t
+  ✗ Fight: Lost fight to cave-rat, relocated to TOWN  │  ⏱ 3t  │  🎲 70%→miss  │  ❌ COMBAT_FAILURE
+  ✓ Move: Moved from TOWN to MINE  │  ⏱ 2t
+  ✓ Fight: Defeated cave-rat, gained loot  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat
+  ✗ Move: Failed: WRONG_LOCATION  │  ⏱ 0t  │  ❌ WRONG_LOCATION
+  ✓ Fight: Defeated cave-rat, gained loot  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat
+  ✗ Move: Failed: WRONG_LOCATION  │  ⏱ 0t  │  ❌ WRONG_LOCATION
+  ✓ Fight: Defeated cave-rat, gained loot  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat
+  ✗ Move: Failed: WRONG_LOCATION  │  ⏱ 0t  │  ❌ WRONG_LOCATION
+  ✗ Fight: Lost fight to cave-rat, relocated to TOWN  │  ⏱ 3t  │  🎲 70%→miss  │  ❌ COMBAT_FAILURE
+  ✓ Move: Moved from TOWN to MINE  │  ⏱ 2t
+  ✗ Fight: Failed: SESSION_ENDED  │  ⏱ 0t  │  ❌ SESSION_ENDED
+
+╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                                    SESSION SUMMARY                                                   ║
+╠══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+│ ⏱  TIME: 24/25 ticks  │  XP: 3 actual, 3.5 expected  │  XP/tick: 0.13 actual, 0.15 expected                          │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 📋 ACTIONS: 13 total  │  Enrol: 1✓ (3t)  │  Move: 3✓ 3✗ (6t)  │  Fight: 3✓ 3✗ (15t)                                  │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 🎲 LUCK: Bottom 47% (typical) — 3/5 vs 3.5 expected (-0.5σ)                                                          │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 📉 VOLATILITY: Medium (±1.0 XP)                                                                                      │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 📈 SKILLS: Combat: 0→1 (+3 XP)                                                                                       │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 📊 EXPECTED LEVELS: Combat +1                                                                                        │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 🏆 CONTRACTS: 0 completed  │  Reputation: 0 (+0 this session)                                                        │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 🎒 FINAL ITEMS: 3x IRON_ORE                                                                                          │
+╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
