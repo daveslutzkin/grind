@@ -16,8 +16,12 @@ function printLog(log: ActionLog): void {
   if (log.contractsCompleted) {
     for (const c of log.contractsCompleted) {
       console.log(`    CONTRACT COMPLETE: ${c.contractId}`)
-      console.log(`      Consumed: ${c.itemsConsumed.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")}`)
-      console.log(`      Granted: ${c.rewardsGranted.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")}`)
+      console.log(
+        `      Consumed: ${c.itemsConsumed.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")}`
+      )
+      console.log(
+        `      Granted: ${c.rewardsGranted.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")}`
+      )
       console.log(`      Reputation: +${c.reputationGained}`)
     }
   }
@@ -30,10 +34,18 @@ function printLog(log: ActionLog): void {
 function printState(state: ReturnType<typeof createToyWorld>): void {
   console.log(`\nState:`)
   console.log(`  Location: ${state.player.location}`)
-  console.log(`  Time: ${state.time.currentTick}/${state.time.currentTick + state.time.sessionRemainingTicks} ticks`)
-  console.log(`  Inventory: ${state.player.inventory.map((i) => `${i.quantity}x ${i.itemId}`).join(", ") || "(empty)"}`)
-  console.log(`  Storage: ${state.player.storage.map((i) => `${i.quantity}x ${i.itemId}`).join(", ") || "(empty)"}`)
-  console.log(`  Skills: Mining=${state.player.skills.Mining.level} Woodcutting=${state.player.skills.Woodcutting.level} Combat=${state.player.skills.Combat.level} Smithing=${state.player.skills.Smithing.level}`)
+  console.log(
+    `  Time: ${state.time.currentTick}/${state.time.currentTick + state.time.sessionRemainingTicks} ticks`
+  )
+  console.log(
+    `  Inventory: ${state.player.inventory.map((i) => `${i.quantity}x ${i.itemId}`).join(", ") || "(empty)"}`
+  )
+  console.log(
+    `  Storage: ${state.player.storage.map((i) => `${i.quantity}x ${i.itemId}`).join(", ") || "(empty)"}`
+  )
+  console.log(
+    `  Skills: Mining=${state.player.skills.Mining.level} Woodcutting=${state.player.skills.Woodcutting.level} Combat=${state.player.skills.Combat.level} Smithing=${state.player.skills.Smithing.level}`
+  )
   console.log(`  Reputation: ${state.player.guildReputation}`)
   console.log(`  Active Contracts: ${state.player.activeContracts.join(", ") || "(none)"}`)
 }
@@ -62,7 +74,9 @@ console.log("\n=== Plan Evaluation ===")
 const evaluation = evaluatePlan(state, plan)
 console.log(`Expected time: ${evaluation.expectedTime} ticks`)
 console.log(`Expected XP: ${evaluation.expectedXP.toFixed(1)}`)
-console.log(`Violations: ${evaluation.violations.length === 0 ? "none" : evaluation.violations.map((v) => `step ${v.actionIndex}: ${v.reason}`).join(", ")}`)
+console.log(
+  `Violations: ${evaluation.violations.length === 0 ? "none" : evaluation.violations.map((v) => `step ${v.actionIndex}: ${v.reason}`).join(", ")}`
+)
 
 // Execute plan
 console.log("\n=== Executing Plan ===")

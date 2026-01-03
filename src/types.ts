@@ -8,8 +8,8 @@ export type ContractID = string
 
 // Skill state with level and XP
 export interface SkillState {
-  level: number  // starts at 1
-  xp: number     // XP within current level (toward next level)
+  level: number // starts at 1
+  xp: number // XP within current level (toward next level)
 }
 
 // Level-up event
@@ -97,7 +97,15 @@ export interface WorldState {
 }
 
 // Action types
-export type ActionType = "Move" | "AcceptContract" | "Gather" | "Fight" | "Craft" | "Store" | "Drop" | "Enrol"
+export type ActionType =
+  | "Move"
+  | "AcceptContract"
+  | "Gather"
+  | "Fight"
+  | "Craft"
+  | "Store"
+  | "Drop"
+  | "Enrol"
 
 export interface MoveAction {
   type: "Move"
@@ -216,7 +224,7 @@ export interface PlanViolation {
 export interface PlanEvaluation {
   expectedTime: number
   expectedXP: number
-  expectedLevels: Record<SkillID, number>  // Expected level gains per skill
+  expectedLevels: Record<SkillID, number> // Expected level gains per skill
   violations: PlanViolation[]
 }
 
@@ -238,7 +246,10 @@ export function getXPThresholdForNextLevel(currentLevel: number): number {
  * Add XP to a skill and handle level-ups
  * Returns the updated skill state and any level-ups that occurred
  */
-export function addXPToSkill(skill: SkillState, xpGain: number): { skill: SkillState; levelUps: LevelUp[]; skillId?: SkillID } {
+export function addXPToSkill(
+  skill: SkillState,
+  xpGain: number
+): { skill: SkillState; levelUps: LevelUp[]; skillId?: SkillID } {
   const levelUps: LevelUp[] = []
   let { level, xp } = skill
   xp += xpGain

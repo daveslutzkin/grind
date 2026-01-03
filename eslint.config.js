@@ -15,6 +15,7 @@ export default [
       },
       globals: {
         console: "readonly",
+        process: "readonly",
         describe: "readonly",
         it: "readonly",
         expect: "readonly",

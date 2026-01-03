@@ -402,8 +402,8 @@ describe("Integration: Full Session Flow", () => {
       expect(gatherLog.levelUps!.length).toBeGreaterThanOrEqual(1)
 
       // Should have both Mining (from gather) and Combat (from contract) level-ups
-      const miningLevelUp = gatherLog.levelUps!.find(lu => lu.skill === "Mining")
-      const combatLevelUp = gatherLog.levelUps!.find(lu => lu.skill === "Combat")
+      const miningLevelUp = gatherLog.levelUps!.find((lu) => lu.skill === "Mining")
+      const combatLevelUp = gatherLog.levelUps!.find((lu) => lu.skill === "Combat")
 
       expect(miningLevelUp).toBeDefined()
       expect(miningLevelUp!.fromLevel).toBe(1)

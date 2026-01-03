@@ -39,7 +39,7 @@ function grantXP(state: WorldState, skill: SkillID, amount: number): LevelUp[] {
   const result = addXPToSkill(state.player.skills[skill], amount)
   state.player.skills[skill] = result.skill
   // Fill in the skill ID for each level-up
-  return result.levelUps.map(lu => ({ ...lu, skill }))
+  return result.levelUps.map((lu) => ({ ...lu, skill }))
 }
 
 /**
@@ -58,7 +58,10 @@ function collectContractLevelUps(completions: ContractCompletion[]): LevelUp[] {
 /**
  * Merge action level-ups with contract level-ups
  */
-function mergeLevelUps(actionLevelUps: LevelUp[], contractCompletions: ContractCompletion[]): LevelUp[] | undefined {
+function mergeLevelUps(
+  actionLevelUps: LevelUp[],
+  contractCompletions: ContractCompletion[]
+): LevelUp[] | undefined {
   const contractLevelUps = collectContractLevelUps(contractCompletions)
   const allLevelUps = [...actionLevelUps, ...contractLevelUps]
   return allLevelUps.length > 0 ? allLevelUps : undefined
