@@ -83,7 +83,7 @@ npm test -- --watch  # Run tests in watch mode
 npm run build        # Compile TypeScript
 npm run lint         # Run ESLint
 npm run format       # Format with Prettier
-npm run check        # Run format:check, lint, and test (use before commits)
+npm run check        # Run format:check, lint, build, and test (use before commits)
 ```
 
 ## Development Workflow
