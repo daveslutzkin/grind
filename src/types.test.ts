@@ -13,11 +13,10 @@ describe("Types", () => {
         inventoryCapacity: 10,
         storage: [],
         skills: {
-          Mining: { level: 1, xp: 0 },
-          Woodcutting: { level: 1, xp: 0 },
-          Combat: { level: 1, xp: 0 },
-          Smithing: { level: 1, xp: 0 },
-          Logistics: { level: 1, xp: 0 },
+          Mining: { level: 0, xp: 0 },
+          Woodcutting: { level: 0, xp: 0 },
+          Combat: { level: 0, xp: 0 },
+          Smithing: { level: 0, xp: 0 },
         },
         guildReputation: 0,
         activeContracts: [],
@@ -37,7 +36,6 @@ describe("Types", () => {
         recipes: [],
         contracts: [],
         storageLocation: "TOWN",
-        storageRequiredSkillLevel: 1,
       },
       rng: {
         seed: "test-seed",

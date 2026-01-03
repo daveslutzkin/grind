@@ -33,7 +33,7 @@ function printState(state: ReturnType<typeof createToyWorld>): void {
   console.log(`  Time: ${state.time.currentTick}/${state.time.currentTick + state.time.sessionRemainingTicks} ticks`)
   console.log(`  Inventory: ${state.player.inventory.map((i) => `${i.quantity}x ${i.itemId}`).join(", ") || "(empty)"}`)
   console.log(`  Storage: ${state.player.storage.map((i) => `${i.quantity}x ${i.itemId}`).join(", ") || "(empty)"}`)
-  console.log(`  Skills: Mining=${state.player.skills.Mining} Woodcutting=${state.player.skills.Woodcutting} Combat=${state.player.skills.Combat} Smithing=${state.player.skills.Smithing} Logistics=${state.player.skills.Logistics}`)
+  console.log(`  Skills: Mining=${state.player.skills.Mining.level} Woodcutting=${state.player.skills.Woodcutting.level} Combat=${state.player.skills.Combat.level} Smithing=${state.player.skills.Smithing.level}`)
   console.log(`  Reputation: ${state.player.guildReputation}`)
   console.log(`  Active Contracts: ${state.player.activeContracts.join(", ") || "(none)"}`)
 }
@@ -45,6 +45,8 @@ printState(state)
 
 // Define a plan
 const plan: Action[] = [
+  { type: "Enrol", skill: "Mining" },
+  { type: "Enrol", skill: "Smithing" },
   { type: "AcceptContract", contractId: "miners-guild-1" },
   { type: "Move", destination: "MINE" },
   { type: "Gather", nodeId: "iron-node" },
@@ -52,7 +54,6 @@ const plan: Action[] = [
   { type: "Gather", nodeId: "iron-node" },
   { type: "Gather", nodeId: "iron-node" },
   { type: "Move", destination: "TOWN" },
-  { type: "Craft", recipeId: "iron-bar-recipe" },
   { type: "Craft", recipeId: "iron-bar-recipe" },
 ]
 

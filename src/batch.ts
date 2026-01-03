@@ -25,7 +25,6 @@ function computeExpectedLevelGains(
     Woodcutting: 0,
     Combat: 0,
     Smithing: 0,
-    Logistics: 0,
   }
 
   for (const skill of Object.keys(expectedXPPerSkill) as SkillID[]) {
@@ -57,7 +56,7 @@ function printState(state: WorldState): void {
     state.player.inventory.length === 0
       ? "(empty)"
       : state.player.inventory.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")
-  const skills = `Mining:${state.player.skills.Mining.level} Woodcut:${state.player.skills.Woodcutting.level} Combat:${state.player.skills.Combat.level} Smith:${state.player.skills.Smithing.level} Logistics:${state.player.skills.Logistics.level}`
+  const skills = `Mining:${state.player.skills.Mining.level} Woodcut:${state.player.skills.Woodcutting.level} Combat:${state.player.skills.Combat.level} Smith:${state.player.skills.Smithing.level}`
 
   console.log(`┌${line}┐`)
   console.log(`│${pad(` 📍 ${state.player.location}  │  ⏱ ${state.time.sessionRemainingTicks} ticks left  │  🎒 ${invStr}`)}`)
@@ -279,7 +278,6 @@ function printSummary(state: WorldState, stats: SessionStats): void {
     Woodcutting: 0,
     Combat: 0,
     Smithing: 0,
-    Logistics: 0,
   }
   for (const log of stats.logs) {
     if (log.skillGained) totalXP += log.skillGained.amount
@@ -347,7 +345,7 @@ function printSummary(state: WorldState, stats: SessionStats): void {
   }
 
   const skillDelta: string[] = []
-  const skills: SkillID[] = ["Mining", "Woodcutting", "Combat", "Smithing", "Logistics"]
+  const skills: SkillID[] = ["Mining", "Woodcutting", "Combat", "Smithing"]
   for (const skill of skills) {
     const startXP = getTotalXP(stats.startingSkills[skill])
     const endXP = getTotalXP(state.player.skills[skill])
@@ -424,6 +422,18 @@ function parseAction(cmd: string): Action | null {
       return { type: "Drop", itemId: parts[1]?.toUpperCase() as "IRON_ORE" | "WOOD_LOG" | "IRON_BAR", quantity: parseInt(parts[2] || "1") }
     case "accept":
       return { type: "AcceptContract", contractId: parts[1] }
+    case "enrol":
+    case "enroll": {
+      const skillMap: Record<string, "Mining" | "Woodcutting" | "Combat" | "Smithing"> = {
+        mining: "Mining",
+        woodcutting: "Woodcutting",
+        combat: "Combat",
+        smithing: "Smithing",
+      }
+      const skill = skillMap[parts[1]?.toLowerCase()]
+      if (!skill) return null
+      return { type: "Enrol", skill }
+    }
     default:
       return null
   }

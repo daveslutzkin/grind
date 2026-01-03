@@ -736,6 +736,17 @@ describe("Engine", () => {
       expect(state.time.sessionRemainingTicks).toBe(initialTicks - 3)
     })
 
+    it("should fail if not at guild location (TOWN)", () => {
+      const state = createToyWorld("test-seed")
+      state.player.location = "MINE"
+      const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
+
+      const log = executeAction(state, action)
+
+      expect(log.success).toBe(false)
+      expect(log.failureType).toBe("WRONG_LOCATION")
+    })
+
     it("should not grant XP (just unlocks the skill)", () => {
       const state = createToyWorld("test-seed")
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }

@@ -222,6 +222,10 @@ export function checkGuildEnrolmentAction(
 ): ActionCheckResult {
   const enrolTime = 3
 
+  if (state.player.location !== "TOWN") {
+    return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
+  }
+
   // Check if skill is already level 1 or higher
   if (state.player.skills[action.skill].level >= 1) {
     return { valid: false, failureType: "ALREADY_ENROLLED", timeCost: 0, successProbability: 0 }

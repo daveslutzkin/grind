@@ -28,7 +28,6 @@ function computeExpectedLevelGains(
     Woodcutting: 0,
     Combat: 0,
     Smithing: 0,
-    Logistics: 0,
   }
 
   for (const skill of Object.keys(expectedXPPerSkill) as SkillID[]) {
@@ -75,7 +74,7 @@ function printState(state: WorldState): void {
     state.player.storage.length === 0
       ? "(empty)"
       : state.player.storage.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")
-  const skills = `Mining:${state.player.skills.Mining.level} Woodcut:${state.player.skills.Woodcutting.level} Combat:${state.player.skills.Combat.level} Smith:${state.player.skills.Smithing.level} Logistics:${state.player.skills.Logistics.level}`
+  const skills = `Mining:${state.player.skills.Mining.level} Woodcut:${state.player.skills.Woodcutting.level} Combat:${state.player.skills.Combat.level} Smith:${state.player.skills.Smithing.level}`
   const contracts = state.player.activeContracts.join(", ") || "(none)"
 
   console.log(`\n┌${line}┐`)
@@ -146,6 +145,7 @@ function printHelp(state: WorldState): void {
   console.log("│ store <item> <qty>  - Store items (e.g., store IRON_ORE 2)  │")
   console.log("│ drop <item> <qty>   - Drop items (e.g., drop IRON_ORE 1)    │")
   console.log("│ accept <contract>   - Accept miners-guild-1                 │")
+  console.log("│ enrol <skill>       - Enrol in a skill guild (3 ticks)      │")
   console.log("├─────────────────────────────────────────────────────────────┤")
   console.log("│ state               - Show current world state              │")
   console.log("│ world               - Show world data (nodes, enemies, etc) │")
@@ -393,7 +393,6 @@ function printSummary(state: WorldState, stats: SessionStats): void {
     Woodcutting: 0,
     Combat: 0,
     Smithing: 0,
-    Logistics: 0,
   }
   for (const log of stats.logs) {
     if (log.skillGained) {
@@ -466,7 +465,7 @@ function printSummary(state: WorldState, stats: SessionStats): void {
 
   // Skill progression
   const skillDelta: string[] = []
-  const skills: SkillID[] = ["Mining", "Woodcutting", "Combat", "Smithing", "Logistics"]
+  const skills: SkillID[] = ["Mining", "Woodcutting", "Combat", "Smithing"]
   for (const skill of skills) {
     const startXP = getTotalXP(stats.startingSkills[skill])
     const endXP = getTotalXP(state.player.skills[skill])
@@ -517,7 +516,7 @@ function printSummary(state: WorldState, stats: SessionStats): void {
   // Skills
   console.log(pad(`📈 SKILLS: ${skillDelta.length > 0 ? skillDelta.join("  │  ") : "(no gains)"}`))
   // Expected levels line
-  const allSkills: SkillID[] = ["Mining", "Woodcutting", "Combat", "Smithing", "Logistics"]
+  const allSkills: SkillID[] = ["Mining", "Woodcutting", "Combat", "Smithing"]
   const expectedLevelStrs: string[] = []
   for (const sk of allSkills) {
     if (expectedLevels[sk] > 0) {
@@ -599,6 +598,26 @@ function parseAction(input: string, state: WorldState): Action | null {
         return null
       }
       return { type: "AcceptContract", contractId }
+
+    case "enrol":
+    case "enroll":
+      const skillName = parts[1]
+      if (!skillName) {
+        console.log("Usage: enrol <skill>  (Mining, Woodcutting, Combat, Smithing)")
+        return null
+      }
+      const skillMap: Record<string, "Mining" | "Woodcutting" | "Combat" | "Smithing"> = {
+        mining: "Mining",
+        woodcutting: "Woodcutting",
+        combat: "Combat",
+        smithing: "Smithing",
+      }
+      const skill = skillMap[skillName.toLowerCase()]
+      if (!skill) {
+        console.log("Invalid skill. Choose: Mining, Woodcutting, Combat, Smithing")
+        return null
+      }
+      return { type: "Enrol", skill }
 
     default:
       return null
