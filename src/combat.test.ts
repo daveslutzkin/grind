@@ -97,6 +97,22 @@ describe("Combat Progression", () => {
       expect(log.timeConsumed).toBe(0)
     })
 
+    it("should fail Fight if weapon equipped but not in inventory", () => {
+      const state = createToyWorld("test-seed")
+      state.player.location = "MINE"
+      state.player.skills.Combat = { level: 1, xp: 0 }
+      // Weapon "equipped" but not actually owned
+      state.player.equippedWeapon = "CRUDE_WEAPON"
+      // inventory is empty - no weapon
+      const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
+
+      const log = executeAction(state, action)
+
+      expect(log.success).toBe(false)
+      expect(log.failureType).toBe("MISSING_WEAPON")
+      expect(log.timeConsumed).toBe(0)
+    })
+
     it("should succeed Fight if CRUDE_WEAPON equipped", () => {
       const state = createToyWorld("test-seed")
       state.player.location = "MINE"

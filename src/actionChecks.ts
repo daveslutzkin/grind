@@ -168,6 +168,14 @@ export function checkFightAction(state: WorldState, action: FightAction): Action
     return { valid: false, failureType: "MISSING_WEAPON", timeCost: 0, successProbability: 0 }
   }
 
+  // Verify the equipped weapon actually exists in inventory
+  const weaponInInventory = state.player.inventory.find(
+    (i) => i.itemId === state.player.equippedWeapon && i.quantity >= 1
+  )
+  if (!weaponInInventory) {
+    return { valid: false, failureType: "MISSING_WEAPON", timeCost: 0, successProbability: 0 }
+  }
+
   // Use weapon parameters instead of enemy parameters
   return {
     valid: true,
