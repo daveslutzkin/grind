@@ -247,7 +247,6 @@ export interface PlanViolation {
 export interface PlanEvaluation {
   expectedTime: number
   expectedXP: number
-  expectedLevels: Record<SkillID, number> // Expected level gains per skill
   violations: PlanViolation[]
 }
 
