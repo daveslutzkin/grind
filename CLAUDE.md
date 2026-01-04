@@ -6,6 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a rules-first simulation engine - a headless, single-agent game engine with discrete time, deterministic RNG, and structured logging. The engine executes actions but never chooses them.
 
+All design decisions about the game should be relative to the canonical documents in design-docs.
+
+Especially, all current decisions are relative to design-docs/canonical-v1-design.md.
+
+If the user asks for features that conflict with this, call it out and make them decide to continue.
+
 ## Core Architectural Constraints
 
 - **Headless engine**: No UI, no networking, no persistence beyond in-memory objects
