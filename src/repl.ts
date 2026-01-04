@@ -56,24 +56,53 @@ function printState(state: WorldState): void {
   console.log(`└${line}┘`)
 }
 
+function formatLootSection(log: ActionLog): string {
+  // Only show loot section for successful Fight actions
+  if (log.actionType !== "Fight" || !log.success) return ""
+
+  // Find loot table rolls (labels start with "loot:")
+  const lootRolls = log.rngRolls.filter((r) => r.label.startsWith("loot:"))
+  if (lootRolls.length === 0) return ""
+
+  // Format each loot entry - bracket the one that dropped
+  const lootParts = lootRolls.map((roll) => {
+    const itemName = roll.label.replace("loot:", "").replace("IRON_", "").replace("_", " ")
+    const shortName = itemName === "ORE" ? "ORE" : itemName.split(" ")[0]
+    const pct = (roll.probability * 100).toFixed(0)
+    const label = `${shortName}(${pct}%)`
+    return roll.result ? `[${label}]` : label
+  })
+
+  return `🎁 ${lootParts.join(" ")}`
+}
+
 function printLog(log: ActionLog): void {
   const W = 120
   const line = "─".repeat(W - 2)
   const pad = (s: string) => s.padEnd(W - 2) + "│"
 
   const status = log.success ? "✓" : "✗"
-  const rngStr =
-    log.rngRolls.length > 0
-      ? log.rngRolls
-          .map((r) => `${(r.probability * 100).toFixed(0)}%→${r.result ? "hit" : "miss"}`)
-          .join(" ")
-      : ""
+
+  // For Fight actions, separate main fight roll from loot rolls
+  let rngStr = ""
+  if (log.rngRolls.length > 0) {
+    const mainRolls = log.rngRolls.filter((r) => !r.label.startsWith("loot:"))
+    if (mainRolls.length > 0) {
+      rngStr = mainRolls
+        .map((r) => `${(r.probability * 100).toFixed(0)}%→${r.result ? "hit" : "miss"}`)
+        .join(" ")
+    }
+  }
+
   const skillStr = log.skillGained ? `+1 ${log.skillGained.skill}` : ""
+  const lootStr = formatLootSection(log)
+
   const parts = [
     `${status} ${log.actionType}: ${log.stateDeltaSummary}`,
     `⏱ ${log.timeConsumed}t`,
     rngStr ? `🎲 ${rngStr}` : "",
     skillStr ? `📈 ${skillStr}` : "",
+    lootStr,
     log.failureType ? `❌ ${log.failureType}` : "",
   ].filter(Boolean)
 
@@ -162,8 +191,11 @@ function printWorld(state: WorldState): void {
   console.log("│ ENEMIES                                                     │")
   for (const enemy of state.world.enemies) {
     console.log(`│   ${enemy.id} @ ${enemy.location}`.padEnd(62) + "│")
+    const lootStr = enemy.lootTable
+      .map((l) => `${l.quantity}x ${l.itemId}(${l.weight}%)`)
+      .join(", ")
     console.log(
-      `│     → ${enemy.fightTime} ticks, ${(enemy.successProbability * 100).toFixed(0)}% success, loot: ${enemy.loot.map((l) => `${l.quantity}x ${l.itemId}`).join(", ")}`.padEnd(
+      `│     → ${enemy.fightTime} ticks, ${(enemy.successProbability * 100).toFixed(0)}% success, loot: ${lootStr}`.padEnd(
         62
       ) + "│"
     )

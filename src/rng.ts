@@ -46,3 +46,44 @@ export function roll(rng: RngState, probability: number, label: string, rolls: R
 
   return result
 }
+
+/**
+ * Roll on a weighted loot table and return the selected entry index.
+ * Weights are relative - they don't need to sum to 100.
+ * Records a roll for each entry showing whether it was selected.
+ */
+export function rollLootTable(
+  rng: RngState,
+  weights: { label: string; weight: number }[],
+  rolls: RngRoll[]
+): number {
+  const totalWeight = weights.reduce((sum, w) => sum + w.weight, 0)
+  const counterBefore = rng.counter
+  const randomValue = getRandomValue(rng.seed, rng.counter)
+  rng.counter++
+
+  // Find which entry the roll falls into
+  const rollValue = randomValue * totalWeight
+  let cumulative = 0
+  let selectedIndex = 0
+
+  for (let i = 0; i < weights.length; i++) {
+    cumulative += weights[i].weight
+    if (rollValue < cumulative) {
+      selectedIndex = i
+      break
+    }
+  }
+
+  // Log a roll for each entry showing probability and whether it was selected
+  for (let i = 0; i < weights.length; i++) {
+    rolls.push({
+      label: weights[i].label,
+      probability: weights[i].weight / totalWeight,
+      result: i === selectedIndex,
+      rngCounter: counterBefore,
+    })
+  }
+
+  return selectedIndex
+}

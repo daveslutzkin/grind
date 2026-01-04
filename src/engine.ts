@@ -19,7 +19,7 @@ import type {
   LevelUp,
 } from "./types.js"
 import { addXPToSkill } from "./types.js"
-import { roll } from "./rng.js"
+import { roll, rollLootTable } from "./rng.js"
 
 import {
   checkMoveAction,
@@ -464,11 +464,6 @@ function executeFight(state: WorldState, action: FightAction, rolls: RngRoll[]):
     }
   }
 
-  // Add standard loot to inventory
-  for (const loot of enemy.loot) {
-    addToInventory(state, loot.itemId, loot.quantity)
-  }
-
   // Track kills for active contracts with kill requirements
   for (const contractId of state.player.activeContracts) {
     const contract = state.world.contracts.find((c) => c.id === contractId)
@@ -485,21 +480,21 @@ function executeFight(state: WorldState, action: FightAction, rolls: RngRoll[]):
     }
   }
 
-  // Roll for ImprovedWeapon drop (10%)
-  const improvedWeaponDrop = roll(state.rng, 0.1, "improved-weapon-drop", rolls)
-  if (improvedWeaponDrop) {
-    // Remove CrudeWeapon if present
-    removeFromInventory(state, "CRUDE_WEAPON", 1)
-    // Add ImprovedWeapon
-    addToInventory(state, "IMPROVED_WEAPON", 1)
-    // Auto-equip
-    state.player.equippedWeapon = "IMPROVED_WEAPON"
-  }
+  // Roll on weighted loot table - exactly one item drops
+  const lootWeights = enemy.lootTable.map((entry) => ({
+    label: `loot:${entry.itemId}`,
+    weight: entry.weight,
+  }))
+  const selectedLootIndex = rollLootTable(state.rng, lootWeights, rolls)
+  const selectedLoot = enemy.lootTable[selectedLootIndex]
 
-  // Roll for CombatGuildToken drop (1%)
-  const tokenDrop = roll(state.rng, 0.01, "combat-token-drop", rolls)
-  if (tokenDrop) {
-    addToInventory(state, "COMBAT_GUILD_TOKEN", 1)
+  // Handle special loot behaviors
+  if (selectedLoot.replacesItem) {
+    removeFromInventory(state, selectedLoot.replacesItem, 1)
+  }
+  addToInventory(state, selectedLoot.itemId, selectedLoot.quantity)
+  if (selectedLoot.autoEquip) {
+    state.player.equippedWeapon = selectedLoot.itemId as "CRUDE_WEAPON" | "IMPROVED_WEAPON"
   }
 
   // Grant XP
@@ -518,7 +513,7 @@ function executeFight(state: WorldState, action: FightAction, rolls: RngRoll[]):
     levelUps: mergeLevelUps(levelUps, contractsCompleted),
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
-    stateDeltaSummary: `Defeated ${enemyId}, gained loot`,
+    stateDeltaSummary: `Defeated ${enemyId}`,
   }
 }
 

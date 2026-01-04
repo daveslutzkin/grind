@@ -62,7 +62,17 @@ export function createToyWorld(seed: string): WorldState {
           fightTime: 3,
           successProbability: 0.7,
           requiredSkillLevel: 1,
-          loot: [{ itemId: "IRON_ORE", quantity: 1 }],
+          lootTable: [
+            { itemId: "IRON_ORE", quantity: 1, weight: 89 },
+            {
+              itemId: "IMPROVED_WEAPON",
+              quantity: 1,
+              weight: 10,
+              replacesItem: "CRUDE_WEAPON",
+              autoEquip: true,
+            },
+            { itemId: "COMBAT_GUILD_TOKEN", quantity: 1, weight: 1 },
+          ],
           failureRelocation: "TOWN",
         },
       ],
