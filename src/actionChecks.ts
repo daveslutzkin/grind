@@ -212,8 +212,9 @@ export function checkFightAction(state: WorldState, action: FightAction): Action
     return { valid: false, failureType: "MISSING_WEAPON", timeCost: 0, successProbability: 0 }
   }
 
-  // Check if loot will fit in inventory
-  const lootItems = enemy.loot.map((l) => ({ itemId: l.itemId, quantity: l.quantity }))
+  // Check if loot will fit in inventory (at least 1 slot for the single drop from loot table)
+  const maxLootQuantity = Math.max(...enemy.lootTable.map((l) => l.quantity))
+  const lootItems = [{ itemId: enemy.lootTable[0].itemId, quantity: maxLootQuantity }]
   if (!canFitItems(state, lootItems)) {
     return { valid: false, failureType: "INVENTORY_FULL", timeCost: 0, successProbability: 0 }
   }

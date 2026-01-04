@@ -5,7 +5,7 @@ export function createToyWorld(seed: string): WorldState {
   return {
     time: {
       currentTick: 0,
-      sessionRemainingTicks: 50,
+      sessionRemainingTicks: 200,
     },
 
     player: {

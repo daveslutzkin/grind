@@ -1,0 +1,96 @@
+=== Plan Execution (seed: adaptive-treasure-200-1) ===
+
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ 📍 TOWN  │  ⏱ 200 ticks left  │  🎒 (empty)                                                                          │
+│ 📊 Mining:0 Woodcut:0 Combat:0 Smith:0                                                                               │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  ✓ Enrol: Enrolled in Combat guild  │  ⏱ 3t
+  ✓ Move: Moved from TOWN to MINE  │  ⏱ 2t
+  ✗ Fight: Lost fight to cave-rat  │  ⏱ 3t  │  🎲 70%→miss  │  ❌ COMBAT_FAILURE
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 ORE(89%) IMPROVED(10%) [COMBAT(1%)]
+    📈 LEVEL UP: Combat 1 → 2
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✗ Fight: Lost fight to cave-rat  │  ⏱ 3t  │  🎲 70%→miss  │  ❌ COMBAT_FAILURE
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✗ Fight: Lost fight to cave-rat  │  ⏱ 3t  │  🎲 70%→miss  │  ❌ COMBAT_FAILURE
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✗ Fight: Lost fight to cave-rat  │  ⏱ 3t  │  🎲 70%→miss  │  ❌ COMBAT_FAILURE
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✗ Fight: Lost fight to cave-rat  │  ⏱ 3t  │  🎲 70%→miss  │  ❌ COMBAT_FAILURE
+  ✗ Fight: Lost fight to cave-rat  │  ⏱ 3t  │  🎲 70%→miss  │  ❌ COMBAT_FAILURE
+  ✗ Fight: Lost fight to cave-rat  │  ⏱ 3t  │  🎲 70%→miss  │  ❌ COMBAT_FAILURE
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+    📈 LEVEL UP: Combat 2 → 3
+  ✓ Move: Moved from MINE to TOWN  │  ⏱ 2t
+  ✓ Store: Stored 12 IRON_ORE  │  ⏱ 0t
+  ✓ Move: Moved from TOWN to MINE  │  ⏱ 2t
+  ✗ Fight: Lost fight to cave-rat  │  ⏱ 3t  │  🎲 70%→miss  │  ❌ COMBAT_FAILURE
+  ✗ Fight: Lost fight to cave-rat  │  ⏱ 3t  │  🎲 70%→miss  │  ❌ COMBAT_FAILURE
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✗ Fight: Lost fight to cave-rat  │  ⏱ 3t  │  🎲 70%→miss  │  ❌ COMBAT_FAILURE
+  ✗ Fight: Lost fight to cave-rat  │  ⏱ 3t  │  🎲 70%→miss  │  ❌ COMBAT_FAILURE
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✗ Fight: Lost fight to cave-rat  │  ⏱ 3t  │  🎲 70%→miss  │  ❌ COMBAT_FAILURE
+  ✗ Fight: Lost fight to cave-rat  │  ⏱ 3t  │  🎲 70%→miss  │  ❌ COMBAT_FAILURE
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✗ Fight: Lost fight to cave-rat  │  ⏱ 3t  │  🎲 70%→miss  │  ❌ COMBAT_FAILURE
+  ✓ Move: Moved from MINE to TOWN  │  ⏱ 2t
+  ✓ Store: Stored 13 IRON_ORE  │  ⏱ 0t
+  ✓ Move: Moved from TOWN to MINE  │  ⏱ 2t
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 ORE(89%) [IMPROVED(10%)] COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Combat  │  🎁 ORE(89%) [IMPROVED(10%)] COMBAT(1%)
+    📈 LEVEL UP: Combat 3 → 4
+  ✓ Fight: Defeated cave-rat  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Combat  │  🎁 ORE(89%) [IMPROVED(10%)] COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✗ Fight: Lost fight to cave-rat  │  ⏱ 2t  │  🎲 80%→miss  │  ❌ COMBAT_FAILURE
+  ✗ Fight: Lost fight to cave-rat  │  ⏱ 2t  │  🎲 80%→miss  │  ❌ COMBAT_FAILURE
+  ✓ Fight: Defeated cave-rat  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+
+╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                                    SESSION SUMMARY                                                   ║
+╠══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+│ ⏱  TIME: 174/200 ticks  │  XP: 44 actual, 43.9 expected  │  XP/tick: 0.25 actual, 0.25 expected                      │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 📋 ACTIONS: 68 total  │  Enrol: 1✓ (3t)  │  Move: 5✓ (10t)  │  Fight: 44✓ 16✗ (161t)  │  Store: 2✓ (0t)              │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 🎲 LUCK: Top 54% (typical) — 88/192 vs 87.9 expected (+0.0σ)                                                         │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 📉 VOLATILITY: High (±3.4 XP)                                                                                        │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 📈 SKILLS: Combat: 0→4 (+44 XP)                                                                                      │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 🏆 CONTRACTS: 0 completed  │  Reputation: 0 (+0 this session)                                                        │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 🎒 FINAL ITEMS: 1x COMBAT_GUILD_TOKEN, 3x IMPROVED_WEAPON, 15x IRON_ORE, 25x IRON_ORE (stored)                       │
+╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝

@@ -37,7 +37,7 @@ describe("Integration: Full Session Flow", () => {
 
     // Session should have consumed ticks
     expect(state.time.currentTick).toBeGreaterThan(0)
-    expect(state.time.sessionRemainingTicks).toBeLessThan(50)
+    expect(state.time.sessionRemainingTicks).toBeLessThan(200)
 
     // All logs should have valid structure
     for (const log of logs) {
@@ -129,7 +129,7 @@ describe("Integration: Full Session Flow", () => {
     const destinations: LocationID[] = ["MINE", "FOREST", "TOWN"]
     let i = 0
 
-    while (!sessionEnded && i < 30) {
+    while (!sessionEnded && i < 100) {
       const dest = destinations[i % 3]
       if (state.player.location !== dest) {
         const log = executeAction(state, { type: "Move", destination: dest })
