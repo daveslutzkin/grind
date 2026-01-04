@@ -12,9 +12,9 @@ Combat is where players commit to variance.
 	
 1.	Combat decisions are about risk, not skill
 
-•	No twitch mechanics
-•	No reaction tests
-•	No hidden counters or rotations
+- No twitch mechanics
+- No reaction tests
+- No hidden counters or rotations
 
 2.	All combat probabilities are explicit
 
