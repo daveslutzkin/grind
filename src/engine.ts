@@ -461,11 +461,6 @@ function executeFight(state: WorldState, action: FightAction, rolls: RngRoll[]):
     }
   }
 
-  // Add standard loot to inventory
-  for (const loot of enemy.loot) {
-    addToInventory(state, loot.itemId, loot.quantity)
-  }
-
   // Track kills for active contracts with kill requirements
   for (const contractId of state.player.activeContracts) {
     const contract = state.world.contracts.find((c) => c.id === contractId)
@@ -482,21 +477,27 @@ function executeFight(state: WorldState, action: FightAction, rolls: RngRoll[]):
     }
   }
 
-  // Roll for ImprovedWeapon drop (10%)
-  const improvedWeaponDrop = roll(state.rng, 0.1, "improved-weapon-drop", rolls)
-  if (improvedWeaponDrop) {
-    // Remove CrudeWeapon if present
-    removeFromInventory(state, "CRUDE_WEAPON", 1)
-    // Add ImprovedWeapon
-    addToInventory(state, "IMPROVED_WEAPON", 1)
-    // Auto-equip
-    state.player.equippedWeapon = "IMPROVED_WEAPON"
-  }
-
+  // Loot drop: only ONE item drops (rarest first)
   // Roll for CombatGuildToken drop (1%)
   const tokenDrop = roll(state.rng, 0.01, "combat-token-drop", rolls)
   if (tokenDrop) {
     addToInventory(state, "COMBAT_GUILD_TOKEN", 1)
+  } else {
+    // Roll for ImprovedWeapon drop (10%)
+    const improvedWeaponDrop = roll(state.rng, 0.1, "improved-weapon-drop", rolls)
+    if (improvedWeaponDrop) {
+      // Remove CrudeWeapon if present
+      removeFromInventory(state, "CRUDE_WEAPON", 1)
+      // Add ImprovedWeapon
+      addToInventory(state, "IMPROVED_WEAPON", 1)
+      // Auto-equip
+      state.player.equippedWeapon = "IMPROVED_WEAPON"
+    } else {
+      // Standard loot from enemy loot table
+      for (const loot of enemy.loot) {
+        addToInventory(state, loot.itemId, loot.quantity)
+      }
+    }
   }
 
   // Grant XP

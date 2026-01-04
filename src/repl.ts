@@ -60,21 +60,31 @@ function formatLootSection(log: ActionLog): string {
   // Only show loot section for successful Fight actions
   if (log.actionType !== "Fight" || !log.success) return ""
 
-  // Standard loot is always obtained on success (hardcoded for cave-rat: IRON_ORE)
-  const lootParts: string[] = ["ORE"]
-
-  // Find the weapon and token drop rolls
-  const weaponRoll = log.rngRolls.find((r) => r.label === "improved-weapon-drop")
+  // Find the loot drop rolls - only ONE item drops (rarest first)
   const tokenRoll = log.rngRolls.find((r) => r.label === "combat-token-drop")
+  const weaponRoll = log.rngRolls.find((r) => r.label === "improved-weapon-drop")
 
-  if (weaponRoll) {
-    const pct = (weaponRoll.probability * 100).toFixed(0)
-    lootParts.push(weaponRoll.result ? `+WEAPON(${pct}%)` : `WEAPON(${pct}%✗)`)
+  // Determine which item actually dropped
+  let droppedItem: "TOKEN" | "WEAPON" | "ORE"
+  if (tokenRoll?.result) {
+    droppedItem = "TOKEN"
+  } else if (weaponRoll?.result) {
+    droppedItem = "WEAPON"
+  } else {
+    droppedItem = "ORE"
   }
-  if (tokenRoll) {
-    const pct = (tokenRoll.probability * 100).toFixed(0)
-    lootParts.push(tokenRoll.result ? `+TOKEN(${pct}%)` : `TOKEN(${pct}%✗)`)
+
+  // Format each item - bracket the one that dropped
+  const formatItem = (name: string, pct: string | null) => {
+    const label = pct ? `${name}(${pct}%)` : name
+    return name === droppedItem ? `[${label}]` : label
   }
+
+  const lootParts: string[] = [
+    formatItem("ORE", null),
+    formatItem("WEAPON", weaponRoll ? (weaponRoll.probability * 100).toFixed(0) : "10"),
+    formatItem("TOKEN", tokenRoll ? (tokenRoll.probability * 100).toFixed(0) : "1"),
+  ]
 
   return `🎁 ${lootParts.join(" ")}`
 }
