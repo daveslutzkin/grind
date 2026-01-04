@@ -229,81 +229,85 @@ function printWorld(state: WorldState): void {
 }
 
 /**
- * Compute P(X >= k) for Poisson binomial distribution using DP.
- * probabilities: array of success probabilities for each trial
- * k: number of successes to compute P(X >= k) for
+ * Standard normal CDF approximation using error function
  */
-function poissonBinomialProbAtLeast(probabilities: number[], k: number): number {
-  const n = probabilities.length
-  if (k > n) return 0
-  if (k <= 0) return 1
+function normalCDF(z: number): number {
+  const a1 = 0.254829592
+  const a2 = -0.284496736
+  const a3 = 1.421413741
+  const a4 = -1.453152027
+  const a5 = 1.061405429
+  const p = 0.3275911
 
-  // dp[j] = probability of exactly j successes
-  let dp = new Array(n + 1).fill(0)
-  dp[0] = 1
+  const sign = z < 0 ? -1 : 1
+  const x = Math.abs(z) / Math.sqrt(2)
 
-  for (const p of probabilities) {
-    const newDp = new Array(n + 1).fill(0)
-    for (let j = 0; j <= n; j++) {
-      if (dp[j] === 0) continue
-      newDp[j] += dp[j] * (1 - p) // failure
-      if (j + 1 <= n) {
-        newDp[j + 1] += dp[j] * p // success
-      }
-    }
-    dp = newDp
-  }
+  const t = 1.0 / (1.0 + p * x)
+  const y = 1.0 - ((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t * Math.exp(-x * x)
 
-  // Sum P(X >= k)
-  let prob = 0
-  for (let j = k; j <= n; j++) {
-    prob += dp[j]
-  }
-  return prob
+  return 0.5 * (1.0 + sign * y)
+}
+
+interface RngStream {
+  name: string
+  trials: number
+  probability: number
+  successes: number
 }
 
 /**
- * Compute P(X <= k) for Poisson binomial distribution
+ * Compute luck using Stouffer's method for combining z-scores across RNG streams.
  */
-function poissonBinomialProbAtMost(probabilities: number[], k: number): number {
-  const n = probabilities.length
-  if (k < 0) return 0
-  if (k >= n) return 1
+function computeLuckString(streams: RngStream[]): string {
+  const validStreams = streams.filter(
+    (s) => s.trials > 0 && s.probability > 0 && s.probability < 1
+  )
 
-  let dp = new Array(n + 1).fill(0)
-  dp[0] = 1
+  if (validStreams.length === 0) return "N/A (no RNG actions)"
 
-  for (const p of probabilities) {
-    const newDp = new Array(n + 1).fill(0)
-    for (let j = 0; j <= n; j++) {
-      if (dp[j] === 0) continue
-      newDp[j] += dp[j] * (1 - p)
-      if (j + 1 <= n) {
-        newDp[j + 1] += dp[j] * p
-      }
+  const zScores: number[] = []
+  for (const stream of validStreams) {
+    const expected = stream.trials * stream.probability
+    const variance = stream.trials * stream.probability * (1 - stream.probability)
+    if (variance > 0) {
+      const z = (stream.successes - expected) / Math.sqrt(variance)
+      zScores.push(z)
     }
-    dp = newDp
   }
 
-  let prob = 0
-  for (let j = 0; j <= k; j++) {
-    prob += dp[j]
+  if (zScores.length === 0) return "N/A (no variance)"
+
+  const zLuck = zScores.reduce((sum, z) => sum + z, 0) / Math.sqrt(zScores.length)
+  const percentile = normalCDF(zLuck) * 100
+
+  let label: string
+  if (zLuck >= 1.5) {
+    label = "very lucky"
+  } else if (zLuck >= 0.5) {
+    label = "lucky"
+  } else if (zLuck <= -1.5) {
+    label = "very unlucky"
+  } else if (zLuck <= -0.5) {
+    label = "unlucky"
+  } else {
+    label = "average"
   }
-  return prob
+
+  const position = zLuck >= 0 ? `Top ${(100 - percentile).toFixed(0)}%` : `Bottom ${percentile.toFixed(0)}%`
+  const sigmaStr = zLuck >= 0 ? `+${zLuck.toFixed(2)}σ` : `${zLuck.toFixed(2)}σ`
+
+  return `${position} (${label}) — ${validStreams.length} streams (${sigmaStr})`
 }
 
 /**
  * Compute Volatility string for the plan
- * Volatility = σ of total XP (standard deviation)
  */
 function computeVolatility(xpProbabilities: number[]): string {
   if (xpProbabilities.length === 0) return "N/A"
 
-  // Volatility: σ = sqrt(sum of p*(1-p) for each action)
   const totalVariance = xpProbabilities.reduce((sum, p) => sum + p * (1 - p), 0)
   const sigma = Math.sqrt(totalVariance)
 
-  // Bucket volatility
   let volLabel: string
   if (sigma < 1.0) {
     volLabel = "Low"
@@ -317,74 +321,44 @@ function computeVolatility(xpProbabilities: number[]): string {
 }
 
 /**
- * Compute luck string with percentile, label, and sigma
+ * Build RNG streams from action logs for luck calculation.
  */
-function computeLuckString(probabilities: number[], actualSuccesses: number): string {
-  const n = probabilities.length
-  if (n === 0) return "N/A (no RNG actions)"
+function buildRngStreams(logs: ActionLog[]): RngStream[] {
+  const streamMap: Map<string, { trials: number; probability: number; successes: number }> = new Map()
 
-  // Expected value and standard deviation
-  const expected = probabilities.reduce((sum, p) => sum + p, 0)
-  const variance = probabilities.reduce((sum, p) => sum + p * (1 - p), 0)
-  const sigma = Math.sqrt(variance)
+  for (const log of logs) {
+    const nonLootRolls = log.rngRolls.filter((r) => !r.label.startsWith("loot:"))
+    const lootRolls = log.rngRolls.filter((r) => r.label.startsWith("loot:"))
 
-  // Z-score
-  const zScore = sigma > 0 ? (actualSuccesses - expected) / sigma : 0
-
-  // Compute percentile based on whether we're above or below expected
-  let percentile: number
-  let label: string
-  let position: string
-
-  if (actualSuccesses >= expected) {
-    // Lucky side: compute P(X >= actual)
-    const probAtLeast = poissonBinomialProbAtLeast(probabilities, actualSuccesses)
-    percentile = probAtLeast * 100
-    position = `Top ${percentile.toFixed(0)}%`
-
-    if (percentile <= 5) {
-      label = "extremely lucky"
-    } else if (percentile <= 20) {
-      label = "very lucky"
-    } else if (percentile <= 35) {
-      label = "mildly lucky"
-    } else if (percentile <= 65) {
-      label = "typical"
-    } else if (percentile <= 80) {
-      label = "mildly lucky"
-    } else if (percentile <= 95) {
-      label = "typical"
-    } else {
-      label = "typical"
+    for (const roll of nonLootRolls) {
+      const streamName = roll.label
+      let stream = streamMap.get(streamName)
+      if (!stream) {
+        stream = { trials: 0, probability: roll.probability, successes: 0 }
+        streamMap.set(streamName, stream)
+      }
+      stream.trials++
+      if (roll.result) stream.successes++
     }
-  } else {
-    // Unlucky side: compute P(X <= actual)
-    const probAtMost = poissonBinomialProbAtMost(probabilities, actualSuccesses)
-    percentile = probAtMost * 100
-    position = `Bottom ${percentile.toFixed(0)}%`
 
-    if (percentile <= 5) {
-      label = "extremely unlucky"
-    } else if (percentile <= 20) {
-      label = "very unlucky"
-    } else if (percentile <= 35) {
-      label = "mildly unlucky"
-    } else if (percentile <= 65) {
-      label = "typical"
-    } else if (percentile <= 80) {
-      label = "mildly unlucky"
-    } else if (percentile <= 95) {
-      label = "typical"
-    } else {
-      label = "typical"
+    for (const roll of lootRolls) {
+      const streamName = roll.label
+      let stream = streamMap.get(streamName)
+      if (!stream) {
+        stream = { trials: 0, probability: roll.probability, successes: 0 }
+        streamMap.set(streamName, stream)
+      }
+      stream.trials++
+      if (roll.result) stream.successes++
     }
   }
 
-  // Format sigma with sign
-  const sigmaStr = zScore >= 0 ? `+${zScore.toFixed(1)}σ` : `${zScore.toFixed(1)}σ`
-
-  // Build final string - always show position and label
-  return `${position} (${label}) — ${actualSuccesses}/${n} vs ${expected.toFixed(1)} expected (${sigmaStr})`
+  return Array.from(streamMap.entries()).map(([name, data]) => ({
+    name,
+    trials: data.trials,
+    probability: data.probability,
+    successes: data.successes,
+  }))
 }
 
 function printSummary(state: WorldState, stats: SessionStats): void {
@@ -447,30 +421,9 @@ function printSummary(state: WorldState, stats: SessionStats): void {
   // Volatility calculation
   const volatilityStr = computeVolatility(xpProbabilities)
 
-  // RNG luck analysis using Poisson binomial distribution
-  // Loot rolls need special handling: they're mutually exclusive (one drops per fight)
-  // Only count genuinely rare drops (p <= 20%) as lucky events
-  const RARE_DROP_THRESHOLD = 0.2
-  const probabilities: number[] = []
-  let actualSuccesses = 0
-  for (const log of stats.logs) {
-    const nonLootRolls = log.rngRolls.filter((r) => !r.label.startsWith("loot:"))
-    const lootRolls = log.rngRolls.filter((r) => r.label.startsWith("loot:"))
-
-    // Include all non-loot rolls (combat, gather, etc.)
-    for (const roll of nonLootRolls) {
-      probabilities.push(roll.probability)
-      if (roll.result) actualSuccesses++
-    }
-
-    // For loot: find which one dropped, only count if genuinely rare
-    const droppedLoot = lootRolls.find((r) => r.result)
-    if (droppedLoot && droppedLoot.probability <= RARE_DROP_THRESHOLD) {
-      probabilities.push(droppedLoot.probability)
-      actualSuccesses++
-    }
-  }
-  const luckStr = computeLuckString(probabilities, actualSuccesses)
+  // RNG luck analysis using Stouffer's method for combining z-scores
+  const rngStreams = buildRngStreams(stats.logs)
+  const luckStr = computeLuckString(rngStreams)
 
   // Contracts completed
   let contractsCompleted = 0
