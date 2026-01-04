@@ -199,13 +199,15 @@ function simulateAction(state: WorldState, action: Action): string | null {
     case "Fight": {
       const enemy = state.world.enemies.find((e) => e.id === action.enemyId)
       if (enemy) {
-        for (const loot of enemy.loot) {
-          const existing = state.player.inventory.find((i) => i.itemId === loot.itemId)
-          if (existing) {
-            existing.quantity += loot.quantity
-          } else {
-            state.player.inventory.push({ itemId: loot.itemId, quantity: loot.quantity })
-          }
+        // For evaluation, assume the most likely loot (highest weight)
+        const bestLoot = enemy.lootTable.reduce((best, entry) =>
+          entry.weight > best.weight ? entry : best
+        )
+        const existing = state.player.inventory.find((i) => i.itemId === bestLoot.itemId)
+        if (existing) {
+          existing.quantity += bestLoot.quantity
+        } else {
+          state.player.inventory.push({ itemId: bestLoot.itemId, quantity: bestLoot.quantity })
         }
         state.player.skills.Combat.xp += 1
       }

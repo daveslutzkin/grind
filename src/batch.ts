@@ -36,31 +36,18 @@ function formatLootSection(log: ActionLog): string {
   // Only show loot section for successful Fight actions
   if (log.actionType !== "Fight" || !log.success) return ""
 
-  // Find the loot drop rolls - only ONE item drops (rarest first)
-  const tokenRoll = log.rngRolls.find((r) => r.label === "combat-token-drop")
-  const weaponRoll = log.rngRolls.find((r) => r.label === "improved-weapon-drop")
+  // Find loot table rolls (labels start with "loot:")
+  const lootRolls = log.rngRolls.filter((r) => r.label.startsWith("loot:"))
+  if (lootRolls.length === 0) return ""
 
-  // Determine which item actually dropped
-  let droppedItem: "TOKEN" | "WEAPON" | "ORE"
-  if (tokenRoll?.result) {
-    droppedItem = "TOKEN"
-  } else if (weaponRoll?.result) {
-    droppedItem = "WEAPON"
-  } else {
-    droppedItem = "ORE"
-  }
-
-  // Format each item - bracket the one that dropped
-  const formatItem = (name: string, pct: string | null) => {
-    const label = pct ? `${name}(${pct}%)` : name
-    return name === droppedItem ? `[${label}]` : label
-  }
-
-  const lootParts: string[] = [
-    formatItem("ORE", null),
-    formatItem("WEAPON", weaponRoll ? (weaponRoll.probability * 100).toFixed(0) : "10"),
-    formatItem("TOKEN", tokenRoll ? (tokenRoll.probability * 100).toFixed(0) : "1"),
-  ]
+  // Format each loot entry - bracket the one that dropped
+  const lootParts = lootRolls.map((roll) => {
+    const itemName = roll.label.replace("loot:", "").replace("IRON_", "").replace("_", " ")
+    const shortName = itemName === "ORE" ? "ORE" : itemName.split(" ")[0]
+    const pct = (roll.probability * 100).toFixed(0)
+    const label = `${shortName}(${pct}%)`
+    return roll.result ? `[${label}]` : label
+  })
 
   return `🎁 ${lootParts.join(" ")}`
 }
@@ -71,9 +58,7 @@ function printLog(log: ActionLog): void {
   // For Fight actions, separate main fight roll from loot rolls
   let rngStr = ""
   if (log.rngRolls.length > 0) {
-    const mainRolls = log.rngRolls.filter(
-      (r) => r.label !== "improved-weapon-drop" && r.label !== "combat-token-drop"
-    )
+    const mainRolls = log.rngRolls.filter((r) => !r.label.startsWith("loot:"))
     if (mainRolls.length > 0) {
       rngStr = mainRolls
         .map((r) => `${(r.probability * 100).toFixed(0)}%→${r.result ? "hit" : "miss"}`)

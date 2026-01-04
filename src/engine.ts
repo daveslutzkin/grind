@@ -19,7 +19,7 @@ import type {
   LevelUp,
 } from "./types.js"
 import { addXPToSkill } from "./types.js"
-import { roll } from "./rng.js"
+import { roll, rollLootTable } from "./rng.js"
 
 import {
   checkMoveAction,
@@ -477,27 +477,21 @@ function executeFight(state: WorldState, action: FightAction, rolls: RngRoll[]):
     }
   }
 
-  // Loot drop: only ONE item drops (rarest first)
-  // Roll for CombatGuildToken drop (1%)
-  const tokenDrop = roll(state.rng, 0.01, "combat-token-drop", rolls)
-  if (tokenDrop) {
-    addToInventory(state, "COMBAT_GUILD_TOKEN", 1)
-  } else {
-    // Roll for ImprovedWeapon drop (10%)
-    const improvedWeaponDrop = roll(state.rng, 0.1, "improved-weapon-drop", rolls)
-    if (improvedWeaponDrop) {
-      // Remove CrudeWeapon if present
-      removeFromInventory(state, "CRUDE_WEAPON", 1)
-      // Add ImprovedWeapon
-      addToInventory(state, "IMPROVED_WEAPON", 1)
-      // Auto-equip
-      state.player.equippedWeapon = "IMPROVED_WEAPON"
-    } else {
-      // Standard loot from enemy loot table
-      for (const loot of enemy.loot) {
-        addToInventory(state, loot.itemId, loot.quantity)
-      }
-    }
+  // Roll on weighted loot table - exactly one item drops
+  const lootWeights = enemy.lootTable.map((entry) => ({
+    label: `loot:${entry.itemId}`,
+    weight: entry.weight,
+  }))
+  const selectedLootIndex = rollLootTable(state.rng, lootWeights, rolls)
+  const selectedLoot = enemy.lootTable[selectedLootIndex]
+
+  // Handle special loot behaviors
+  if (selectedLoot.replacesItem) {
+    removeFromInventory(state, selectedLoot.replacesItem, 1)
+  }
+  addToInventory(state, selectedLoot.itemId, selectedLoot.quantity)
+  if (selectedLoot.autoEquip) {
+    state.player.equippedWeapon = selectedLoot.itemId as "CRUDE_WEAPON" | "IMPROVED_WEAPON"
   }
 
   // Grant XP

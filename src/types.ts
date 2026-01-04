@@ -32,6 +32,14 @@ export interface ItemStack {
   quantity: number
 }
 
+export interface LootTableEntry {
+  itemId: ItemID
+  quantity: number
+  weight: number // Relative weight for weighted random selection
+  replacesItem?: ItemID // If set, removes this item when dropping
+  autoEquip?: boolean // If true, auto-equip this item as a weapon
+}
+
 export interface ResourceNode {
   id: string
   location: LocationID
@@ -48,7 +56,7 @@ export interface Enemy {
   fightTime: number
   successProbability: number
   requiredSkillLevel: number
-  loot: ItemStack[]
+  lootTable: LootTableEntry[] // Weighted loot table - exactly one item drops per kill
   failureRelocation: LocationID
 }
 
