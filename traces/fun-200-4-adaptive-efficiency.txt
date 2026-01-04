@@ -1,0 +1,106 @@
+=== Plan Execution (seed: adaptive-eff-200-4) ===
+
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ 📍 TOWN  │  ⏱ 200 ticks left  │  🎒 (empty)                                                                          │
+│ 📊 Mining:0 Woodcut:0 Combat:0 Smith:0                                                                               │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  ✓ Enrol: Enrolled in Woodcutting guild  │  ⏱ 3t
+  ✓ Move: Moved from TOWN to FOREST  │  ⏱ 3t
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✗ Gather: Failed to gather from wood-node  │  ⏱ 2t  │  🎲 90%→miss  │  ❌ GATHER_FAILURE
+  ✗ Gather: Failed to gather from wood-node  │  ⏱ 2t  │  🎲 90%→miss  │  ❌ GATHER_FAILURE
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+    📈 LEVEL UP: Woodcutting 1 → 2
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Move: Moved from FOREST to TOWN  │  ⏱ 3t
+  ✗ Store: Failed: MISSING_ITEMS  │  ⏱ 0t  │  ❌ MISSING_ITEMS
+  ✓ Move: Moved from TOWN to FOREST  │  ⏱ 3t
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+    📈 LEVEL UP: Woodcutting 2 → 3
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Move: Moved from FOREST to TOWN  │  ⏱ 3t
+  ✓ Store: Stored 10 WOOD_LOG  │  ⏱ 0t
+  ✓ Move: Moved from TOWN to FOREST  │  ⏱ 3t
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✗ Gather: Failed to gather from wood-node  │  ⏱ 2t  │  🎲 90%→miss  │  ❌ GATHER_FAILURE
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Move: Moved from FOREST to TOWN  │  ⏱ 3t
+  ✓ Store: Stored 10 WOOD_LOG  │  ⏱ 0t
+  ✓ Move: Moved from TOWN to FOREST  │  ⏱ 3t
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+    📈 LEVEL UP: Woodcutting 3 → 4
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Move: Moved from FOREST to TOWN  │  ⏱ 3t
+  ✓ Store: Stored 10 WOOD_LOG  │  ⏱ 0t
+  ✓ Move: Moved from TOWN to FOREST  │  ⏱ 3t
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✗ Gather: Failed to gather from wood-node  │  ⏱ 2t  │  🎲 90%→miss  │  ❌ GATHER_FAILURE
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Move: Moved from FOREST to TOWN  │  ⏱ 3t
+  ✓ Store: Stored 10 WOOD_LOG  │  ⏱ 0t
+  ✓ Move: Moved from TOWN to FOREST  │  ⏱ 3t
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+    📈 LEVEL UP: Woodcutting 4 → 5
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+
+╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                                    SESSION SUMMARY                                                   ║
+╠══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+│ ⏱  TIME: 156/200 ticks  │  XP: 56 actual, 54.0 expected  │  XP/tick: 0.36 actual, 0.35 expected                      │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 📋 ACTIONS: 77 total  │  Enrol: 1✓ (3t)  │  Move: 11✓ (33t)  │  Gather: 56✓ 4✗ (120t)  │  Store: 4✓ 1✗ (0t)          │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 🎲 LUCK: Top 27% (mildly lucky) — 56/60 vs 54.0 expected (+0.9σ)                                                     │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 📉 VOLATILITY: High (±2.3 XP)                                                                                        │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 📈 SKILLS: Woodcutting: 0→5 (+56 XP)                                                                                 │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 🏆 CONTRACTS: 0 completed  │  Reputation: 0 (+0 this session)                                                        │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 🎒 FINAL ITEMS: 16x WOOD_LOG, 40x WOOD_LOG (stored)                                                                  │
+╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝

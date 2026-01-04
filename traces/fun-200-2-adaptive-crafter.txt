@@ -1,4 +1,4 @@
-=== Plan Execution (seed: fun-200-crafter-2) ===
+=== Plan Execution (seed: adaptive-crafter-200-2) ===
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ 📍 TOWN  │  ⏱ 200 ticks left  │  🎒 (empty)                                                                          │
@@ -10,39 +10,32 @@
   ✓ Enrol: Enrolled in Smithing guild  │  ⏱ 3t
   ✓ Move: Moved from TOWN to MINE  │  ⏱ 2t
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✗ Gather: Failed to gather from iron-node  │  ⏱ 2t  │  🎲 80%→miss  │  ❌ GATHER_FAILURE
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✗ Gather: Failed to gather from iron-node  │  ⏱ 2t  │  🎲 80%→miss  │  ❌ GATHER_FAILURE
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
     📈 LEVEL UP: Mining 1 → 2
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
   ✓ Move: Moved from MINE to TOWN  │  ⏱ 2t
   ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
   ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
     🏆 CONTRACT COMPLETE: miners-guild-1  │  Consumed: 2x IRON_BAR  │  Granted: 5x IRON_ORE  │  +10 rep  │  📈 +2 Mining
   ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
-  ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
-    📈 LEVEL UP: Smithing 1 → 2
-  ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
   ✗ Store: Failed: MISSING_ITEMS  │  ⏱ 0t  │  ❌ MISSING_ITEMS
   ✓ Move: Moved from TOWN to MINE  │  ⏱ 2t
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
+  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
+  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
   ✗ Gather: Failed to gather from iron-node  │  ⏱ 2t  │  🎲 80%→miss  │  ❌ GATHER_FAILURE
+  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
     📈 LEVEL UP: Mining 2 → 3
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
   ✗ Gather: Failed to gather from iron-node  │  ⏱ 2t  │  🎲 80%→miss  │  ❌ GATHER_FAILURE
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
   ✓ Move: Moved from MINE to TOWN  │  ⏱ 2t
   ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
+    📈 LEVEL UP: Smithing 1 → 2
   ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
   ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
   ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
@@ -50,56 +43,56 @@
   ✓ Store: Stored 5 IRON_BAR  │  ⏱ 0t
   ✓ Move: Moved from TOWN to MINE  │  ⏱ 2t
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✗ Gather: Failed to gather from iron-node  │  ⏱ 2t  │  🎲 80%→miss  │  ❌ GATHER_FAILURE
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
   ✗ Gather: Failed to gather from iron-node  │  ⏱ 2t  │  🎲 80%→miss  │  ❌ GATHER_FAILURE
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
+  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
+  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
+  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
+  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
+  ✗ Gather: Failed to gather from iron-node  │  ⏱ 2t  │  🎲 80%→miss  │  ❌ GATHER_FAILURE
   ✓ Move: Moved from MINE to TOWN  │  ⏱ 2t
+  ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
+  ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
   ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
   ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
   ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
     📈 LEVEL UP: Smithing 2 → 3
-  ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
-  ✗ Craft: Failed: MISSING_ITEMS  │  ⏱ 0t  │  ❌ MISSING_ITEMS
   ✓ Store: Stored 5 IRON_BAR  │  ⏱ 0t
   ✓ Move: Moved from TOWN to MINE  │  ⏱ 2t
+  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
+  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
+  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
     📈 LEVEL UP: Mining 3 → 4
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
   ✗ Gather: Failed to gather from iron-node  │  ⏱ 2t  │  🎲 80%→miss  │  ❌ GATHER_FAILURE
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
+  ✗ Gather: Failed to gather from iron-node  │  ⏱ 2t  │  🎲 80%→miss  │  ❌ GATHER_FAILURE
   ✓ Move: Moved from MINE to TOWN  │  ⏱ 2t
   ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
   ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
   ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
   ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
-  ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
+  ✗ Craft: Failed: MISSING_ITEMS  │  ⏱ 0t  │  ❌ MISSING_ITEMS
 
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
 ║                                                    SESSION SUMMARY                                                   ║
 ╠══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
-│ ⏱  TIME: 159/200 ticks  │  XP: 54 actual, 53.0 expected  │  XP/tick: 0.34 actual, 0.33 expected                      │
+│ ⏱  TIME: 143/200 ticks  │  XP: 48 actual, 47.0 expected  │  XP/tick: 0.34 actual, 0.33 expected                      │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 📋 ACTIONS: 74 total  │  AcceptContract: 1✓ (0t)  │  Enrol: 2✓ (6t)  │  Move: 8✓ (16t)  │  Gather: 33✓ 7✗ (80t)  │  Craft: 19✓ 1✗ (57t)  │  Store: 2✓ 1✗ (0t) │
+│ 📋 ACTIONS: 67 total  │  AcceptContract: 1✓ (0t)  │  Enrol: 2✓ (6t)  │  Move: 8✓ (16t)  │  Gather: 29✓ 6✗ (70t)  │  Craft: 17✓ 1✗ (51t)  │  Store: 2✓ 1✗ (0t) │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 🎲 LUCK: Top 44% (typical) — 33/40 vs 32.0 expected (+0.4σ)                                                          │
+│ 🎲 LUCK: Top 43% (typical) — 29/35 vs 28.0 expected (+0.4σ)                                                          │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 📉 VOLATILITY: High (±2.5 XP)                                                                                        │
+│ 📉 VOLATILITY: High (±2.4 XP)                                                                                        │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 📈 SKILLS: Mining: 0→4 (+35 XP)  │  Smithing: 0→3 (+19 XP)                                                           │
+│ 📈 SKILLS: Mining: 0→4 (+31 XP)  │  Smithing: 0→3 (+17 XP)                                                           │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ 🏆 CONTRACTS: 1 completed  │  Reputation: 10 (+10 this session)                                                      │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 🎒 FINAL ITEMS: 7x IRON_BAR, 10x IRON_BAR (stored)                                                                   │
+│ 🎒 FINAL ITEMS: 5x IRON_BAR, 10x IRON_BAR (stored)                                                                   │
 ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝

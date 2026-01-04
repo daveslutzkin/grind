@@ -1,4 +1,4 @@
-=== Plan Execution (seed: fun-200-speed-4) ===
+=== Plan Execution (seed: adaptive-jack-200-3) ===
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ 📍 TOWN  │  ⏱ 200 ticks left  │  🎒 (empty)                                                                          │
@@ -6,116 +6,89 @@
 └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
   ✓ Enrol: Enrolled in Mining guild  │  ⏱ 3t
+  ✓ Enrol: Enrolled in Woodcutting guild  │  ⏱ 3t
   ✓ Move: Moved from TOWN to MINE  │  ⏱ 2t
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
+  ✗ Gather: Failed to gather from iron-node  │  ⏱ 2t  │  🎲 80%→miss  │  ❌ GATHER_FAILURE
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
     📈 LEVEL UP: Mining 1 → 2
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
+  ✓ Move: Moved from MINE to FOREST  │  ⏱ 4t
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+    📈 LEVEL UP: Woodcutting 1 → 2
+  ✗ Gather: Failed to gather from wood-node  │  ⏱ 2t  │  🎲 90%→miss  │  ❌ GATHER_FAILURE
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Move: Moved from FOREST to TOWN  │  ⏱ 3t
+  ✓ Enrol: Enrolled in Smithing guild  │  ⏱ 3t
+  ✓ Enrol: Enrolled in Combat guild  │  ⏱ 3t
+  ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
+  ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
+  ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
+  ✗ Craft: Failed: MISSING_ITEMS  │  ⏱ 0t  │  ❌ MISSING_ITEMS
+  ✗ Store: Failed: MISSING_ITEMS  │  ⏱ 0t  │  ❌ MISSING_ITEMS
+  ✗ Store: Failed: MISSING_ITEMS  │  ⏱ 0t  │  ❌ MISSING_ITEMS
+  ✓ Move: Moved from TOWN to MINE  │  ⏱ 2t
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 3t  │  🎲 70%→hit  │  📈 +1 Combat  │  🎁 ORE(89%) [IMPROVED(10%)] COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Combat  │  🎁 ORE(89%) [IMPROVED(10%)] COMBAT(1%)
+    📈 LEVEL UP: Combat 1 → 2
+  ✓ Fight: Defeated cave-rat  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Combat  │  🎁 ORE(89%) [IMPROVED(10%)] COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Fight: Defeated cave-rat  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✗ Fight: Lost fight to cave-rat  │  ⏱ 2t  │  🎲 80%→miss  │  ❌ COMBAT_FAILURE
+  ✓ Fight: Defeated cave-rat  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Combat  │  🎁 [ORE(89%)] IMPROVED(10%) COMBAT(1%)
+  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
   ✗ Gather: Failed to gather from iron-node  │  ⏱ 2t  │  🎲 80%→miss  │  ❌ GATHER_FAILURE
   ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
+  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
   ✓ Move: Moved from MINE to TOWN  │  ⏱ 2t
-  ✓ Enrol: Enrolled in Smithing guild  │  ⏱ 3t
-  ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
-  ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
-  ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
   ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
     📈 LEVEL UP: Smithing 1 → 2
-  ✗ Craft: Failed: MISSING_ITEMS  │  ⏱ 0t  │  ❌ MISSING_ITEMS
-  ✗ Store: Failed: MISSING_ITEMS  │  ⏱ 0t  │  ❌ MISSING_ITEMS
-  ✓ Move: Moved from TOWN to MINE  │  ⏱ 2t
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-    📈 LEVEL UP: Mining 2 → 3
-  ✗ Gather: Failed to gather from iron-node  │  ⏱ 2t  │  🎲 80%→miss  │  ❌ GATHER_FAILURE
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✗ Gather: Failed to gather from iron-node  │  ⏱ 2t  │  🎲 80%→miss  │  ❌ GATHER_FAILURE
-  ✓ Move: Moved from MINE to TOWN  │  ⏱ 2t
   ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
   ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
   ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
-  ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
-  ✗ Craft: Failed: MISSING_ITEMS  │  ⏱ 0t  │  ❌ MISSING_ITEMS
-  ✓ Store: Stored 5 IRON_BAR  │  ⏱ 0t
-  ✓ Move: Moved from TOWN to MINE  │  ⏱ 2t
-  ✗ Gather: Failed to gather from iron-node  │  ⏱ 2t  │  🎲 80%→miss  │  ❌ GATHER_FAILURE
-  ✗ Gather: Failed to gather from iron-node  │  ⏱ 2t  │  🎲 80%→miss  │  ❌ GATHER_FAILURE
-  ✗ Gather: Failed to gather from iron-node  │  ⏱ 2t  │  🎲 80%→miss  │  ❌ GATHER_FAILURE
-  ✗ Gather: Failed to gather from iron-node  │  ⏱ 2t  │  🎲 80%→miss  │  ❌ GATHER_FAILURE
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✗ Gather: Failed to gather from iron-node  │  ⏱ 2t  │  🎲 80%→miss  │  ❌ GATHER_FAILURE
-  ✗ Gather: Failed to gather from iron-node  │  ⏱ 2t  │  🎲 80%→miss  │  ❌ GATHER_FAILURE
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✗ Gather: Failed to gather from iron-node  │  ⏱ 2t  │  🎲 80%→miss  │  ❌ GATHER_FAILURE
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Move: Moved from MINE to TOWN  │  ⏱ 2t
-  ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
-  ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
-  ✗ Craft: Failed: MISSING_ITEMS  │  ⏱ 0t  │  ❌ MISSING_ITEMS
-  ✗ Craft: Failed: MISSING_ITEMS  │  ⏱ 0t  │  ❌ MISSING_ITEMS
-  ✗ Craft: Failed: MISSING_ITEMS  │  ⏱ 0t  │  ❌ MISSING_ITEMS
-  ✓ Store: Stored 5 IRON_BAR  │  ⏱ 0t
-  ✓ Move: Moved from TOWN to MINE  │  ⏱ 2t
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✗ Gather: Failed to gather from iron-node  │  ⏱ 2t  │  🎲 80%→miss  │  ❌ GATHER_FAILURE
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-    📈 LEVEL UP: Mining 3 → 4
-  ✓ Move: Moved from MINE to TOWN  │  ⏱ 2t
-  ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
-  ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
-  ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
-    📈 LEVEL UP: Smithing 2 → 3
-  ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
-  ✗ Craft: Failed: MISSING_ITEMS  │  ⏱ 0t  │  ❌ MISSING_ITEMS
-  ✗ Store: Failed: MISSING_ITEMS  │  ⏱ 0t  │  ❌ MISSING_ITEMS
-  ✓ Move: Moved from TOWN to MINE  │  ⏱ 2t
-  ✗ Gather: Failed to gather from iron-node  │  ⏱ 2t  │  🎲 80%→miss  │  ❌ GATHER_FAILURE
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✗ Gather: Failed to gather from iron-node  │  ⏱ 2t  │  🎲 80%→miss  │  ❌ GATHER_FAILURE
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Gather: Gathered 1 IRON_ORE from iron-node  │  ⏱ 2t  │  🎲 80%→hit  │  📈 +1 Mining
-  ✓ Move: Moved from MINE to TOWN  │  ⏱ 2t
-  ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
-  ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
-  ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
-  ✓ Craft: Crafted 1 IRON_BAR  │  ⏱ 3t  │  📈 +1 Smithing
-  ✗ Craft: Failed: MISSING_ITEMS  │  ⏱ 0t  │  ❌ MISSING_ITEMS
+  ✓ Store: Stored 4 IRON_BAR  │  ⏱ 0t
+  ✓ Move: Moved from TOWN to FOREST  │  ⏱ 3t
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✗ Gather: Failed to gather from wood-node  │  ⏱ 2t  │  🎲 90%→miss  │  ❌ GATHER_FAILURE
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✗ Gather: Failed to gather from wood-node  │  ⏱ 2t  │  🎲 90%→miss  │  ❌ GATHER_FAILURE
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+    📈 LEVEL UP: Woodcutting 2 → 3
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Gather: Gathered 1 WOOD_LOG from wood-node  │  ⏱ 2t  │  🎲 90%→hit  │  📈 +1 Woodcutting
+  ✓ Move: Moved from FOREST to TOWN  │  ⏱ 3t
+  ✓ Store: Stored 10 WOOD_LOG  │  ⏱ 0t
 
 ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
 ║                                                    SESSION SUMMARY                                                   ║
 ╠══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
-│ ⏱  TIME: 180/200 ticks  │  XP: 55 actual, 58.0 expected  │  XP/tick: 0.31 actual, 0.32 expected                      │
+│ ⏱  TIME: 136/200 ticks  │  XP: 42 actual, 41.4 expected  │  XP/tick: 0.31 actual, 0.30 expected                      │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 📋 ACTIONS: 91 total  │  Enrol: 2✓ (6t)  │  Move: 10✓ (20t)  │  Gather: 37✓ 13✗ (100t)  │  Craft: 18✓ 7✗ (54t)  │  Store: 2✓ 2✗ (0t) │
+│ 📋 ACTIONS: 64 total  │  Enrol: 4✓ (12t)  │  Move: 7✓ (19t)  │  Gather: 26✓ 5✗ (62t)  │  Craft: 7✓ 1✗ (21t)  │  Store: 2✓ 2✗ (0t)  │  Fight: 9✓ 1✗ (22t) │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 🎲 LUCK: Bottom 19% (very unlucky) — 37/50 vs 40.0 expected (-1.1σ)                                                  │
+│ 🎲 LUCK: Top 50% (typical) — 44/68 vs 43.4 expected (+0.2σ)                                                          │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 📉 VOLATILITY: High (±2.8 XP)                                                                                        │
+│ 📉 VOLATILITY: High (±2.3 XP)                                                                                        │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 📈 SKILLS: Mining: 0→4 (+37 XP)  │  Smithing: 0→3 (+18 XP)                                                           │
+│ 📈 SKILLS: Mining: 0→2 (+11 XP)  │  Woodcutting: 0→3 (+15 XP)  │  Combat: 0→2 (+9 XP)  │  Smithing: 0→2 (+7 XP)      │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ 🏆 CONTRACTS: 0 completed  │  Reputation: 0 (+0 this session)                                                        │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 🎒 FINAL ITEMS: 1x IRON_ORE, 8x IRON_BAR, 10x IRON_BAR (stored)                                                      │
+│ 🎒 FINAL ITEMS: 3x IRON_ORE, 5x WOOD_LOG, 3x IRON_BAR, 3x IMPROVED_WEAPON, 4x IRON_BAR (stored), 10x WOOD_LOG (stored) │
 ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
