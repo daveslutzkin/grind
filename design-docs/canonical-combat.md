@@ -45,9 +45,11 @@ Mid-combat agency is allowed only if it:
 5.	Combat creates information
 
 - Outcomes update:
+
 		- luck deltas
 		- streak indicators
 		- variance trackers
+
 - Failure should teach, not just delay
 
 6.	Preparation dominates outcomes
@@ -69,8 +71,10 @@ Mid-combat agency is allowed only if it:
 ### Canonical Examples
 
 - Choosing between:
+
 		- safe, low-variance combat
 		- risky, high-upside combat
+
 - Pivoting away from combat after bad streaks
 - Doubling down after favourable variance
 
