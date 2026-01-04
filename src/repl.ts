@@ -56,24 +56,58 @@ function printState(state: WorldState): void {
   console.log(`└${line}┘`)
 }
 
+function formatLootSection(log: ActionLog): string {
+  // Only show loot section for successful Fight actions
+  if (log.actionType !== "Fight" || !log.success) return ""
+
+  // Standard loot is always obtained on success (hardcoded for cave-rat: IRON_ORE)
+  const lootParts: string[] = ["ORE"]
+
+  // Find the weapon and token drop rolls
+  const weaponRoll = log.rngRolls.find((r) => r.label === "improved-weapon-drop")
+  const tokenRoll = log.rngRolls.find((r) => r.label === "combat-token-drop")
+
+  if (weaponRoll) {
+    const pct = (weaponRoll.probability * 100).toFixed(0)
+    lootParts.push(weaponRoll.result ? `+WEAPON(${pct}%)` : `WEAPON(${pct}%✗)`)
+  }
+  if (tokenRoll) {
+    const pct = (tokenRoll.probability * 100).toFixed(0)
+    lootParts.push(tokenRoll.result ? `+TOKEN(${pct}%)` : `TOKEN(${pct}%✗)`)
+  }
+
+  return `🎁 ${lootParts.join(" ")}`
+}
+
 function printLog(log: ActionLog): void {
   const W = 120
   const line = "─".repeat(W - 2)
   const pad = (s: string) => s.padEnd(W - 2) + "│"
 
   const status = log.success ? "✓" : "✗"
-  const rngStr =
-    log.rngRolls.length > 0
-      ? log.rngRolls
-          .map((r) => `${(r.probability * 100).toFixed(0)}%→${r.result ? "hit" : "miss"}`)
-          .join(" ")
-      : ""
+
+  // For Fight actions, separate main fight roll from loot rolls
+  let rngStr = ""
+  if (log.rngRolls.length > 0) {
+    const mainRolls = log.rngRolls.filter(
+      (r) => r.label !== "improved-weapon-drop" && r.label !== "combat-token-drop"
+    )
+    if (mainRolls.length > 0) {
+      rngStr = mainRolls
+        .map((r) => `${(r.probability * 100).toFixed(0)}%→${r.result ? "hit" : "miss"}`)
+        .join(" ")
+    }
+  }
+
   const skillStr = log.skillGained ? `+1 ${log.skillGained.skill}` : ""
+  const lootStr = formatLootSection(log)
+
   const parts = [
     `${status} ${log.actionType}: ${log.stateDeltaSummary}`,
     `⏱ ${log.timeConsumed}t`,
     rngStr ? `🎲 ${rngStr}` : "",
     skillStr ? `📈 ${skillStr}` : "",
+    lootStr,
     log.failureType ? `❌ ${log.failureType}` : "",
   ].filter(Boolean)
 

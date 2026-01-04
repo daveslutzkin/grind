@@ -515,7 +515,7 @@ function executeFight(state: WorldState, action: FightAction, rolls: RngRoll[]):
     levelUps: mergeLevelUps(levelUps, contractsCompleted),
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
-    stateDeltaSummary: `Defeated ${enemyId}, gained loot`,
+    stateDeltaSummary: `Defeated ${enemyId}`,
   }
 }
 
