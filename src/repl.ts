@@ -449,7 +449,8 @@ function printSummary(state: WorldState, stats: SessionStats): void {
 
   // RNG luck analysis using Poisson binomial distribution
   // Loot rolls need special handling: they're mutually exclusive (one drops per fight)
-  // Only count rare drops (p < 0.5) as "lucky events", common drops are neutral
+  // Only count genuinely rare drops (p <= 20%) as lucky events
+  const RARE_DROP_THRESHOLD = 0.2
   const probabilities: number[] = []
   let actualSuccesses = 0
   for (const log of stats.logs) {
@@ -462,11 +463,11 @@ function printSummary(state: WorldState, stats: SessionStats): void {
       if (roll.result) actualSuccesses++
     }
 
-    // For loot: find which one dropped, only count if rare
+    // For loot: find which one dropped, only count if genuinely rare
     const droppedLoot = lootRolls.find((r) => r.result)
-    if (droppedLoot && droppedLoot.probability < 0.5) {
+    if (droppedLoot && droppedLoot.probability <= RARE_DROP_THRESHOLD) {
       probabilities.push(droppedLoot.probability)
-      actualSuccesses++ // The rare drop happened!
+      actualSuccesses++
     }
   }
   const luckStr = computeLuckString(probabilities, actualSuccesses)
