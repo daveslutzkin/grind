@@ -59,6 +59,42 @@ export function canGatherItem(state: WorldState, itemId: string): boolean {
 }
 
 /**
+ * Check if adding items would exceed inventory capacity
+ * Takes into account items that will be removed first (for crafting)
+ */
+export function canFitItems(
+  state: WorldState,
+  itemsToAdd: ItemStack[],
+  itemsToRemove: ItemStack[] = []
+): boolean {
+  // Simulate the inventory after removing items
+  const simulatedInventory = new Map<string, number>()
+  for (const item of state.player.inventory) {
+    simulatedInventory.set(item.itemId, item.quantity)
+  }
+
+  // Remove items
+  for (const item of itemsToRemove) {
+    const current = simulatedInventory.get(item.itemId) ?? 0
+    const newQty = current - item.quantity
+    if (newQty <= 0) {
+      simulatedInventory.delete(item.itemId)
+    } else {
+      simulatedInventory.set(item.itemId, newQty)
+    }
+  }
+
+  // Add items
+  for (const item of itemsToAdd) {
+    const current = simulatedInventory.get(item.itemId) ?? 0
+    simulatedInventory.set(item.itemId, current + item.quantity)
+  }
+
+  // Check slot count
+  return simulatedInventory.size <= state.player.inventoryCapacity
+}
+
+/**
  * Check Move action preconditions
  */
 export function checkMoveAction(state: WorldState, action: MoveAction): ActionCheckResult {
@@ -176,6 +212,12 @@ export function checkFightAction(state: WorldState, action: FightAction): Action
     return { valid: false, failureType: "MISSING_WEAPON", timeCost: 0, successProbability: 0 }
   }
 
+  // Check if loot will fit in inventory
+  const lootItems = enemy.loot.map((l) => ({ itemId: l.itemId, quantity: l.quantity }))
+  if (!canFitItems(state, lootItems)) {
+    return { valid: false, failureType: "INVENTORY_FULL", timeCost: 0, successProbability: 0 }
+  }
+
   // Use weapon parameters instead of enemy parameters
   return {
     valid: true,
@@ -204,6 +246,13 @@ export function checkCraftAction(state: WorldState, action: CraftAction): Action
 
   if (!hasItems(state.player.inventory, recipe.inputs)) {
     return { valid: false, failureType: "MISSING_ITEMS", timeCost: 0, successProbability: 0 }
+  }
+
+  // Check if output will fit after consuming inputs
+  const outputItem = { itemId: recipe.output.itemId, quantity: recipe.output.quantity }
+  const inputItems = recipe.inputs.map((i) => ({ itemId: i.itemId, quantity: i.quantity }))
+  if (!canFitItems(state, [outputItem], inputItems)) {
+    return { valid: false, failureType: "INVENTORY_FULL", timeCost: 0, successProbability: 0 }
   }
 
   return { valid: true, timeCost: recipe.craftTime, successProbability: 1 }

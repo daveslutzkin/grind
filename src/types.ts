@@ -45,6 +45,8 @@ export interface ResourceNode {
 export interface Enemy {
   id: string
   location: LocationID
+  // TODO: fightTime and successProbability are currently unused - combat uses weapon stats instead.
+  // Consider using these for enemy-specific modifiers or removing if weapon-only combat is intended.
   fightTime: number
   successProbability: number
   requiredSkillLevel: number
@@ -299,12 +301,4 @@ export function getTotalXP(skill: SkillState): number {
     total += getXPThresholdForNextLevel(l)
   }
   return total
-}
-
-/**
- * Create initial skill state (level 0, 0 XP)
- * Skills start at level 0 and must be unlocked via GuildEnrolment
- */
-export function createInitialSkillState(): SkillState {
-  return { level: 0, xp: 0 }
 }

@@ -250,6 +250,9 @@ function checkContractCompletion(state: WorldState): ContractCompletion[] {
       const index = state.player.activeContracts.indexOf(contractId)
       state.player.activeContracts.splice(index, 1)
 
+      // Clean up kill progress for this contract
+      delete state.player.contractKillProgress[contractId]
+
       completions.push({
         contractId,
         itemsConsumed,

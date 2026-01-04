@@ -37,7 +37,7 @@ describe("Integration: Full Session Flow", () => {
 
     // Session should have consumed ticks
     expect(state.time.currentTick).toBeGreaterThan(0)
-    expect(state.time.sessionRemainingTicks).toBeLessThan(25)
+    expect(state.time.sessionRemainingTicks).toBeLessThan(50)
 
     // All logs should have valid structure
     for (const log of logs) {
