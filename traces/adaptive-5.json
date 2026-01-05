@@ -1,0 +1,437 @@
+{
+  "seed": "adaptive-5",
+  "commands": [
+    "enrol mining",
+    "enrol woodcutting",
+    "move OUTSKIRTS_MINE",
+    "gather OUTSKIRTS_MINE-near_ore-0 focus STONE",
+    "gather OUTSKIRTS_MINE-near_ore-0 focus TIN_ORE",
+    "gather OUTSKIRTS_MINE-near_ore-0 focus TIN_ORE",
+    "move COPSE",
+    "gather COPSE-near_trees-0 focus GREEN_WOOD",
+    "gather COPSE-near_trees-0 focus GREEN_WOOD",
+    "gather COPSE-near_trees-0 focus SOFTWOOD",
+    "move OUTSKIRTS_MINE",
+    "gather OUTSKIRTS_MINE-near_ore-1 focus TIN_ORE",
+    "gather OUTSKIRTS_MINE-near_ore-1 focus TIN_ORE",
+    "move COPSE",
+    "gather COPSE-near_trees-1 focus HARDWOOD",
+    "gather COPSE-near_trees-1 focus HARDWOOD"
+  ],
+  "logs": [
+    {
+      "tickBefore": 0,
+      "actionType": "Enrol",
+      "parameters": {
+        "skill": "Mining"
+      },
+      "success": true,
+      "timeConsumed": 3,
+      "rngRolls": [],
+      "stateDeltaSummary": "Enrolled in Mining guild"
+    },
+    {
+      "tickBefore": 3,
+      "actionType": "Enrol",
+      "parameters": {
+        "skill": "Woodcutting"
+      },
+      "success": true,
+      "timeConsumed": 3,
+      "rngRolls": [],
+      "stateDeltaSummary": "Enrolled in Woodcutting guild"
+    },
+    {
+      "tickBefore": 6,
+      "actionType": "Move",
+      "parameters": {
+        "destination": "OUTSKIRTS_MINE"
+      },
+      "success": true,
+      "timeConsumed": 3,
+      "rngRolls": [],
+      "stateDeltaSummary": "Moved from TOWN to OUTSKIRTS_MINE"
+    },
+    {
+      "tickBefore": 9,
+      "actionType": "Gather",
+      "parameters": {
+        "nodeId": "OUTSKIRTS_MINE-near_ore-0",
+        "mode": "FOCUS",
+        "focusMaterialId": "STONE"
+      },
+      "success": true,
+      "timeConsumed": 5,
+      "skillGained": {
+        "skill": "Mining",
+        "amount": 5
+      },
+      "levelUps": [
+        {
+          "skill": "Mining",
+          "fromLevel": 1,
+          "toLevel": 2
+        }
+      ],
+      "rngRolls": [],
+      "extraction": {
+        "mode": "FOCUS",
+        "focusMaterial": "STONE",
+        "extracted": [
+          {
+            "itemId": "STONE",
+            "quantity": 4
+          }
+        ],
+        "focusWaste": 0.6,
+        "collateralDamage": {
+          "TIN_ORE": 1
+        },
+        "variance": {
+          "expected": 4,
+          "actual": 4,
+          "range": [
+            4,
+            4
+          ]
+        }
+      },
+      "xpSource": "node_extraction",
+      "stateDeltaSummary": "Focused extraction of 4 STONE"
+    },
+    {
+      "tickBefore": 14,
+      "actionType": "Gather",
+      "parameters": {
+        "nodeId": "OUTSKIRTS_MINE-near_ore-0",
+        "mode": "FOCUS",
+        "focusMaterialId": "TIN_ORE"
+      },
+      "success": true,
+      "timeConsumed": 5,
+      "skillGained": {
+        "skill": "Mining",
+        "amount": 10
+      },
+      "levelUps": [
+        {
+          "skill": "Mining",
+          "fromLevel": 2,
+          "toLevel": 3
+        }
+      ],
+      "rngRolls": [],
+      "extraction": {
+        "mode": "FOCUS",
+        "focusMaterial": "TIN_ORE",
+        "extracted": [
+          {
+            "itemId": "TIN_ORE",
+            "quantity": 4
+          }
+        ],
+        "focusWaste": 0.6,
+        "collateralDamage": {
+          "STONE": 1
+        },
+        "variance": {
+          "expected": 4,
+          "actual": 4,
+          "range": [
+            4,
+            4
+          ]
+        }
+      },
+      "xpSource": "node_extraction",
+      "stateDeltaSummary": "Focused extraction of 4 TIN_ORE"
+    },
+    {
+      "tickBefore": 19,
+      "actionType": "Gather",
+      "parameters": {
+        "nodeId": "OUTSKIRTS_MINE-near_ore-0",
+        "mode": "FOCUS",
+        "focusMaterialId": "TIN_ORE"
+      },
+      "success": true,
+      "timeConsumed": 5,
+      "skillGained": {
+        "skill": "Mining",
+        "amount": 10
+      },
+      "rngRolls": [],
+      "extraction": {
+        "mode": "FOCUS",
+        "focusMaterial": "TIN_ORE",
+        "extracted": [
+          {
+            "itemId": "TIN_ORE",
+            "quantity": 5
+          }
+        ],
+        "focusWaste": 0.5333,
+        "collateralDamage": {
+          "STONE": 1
+        },
+        "variance": {
+          "expected": 4.667,
+          "actual": 5,
+          "range": [
+            4,
+            5
+          ]
+        }
+      },
+      "xpSource": "node_extraction",
+      "stateDeltaSummary": "Focused extraction of 5 TIN_ORE"
+    },
+    {
+      "tickBefore": 24,
+      "actionType": "Move",
+      "parameters": {
+        "destination": "COPSE"
+      },
+      "success": true,
+      "timeConsumed": 6,
+      "rngRolls": [],
+      "stateDeltaSummary": "Moved from OUTSKIRTS_MINE to COPSE"
+    },
+    {
+      "tickBefore": 30,
+      "actionType": "Gather",
+      "parameters": {
+        "nodeId": "COPSE-near_trees-0",
+        "mode": "FOCUS",
+        "focusMaterialId": "GREEN_WOOD"
+      },
+      "success": false,
+      "failureType": "MISSING_FOCUS_MATERIAL",
+      "timeConsumed": 0,
+      "rngRolls": [],
+      "stateDeltaSummary": "Failed: MISSING_FOCUS_MATERIAL"
+    },
+    {
+      "tickBefore": 30,
+      "actionType": "Gather",
+      "parameters": {
+        "nodeId": "COPSE-near_trees-0",
+        "mode": "FOCUS",
+        "focusMaterialId": "GREEN_WOOD"
+      },
+      "success": false,
+      "failureType": "MISSING_FOCUS_MATERIAL",
+      "timeConsumed": 0,
+      "rngRolls": [],
+      "stateDeltaSummary": "Failed: MISSING_FOCUS_MATERIAL"
+    },
+    {
+      "tickBefore": 30,
+      "actionType": "Gather",
+      "parameters": {
+        "nodeId": "COPSE-near_trees-0",
+        "mode": "FOCUS",
+        "focusMaterialId": "SOFTWOOD"
+      },
+      "success": true,
+      "timeConsumed": 5,
+      "skillGained": {
+        "skill": "Woodcutting",
+        "amount": 5
+      },
+      "levelUps": [
+        {
+          "skill": "Woodcutting",
+          "fromLevel": 1,
+          "toLevel": 2
+        }
+      ],
+      "rngRolls": [],
+      "extraction": {
+        "mode": "FOCUS",
+        "focusMaterial": "SOFTWOOD",
+        "extracted": [
+          {
+            "itemId": "SOFTWOOD",
+            "quantity": 4
+          }
+        ],
+        "focusWaste": 0.6,
+        "collateralDamage": {
+          "HARDWOOD": 1
+        },
+        "variance": {
+          "expected": 4,
+          "actual": 4,
+          "range": [
+            4,
+            4
+          ]
+        }
+      },
+      "xpSource": "node_extraction",
+      "stateDeltaSummary": "Focused extraction of 4 SOFTWOOD"
+    },
+    {
+      "tickBefore": 35,
+      "actionType": "Move",
+      "parameters": {
+        "destination": "OUTSKIRTS_MINE"
+      },
+      "success": true,
+      "timeConsumed": 6,
+      "rngRolls": [],
+      "stateDeltaSummary": "Moved from COPSE to OUTSKIRTS_MINE"
+    },
+    {
+      "tickBefore": 41,
+      "actionType": "Gather",
+      "parameters": {
+        "nodeId": "OUTSKIRTS_MINE-near_ore-1",
+        "mode": "FOCUS",
+        "focusMaterialId": "TIN_ORE"
+      },
+      "success": true,
+      "timeConsumed": 5,
+      "skillGained": {
+        "skill": "Mining",
+        "amount": 10
+      },
+      "levelUps": [
+        {
+          "skill": "Mining",
+          "fromLevel": 3,
+          "toLevel": 4
+        }
+      ],
+      "rngRolls": [],
+      "extraction": {
+        "mode": "FOCUS",
+        "focusMaterial": "TIN_ORE",
+        "extracted": [
+          {
+            "itemId": "TIN_ORE",
+            "quantity": 4
+          }
+        ],
+        "focusWaste": 0.5333,
+        "collateralDamage": {
+          "STONE": 1,
+          "COPPER_ORE": 1
+        },
+        "variance": {
+          "expected": 4.667,
+          "actual": 4,
+          "range": [
+            4,
+            5
+          ]
+        }
+      },
+      "xpSource": "node_extraction",
+      "stateDeltaSummary": "Focused extraction of 4 TIN_ORE"
+    },
+    {
+      "tickBefore": 46,
+      "actionType": "Gather",
+      "parameters": {
+        "nodeId": "OUTSKIRTS_MINE-near_ore-1",
+        "mode": "FOCUS",
+        "focusMaterialId": "TIN_ORE"
+      },
+      "success": true,
+      "timeConsumed": 5,
+      "skillGained": {
+        "skill": "Mining",
+        "amount": 10
+      },
+      "rngRolls": [],
+      "extraction": {
+        "mode": "FOCUS",
+        "focusMaterial": "TIN_ORE",
+        "extracted": [
+          {
+            "itemId": "TIN_ORE",
+            "quantity": 5
+          }
+        ],
+        "focusWaste": 0.4666,
+        "collateralDamage": {
+          "STONE": 1,
+          "COPPER_ORE": 1
+        },
+        "variance": {
+          "expected": 5.334,
+          "actual": 5,
+          "range": [
+            5,
+            6
+          ]
+        }
+      },
+      "xpSource": "node_extraction",
+      "stateDeltaSummary": "Focused extraction of 5 TIN_ORE"
+    },
+    {
+      "tickBefore": 51,
+      "actionType": "Move",
+      "parameters": {
+        "destination": "COPSE"
+      },
+      "success": true,
+      "timeConsumed": 6,
+      "rngRolls": [],
+      "stateDeltaSummary": "Moved from OUTSKIRTS_MINE to COPSE"
+    },
+    {
+      "tickBefore": 57,
+      "actionType": "Gather",
+      "parameters": {
+        "nodeId": "COPSE-near_trees-1",
+        "mode": "FOCUS",
+        "focusMaterialId": "HARDWOOD"
+      },
+      "success": false,
+      "failureType": "MISSING_FOCUS_MATERIAL",
+      "timeConsumed": 0,
+      "rngRolls": [],
+      "stateDeltaSummary": "Failed: MISSING_FOCUS_MATERIAL"
+    },
+    {
+      "tickBefore": 57,
+      "actionType": "Gather",
+      "parameters": {
+        "nodeId": "COPSE-near_trees-1",
+        "mode": "FOCUS",
+        "focusMaterialId": "HARDWOOD"
+      },
+      "success": false,
+      "failureType": "MISSING_FOCUS_MATERIAL",
+      "timeConsumed": 0,
+      "rngRolls": [],
+      "stateDeltaSummary": "Failed: MISSING_FOCUS_MATERIAL"
+    }
+  ],
+  "finalState": {
+    "tick": 57,
+    "ticksRemaining": 143,
+    "miningLevel": 4,
+    "miningXP": 16,
+    "woodcuttingLevel": 2,
+    "woodcuttingXP": 1,
+    "inventory": [
+      {
+        "itemId": "STONE",
+        "quantity": 4
+      },
+      {
+        "itemId": "TIN_ORE",
+        "quantity": 18
+      },
+      {
+        "itemId": "SOFTWOOD",
+        "quantity": 4
+      }
+    ]
+  }
+}

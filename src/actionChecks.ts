@@ -15,7 +15,10 @@ import type {
   TurnInCombatTokenAction,
   FailureType,
   ItemStack,
+  Node,
+  GatheringSkillID,
 } from "./types.js"
+import { GatherMode } from "./types.js"
 
 /**
  * Result of checking action preconditions
@@ -140,9 +143,75 @@ export function checkAcceptContractAction(
 }
 
 /**
+ * Get the skill required to gather from a multi-material node
+ */
+function getNodeSkill(node: Node): GatheringSkillID {
+  // All materials in a node require the same skill type
+  return node.materials[0]?.requiresSkill ?? "Mining"
+}
+
+/**
+ * Check if a mode is unlocked based on skill level
+ * Per spec:
+ * - L1: Basic FOCUS mode
+ * - L3: Unlock APPRAISE_NODE
+ * - L4: Unlock GATHER_CAREFUL_ALL
+ */
+function isModeUnlocked(mode: GatherMode, skillLevel: number): boolean {
+  switch (mode) {
+    case GatherMode.APPRAISE:
+      return skillLevel >= 3 // L3 unlocks APPRAISE_NODE
+    case GatherMode.FOCUS:
+      return true // FOCUS available at L1
+    case GatherMode.CAREFUL_ALL:
+      return skillLevel >= 4 // L4 unlocks CAREFUL_ALL
+  }
+}
+
+/**
+ * Get required skill level to access a location based on its distance band
+ * Per spec:
+ * - NEAR: L1
+ * - MID: L5
+ * - FAR: L9
+ */
+function getLocationSkillRequirement(locationId: string): number {
+  // Determine band from location ID
+  if (locationId === "TOWN" || locationId.includes("OUTSKIRTS") || locationId.includes("COPSE")) {
+    return 1 // NEAR/TOWN - no gating
+  } else if (locationId.includes("QUARRY") || locationId.includes("DEEP_FOREST")) {
+    return 5 // MID - requires L5
+  } else if (locationId.includes("SHAFT") || locationId.includes("GROVE")) {
+    return 9 // FAR - requires L9
+  }
+  return 1 // Default to no gating
+}
+
+/**
+ * Get base time cost for gathering mode
+ */
+function getGatheringTimeCost(mode: GatherMode): number {
+  switch (mode) {
+    case GatherMode.APPRAISE:
+      return 1
+    case GatherMode.FOCUS:
+      return 5 // Base time for focus extraction
+    case GatherMode.CAREFUL_ALL:
+      return 10 // Slower but safer
+  }
+}
+
+/**
  * Check Gather action preconditions
+ * Supports both legacy resourceNodes and new multi-material nodes
  */
 export function checkGatherAction(state: WorldState, action: GatherAction): ActionCheckResult {
+  // Check for new multi-material nodes first
+  if (action.mode !== undefined && state.world.nodes) {
+    return checkMultiMaterialGatherAction(state, action)
+  }
+
+  // Fall back to legacy resourceNodes behavior
   const node = state.world.resourceNodes.find((n) => n.id === action.nodeId)
 
   if (!node) {
@@ -163,6 +232,83 @@ export function checkGatherAction(state: WorldState, action: GatherAction): Acti
 
   return { valid: true, timeCost: node.gatherTime, successProbability: node.successProbability }
 }
+
+/**
+ * Check multi-material node Gather action preconditions
+ */
+function checkMultiMaterialGatherAction(
+  state: WorldState,
+  action: GatherAction
+): ActionCheckResult {
+  const mode = action.mode!
+  const node = state.world.nodes?.find((n) => n.nodeId === action.nodeId)
+
+  if (!node) {
+    return { valid: false, failureType: "NODE_NOT_FOUND", timeCost: 0, successProbability: 0 }
+  }
+
+  // Check location
+  if (state.player.location !== node.locationId) {
+    return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
+  }
+
+  // Check if node is depleted
+  const hasAnyMaterials = node.materials.some((m) => m.remainingUnits > 0)
+  if (!hasAnyMaterials || node.depleted) {
+    return { valid: false, failureType: "NODE_DEPLETED", timeCost: 0, successProbability: 0 }
+  }
+
+  const skill = getNodeSkill(node)
+  const skillLevel = state.player.skills[skill].level
+
+  // Check location access based on skill level (L5 for MID, L9 for FAR)
+  const locationRequirement = getLocationSkillRequirement(node.locationId)
+  if (skillLevel < locationRequirement) {
+    return { valid: false, failureType: "INSUFFICIENT_SKILL", timeCost: 0, successProbability: 0 }
+  }
+
+  // Check if mode is unlocked
+  if (!isModeUnlocked(mode, skillLevel)) {
+    return { valid: false, failureType: "MODE_NOT_UNLOCKED", timeCost: 0, successProbability: 0 }
+  }
+
+  // FOCUS mode requires focusMaterialId
+  if (mode === GatherMode.FOCUS) {
+    if (!action.focusMaterialId) {
+      return {
+        valid: false,
+        failureType: "MISSING_FOCUS_MATERIAL",
+        timeCost: 0,
+        successProbability: 0,
+      }
+    }
+
+    // Check if the material exists in the node and has remaining units
+    const focusMaterial = node.materials.find((m) => m.materialId === action.focusMaterialId)
+    if (!focusMaterial || focusMaterial.remainingUnits <= 0) {
+      return {
+        valid: false,
+        failureType: "MISSING_FOCUS_MATERIAL",
+        timeCost: 0,
+        successProbability: 0,
+      }
+    }
+
+    // Check skill level for focus material
+    if (skillLevel < focusMaterial.requiredLevel) {
+      return { valid: false, failureType: "INSUFFICIENT_SKILL", timeCost: 0, successProbability: 0 }
+    }
+  }
+
+  const timeCost = getGatheringTimeCost(mode)
+
+  return { valid: true, timeCost, successProbability: 1 }
+}
+
+/**
+ * Export for engine use
+ */
+export { getNodeSkill, getGatheringTimeCost }
 
 /**
  * Get weapon parameters for combat

@@ -17,9 +17,13 @@ import type {
   ContractCompletion,
   SkillID,
   LevelUp,
+  ExtractionLog,
+  ItemStack,
+  Node,
+  GatheringSkillID,
 } from "./types.js"
-import { addXPToSkill } from "./types.js"
-import { roll, rollLootTable } from "./rng.js"
+import { addXPToSkill, GatherMode } from "./types.js"
+import { roll, rollLootTable, rollFloat } from "./rng.js"
 
 import {
   checkMoveAction,
@@ -31,6 +35,7 @@ import {
   checkDropAction,
   checkGuildEnrolmentAction,
   checkTurnInCombatTokenAction,
+  getNodeSkill,
 } from "./actionChecks.js"
 
 /**
@@ -381,7 +386,12 @@ function executeGather(state: WorldState, action: GatherAction, rolls: RngRoll[]
     return createFailureLog(state, action, "SESSION_ENDED")
   }
 
-  // Get node for additional info
+  // Check if this is a new multi-material node gather
+  if (action.mode !== undefined && state.world.nodes) {
+    return executeMultiMaterialGather(state, action, rolls, tickBefore, check.timeCost)
+  }
+
+  // Legacy resourceNodes behavior
   const node = state.world.resourceNodes.find((n) => n.id === nodeId)!
 
   // Consume time
@@ -423,6 +433,301 @@ function executeGather(state: WorldState, action: GatherAction, rolls: RngRoll[]
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
     stateDeltaSummary: `Gathered 1 ${node.itemId} from ${nodeId}`,
+  }
+}
+
+/**
+ * Calculate focus yield percentage based on skill level and material required level
+ * At unlock level (matching required level): ~40%
+ * At level 10 (max level): 100%
+ */
+function calculateFocusYieldPercent(skillLevel: number, requiredLevel: number): number {
+  // Levels above required determine efficiency
+  const levelsAboveRequired = Math.max(0, skillLevel - requiredLevel)
+  // Base yield at unlock level is 40%
+  // Each level above adds ~7% (60% spread over ~9 levels = ~6.67% per level)
+  const yieldPercent = 0.4 + levelsAboveRequired * 0.0667
+  return Math.min(1.0, yieldPercent) // Cap at 100%
+}
+
+/**
+ * Calculate collateral damage percentage based on skill level
+ * High levels still have a 20% floor
+ */
+function calculateCollateralPercent(skillLevel: number): number {
+  // At level 1: 60% collateral
+  // At level 10: 20% collateral (floor)
+  const reduction = (skillLevel - 1) * 0.0444 // ~4.44% per level above 1
+  const collateral = 0.6 - reduction
+  return Math.max(0.2, collateral) // Floor at 20%
+}
+
+/**
+ * Calculate yield variance range based on distance band
+ * NEAR: ±10%, MID: ±20%, FAR: ±30%
+ */
+function getVarianceRange(locationId: string): [number, number] {
+  // Determine band from location ID prefix
+  if (locationId.includes("OUTSKIRTS") || locationId.includes("COPSE")) {
+    return [0.9, 1.1] // NEAR: ±10%
+  } else if (locationId.includes("QUARRY") || locationId.includes("DEEP_FOREST")) {
+    return [0.8, 1.2] // MID: ±20%
+  } else if (locationId.includes("SHAFT") || locationId.includes("GROVE")) {
+    return [0.7, 1.3] // FAR: ±30%
+  }
+  return [0.95, 1.05] // Default minimal variance
+}
+
+/**
+ * Execute multi-material node gather with modes
+ */
+function executeMultiMaterialGather(
+  state: WorldState,
+  action: GatherAction,
+  rolls: RngRoll[],
+  tickBefore: number,
+  timeCost: number
+): ActionLog {
+  const mode = action.mode!
+  const node = state.world.nodes!.find((n) => n.nodeId === action.nodeId)!
+  const skill = getNodeSkill(node)
+  const skillLevel = state.player.skills[skill].level
+
+  // Consume time
+  consumeTime(state, timeCost)
+
+  const parameters: Record<string, unknown> = {
+    nodeId: action.nodeId,
+    mode,
+  }
+  if (action.focusMaterialId) {
+    parameters.focusMaterialId = action.focusMaterialId
+  }
+
+  // APPRAISE mode - just inspect, no extraction
+  if (mode === GatherMode.APPRAISE) {
+    const extraction: ExtractionLog = {
+      mode: GatherMode.APPRAISE,
+      extracted: [],
+      focusWaste: 0,
+      collateralDamage: {},
+    }
+
+    // Check for contract completion
+    const contractsCompleted = checkContractCompletion(state)
+
+    return {
+      tickBefore,
+      actionType: "Gather",
+      parameters,
+      success: true,
+      timeConsumed: timeCost,
+      rngRolls: rolls,
+      extraction,
+      stateDeltaSummary: `Appraised node ${action.nodeId}`,
+      levelUps: mergeLevelUps([], contractsCompleted),
+      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+    }
+  }
+
+  // FOCUS mode - extract one material with variance and collateral
+  if (mode === GatherMode.FOCUS) {
+    return executeFocusExtraction(
+      state,
+      node,
+      action.focusMaterialId!,
+      skill,
+      skillLevel,
+      rolls,
+      tickBefore,
+      timeCost,
+      parameters
+    )
+  }
+
+  // CAREFUL_ALL mode - extract all materials slowly, no collateral
+  if (mode === GatherMode.CAREFUL_ALL) {
+    return executeCarefulAllExtraction(
+      state,
+      node,
+      skill,
+      skillLevel,
+      rolls,
+      tickBefore,
+      timeCost,
+      parameters
+    )
+  }
+
+  // Should not reach here
+  return createFailureLog(state, action, "NODE_NOT_FOUND")
+}
+
+/**
+ * Execute FOCUS mode extraction
+ */
+function executeFocusExtraction(
+  state: WorldState,
+  node: Node,
+  focusMaterialId: string,
+  skill: GatheringSkillID,
+  skillLevel: number,
+  rolls: RngRoll[],
+  tickBefore: number,
+  timeCost: number,
+  parameters: Record<string, unknown>
+): ActionLog {
+  const focusMaterial = node.materials.find((m) => m.materialId === focusMaterialId)!
+
+  // Calculate yield
+  const yieldPercent = calculateFocusYieldPercent(skillLevel, focusMaterial.requiredLevel)
+  const focusWaste = 1 - yieldPercent
+
+  // Get variance range based on location
+  const [varMin, varMax] = getVarianceRange(node.locationId)
+  const variance = rollFloat(state.rng, varMin, varMax, `variance_${focusMaterialId}`)
+
+  // Base extraction amount (units per 5-tick action)
+  const baseExtraction = 10
+  const expected = baseExtraction * yieldPercent
+  const actual = Math.round(expected * variance)
+  const actualExtracted = Math.min(actual, focusMaterial.remainingUnits)
+
+  // Extract from focus material
+  focusMaterial.remainingUnits -= actualExtracted
+  const extracted: ItemStack[] =
+    actualExtracted > 0 ? [{ itemId: focusMaterialId, quantity: actualExtracted }] : []
+
+  // Add to inventory
+  if (actualExtracted > 0) {
+    addToInventory(state, focusMaterialId, actualExtracted)
+  }
+
+  // Calculate and apply collateral damage
+  const collateralPercent = calculateCollateralPercent(skillLevel)
+  const collateralDamage: Record<string, number> = {}
+
+  for (const material of node.materials) {
+    if (material.materialId !== focusMaterialId && material.remainingUnits > 0) {
+      // Collateral affects other materials proportionally
+      const damageAmount = Math.round(actualExtracted * collateralPercent * 0.5)
+      const actualDamage = Math.min(damageAmount, material.remainingUnits)
+      material.remainingUnits -= actualDamage
+      if (actualDamage > 0) {
+        collateralDamage[material.materialId] = actualDamage
+      }
+    }
+  }
+
+  // Check if node is depleted
+  const allDepleted = node.materials.every((m) => m.remainingUnits <= 0)
+  if (allDepleted) {
+    node.depleted = true
+  }
+
+  // Grant XP: ticks × tier
+  const xpAmount = timeCost * focusMaterial.tier
+  const levelUps = grantXP(state, skill, xpAmount)
+
+  const extraction: ExtractionLog = {
+    mode: GatherMode.FOCUS,
+    focusMaterial: focusMaterialId,
+    extracted,
+    focusWaste,
+    collateralDamage,
+    variance: {
+      expected,
+      actual: actualExtracted,
+      range: [Math.round(expected * varMin), Math.round(expected * varMax)],
+    },
+  }
+
+  // Check for contract completion
+  const contractsCompleted = checkContractCompletion(state)
+
+  return {
+    tickBefore,
+    actionType: "Gather",
+    parameters,
+    success: true,
+    timeConsumed: timeCost,
+    skillGained: { skill, amount: xpAmount },
+    levelUps: mergeLevelUps(levelUps, contractsCompleted),
+    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+    rngRolls: rolls,
+    extraction,
+    xpSource: "node_extraction",
+    stateDeltaSummary: `Focused extraction of ${actualExtracted} ${focusMaterialId}`,
+  }
+}
+
+/**
+ * Execute CAREFUL_ALL mode extraction
+ */
+function executeCarefulAllExtraction(
+  state: WorldState,
+  node: Node,
+  skill: GatheringSkillID,
+  skillLevel: number,
+  rolls: RngRoll[],
+  tickBefore: number,
+  timeCost: number,
+  parameters: Record<string, unknown>
+): ActionLog {
+  const extracted: ItemStack[] = []
+  let totalXP = 0
+
+  // Extract from each material the player can gather
+  for (const material of node.materials) {
+    if (material.remainingUnits <= 0) continue
+    if (skillLevel < material.requiredLevel) continue
+
+    // CAREFUL_ALL is slower but gets 100% yield (no waste)
+    const baseExtraction = 5 // Slower extraction rate
+    const actualExtracted = Math.min(baseExtraction, material.remainingUnits)
+
+    if (actualExtracted > 0) {
+      material.remainingUnits -= actualExtracted
+      extracted.push({ itemId: material.materialId, quantity: actualExtracted })
+      addToInventory(state, material.materialId, actualExtracted)
+      totalXP += material.tier
+    }
+  }
+
+  // Scale XP by time
+  const xpAmount =
+    timeCost * (totalXP / node.materials.filter((m) => skillLevel >= m.requiredLevel).length || 1)
+  const levelUps = grantXP(state, skill, Math.round(xpAmount))
+
+  // Check if node is depleted
+  const allDepleted = node.materials.every((m) => m.remainingUnits <= 0)
+  if (allDepleted) {
+    node.depleted = true
+  }
+
+  const extraction: ExtractionLog = {
+    mode: GatherMode.CAREFUL_ALL,
+    extracted,
+    focusWaste: 0,
+    collateralDamage: {}, // No collateral in CAREFUL_ALL
+  }
+
+  // Check for contract completion
+  const contractsCompleted = checkContractCompletion(state)
+
+  return {
+    tickBefore,
+    actionType: "Gather",
+    parameters,
+    success: true,
+    timeConsumed: timeCost,
+    skillGained: { skill, amount: Math.round(xpAmount) },
+    levelUps: mergeLevelUps(levelUps, contractsCompleted),
+    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+    rngRolls: rolls,
+    extraction,
+    xpSource: "node_extraction",
+    stateDeltaSummary: `Carefully extracted ${extracted.map((e) => `${e.quantity} ${e.itemId}`).join(", ")}`,
   }
 }
 

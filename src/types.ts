@@ -1,18 +1,76 @@
 // Core type definitions for the simulation engine
 
-export type LocationID = "TOWN" | "MINE" | "FOREST"
-export type ItemID =
-  | "IRON_ORE"
-  | "WOOD_LOG"
-  | "IRON_BAR"
-  | "CRUDE_WEAPON"
-  | "IMPROVED_WEAPON"
-  | "COMBAT_GUILD_TOKEN"
+// ============================================================================
+// String-based IDs (flexible, runtime-validated)
+// ============================================================================
+
+export type LocationID = string
+export type ItemID = string
+export type NodeID = string
+export type MaterialID = string // Semantic alias for ItemID in gathering context
 
 export type WeaponID = "CRUDE_WEAPON" | "IMPROVED_WEAPON"
-export type SkillID = "Mining" | "Woodcutting" | "Combat" | "Smithing"
+export type SkillID = "Mining" | "Woodcutting" | "Combat" | "Smithing" | "Woodcrafting"
 export type GatheringSkillID = "Mining" | "Woodcutting"
+export type CraftingSkillID = "Smithing" | "Woodcrafting"
 export type ContractID = string
+
+// ============================================================================
+// Enums for gathering MVP
+// ============================================================================
+
+export enum DistanceBand {
+  TOWN = "TOWN",
+  NEAR = "NEAR",
+  MID = "MID",
+  FAR = "FAR",
+}
+
+export enum GatherMode {
+  FOCUS = "FOCUS",
+  CAREFUL_ALL = "CAREFUL_ALL",
+  APPRAISE = "APPRAISE",
+}
+
+export enum NodeType {
+  ORE_VEIN = "ORE_VEIN",
+  TREE_STAND = "TREE_STAND",
+}
+
+// ============================================================================
+// Location (expanded from simple LocationID)
+// ============================================================================
+
+export interface Location {
+  id: LocationID
+  name: string
+  band: DistanceBand
+  travelTicksFromTown: number
+  nodePools: string[] // Node pool IDs for generation
+  requiredGuildReputation: number | null // Hook for future guild-gating
+}
+
+// ============================================================================
+// Multi-material nodes for gathering MVP
+// ============================================================================
+
+export interface MaterialReserve {
+  materialId: MaterialID
+  remainingUnits: number
+  maxUnitsInitial: number
+  requiresSkill: GatheringSkillID
+  requiredLevel: number // Level needed to focus-extract
+  tier: number // Affects XP multiplier and variance
+  fragility?: number // Influences collateral damage (optional)
+}
+
+export interface Node {
+  nodeId: NodeID
+  nodeType: NodeType
+  locationId: LocationID
+  materials: MaterialReserve[]
+  depleted: boolean
+}
 
 // Skill state with level and XP
 export interface SkillState {
@@ -113,6 +171,7 @@ export interface WorldState {
     locations: LocationID[]
     travelCosts: Record<string, number> // "LOC1->LOC2" format
     resourceNodes: ResourceNode[]
+    nodes?: Node[] // Multi-material nodes for gathering MVP
     enemies: Enemy[]
     recipes: Recipe[]
     contracts: Contract[]
@@ -147,6 +206,8 @@ export interface AcceptContractAction {
 export interface GatherAction {
   type: "Gather"
   nodeId: string
+  mode?: GatherMode // Optional for backward compat; defaults to legacy behavior
+  focusMaterialId?: MaterialID // Required for FOCUS mode
 }
 
 export interface FightAction {
@@ -208,6 +269,9 @@ export type FailureType =
   | "SESSION_ENDED"
   | "ALREADY_ENROLLED"
   | "MISSING_WEAPON"
+  | "MISSING_FOCUS_MATERIAL"
+  | "NODE_DEPLETED"
+  | "MODE_NOT_UNLOCKED"
 
 // RNG roll log entry
 export interface RngRoll {
@@ -227,6 +291,20 @@ export interface ContractCompletion {
   levelUps?: LevelUp[]
 }
 
+// Extraction log for gathering actions
+export interface ExtractionLog {
+  mode: GatherMode
+  focusMaterial?: MaterialID
+  extracted: ItemStack[]
+  focusWaste: number
+  collateralDamage: Record<MaterialID, number>
+  variance?: {
+    expected: number
+    actual: number
+    range: [number, number]
+  }
+}
+
 // Action log
 export interface ActionLog {
   tickBefore: number
@@ -240,6 +318,8 @@ export interface ActionLog {
   contractsCompleted?: ContractCompletion[]
   rngRolls: RngRoll[]
   stateDeltaSummary: string
+  extraction?: ExtractionLog // For gathering actions
+  xpSource?: string // Attribution for future contract tracking
 }
 
 // Evaluation results

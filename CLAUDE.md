@@ -6,11 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a rules-first simulation engine - a headless, single-agent game engine with discrete time, deterministic RNG, and structured logging. The engine executes actions but never chooses them.
 
-All design decisions about the game should be relative to the canonical documents in design-docs.
+All design decisions about the game should be relative to the canonical documents in `design-docs/`.
 
-Especially, all current decisions are relative to design-docs/canonical-v1-design.md.
-
-If the user asks for features that conflict with this, call it out and make them decide to continue.
+If the user asks for features that conflict with canonical docs, call it out and make them decide to continue.
 
 ## Core Architectural Constraints
 
@@ -37,40 +35,6 @@ The engine MUST NEVER:
 - Optimize plans
 - Suggest strategies
 - Contain agent logic
-
-## Action Set (exactly 7)
-
-1. **Move** - location change, Travel XP
-2. **AcceptContract** - add contract (0 ticks, no XP)
-3. **Gather** - RNG success, Gathering XP
-4. **Fight** - RNG success, Combat XP, failure relocates player
-5. **Craft** - consume inputs, produce output, Crafting XP
-6. **Store** - move to storage, Logistics XP
-7. **Drop** - destroy item (no XP)
-
-## Key Design Rules
-
-- Every successful action advances exactly one skill by +1 XP (flat)
-- Actions either consume 0 ticks or a fixed number of ticks
-- Failures are typed, never partial, consume either 0 or full time
-- Session ends when sessionRemainingTicks <= 0
-
-## Toy World Data
-
-Fixed locations: TOWN, MINE, FOREST
-Items: IRON_ORE, WOOD_LOG, IRON_BAR
-Enemy: Cave Rat
-Guild: Miner's Guild
-Session: 20 ticks
-
-## Evaluation APIs
-
-```
-evaluateAction(state, action) -> { expectedTime, expectedXP, successProbability }
-evaluatePlan(state, actions[]) -> { expectedTime, expectedXP, violations[] }
-```
-
-These are read-only and must not mutate state.
 
 ## Tech Stack
 
