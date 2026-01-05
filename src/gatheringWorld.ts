@@ -291,7 +291,7 @@ export function createGatheringWorld(seed: string): WorldState {
   return {
     time: {
       currentTick: 0,
-      sessionRemainingTicks: 500, // Longer sessions for gathering
+      sessionRemainingTicks: 200, // Shorter sessions for testing
     },
 
     player: {
