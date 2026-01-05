@@ -30,6 +30,16 @@ function getRandomValue(seed: string, counter: number): number {
   return (hashValue % 1000000) / 1000000
 }
 
+/**
+ * Get a random float in range [min, max) without logging.
+ * Used for internal generation (node generation, variance, etc.)
+ */
+export function rollFloat(rng: RngState, min: number, max: number, _label: string): number {
+  const randomValue = getRandomValue(rng.seed, rng.counter)
+  rng.counter++
+  return min + randomValue * (max - min)
+}
+
 export function roll(rng: RngState, probability: number, label: string, rolls: RngRoll[]): boolean {
   const counterBefore = rng.counter
   const randomValue = getRandomValue(rng.seed, rng.counter)

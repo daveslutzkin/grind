@@ -171,6 +171,7 @@ export interface WorldState {
     locations: LocationID[]
     travelCosts: Record<string, number> // "LOC1->LOC2" format
     resourceNodes: ResourceNode[]
+    nodes?: Node[] // Multi-material nodes for gathering MVP
     enemies: Enemy[]
     recipes: Recipe[]
     contracts: Contract[]
