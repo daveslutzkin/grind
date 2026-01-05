@@ -29,6 +29,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
 
   describe("APPRAISE mode", () => {
     it("should cost 1 tick", () => {
+      world.player.skills.Mining.level = 3 // L3 required for APPRAISE
       const node = getFirstOreNode()
       const action: GatherAction = {
         type: "Gather",
@@ -45,6 +46,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
     })
 
     it("should not modify node materials", () => {
+      world.player.skills.Mining.level = 3 // L3 required for APPRAISE
       const node = getFirstOreNode()
       const materialsBefore = JSON.stringify(node.materials)
 
@@ -60,6 +62,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
     })
 
     it("should not grant XP", () => {
+      world.player.skills.Mining.level = 3 // L3 required for APPRAISE
       const node = getFirstOreNode()
       const action: GatherAction = {
         type: "Gather",
@@ -73,6 +76,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
     })
 
     it("should include node info in log", () => {
+      world.player.skills.Mining.level = 3 // L3 required for APPRAISE
       const node = getFirstOreNode()
       const action: GatherAction = {
         type: "Gather",
@@ -457,6 +461,160 @@ describe("Phase 3: Gather Action Overhaul", () => {
 
       expect(log.success).toBe(true)
       expect(log.xpSource).toBe("node_extraction")
+    })
+  })
+
+  // ============================================================================
+  // Phase 4: Skill Unlock Tests
+  // ============================================================================
+
+  describe("Phase 4: Skill Unlocks", () => {
+    describe("Location access gating", () => {
+      it("should require L5 Mining to access MID mining locations", () => {
+        world.player.skills.Mining.level = 4 // Not enough for MID
+        world.player.location = "OLD_QUARRY" // MID location
+        const node = world.world.nodes!.find((n) => n.locationId === "OLD_QUARRY")!
+
+        const action: GatherAction = {
+          type: "Gather",
+          nodeId: node.nodeId,
+          mode: GatherMode.APPRAISE,
+        }
+
+        const log = executeAction(world, action)
+
+        expect(log.success).toBe(false)
+        expect(log.failureType).toBe("INSUFFICIENT_SKILL")
+      })
+
+      it("should allow L5+ Mining to access MID mining locations", () => {
+        world.player.skills.Mining.level = 5 // Enough for MID
+        world.player.location = "OLD_QUARRY" // MID location
+        const node = world.world.nodes!.find((n) => n.locationId === "OLD_QUARRY")!
+
+        const action: GatherAction = {
+          type: "Gather",
+          nodeId: node.nodeId,
+          mode: GatherMode.APPRAISE,
+        }
+
+        const log = executeAction(world, action)
+
+        expect(log.success).toBe(true)
+      })
+
+      it("should require L9 Mining to access FAR mining locations", () => {
+        world.player.skills.Mining.level = 8 // Not enough for FAR
+        world.player.location = "ABANDONED_SHAFT" // FAR location
+        const node = world.world.nodes!.find((n) => n.locationId === "ABANDONED_SHAFT")!
+
+        const action: GatherAction = {
+          type: "Gather",
+          nodeId: node.nodeId,
+          mode: GatherMode.APPRAISE,
+        }
+
+        const log = executeAction(world, action)
+
+        expect(log.success).toBe(false)
+        expect(log.failureType).toBe("INSUFFICIENT_SKILL")
+      })
+
+      it("should allow L9+ Mining to access FAR mining locations", () => {
+        world.player.skills.Mining.level = 9 // Enough for FAR
+        world.player.location = "ABANDONED_SHAFT" // FAR location
+        const node = world.world.nodes!.find((n) => n.locationId === "ABANDONED_SHAFT")!
+
+        const action: GatherAction = {
+          type: "Gather",
+          nodeId: node.nodeId,
+          mode: GatherMode.APPRAISE,
+        }
+
+        const log = executeAction(world, action)
+
+        expect(log.success).toBe(true)
+      })
+    })
+
+    describe("APPRAISE mode unlock", () => {
+      it("should require L3 Mining for APPRAISE mode", () => {
+        world.player.skills.Mining.level = 2 // Not enough for APPRAISE
+        const node = getFirstOreNode()
+
+        const action: GatherAction = {
+          type: "Gather",
+          nodeId: node.nodeId,
+          mode: GatherMode.APPRAISE,
+        }
+
+        const log = executeAction(world, action)
+
+        expect(log.success).toBe(false)
+        expect(log.failureType).toBe("MODE_NOT_UNLOCKED")
+      })
+
+      it("should allow L3+ Mining for APPRAISE mode", () => {
+        world.player.skills.Mining.level = 3 // Enough for APPRAISE
+        const node = getFirstOreNode()
+
+        const action: GatherAction = {
+          type: "Gather",
+          nodeId: node.nodeId,
+          mode: GatherMode.APPRAISE,
+        }
+
+        const log = executeAction(world, action)
+
+        expect(log.success).toBe(true)
+      })
+    })
+
+    describe("Collateral damage step reduction at L6", () => {
+      it("should have lower collateral at L6+ than at L5", () => {
+        // Test at L5
+        const world5 = createGatheringWorld("collateral-test")
+        world5.player.location = "OUTSKIRTS_MINE"
+        world5.player.skills.Mining.level = 5
+        const node5 = world5.world.nodes!.find((n) => n.locationId === "OUTSKIRTS_MINE")!
+        const focusMat5 = node5.materials.find(
+          (m) => m.requiredLevel <= world5.player.skills.Mining.level
+        )!
+        const collateralMat5 = node5.materials.find((m) => m.materialId !== focusMat5.materialId)!
+        const collateralBefore5 = collateralMat5.remainingUnits
+
+        const action5: GatherAction = {
+          type: "Gather",
+          nodeId: node5.nodeId,
+          mode: GatherMode.FOCUS,
+          focusMaterialId: focusMat5.materialId,
+        }
+        executeAction(world5, action5)
+        const collateralDamage5 = collateralBefore5 - collateralMat5.remainingUnits
+
+        // Test at L6
+        const world6 = createGatheringWorld("collateral-test")
+        world6.player.location = "OUTSKIRTS_MINE"
+        world6.player.skills.Mining.level = 6
+        const node6 = world6.world.nodes!.find((n) => n.locationId === "OUTSKIRTS_MINE")!
+        const focusMat6 = node6.materials.find(
+          (m) => m.requiredLevel <= world6.player.skills.Mining.level
+        )!
+        const collateralMat6 = node6.materials.find((m) => m.materialId !== focusMat6.materialId)!
+        const collateralBefore6 = collateralMat6.remainingUnits
+
+        const action6: GatherAction = {
+          type: "Gather",
+          nodeId: node6.nodeId,
+          mode: GatherMode.FOCUS,
+          focusMaterialId: focusMat6.materialId,
+        }
+        executeAction(world6, action6)
+        const collateralDamage6 = collateralBefore6 - collateralMat6.remainingUnits
+
+        // L6 should have less collateral damage than L5
+        expect(collateralDamage6).toBeLessThanOrEqual(collateralDamage5)
+      })
     })
   })
 })

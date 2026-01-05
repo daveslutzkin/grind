@@ -152,19 +152,39 @@ function getNodeSkill(node: Node): GatheringSkillID {
 
 /**
  * Check if a mode is unlocked based on skill level
- * APPRAISE: Always available
- * FOCUS: Always available (unlock level determines efficiency, not access)
- * CAREFUL_ALL: Requires level 4+
+ * Per spec:
+ * - L1: Basic FOCUS mode
+ * - L3: Unlock APPRAISE_NODE
+ * - L4: Unlock GATHER_CAREFUL_ALL
  */
 function isModeUnlocked(mode: GatherMode, skillLevel: number): boolean {
   switch (mode) {
     case GatherMode.APPRAISE:
-      return true
+      return skillLevel >= 3 // L3 unlocks APPRAISE_NODE
     case GatherMode.FOCUS:
-      return true
+      return true // FOCUS available at L1
     case GatherMode.CAREFUL_ALL:
-      return skillLevel >= 4
+      return skillLevel >= 4 // L4 unlocks CAREFUL_ALL
   }
+}
+
+/**
+ * Get required skill level to access a location based on its distance band
+ * Per spec:
+ * - NEAR: L1
+ * - MID: L5
+ * - FAR: L9
+ */
+function getLocationSkillRequirement(locationId: string): number {
+  // Determine band from location ID
+  if (locationId === "TOWN" || locationId.includes("OUTSKIRTS") || locationId.includes("COPSE")) {
+    return 1 // NEAR/TOWN - no gating
+  } else if (locationId.includes("QUARRY") || locationId.includes("DEEP_FOREST")) {
+    return 5 // MID - requires L5
+  } else if (locationId.includes("SHAFT") || locationId.includes("GROVE")) {
+    return 9 // FAR - requires L9
+  }
+  return 1 // Default to no gating
 }
 
 /**
@@ -240,6 +260,12 @@ function checkMultiMaterialGatherAction(
 
   const skill = getNodeSkill(node)
   const skillLevel = state.player.skills[skill].level
+
+  // Check location access based on skill level (L5 for MID, L9 for FAR)
+  const locationRequirement = getLocationSkillRequirement(node.locationId)
+  if (skillLevel < locationRequirement) {
+    return { valid: false, failureType: "INSUFFICIENT_SKILL", timeCost: 0, successProbability: 0 }
+  }
 
   // Check if mode is unlocked
   if (!isModeUnlocked(mode, skillLevel)) {
