@@ -259,9 +259,7 @@ interface RngStream {
  * Compute luck using Stouffer's method for combining z-scores across RNG streams.
  */
 function computeLuckString(streams: RngStream[]): string {
-  const validStreams = streams.filter(
-    (s) => s.trials > 0 && s.probability > 0 && s.probability < 1
-  )
+  const validStreams = streams.filter((s) => s.trials > 0 && s.probability > 0 && s.probability < 1)
 
   if (validStreams.length === 0) return "N/A (no RNG actions)"
 
@@ -293,7 +291,8 @@ function computeLuckString(streams: RngStream[]): string {
     label = "average"
   }
 
-  const position = zLuck >= 0 ? `Top ${(100 - percentile).toFixed(0)}%` : `Bottom ${percentile.toFixed(0)}%`
+  const position =
+    zLuck >= 0 ? `Top ${(100 - percentile).toFixed(0)}%` : `Bottom ${percentile.toFixed(0)}%`
   const sigmaStr = zLuck >= 0 ? `+${zLuck.toFixed(2)}σ` : `${zLuck.toFixed(2)}σ`
 
   return `${position} (${label}) — ${validStreams.length} streams (${sigmaStr})`
@@ -324,7 +323,8 @@ function computeVolatility(xpProbabilities: number[]): string {
  * Build RNG streams from action logs for luck calculation.
  */
 function buildRngStreams(logs: ActionLog[]): RngStream[] {
-  const streamMap: Map<string, { trials: number; probability: number; successes: number }> = new Map()
+  const streamMap: Map<string, { trials: number; probability: number; successes: number }> =
+    new Map()
 
   for (const log of logs) {
     const nonLootRolls = log.rngRolls.filter((r) => !r.label.startsWith("loot:"))
