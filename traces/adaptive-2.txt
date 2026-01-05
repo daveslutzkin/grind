@@ -1,0 +1,67 @@
+
+=== Gathering Session (seed: adaptive-2) ===
+
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ 📍 TOWN  │  ⏱ 200 ticks left  │  🎒 (empty)                                                                          │
+│ 📊 Mining:0 Woodcut:0                                                                                                │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  ✓ Enrol: Enrolled in Woodcutting guild  │  ⏱ 3t
+  ✓ Move: Moved from TOWN to COPSE  │  ⏱ 3t
+  ✓ Gather: Focused extraction of 4 GREEN_WOOD  │  ⏱ 5t  │  📈 +5 Woodcutting
+    ⛏️  Extracted: 4x GREEN_WOOD
+    💥 Collateral: 1x HARDWOOD, 1x SOFTWOOD
+    📈 LEVEL UP: Woodcutting 1 → 2
+  ✓ Gather: Focused extraction of 4 HARDWOOD  │  ⏱ 5t  │  📈 +10 Woodcutting
+    ⛏️  Extracted: 4x HARDWOOD
+    💥 Collateral: 1x SOFTWOOD, 1x GREEN_WOOD
+    📈 LEVEL UP: Woodcutting 2 → 3
+  ✓ Gather: Focused extraction of 5 HARDWOOD  │  ⏱ 5t  │  📈 +10 Woodcutting
+    ⛏️  Extracted: 5x HARDWOOD
+    💥 Collateral: 1x SOFTWOOD, 1x GREEN_WOOD
+  ✓ Gather: Focused extraction of 5 HARDWOOD  │  ⏱ 5t  │  📈 +10 Woodcutting
+    ⛏️  Extracted: 5x HARDWOOD
+    💥 Collateral: 1x SOFTWOOD, 1x GREEN_WOOD
+    📈 LEVEL UP: Woodcutting 3 → 4
+  ✓ Gather: Carefully extracted 5 HARDWOOD, 5 SOFTWOOD, 5 GREEN_WOOD  │  ⏱ 10t  │  📈 +13 Woodcutting
+    ⛏️  Extracted: 5x HARDWOOD, 5x SOFTWOOD, 5x GREEN_WOOD
+  ✓ Gather: Focused extraction of 5 HARDWOOD  │  ⏱ 5t  │  📈 +10 Woodcutting
+    ⛏️  Extracted: 5x HARDWOOD
+    💥 Collateral: 1x SOFTWOOD, 1x GREEN_WOOD
+    📈 LEVEL UP: Woodcutting 4 → 5
+  ✓ Gather: Focused extraction of 6 HARDWOOD  │  ⏱ 5t  │  📈 +10 Woodcutting
+    ⛏️  Extracted: 6x HARDWOOD
+    💥 Collateral: 1x SOFTWOOD, 1x GREEN_WOOD
+  ✓ Move: Moved from COPSE to DEEP_FOREST  │  ⏱ 11t
+  ✓ Gather: Appraised node DEEP_FOREST-mid_trees-0  │  ⏱ 1t
+  ✓ Gather: Focused extraction of 4 OAK_WOOD  │  ⏱ 5t  │  📈 +15 Woodcutting
+    ⛏️  Extracted: 4x OAK_WOOD
+    💥 Collateral: 1x HARDWOOD, 1x SOFTWOOD, 1x IRONWOOD
+  ✓ Gather: Focused extraction of 5 OAK_WOOD  │  ⏱ 5t  │  📈 +15 Woodcutting
+    ⛏️  Extracted: 5x OAK_WOOD
+    💥 Collateral: 1x HARDWOOD, 1x SOFTWOOD, 1x IRONWOOD
+    📈 LEVEL UP: Woodcutting 5 → 6
+  ✓ Gather: Focused extraction of 5 OAK_WOOD  │  ⏱ 5t  │  📈 +15 Woodcutting
+    ⛏️  Extracted: 5x OAK_WOOD
+    💥 Collateral: 1x HARDWOOD, 1x SOFTWOOD, 1x IRONWOOD
+  ✓ Gather: Focused extraction of 6 OAK_WOOD  │  ⏱ 5t  │  📈 +15 Woodcutting
+    ⛏️  Extracted: 6x OAK_WOOD
+    💥 Collateral: 1x HARDWOOD, 1x SOFTWOOD, 1x IRONWOOD
+  ✓ Gather: Focused extraction of 5 OAK_WOOD  │  ⏱ 5t  │  📈 +15 Woodcutting
+    ⛏️  Extracted: 5x OAK_WOOD
+    💥 Collateral: 1x HARDWOOD, 1x SOFTWOOD, 1x IRONWOOD
+    📈 LEVEL UP: Woodcutting 6 → 7
+  ✗ Gather: Failed: MISSING_FOCUS_MATERIAL  │  ⏱ 0t  │  ❌ MISSING_FOCUS_MATERIAL
+  ✗ Gather: Failed: MISSING_FOCUS_MATERIAL  │  ⏱ 0t  │  ❌ MISSING_FOCUS_MATERIAL
+
+╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                                    SESSION SUMMARY                                                   ║
+╠══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+│ ⏱  TIME: 83/200 ticks  │  XP: 143                                                                                    │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 📋 ACTIONS: 18 total  │  Enrol: 1✓ (3t)  │  Move: 2✓ (14t)  │  Gather: 13✓ 2✗ (66t)                                  │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 📈 SKILLS: Woodcutting: 0→7 (+143 XP)                                                                                │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 🎒 FINAL ITEMS: 9x GREEN_WOOD, 30x HARDWOOD, 5x SOFTWOOD, 25x OAK_WOOD                                               │
+╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
