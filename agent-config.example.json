@@ -1,4 +1,4 @@
 {
-  "openaiApiKey": "sk-your-api-key-here",
-  "model": "gpt-4o-mini"
+  "anthropicApiKey": "sk-ant-your-api-key-here",
+  "model": "claude-sonnet-4-20250514"
 }

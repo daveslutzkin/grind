@@ -12,7 +12,7 @@ export const RULES_VERSION = "rules_0"
  * Agent configuration loaded from config file
  */
 export interface AgentConfig {
-  openaiApiKey: string
+  anthropicApiKey: string
   model: string
 }
 
@@ -20,8 +20,8 @@ export interface AgentConfig {
  * Default configuration when no config file is found
  */
 const DEFAULT_CONFIG: AgentConfig = {
-  openaiApiKey: "",
-  model: "gpt-4o-mini",
+  anthropicApiKey: "",
+  model: "claude-sonnet-4-20250514",
 }
 
 /**
@@ -40,7 +40,7 @@ export function loadAgentConfig(configPath?: string): AgentConfig {
     const content = readFileSync(path, "utf-8")
     const parsed = JSON.parse(content)
     return {
-      openaiApiKey: parsed.openaiApiKey ?? DEFAULT_CONFIG.openaiApiKey,
+      anthropicApiKey: parsed.anthropicApiKey ?? DEFAULT_CONFIG.anthropicApiKey,
       model: parsed.model ?? DEFAULT_CONFIG.model,
     }
   } catch {

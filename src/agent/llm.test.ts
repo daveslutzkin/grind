@@ -6,19 +6,19 @@ describe("LLM Client", () => {
   describe("createLLMClient", () => {
     it("should create a client with valid config", () => {
       const config: AgentConfig = {
-        openaiApiKey: "test-key",
-        model: "gpt-4o-mini",
+        anthropicApiKey: "test-key",
+        model: "claude-sonnet-4-20250514",
       }
       const client = createLLMClient(config)
 
       expect(client).toBeDefined()
-      expect(client.getModel()).toBe("gpt-4o-mini")
+      expect(client.getModel()).toBe("claude-sonnet-4-20250514")
     })
 
     it("should throw if API key is missing", () => {
       const config: AgentConfig = {
-        openaiApiKey: "",
-        model: "gpt-4o-mini",
+        anthropicApiKey: "",
+        model: "claude-sonnet-4-20250514",
       }
 
       expect(() => createLLMClient(config)).toThrow("API key is required")
@@ -28,8 +28,8 @@ describe("LLM Client", () => {
   describe("LLMClient", () => {
     let client: LLMClient
     const mockConfig: AgentConfig = {
-      openaiApiKey: "test-key",
-      model: "gpt-4o-mini",
+      anthropicApiKey: "test-key",
+      model: "claude-sonnet-4-20250514",
     }
 
     beforeEach(() => {

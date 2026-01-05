@@ -17,9 +17,6 @@
     "format:check": "prettier --check src/",
     "check": "npm run format:check && npm run lint && npm run build && npm test"
   },
-  "dependencies": {
-    "openai": "^4.77.0"
-  },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@types/jest": "^29.5.12",
@@ -32,5 +29,8 @@
     "prettier": "^3.7.4",
     "ts-jest": "^29.1.2",
     "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2"
   }
 }

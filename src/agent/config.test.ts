@@ -16,14 +16,14 @@ describe("Agent Configuration", () => {
     it("should return default config when no config file exists", () => {
       const config = loadAgentConfig("/nonexistent/path/config.json")
       expect(config).toEqual({
-        openaiApiKey: "",
-        model: "gpt-4o-mini",
+        anthropicApiKey: "",
+        model: "claude-sonnet-4-20250514",
       })
     })
 
     it("should return a valid AgentConfig structure", () => {
       const config = loadAgentConfig()
-      expect(config).toHaveProperty("openaiApiKey")
+      expect(config).toHaveProperty("anthropicApiKey")
       expect(config).toHaveProperty("model")
     })
   })
@@ -31,11 +31,11 @@ describe("Agent Configuration", () => {
   describe("AgentConfig type", () => {
     it("should have required fields", () => {
       const config: AgentConfig = {
-        openaiApiKey: "test-key",
-        model: "gpt-4o-mini",
+        anthropicApiKey: "test-key",
+        model: "claude-sonnet-4-20250514",
       }
-      expect(config.openaiApiKey).toBe("test-key")
-      expect(config.model).toBe("gpt-4o-mini")
+      expect(config.anthropicApiKey).toBe("test-key")
+      expect(config.model).toBe("claude-sonnet-4-20250514")
     })
   })
 })

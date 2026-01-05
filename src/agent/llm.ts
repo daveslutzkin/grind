@@ -1,4 +1,4 @@
-import OpenAI from "openai"
+import Anthropic from "@anthropic-ai/sdk"
 import type { AgentConfig } from "./config.js"
 
 /**
@@ -10,7 +10,7 @@ export interface LLMMessage {
 }
 
 /**
- * LLM client wrapper for OpenAI API
+ * LLM client wrapper for Anthropic API
  */
 export interface LLMClient {
   /**
@@ -53,16 +53,17 @@ export interface LLMClient {
  * Create an LLM client with the given configuration
  */
 export function createLLMClient(config: AgentConfig): LLMClient {
-  if (!config.openaiApiKey) {
+  if (!config.anthropicApiKey) {
     throw new Error("API key is required")
   }
 
-  const openai = new OpenAI({
-    apiKey: config.openaiApiKey,
+  const anthropic = new Anthropic({
+    apiKey: config.anthropicApiKey,
   })
 
   let history: LLMMessage[] = []
   let historyLimit: number | null = null
+  let systemPrompt: string = ""
   const model = config.model
 
   function trimHistory(): void {
@@ -84,7 +85,9 @@ export function createLLMClient(config: AgentConfig): LLMClient {
     },
 
     setSystemPrompt(prompt: string): void {
-      // Clear history and add system message
+      // Store system prompt separately for Anthropic API
+      systemPrompt = prompt
+      // Also add to history for getHistory() compatibility
       history = [{ role: "system", content: prompt }]
     },
 
@@ -99,6 +102,7 @@ export function createLLMClient(config: AgentConfig): LLMClient {
 
     clearHistory(): void {
       history = []
+      systemPrompt = ""
     },
 
     setHistoryLimit(limit: number): void {
@@ -110,18 +114,25 @@ export function createLLMClient(config: AgentConfig): LLMClient {
       // Add user message to history
       this.addMessage({ role: "user", content: userMessage })
 
+      // Build messages array for Anthropic (exclude system messages)
+      const messages = history
+        .filter((m) => m.role !== "system")
+        .map((m) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        }))
+
       try {
-        const response = await openai.chat.completions.create({
+        const response = await anthropic.messages.create({
           model,
-          messages: history.map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
-          temperature: 0.7,
-          max_tokens: 1000,
+          max_tokens: 1024,
+          system: systemPrompt,
+          messages,
         })
 
-        const assistantMessage = response.choices[0]?.message?.content ?? ""
+        // Extract text from response
+        const assistantMessage =
+          response.content[0]?.type === "text" ? response.content[0].text : ""
 
         // Add assistant response to history
         this.addMessage({ role: "assistant", content: assistantMessage })
@@ -133,23 +144,22 @@ export function createLLMClient(config: AgentConfig): LLMClient {
           const isRetryable =
             error.message.includes("rate limit") ||
             error.message.includes("timeout") ||
-            error.message.includes("ECONNRESET")
+            error.message.includes("ECONNRESET") ||
+            error.message.includes("overloaded")
 
           if (isRetryable) {
             // Wait and retry once
             await new Promise((resolve) => globalThis.setTimeout(resolve, 2000))
 
-            const response = await openai.chat.completions.create({
+            const response = await anthropic.messages.create({
               model,
-              messages: history.map((m) => ({
-                role: m.role,
-                content: m.content,
-              })),
-              temperature: 0.7,
-              max_tokens: 1000,
+              max_tokens: 1024,
+              system: systemPrompt,
+              messages,
             })
 
-            const assistantMessage = response.choices[0]?.message?.content ?? ""
+            const assistantMessage =
+              response.content[0]?.type === "text" ? response.content[0].text : ""
             this.addMessage({ role: "assistant", content: assistantMessage })
             return assistantMessage
           }

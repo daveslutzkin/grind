@@ -1,4 +1,4 @@
 {
-  "openaiApiKey": "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",
-  "model": "gpt-4o-mini"
+  "anthropicApiKey": "",
+  "model": "claude-sonnet-4-20250514"
 }
