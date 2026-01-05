@@ -8,15 +8,11 @@
     "gather OUTSKIRTS_MINE-near_ore-0 focus TIN_ORE",
     "gather OUTSKIRTS_MINE-near_ore-0 focus TIN_ORE",
     "gather OUTSKIRTS_MINE-near_ore-0 careful",
-    "gather OUTSKIRTS_MINE-near_ore-0 careful",
-    "gather OUTSKIRTS_MINE-near_ore-1 careful",
-    "gather OUTSKIRTS_MINE-near_ore-1 careful",
-    "gather OUTSKIRTS_MINE-near_ore-2 careful",
-    "gather OUTSKIRTS_MINE-near_ore-2 careful",
+    "gather OUTSKIRTS_MINE-near_ore-1 focus TIN_ORE",
     "move OLD_QUARRY",
+    "gather OLD_QUARRY-mid_ore-0 appraise",
     "gather OLD_QUARRY-mid_ore-0 careful",
     "gather OLD_QUARRY-mid_ore-0 careful",
-    "gather OLD_QUARRY-mid_ore-1 careful",
     "gather OLD_QUARRY-mid_ore-1 careful"
   ],
   "logs": [
@@ -267,14 +263,15 @@
       "tickBefore": 36,
       "actionType": "Gather",
       "parameters": {
-        "nodeId": "OUTSKIRTS_MINE-near_ore-0",
-        "mode": "CAREFUL_ALL"
+        "nodeId": "OUTSKIRTS_MINE-near_ore-1",
+        "mode": "FOCUS",
+        "focusMaterialId": "TIN_ORE"
       },
       "success": true,
-      "timeConsumed": 10,
+      "timeConsumed": 5,
       "skillGained": {
         "skill": "Mining",
-        "amount": 13
+        "amount": 10
       },
       "levelUps": [
         {
@@ -285,50 +282,79 @@
       ],
       "rngRolls": [],
       "extraction": {
-        "mode": "CAREFUL_ALL",
+        "mode": "FOCUS",
+        "focusMaterial": "TIN_ORE",
         "extracted": [
-          {
-            "itemId": "STONE",
-            "quantity": 5
-          },
-          {
-            "itemId": "COPPER_ORE",
-            "quantity": 5
-          },
           {
             "itemId": "TIN_ORE",
             "quantity": 5
           }
         ],
+        "focusWaste": 0.4666,
+        "collateralDamage": {
+          "COPPER_ORE": 1,
+          "STONE": 1
+        },
+        "variance": {
+          "expected": 5.334,
+          "actual": 5,
+          "range": [
+            5,
+            6
+          ]
+        }
+      },
+      "xpSource": "node_extraction",
+      "stateDeltaSummary": "Focused extraction of 5 TIN_ORE"
+    },
+    {
+      "tickBefore": 41,
+      "actionType": "Move",
+      "parameters": {
+        "destination": "OLD_QUARRY"
+      },
+      "success": true,
+      "timeConsumed": 11,
+      "rngRolls": [],
+      "stateDeltaSummary": "Moved from OUTSKIRTS_MINE to OLD_QUARRY"
+    },
+    {
+      "tickBefore": 52,
+      "actionType": "Gather",
+      "parameters": {
+        "nodeId": "OLD_QUARRY-mid_ore-0",
+        "mode": "APPRAISE"
+      },
+      "success": true,
+      "timeConsumed": 1,
+      "rngRolls": [],
+      "extraction": {
+        "mode": "APPRAISE",
+        "extracted": [],
         "focusWaste": 0,
         "collateralDamage": {}
       },
-      "xpSource": "node_extraction",
-      "stateDeltaSummary": "Carefully extracted 5 STONE, 5 COPPER_ORE, 5 TIN_ORE"
+      "stateDeltaSummary": "Appraised node OLD_QUARRY-mid_ore-0"
     },
     {
-      "tickBefore": 46,
+      "tickBefore": 53,
       "actionType": "Gather",
       "parameters": {
-        "nodeId": "OUTSKIRTS_MINE-near_ore-1",
+        "nodeId": "OLD_QUARRY-mid_ore-0",
         "mode": "CAREFUL_ALL"
       },
       "success": true,
       "timeConsumed": 10,
       "skillGained": {
         "skill": "Mining",
-        "amount": 13
+        "amount": 20
       },
       "rngRolls": [],
       "extraction": {
         "mode": "CAREFUL_ALL",
         "extracted": [
           {
-            "itemId": "TIN_ORE",
-            "quantity": 5
-          },
-          {
-            "itemId": "COPPER_ORE",
+            "itemId": "IRON_ORE",
             "quantity": 5
           },
           {
@@ -340,56 +366,20 @@
         "collateralDamage": {}
       },
       "xpSource": "node_extraction",
-      "stateDeltaSummary": "Carefully extracted 5 TIN_ORE, 5 COPPER_ORE, 5 STONE"
+      "stateDeltaSummary": "Carefully extracted 5 IRON_ORE, 5 STONE"
     },
     {
-      "tickBefore": 56,
+      "tickBefore": 63,
       "actionType": "Gather",
       "parameters": {
-        "nodeId": "OUTSKIRTS_MINE-near_ore-1",
+        "nodeId": "OLD_QUARRY-mid_ore-0",
         "mode": "CAREFUL_ALL"
       },
       "success": true,
       "timeConsumed": 10,
       "skillGained": {
         "skill": "Mining",
-        "amount": 13
-      },
-      "rngRolls": [],
-      "extraction": {
-        "mode": "CAREFUL_ALL",
-        "extracted": [
-          {
-            "itemId": "TIN_ORE",
-            "quantity": 5
-          },
-          {
-            "itemId": "COPPER_ORE",
-            "quantity": 5
-          },
-          {
-            "itemId": "STONE",
-            "quantity": 5
-          }
-        ],
-        "focusWaste": 0,
-        "collateralDamage": {}
-      },
-      "xpSource": "node_extraction",
-      "stateDeltaSummary": "Carefully extracted 5 TIN_ORE, 5 COPPER_ORE, 5 STONE"
-    },
-    {
-      "tickBefore": 66,
-      "actionType": "Gather",
-      "parameters": {
-        "nodeId": "OUTSKIRTS_MINE-near_ore-2",
-        "mode": "CAREFUL_ALL"
-      },
-      "success": true,
-      "timeConsumed": 10,
-      "skillGained": {
-        "skill": "Mining",
-        "amount": 13
+        "amount": 20
       },
       "levelUps": [
         {
@@ -403,89 +393,6 @@
         "mode": "CAREFUL_ALL",
         "extracted": [
           {
-            "itemId": "STONE",
-            "quantity": 5
-          },
-          {
-            "itemId": "COPPER_ORE",
-            "quantity": 5
-          },
-          {
-            "itemId": "TIN_ORE",
-            "quantity": 5
-          }
-        ],
-        "focusWaste": 0,
-        "collateralDamage": {}
-      },
-      "xpSource": "node_extraction",
-      "stateDeltaSummary": "Carefully extracted 5 STONE, 5 COPPER_ORE, 5 TIN_ORE"
-    },
-    {
-      "tickBefore": 76,
-      "actionType": "Gather",
-      "parameters": {
-        "nodeId": "OUTSKIRTS_MINE-near_ore-2",
-        "mode": "CAREFUL_ALL"
-      },
-      "success": true,
-      "timeConsumed": 10,
-      "skillGained": {
-        "skill": "Mining",
-        "amount": 13
-      },
-      "rngRolls": [],
-      "extraction": {
-        "mode": "CAREFUL_ALL",
-        "extracted": [
-          {
-            "itemId": "STONE",
-            "quantity": 5
-          },
-          {
-            "itemId": "COPPER_ORE",
-            "quantity": 5
-          },
-          {
-            "itemId": "TIN_ORE",
-            "quantity": 5
-          }
-        ],
-        "focusWaste": 0,
-        "collateralDamage": {}
-      },
-      "xpSource": "node_extraction",
-      "stateDeltaSummary": "Carefully extracted 5 STONE, 5 COPPER_ORE, 5 TIN_ORE"
-    },
-    {
-      "tickBefore": 86,
-      "actionType": "Move",
-      "parameters": {
-        "destination": "OLD_QUARRY"
-      },
-      "success": true,
-      "timeConsumed": 11,
-      "rngRolls": [],
-      "stateDeltaSummary": "Moved from OUTSKIRTS_MINE to OLD_QUARRY"
-    },
-    {
-      "tickBefore": 97,
-      "actionType": "Gather",
-      "parameters": {
-        "nodeId": "OLD_QUARRY-mid_ore-0",
-        "mode": "CAREFUL_ALL"
-      },
-      "success": true,
-      "timeConsumed": 10,
-      "skillGained": {
-        "skill": "Mining",
-        "amount": 20
-      },
-      "rngRolls": [],
-      "extraction": {
-        "mode": "CAREFUL_ALL",
-        "extracted": [
-          {
             "itemId": "IRON_ORE",
             "quantity": 5
           },
@@ -501,86 +408,7 @@
       "stateDeltaSummary": "Carefully extracted 5 IRON_ORE, 5 STONE"
     },
     {
-      "tickBefore": 107,
-      "actionType": "Gather",
-      "parameters": {
-        "nodeId": "OLD_QUARRY-mid_ore-0",
-        "mode": "CAREFUL_ALL"
-      },
-      "success": true,
-      "timeConsumed": 10,
-      "skillGained": {
-        "skill": "Mining",
-        "amount": 20
-      },
-      "levelUps": [
-        {
-          "skill": "Mining",
-          "fromLevel": 6,
-          "toLevel": 7
-        }
-      ],
-      "rngRolls": [],
-      "extraction": {
-        "mode": "CAREFUL_ALL",
-        "extracted": [
-          {
-            "itemId": "IRON_ORE",
-            "quantity": 5
-          },
-          {
-            "itemId": "STONE",
-            "quantity": 5
-          }
-        ],
-        "focusWaste": 0,
-        "collateralDamage": {}
-      },
-      "xpSource": "node_extraction",
-      "stateDeltaSummary": "Carefully extracted 5 IRON_ORE, 5 STONE"
-    },
-    {
-      "tickBefore": 117,
-      "actionType": "Gather",
-      "parameters": {
-        "nodeId": "OLD_QUARRY-mid_ore-1",
-        "mode": "CAREFUL_ALL"
-      },
-      "success": true,
-      "timeConsumed": 10,
-      "skillGained": {
-        "skill": "Mining",
-        "amount": 18
-      },
-      "rngRolls": [],
-      "extraction": {
-        "mode": "CAREFUL_ALL",
-        "extracted": [
-          {
-            "itemId": "STONE",
-            "quantity": 5
-          },
-          {
-            "itemId": "COPPER_ORE",
-            "quantity": 5
-          },
-          {
-            "itemId": "TIN_ORE",
-            "quantity": 5
-          },
-          {
-            "itemId": "IRON_ORE",
-            "quantity": 5
-          }
-        ],
-        "focusWaste": 0,
-        "collateralDamage": {}
-      },
-      "xpSource": "node_extraction",
-      "stateDeltaSummary": "Carefully extracted 5 STONE, 5 COPPER_ORE, 5 TIN_ORE, 5 IRON_ORE"
-    },
-    {
-      "tickBefore": 127,
+      "tickBefore": 73,
       "actionType": "Gather",
       "parameters": {
         "nodeId": "OLD_QUARRY-mid_ore-1",
@@ -621,28 +449,28 @@
     }
   ],
   "finalState": {
-    "tick": 137,
-    "ticksRemaining": 63,
-    "miningLevel": 7,
-    "miningXP": 50,
+    "tick": 83,
+    "ticksRemaining": 117,
+    "miningLevel": 6,
+    "miningXP": 26,
     "woodcuttingLevel": 0,
     "woodcuttingXP": 0,
     "inventory": [
       {
         "itemId": "COPPER_ORE",
-        "quantity": 44
+        "quantity": 14
       },
       {
         "itemId": "TIN_ORE",
-        "quantity": 53
+        "quantity": 28
       },
       {
         "itemId": "STONE",
-        "quantity": 50
+        "quantity": 20
       },
       {
         "itemId": "IRON_ORE",
-        "quantity": 20
+        "quantity": 15
       }
     ]
   }
