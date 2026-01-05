@@ -1,24 +1,24 @@
 {
-  "seed": "fun-5",
+  "seed": "adaptive-3",
   "commands": [
     "enrol mining",
     "enrol woodcutting",
     "move OUTSKIRTS_MINE",
     "gather OUTSKIRTS_MINE-near_ore-0 focus COPPER_ORE",
+    "gather OUTSKIRTS_MINE-near_ore-0 focus TIN_ORE",
     "gather OUTSKIRTS_MINE-near_ore-1 focus TIN_ORE",
-    "gather OUTSKIRTS_MINE-near_ore-2 focus TIN_ORE",
     "move COPSE",
     "gather COPSE-near_trees-0 focus GREEN_WOOD",
+    "gather COPSE-near_trees-0 focus SOFTWOOD",
     "gather COPSE-near_trees-1 focus SOFTWOOD",
-    "gather COPSE-near_trees-2 focus SOFTWOOD",
-    "move OLD_QUARRY",
-    "gather OLD_QUARRY-mid_ore-0 focus IRON_ORE",
-    "gather OLD_QUARRY-mid_ore-1 focus IRON_ORE",
-    "gather OLD_QUARRY-mid_ore-2 focus IRON_ORE",
-    "move DEEP_FOREST",
-    "gather DEEP_FOREST-mid_trees-0 focus OAK_WOOD",
-    "gather DEEP_FOREST-mid_trees-1 focus OAK_WOOD",
-    "gather DEEP_FOREST-mid_trees-2 focus IRONWOOD"
+    "move OUTSKIRTS_MINE",
+    "gather OUTSKIRTS_MINE-near_ore-2 focus TIN_ORE",
+    "gather OUTSKIRTS_MINE-near_ore-2 focus TIN_ORE",
+    "gather OUTSKIRTS_MINE-near_ore-3 careful",
+    "move COPSE",
+    "gather COPSE-near_trees-2 focus HARDWOOD",
+    "gather COPSE-near_trees-2 focus HARDWOOD",
+    "gather COPSE-near_trees-3 careful"
   ],
   "logs": [
     {
@@ -106,7 +106,7 @@
       "tickBefore": 14,
       "actionType": "Gather",
       "parameters": {
-        "nodeId": "OUTSKIRTS_MINE-near_ore-1",
+        "nodeId": "OUTSKIRTS_MINE-near_ore-0",
         "mode": "FOCUS",
         "focusMaterialId": "TIN_ORE"
       },
@@ -154,7 +154,7 @@
       "tickBefore": 19,
       "actionType": "Gather",
       "parameters": {
-        "nodeId": "OUTSKIRTS_MINE-near_ore-2",
+        "nodeId": "OUTSKIRTS_MINE-near_ore-1",
         "mode": "FOCUS",
         "focusMaterialId": "TIN_ORE"
       },
@@ -176,6 +176,7 @@
         ],
         "focusWaste": 0.5333,
         "collateralDamage": {
+          "STONE": 1,
           "COPPER_ORE": 1
         },
         "variance": {
@@ -234,7 +235,8 @@
         ],
         "focusWaste": 0.6,
         "collateralDamage": {
-          "SOFTWOOD": 1
+          "SOFTWOOD": 1,
+          "HARDWOOD": 1
         },
         "variance": {
           "expected": 4,
@@ -252,7 +254,7 @@
       "tickBefore": 35,
       "actionType": "Gather",
       "parameters": {
-        "nodeId": "COPSE-near_trees-1",
+        "nodeId": "COPSE-near_trees-0",
         "mode": "FOCUS",
         "focusMaterialId": "SOFTWOOD"
       },
@@ -274,8 +276,8 @@
         ],
         "focusWaste": 0.5333,
         "collateralDamage": {
-          "HARDWOOD": 1,
-          "GREEN_WOOD": 1
+          "GREEN_WOOD": 1,
+          "HARDWOOD": 1
         },
         "variance": {
           "expected": 4.667,
@@ -293,7 +295,7 @@
       "tickBefore": 40,
       "actionType": "Gather",
       "parameters": {
-        "nodeId": "COPSE-near_trees-2",
+        "nodeId": "COPSE-near_trees-1",
         "mode": "FOCUS",
         "focusMaterialId": "SOFTWOOD"
       },
@@ -317,13 +319,72 @@
         "extracted": [
           {
             "itemId": "SOFTWOOD",
-            "quantity": 4
+            "quantity": 5
           }
         ],
         "focusWaste": 0.5333,
         "collateralDamage": {
           "GREEN_WOOD": 1,
           "HARDWOOD": 1
+        },
+        "variance": {
+          "expected": 4.667,
+          "actual": 5,
+          "range": [
+            4,
+            5
+          ]
+        }
+      },
+      "xpSource": "node_extraction",
+      "stateDeltaSummary": "Focused extraction of 5 SOFTWOOD"
+    },
+    {
+      "tickBefore": 45,
+      "actionType": "Move",
+      "parameters": {
+        "destination": "OUTSKIRTS_MINE"
+      },
+      "success": true,
+      "timeConsumed": 6,
+      "rngRolls": [],
+      "stateDeltaSummary": "Moved from COPSE to OUTSKIRTS_MINE"
+    },
+    {
+      "tickBefore": 51,
+      "actionType": "Gather",
+      "parameters": {
+        "nodeId": "OUTSKIRTS_MINE-near_ore-2",
+        "mode": "FOCUS",
+        "focusMaterialId": "TIN_ORE"
+      },
+      "success": true,
+      "timeConsumed": 5,
+      "skillGained": {
+        "skill": "Mining",
+        "amount": 10
+      },
+      "levelUps": [
+        {
+          "skill": "Mining",
+          "fromLevel": 3,
+          "toLevel": 4
+        }
+      ],
+      "rngRolls": [],
+      "extraction": {
+        "mode": "FOCUS",
+        "focusMaterial": "TIN_ORE",
+        "extracted": [
+          {
+            "itemId": "TIN_ORE",
+            "quantity": 4
+          }
+        ],
+        "focusWaste": 0.5333,
+        "collateralDamage": {
+          "STONE": 1,
+          "COPPER_ORE": 1
         },
         "variance": {
           "expected": 4.667,
@@ -335,138 +396,256 @@
         }
       },
       "xpSource": "node_extraction",
-      "stateDeltaSummary": "Focused extraction of 4 SOFTWOOD"
+      "stateDeltaSummary": "Focused extraction of 4 TIN_ORE"
     },
     {
-      "tickBefore": 45,
-      "actionType": "Move",
+      "tickBefore": 56,
+      "actionType": "Gather",
       "parameters": {
-        "destination": "OLD_QUARRY"
+        "nodeId": "OUTSKIRTS_MINE-near_ore-2",
+        "mode": "FOCUS",
+        "focusMaterialId": "TIN_ORE"
       },
       "success": true,
-      "timeConsumed": 11,
+      "timeConsumed": 5,
+      "skillGained": {
+        "skill": "Mining",
+        "amount": 10
+      },
       "rngRolls": [],
-      "stateDeltaSummary": "Moved from COPSE to OLD_QUARRY"
+      "extraction": {
+        "mode": "FOCUS",
+        "focusMaterial": "TIN_ORE",
+        "extracted": [
+          {
+            "itemId": "TIN_ORE",
+            "quantity": 5
+          }
+        ],
+        "focusWaste": 0.4666,
+        "collateralDamage": {
+          "STONE": 1,
+          "COPPER_ORE": 1
+        },
+        "variance": {
+          "expected": 5.334,
+          "actual": 5,
+          "range": [
+            5,
+            6
+          ]
+        }
+      },
+      "xpSource": "node_extraction",
+      "stateDeltaSummary": "Focused extraction of 5 TIN_ORE"
     },
     {
-      "tickBefore": 56,
+      "tickBefore": 61,
       "actionType": "Gather",
       "parameters": {
-        "nodeId": "OLD_QUARRY-mid_ore-0",
-        "mode": "FOCUS",
-        "focusMaterialId": "IRON_ORE"
-      },
-      "success": false,
-      "failureType": "INSUFFICIENT_SKILL",
-      "timeConsumed": 0,
-      "rngRolls": [],
-      "stateDeltaSummary": "Failed: INSUFFICIENT_SKILL"
-    },
-    {
-      "tickBefore": 56,
-      "actionType": "Gather",
-      "parameters": {
-        "nodeId": "OLD_QUARRY-mid_ore-1",
-        "mode": "FOCUS",
-        "focusMaterialId": "IRON_ORE"
-      },
-      "success": false,
-      "failureType": "INSUFFICIENT_SKILL",
-      "timeConsumed": 0,
-      "rngRolls": [],
-      "stateDeltaSummary": "Failed: INSUFFICIENT_SKILL"
-    },
-    {
-      "tickBefore": 56,
-      "actionType": "Gather",
-      "parameters": {
-        "nodeId": "OLD_QUARRY-mid_ore-2",
-        "mode": "FOCUS",
-        "focusMaterialId": "IRON_ORE"
-      },
-      "success": false,
-      "failureType": "INSUFFICIENT_SKILL",
-      "timeConsumed": 0,
-      "rngRolls": [],
-      "stateDeltaSummary": "Failed: INSUFFICIENT_SKILL"
-    },
-    {
-      "tickBefore": 56,
-      "actionType": "Move",
-      "parameters": {
-        "destination": "DEEP_FOREST"
+        "nodeId": "OUTSKIRTS_MINE-near_ore-3",
+        "mode": "CAREFUL_ALL"
       },
       "success": true,
-      "timeConsumed": 16,
+      "timeConsumed": 10,
+      "skillGained": {
+        "skill": "Mining",
+        "amount": 10
+      },
+      "levelUps": [
+        {
+          "skill": "Mining",
+          "fromLevel": 4,
+          "toLevel": 5
+        }
+      ],
       "rngRolls": [],
-      "stateDeltaSummary": "Moved from OLD_QUARRY to DEEP_FOREST"
+      "extraction": {
+        "mode": "CAREFUL_ALL",
+        "extracted": [
+          {
+            "itemId": "STONE",
+            "quantity": 5
+          },
+          {
+            "itemId": "COPPER_ORE",
+            "quantity": 5
+          }
+        ],
+        "focusWaste": 0,
+        "collateralDamage": {}
+      },
+      "xpSource": "node_extraction",
+      "stateDeltaSummary": "Carefully extracted 5 STONE, 5 COPPER_ORE"
     },
     {
-      "tickBefore": 72,
-      "actionType": "Gather",
+      "tickBefore": 71,
+      "actionType": "Move",
       "parameters": {
-        "nodeId": "DEEP_FOREST-mid_trees-0",
-        "mode": "FOCUS",
-        "focusMaterialId": "OAK_WOOD"
+        "destination": "COPSE"
       },
-      "success": false,
-      "failureType": "INSUFFICIENT_SKILL",
-      "timeConsumed": 0,
+      "success": true,
+      "timeConsumed": 6,
       "rngRolls": [],
-      "stateDeltaSummary": "Failed: INSUFFICIENT_SKILL"
+      "stateDeltaSummary": "Moved from OUTSKIRTS_MINE to COPSE"
     },
     {
-      "tickBefore": 72,
+      "tickBefore": 77,
       "actionType": "Gather",
       "parameters": {
-        "nodeId": "DEEP_FOREST-mid_trees-1",
+        "nodeId": "COPSE-near_trees-2",
         "mode": "FOCUS",
-        "focusMaterialId": "OAK_WOOD"
+        "focusMaterialId": "HARDWOOD"
       },
-      "success": false,
-      "failureType": "INSUFFICIENT_SKILL",
-      "timeConsumed": 0,
+      "success": true,
+      "timeConsumed": 5,
+      "skillGained": {
+        "skill": "Woodcutting",
+        "amount": 10
+      },
       "rngRolls": [],
-      "stateDeltaSummary": "Failed: INSUFFICIENT_SKILL"
+      "extraction": {
+        "mode": "FOCUS",
+        "focusMaterial": "HARDWOOD",
+        "extracted": [
+          {
+            "itemId": "HARDWOOD",
+            "quantity": 4
+          }
+        ],
+        "focusWaste": 0.5333,
+        "collateralDamage": {
+          "SOFTWOOD": 1,
+          "GREEN_WOOD": 1
+        },
+        "variance": {
+          "expected": 4.667,
+          "actual": 4,
+          "range": [
+            4,
+            5
+          ]
+        }
+      },
+      "xpSource": "node_extraction",
+      "stateDeltaSummary": "Focused extraction of 4 HARDWOOD"
     },
     {
-      "tickBefore": 72,
+      "tickBefore": 82,
       "actionType": "Gather",
       "parameters": {
-        "nodeId": "DEEP_FOREST-mid_trees-2",
+        "nodeId": "COPSE-near_trees-2",
         "mode": "FOCUS",
-        "focusMaterialId": "IRONWOOD"
+        "focusMaterialId": "HARDWOOD"
       },
-      "success": false,
-      "failureType": "INSUFFICIENT_SKILL",
-      "timeConsumed": 0,
+      "success": true,
+      "timeConsumed": 5,
+      "skillGained": {
+        "skill": "Woodcutting",
+        "amount": 10
+      },
+      "levelUps": [
+        {
+          "skill": "Woodcutting",
+          "fromLevel": 3,
+          "toLevel": 4
+        }
+      ],
       "rngRolls": [],
-      "stateDeltaSummary": "Failed: INSUFFICIENT_SKILL"
+      "extraction": {
+        "mode": "FOCUS",
+        "focusMaterial": "HARDWOOD",
+        "extracted": [
+          {
+            "itemId": "HARDWOOD",
+            "quantity": 5
+          }
+        ],
+        "focusWaste": 0.5333,
+        "collateralDamage": {
+          "SOFTWOOD": 1,
+          "GREEN_WOOD": 1
+        },
+        "variance": {
+          "expected": 4.667,
+          "actual": 5,
+          "range": [
+            4,
+            5
+          ]
+        }
+      },
+      "xpSource": "node_extraction",
+      "stateDeltaSummary": "Focused extraction of 5 HARDWOOD"
+    },
+    {
+      "tickBefore": 87,
+      "actionType": "Gather",
+      "parameters": {
+        "nodeId": "COPSE-near_trees-3",
+        "mode": "CAREFUL_ALL"
+      },
+      "success": true,
+      "timeConsumed": 10,
+      "skillGained": {
+        "skill": "Woodcutting",
+        "amount": 13
+      },
+      "rngRolls": [],
+      "extraction": {
+        "mode": "CAREFUL_ALL",
+        "extracted": [
+          {
+            "itemId": "GREEN_WOOD",
+            "quantity": 5
+          },
+          {
+            "itemId": "SOFTWOOD",
+            "quantity": 5
+          },
+          {
+            "itemId": "HARDWOOD",
+            "quantity": 5
+          }
+        ],
+        "focusWaste": 0,
+        "collateralDamage": {}
+      },
+      "xpSource": "node_extraction",
+      "stateDeltaSummary": "Carefully extracted 5 GREEN_WOOD, 5 SOFTWOOD, 5 HARDWOOD"
     }
   ],
   "finalState": {
-    "tick": 72,
-    "ticksRemaining": 128,
-    "miningLevel": 3,
-    "miningXP": 12,
-    "woodcuttingLevel": 3,
-    "woodcuttingXP": 2,
+    "tick": 97,
+    "ticksRemaining": 103,
+    "miningLevel": 5,
+    "miningXP": 1,
+    "woodcuttingLevel": 4,
+    "woodcuttingXP": 19,
     "inventory": [
       {
         "itemId": "COPPER_ORE",
-        "quantity": 4
+        "quantity": 9
       },
       {
         "itemId": "TIN_ORE",
-        "quantity": 9
+        "quantity": 18
       },
       {
         "itemId": "GREEN_WOOD",
-        "quantity": 4
+        "quantity": 9
       },
       {
         "itemId": "SOFTWOOD",
-        "quantity": 9
+        "quantity": 15
+      },
+      {
+        "itemId": "STONE",
+        "quantity": 5
+      },
+      {
+        "itemId": "HARDWOOD",
+        "quantity": 14
       }
     ]
   }

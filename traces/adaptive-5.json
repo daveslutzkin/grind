@@ -1,0 +1,262 @@
+{
+  "seed": "adaptive-5",
+  "commands": [
+    "enrol mining",
+    "move OUTSKIRTS_MINE",
+    "gather OUTSKIRTS_MINE-near_ore-0 focus TIN_ORE",
+    "gather OUTSKIRTS_MINE-near_ore-0 focus TIN_ORE",
+    "gather OUTSKIRTS_MINE-near_ore-0 focus TIN_ORE",
+    "gather OUTSKIRTS_MINE-near_ore-0 focus TIN_ORE",
+    "gather OUTSKIRTS_MINE-near_ore-0 focus TIN_ORE",
+    "gather OUTSKIRTS_MINE-near_ore-0 focus TIN_ORE",
+    "move OLD_QUARRY",
+    "gather OLD_QUARRY-mid_ore-0 focus IRON_ORE",
+    "gather OLD_QUARRY-mid_ore-0 focus IRON_ORE",
+    "gather OLD_QUARRY-mid_ore-0 focus IRON_ORE",
+    "gather OLD_QUARRY-mid_ore-1 focus IRON_ORE",
+    "gather OLD_QUARRY-mid_ore-1 focus IRON_ORE",
+    "gather OLD_QUARRY-mid_ore-1 focus IRON_ORE",
+    "gather OLD_QUARRY-mid_ore-2 focus IRON_ORE",
+    "gather OLD_QUARRY-mid_ore-2 focus IRON_ORE"
+  ],
+  "logs": [
+    {
+      "tickBefore": 0,
+      "actionType": "Enrol",
+      "parameters": {
+        "skill": "Mining"
+      },
+      "success": true,
+      "timeConsumed": 3,
+      "rngRolls": [],
+      "stateDeltaSummary": "Enrolled in Mining guild"
+    },
+    {
+      "tickBefore": 3,
+      "actionType": "Move",
+      "parameters": {
+        "destination": "OUTSKIRTS_MINE"
+      },
+      "success": true,
+      "timeConsumed": 3,
+      "rngRolls": [],
+      "stateDeltaSummary": "Moved from TOWN to OUTSKIRTS_MINE"
+    },
+    {
+      "tickBefore": 6,
+      "actionType": "Gather",
+      "parameters": {
+        "nodeId": "OUTSKIRTS_MINE-near_ore-0",
+        "mode": "FOCUS",
+        "focusMaterialId": "TIN_ORE"
+      },
+      "success": false,
+      "failureType": "INSUFFICIENT_SKILL",
+      "timeConsumed": 0,
+      "rngRolls": [],
+      "stateDeltaSummary": "Failed: INSUFFICIENT_SKILL"
+    },
+    {
+      "tickBefore": 6,
+      "actionType": "Gather",
+      "parameters": {
+        "nodeId": "OUTSKIRTS_MINE-near_ore-0",
+        "mode": "FOCUS",
+        "focusMaterialId": "TIN_ORE"
+      },
+      "success": false,
+      "failureType": "INSUFFICIENT_SKILL",
+      "timeConsumed": 0,
+      "rngRolls": [],
+      "stateDeltaSummary": "Failed: INSUFFICIENT_SKILL"
+    },
+    {
+      "tickBefore": 6,
+      "actionType": "Gather",
+      "parameters": {
+        "nodeId": "OUTSKIRTS_MINE-near_ore-0",
+        "mode": "FOCUS",
+        "focusMaterialId": "TIN_ORE"
+      },
+      "success": false,
+      "failureType": "INSUFFICIENT_SKILL",
+      "timeConsumed": 0,
+      "rngRolls": [],
+      "stateDeltaSummary": "Failed: INSUFFICIENT_SKILL"
+    },
+    {
+      "tickBefore": 6,
+      "actionType": "Gather",
+      "parameters": {
+        "nodeId": "OUTSKIRTS_MINE-near_ore-0",
+        "mode": "FOCUS",
+        "focusMaterialId": "TIN_ORE"
+      },
+      "success": false,
+      "failureType": "INSUFFICIENT_SKILL",
+      "timeConsumed": 0,
+      "rngRolls": [],
+      "stateDeltaSummary": "Failed: INSUFFICIENT_SKILL"
+    },
+    {
+      "tickBefore": 6,
+      "actionType": "Gather",
+      "parameters": {
+        "nodeId": "OUTSKIRTS_MINE-near_ore-0",
+        "mode": "FOCUS",
+        "focusMaterialId": "TIN_ORE"
+      },
+      "success": false,
+      "failureType": "INSUFFICIENT_SKILL",
+      "timeConsumed": 0,
+      "rngRolls": [],
+      "stateDeltaSummary": "Failed: INSUFFICIENT_SKILL"
+    },
+    {
+      "tickBefore": 6,
+      "actionType": "Gather",
+      "parameters": {
+        "nodeId": "OUTSKIRTS_MINE-near_ore-0",
+        "mode": "FOCUS",
+        "focusMaterialId": "TIN_ORE"
+      },
+      "success": false,
+      "failureType": "INSUFFICIENT_SKILL",
+      "timeConsumed": 0,
+      "rngRolls": [],
+      "stateDeltaSummary": "Failed: INSUFFICIENT_SKILL"
+    },
+    {
+      "tickBefore": 6,
+      "actionType": "Move",
+      "parameters": {
+        "destination": "OLD_QUARRY"
+      },
+      "success": true,
+      "timeConsumed": 11,
+      "rngRolls": [],
+      "stateDeltaSummary": "Moved from OUTSKIRTS_MINE to OLD_QUARRY"
+    },
+    {
+      "tickBefore": 17,
+      "actionType": "Gather",
+      "parameters": {
+        "nodeId": "OLD_QUARRY-mid_ore-0",
+        "mode": "FOCUS",
+        "focusMaterialId": "IRON_ORE"
+      },
+      "success": false,
+      "failureType": "INSUFFICIENT_SKILL",
+      "timeConsumed": 0,
+      "rngRolls": [],
+      "stateDeltaSummary": "Failed: INSUFFICIENT_SKILL"
+    },
+    {
+      "tickBefore": 17,
+      "actionType": "Gather",
+      "parameters": {
+        "nodeId": "OLD_QUARRY-mid_ore-0",
+        "mode": "FOCUS",
+        "focusMaterialId": "IRON_ORE"
+      },
+      "success": false,
+      "failureType": "INSUFFICIENT_SKILL",
+      "timeConsumed": 0,
+      "rngRolls": [],
+      "stateDeltaSummary": "Failed: INSUFFICIENT_SKILL"
+    },
+    {
+      "tickBefore": 17,
+      "actionType": "Gather",
+      "parameters": {
+        "nodeId": "OLD_QUARRY-mid_ore-0",
+        "mode": "FOCUS",
+        "focusMaterialId": "IRON_ORE"
+      },
+      "success": false,
+      "failureType": "INSUFFICIENT_SKILL",
+      "timeConsumed": 0,
+      "rngRolls": [],
+      "stateDeltaSummary": "Failed: INSUFFICIENT_SKILL"
+    },
+    {
+      "tickBefore": 17,
+      "actionType": "Gather",
+      "parameters": {
+        "nodeId": "OLD_QUARRY-mid_ore-1",
+        "mode": "FOCUS",
+        "focusMaterialId": "IRON_ORE"
+      },
+      "success": false,
+      "failureType": "INSUFFICIENT_SKILL",
+      "timeConsumed": 0,
+      "rngRolls": [],
+      "stateDeltaSummary": "Failed: INSUFFICIENT_SKILL"
+    },
+    {
+      "tickBefore": 17,
+      "actionType": "Gather",
+      "parameters": {
+        "nodeId": "OLD_QUARRY-mid_ore-1",
+        "mode": "FOCUS",
+        "focusMaterialId": "IRON_ORE"
+      },
+      "success": false,
+      "failureType": "INSUFFICIENT_SKILL",
+      "timeConsumed": 0,
+      "rngRolls": [],
+      "stateDeltaSummary": "Failed: INSUFFICIENT_SKILL"
+    },
+    {
+      "tickBefore": 17,
+      "actionType": "Gather",
+      "parameters": {
+        "nodeId": "OLD_QUARRY-mid_ore-1",
+        "mode": "FOCUS",
+        "focusMaterialId": "IRON_ORE"
+      },
+      "success": false,
+      "failureType": "INSUFFICIENT_SKILL",
+      "timeConsumed": 0,
+      "rngRolls": [],
+      "stateDeltaSummary": "Failed: INSUFFICIENT_SKILL"
+    },
+    {
+      "tickBefore": 17,
+      "actionType": "Gather",
+      "parameters": {
+        "nodeId": "OLD_QUARRY-mid_ore-2",
+        "mode": "FOCUS",
+        "focusMaterialId": "IRON_ORE"
+      },
+      "success": false,
+      "failureType": "INSUFFICIENT_SKILL",
+      "timeConsumed": 0,
+      "rngRolls": [],
+      "stateDeltaSummary": "Failed: INSUFFICIENT_SKILL"
+    },
+    {
+      "tickBefore": 17,
+      "actionType": "Gather",
+      "parameters": {
+        "nodeId": "OLD_QUARRY-mid_ore-2",
+        "mode": "FOCUS",
+        "focusMaterialId": "IRON_ORE"
+      },
+      "success": false,
+      "failureType": "INSUFFICIENT_SKILL",
+      "timeConsumed": 0,
+      "rngRolls": [],
+      "stateDeltaSummary": "Failed: INSUFFICIENT_SKILL"
+    }
+  ],
+  "finalState": {
+    "tick": 17,
+    "ticksRemaining": 183,
+    "miningLevel": 1,
+    "miningXP": 0,
+    "woodcuttingLevel": 0,
+    "woodcuttingXP": 0,
+    "inventory": []
+  }
+}
