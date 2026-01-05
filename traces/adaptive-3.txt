@@ -1,0 +1,60 @@
+
+=== Gathering Session (seed: adaptive-3) ===
+
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ 📍 TOWN  │  ⏱ 200 ticks left  │  🎒 (empty)                                                                          │
+│ 📊 Mining:0 Woodcut:0                                                                                                │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  ✓ Enrol: Enrolled in Mining guild  │  ⏱ 3t
+  ✓ Move: Moved from TOWN to OUTSKIRTS_MINE  │  ⏱ 3t
+  ✓ Gather: Focused extraction of 4 COPPER_ORE  │  ⏱ 5t  │  📈 +5 Mining
+    ⛏️  Extracted: 4x COPPER_ORE
+    💥 Collateral: 1x TIN_ORE, 1x STONE
+    📈 LEVEL UP: Mining 1 → 2
+  ✓ Gather: Focused extraction of 4 TIN_ORE  │  ⏱ 5t  │  📈 +10 Mining
+    ⛏️  Extracted: 4x TIN_ORE
+    💥 Collateral: 1x COPPER_ORE, 1x STONE
+    📈 LEVEL UP: Mining 2 → 3
+  ✓ Gather: Focused extraction of 5 TIN_ORE  │  ⏱ 5t  │  📈 +10 Mining
+    ⛏️  Extracted: 5x TIN_ORE
+    💥 Collateral: 1x COPPER_ORE, 1x STONE
+  ✓ Move: Moved from OUTSKIRTS_MINE to OLD_QUARRY  │  ⏱ 11t
+  ✓ Move: Moved from OLD_QUARRY to OUTSKIRTS_MINE  │  ⏱ 11t
+  ✓ Gather: Focused extraction of 5 TIN_ORE  │  ⏱ 5t  │  📈 +10 Mining
+    ⛏️  Extracted: 5x TIN_ORE
+    💥 Collateral: 1x COPPER_ORE, 1x STONE
+    📈 LEVEL UP: Mining 3 → 4
+  ✓ Gather: Focused extraction of 6 TIN_ORE  │  ⏱ 5t  │  📈 +10 Mining
+    ⛏️  Extracted: 6x TIN_ORE
+    💥 Collateral: 1x COPPER_ORE, 1x STONE
+  ✓ Gather: Focused extraction of 5 TIN_ORE  │  ⏱ 5t  │  📈 +10 Mining
+    ⛏️  Extracted: 5x TIN_ORE
+    💥 Collateral: 1x STONE, 1x COPPER_ORE
+    📈 LEVEL UP: Mining 4 → 5
+  ✓ Gather: Focused extraction of 6 TIN_ORE  │  ⏱ 5t  │  📈 +10 Mining
+    ⛏️  Extracted: 6x TIN_ORE
+    💥 Collateral: 1x STONE, 1x COPPER_ORE
+  ✓ Move: Moved from OUTSKIRTS_MINE to OLD_QUARRY  │  ⏱ 11t
+  ✓ Gather: Focused extraction of 4 IRON_ORE  │  ⏱ 5t  │  📈 +15 Mining
+    ⛏️  Extracted: 4x IRON_ORE
+    💥 Collateral: 1x TIN_ORE, 1x COPPER_ORE, 1x STONE
+  ✓ Gather: Focused extraction of 4 IRON_ORE  │  ⏱ 5t  │  📈 +15 Mining
+    ⛏️  Extracted: 4x IRON_ORE
+    💥 Collateral: 1x TIN_ORE, 1x COPPER_ORE, 1x STONE
+    📈 LEVEL UP: Mining 5 → 6
+  ✓ Gather: Focused extraction of 5 IRON_ORE  │  ⏱ 5t  │  📈 +15 Mining
+    ⛏️  Extracted: 5x IRON_ORE
+    💥 Collateral: 1x TIN_ORE, 1x COPPER_ORE, 1x STONE
+
+╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                                    SESSION SUMMARY                                                   ║
+╠══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+│ ⏱  TIME: 89/200 ticks  │  XP: 110                                                                                    │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 📋 ACTIONS: 15 total  │  Enrol: 1✓ (3t)  │  Move: 4✓ (36t)  │  Gather: 10✓ (50t)                                     │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 📈 SKILLS: Mining: 0→6 (+110 XP)                                                                                     │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 🎒 FINAL ITEMS: 4x COPPER_ORE, 31x TIN_ORE, 13x IRON_ORE                                                             │
+╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝

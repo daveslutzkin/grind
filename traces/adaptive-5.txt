@@ -1,0 +1,52 @@
+
+=== Gathering Session (seed: adaptive-5) ===
+
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ 📍 TOWN  │  ⏱ 200 ticks left  │  🎒 (empty)                                                                          │
+│ 📊 Mining:0 Woodcut:0                                                                                                │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  ✓ Enrol: Enrolled in Mining guild  │  ⏱ 3t
+  ✓ Enrol: Enrolled in Woodcutting guild  │  ⏱ 3t
+  ✓ Move: Moved from TOWN to OUTSKIRTS_MINE  │  ⏱ 3t
+  ✓ Gather: Focused extraction of 4 STONE  │  ⏱ 5t  │  📈 +5 Mining
+    ⛏️  Extracted: 4x STONE
+    💥 Collateral: 1x TIN_ORE
+    📈 LEVEL UP: Mining 1 → 2
+  ✓ Gather: Focused extraction of 4 TIN_ORE  │  ⏱ 5t  │  📈 +10 Mining
+    ⛏️  Extracted: 4x TIN_ORE
+    💥 Collateral: 1x STONE
+    📈 LEVEL UP: Mining 2 → 3
+  ✓ Gather: Focused extraction of 5 TIN_ORE  │  ⏱ 5t  │  📈 +10 Mining
+    ⛏️  Extracted: 5x TIN_ORE
+    💥 Collateral: 1x STONE
+  ✓ Move: Moved from OUTSKIRTS_MINE to COPSE  │  ⏱ 6t
+  ✗ Gather: Failed: MISSING_FOCUS_MATERIAL  │  ⏱ 0t  │  ❌ MISSING_FOCUS_MATERIAL
+  ✗ Gather: Failed: MISSING_FOCUS_MATERIAL  │  ⏱ 0t  │  ❌ MISSING_FOCUS_MATERIAL
+  ✓ Gather: Focused extraction of 4 SOFTWOOD  │  ⏱ 5t  │  📈 +5 Woodcutting
+    ⛏️  Extracted: 4x SOFTWOOD
+    💥 Collateral: 1x HARDWOOD
+    📈 LEVEL UP: Woodcutting 1 → 2
+  ✓ Move: Moved from COPSE to OUTSKIRTS_MINE  │  ⏱ 6t
+  ✓ Gather: Focused extraction of 4 TIN_ORE  │  ⏱ 5t  │  📈 +10 Mining
+    ⛏️  Extracted: 4x TIN_ORE
+    💥 Collateral: 1x STONE, 1x COPPER_ORE
+    📈 LEVEL UP: Mining 3 → 4
+  ✓ Gather: Focused extraction of 5 TIN_ORE  │  ⏱ 5t  │  📈 +10 Mining
+    ⛏️  Extracted: 5x TIN_ORE
+    💥 Collateral: 1x STONE, 1x COPPER_ORE
+  ✓ Move: Moved from OUTSKIRTS_MINE to COPSE  │  ⏱ 6t
+  ✗ Gather: Failed: MISSING_FOCUS_MATERIAL  │  ⏱ 0t  │  ❌ MISSING_FOCUS_MATERIAL
+  ✗ Gather: Failed: MISSING_FOCUS_MATERIAL  │  ⏱ 0t  │  ❌ MISSING_FOCUS_MATERIAL
+
+╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                                    SESSION SUMMARY                                                   ║
+╠══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+│ ⏱  TIME: 57/200 ticks  │  XP: 50                                                                                     │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 📋 ACTIONS: 16 total  │  Enrol: 2✓ (6t)  │  Move: 4✓ (21t)  │  Gather: 6✓ 4✗ (30t)                                   │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 📈 SKILLS: Mining: 0→4 (+45 XP)  │  Woodcutting: 0→2 (+5 XP)                                                         │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 🎒 FINAL ITEMS: 4x STONE, 18x TIN_ORE, 4x SOFTWOOD                                                                   │
+╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
