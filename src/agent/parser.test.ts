@@ -1,0 +1,228 @@
+import { describe, it, expect } from "@jest/globals"
+import { parseAgentResponse } from "./parser.js"
+import type { GatherMode } from "../types.js"
+
+describe("Action Parser", () => {
+  describe("parseAgentResponse", () => {
+    it("should parse a simple Move action", () => {
+      const response = `
+REASONING: I need to go to the mine to gather resources.
+
+ACTION: Move to OUTSKIRTS_MINE
+
+LEARNING: The town is a hub location.
+`
+      const parsed = parseAgentResponse(response)
+
+      expect(parsed.reasoning).toContain("go to the mine")
+      expect(parsed.action).toEqual({
+        type: "Move",
+        destination: "OUTSKIRTS_MINE",
+      })
+      expect(parsed.learning).toContain("town is a hub")
+    })
+
+    it("should parse a Gather action with FOCUS mode", () => {
+      const response = `
+REASONING: I want to focus on extracting copper.
+
+ACTION: Gather node ore_vein_1 FOCUS copper_ore
+`
+      const parsed = parseAgentResponse(response)
+
+      expect(parsed.action).toEqual({
+        type: "Gather",
+        nodeId: "ore_vein_1",
+        mode: "FOCUS" as GatherMode,
+        focusMaterialId: "copper_ore",
+      })
+    })
+
+    it("should parse a Gather action with CAREFUL_ALL mode", () => {
+      const response = `
+REASONING: I want to extract all materials carefully.
+
+ACTION: Gather node tree_stand_1 CAREFUL_ALL
+`
+      const parsed = parseAgentResponse(response)
+
+      expect(parsed.action).toEqual({
+        type: "Gather",
+        nodeId: "tree_stand_1",
+        mode: "CAREFUL_ALL" as GatherMode,
+      })
+    })
+
+    it("should parse a Gather action with APPRAISE mode", () => {
+      const response = `
+REASONING: I want to check what's in this node.
+
+ACTION: Gather node ore_vein_1 APPRAISE
+`
+      const parsed = parseAgentResponse(response)
+
+      expect(parsed.action).toEqual({
+        type: "Gather",
+        nodeId: "ore_vein_1",
+        mode: "APPRAISE" as GatherMode,
+      })
+    })
+
+    it("should parse an Enrol action", () => {
+      const response = `
+REASONING: I need to learn mining before I can gather.
+
+ACTION: Enrol Mining
+`
+      const parsed = parseAgentResponse(response)
+
+      expect(parsed.action).toEqual({
+        type: "Enrol",
+        skill: "Mining",
+      })
+    })
+
+    it("should parse a Craft action", () => {
+      const response = `
+REASONING: I have enough iron to craft something.
+
+ACTION: Craft iron_bar
+`
+      const parsed = parseAgentResponse(response)
+
+      expect(parsed.action).toEqual({
+        type: "Craft",
+        recipeId: "iron_bar",
+      })
+    })
+
+    it("should parse a Store action", () => {
+      const response = `
+REASONING: My inventory is getting full.
+
+ACTION: Store 5 copper_ore
+`
+      const parsed = parseAgentResponse(response)
+
+      expect(parsed.action).toEqual({
+        type: "Store",
+        itemId: "copper_ore",
+        quantity: 5,
+      })
+    })
+
+    it("should parse a Drop action", () => {
+      const response = `
+REASONING: I need to make room.
+
+ACTION: Drop 3 stone
+`
+      const parsed = parseAgentResponse(response)
+
+      expect(parsed.action).toEqual({
+        type: "Drop",
+        itemId: "stone",
+        quantity: 3,
+      })
+    })
+
+    it("should parse a Fight action", () => {
+      const response = `
+REASONING: Time to battle!
+
+ACTION: Fight cave_rat
+`
+      const parsed = parseAgentResponse(response)
+
+      expect(parsed.action).toEqual({
+        type: "Fight",
+        enemyId: "cave_rat",
+      })
+    })
+
+    it("should parse an AcceptContract action", () => {
+      const response = `
+REASONING: This contract looks profitable.
+
+ACTION: AcceptContract iron_delivery
+`
+      const parsed = parseAgentResponse(response)
+
+      expect(parsed.action).toEqual({
+        type: "AcceptContract",
+        contractId: "iron_delivery",
+      })
+    })
+
+    it("should parse a TurnInCombatToken action", () => {
+      const response = `
+REASONING: I have a combat token to turn in.
+
+ACTION: TurnInCombatToken
+`
+      const parsed = parseAgentResponse(response)
+
+      expect(parsed.action).toEqual({
+        type: "TurnInCombatToken",
+      })
+    })
+
+    it("should handle CONTINUE_IF for hybrid decisions", () => {
+      const response = `
+REASONING: I want to keep gathering until I'm full or the node is depleted.
+
+ACTION: Gather node ore_vein_1 FOCUS copper_ore
+
+CONTINUE_IF: inventory not full and node not depleted
+`
+      const parsed = parseAgentResponse(response)
+
+      expect(parsed.continueCondition).toContain("inventory not full")
+    })
+
+    it("should handle missing sections gracefully", () => {
+      const response = `ACTION: Move to MINE`
+      const parsed = parseAgentResponse(response)
+
+      expect(parsed.action).toEqual({
+        type: "Move",
+        destination: "MINE",
+      })
+      expect(parsed.reasoning).toBe("")
+      expect(parsed.learning).toBe("")
+    })
+
+    it("should return null action for unparseable response", () => {
+      const response = `I don't understand what to do.`
+      const parsed = parseAgentResponse(response)
+
+      expect(parsed.action).toBeNull()
+      expect(parsed.error).toBeDefined()
+    })
+
+    it("should handle case-insensitive action types", () => {
+      const response = `
+REASONING: Testing case insensitivity.
+
+ACTION: move to COPSE
+`
+      const parsed = parseAgentResponse(response)
+
+      expect(parsed.action).toEqual({
+        type: "Move",
+        destination: "COPSE",
+      })
+    })
+
+    it("should parse alternative action formats", () => {
+      const response = `
+REASONING: Using different format.
+
+ACTION: Move(destination=FOREST)
+`
+      const parsed = parseAgentResponse(response)
+
+      expect(parsed.action?.type).toBe("Move")
+    })
+  })
+})
