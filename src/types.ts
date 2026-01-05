@@ -269,6 +269,9 @@ export type FailureType =
   | "SESSION_ENDED"
   | "ALREADY_ENROLLED"
   | "MISSING_WEAPON"
+  | "MISSING_FOCUS_MATERIAL"
+  | "NODE_DEPLETED"
+  | "MODE_NOT_UNLOCKED"
 
 // RNG roll log entry
 export interface RngRoll {
@@ -288,6 +291,20 @@ export interface ContractCompletion {
   levelUps?: LevelUp[]
 }
 
+// Extraction log for gathering actions
+export interface ExtractionLog {
+  mode: GatherMode
+  focusMaterial?: MaterialID
+  extracted: ItemStack[]
+  focusWaste: number
+  collateralDamage: Record<MaterialID, number>
+  variance?: {
+    expected: number
+    actual: number
+    range: [number, number]
+  }
+}
+
 // Action log
 export interface ActionLog {
   tickBefore: number
@@ -301,6 +318,8 @@ export interface ActionLog {
   contractsCompleted?: ContractCompletion[]
   rngRolls: RngRoll[]
   stateDeltaSummary: string
+  extraction?: ExtractionLog // For gathering actions
+  xpSource?: string // Attribution for future contract tracking
 }
 
 // Evaluation results
