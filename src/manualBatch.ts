@@ -1,0 +1,129 @@
+/**
+ * Manual batch runner - executes actions and shows agent-view state
+ * Usage: npx tsx src/manualBatch.ts <seed> [action1] [action2] ...
+ */
+
+import { createGatheringWorld, LOCATIONS } from "./gatheringWorld.js"
+import { executeAction } from "./engine.js"
+import type { Action, GatherMode } from "./types.js"
+import { formatWorldState, formatActionLog } from "./agent/formatters.js"
+
+/**
+ * Parse gathering-specific actions
+ * Format:
+ *   move <location>
+ *   enrol mining|woodcutting
+ *   gather <nodeId> <mode> [focusMaterial]
+ *     mode: focus|careful|appraise
+ */
+function parseAction(cmd: string): Action | null {
+  const parts = cmd.trim().split(/\s+/)
+  const type = parts[0].toLowerCase()
+
+  switch (type) {
+    case "move": {
+      const dest = parts[1]?.toUpperCase()
+      const validLocations = LOCATIONS.map((l) => l.id)
+      if (!dest || !validLocations.includes(dest)) {
+        console.error(`Invalid location. Valid: ${validLocations.join(", ")}`)
+        return null
+      }
+      return { type: "Move", destination: dest }
+    }
+
+    case "enrol":
+    case "enroll": {
+      const skillName = parts[1]?.toLowerCase()
+      if (skillName === "mining") {
+        return { type: "Enrol", skill: "Mining" }
+      } else if (skillName === "woodcutting") {
+        return { type: "Enrol", skill: "Woodcutting" }
+      }
+      console.error("Usage: enrol mining|woodcutting")
+      return null
+    }
+
+    case "gather": {
+      const nodeId = parts[1]
+      const modeName = parts[2]?.toLowerCase()
+      const focusMaterial = parts[3]?.toUpperCase()
+
+      if (!nodeId || !modeName) {
+        console.error("Usage: gather <nodeId> <focus|careful|appraise> [material]")
+        return null
+      }
+
+      let mode: GatherMode
+      if (modeName === "focus") {
+        mode = "FOCUS" as GatherMode
+        if (!focusMaterial) {
+          console.error("FOCUS mode requires a material: gather <nodeId> focus <material>")
+          return null
+        }
+        return { type: "Gather", nodeId, mode, focusMaterialId: focusMaterial }
+      } else if (modeName === "careful") {
+        mode = "CAREFUL_ALL" as GatherMode
+        return { type: "Gather", nodeId, mode }
+      } else if (modeName === "appraise") {
+        mode = "APPRAISE" as GatherMode
+        return { type: "Gather", nodeId, mode }
+      }
+
+      console.error("Mode must be: focus, careful, or appraise")
+      return null
+    }
+
+    default:
+      console.error(`Unknown command: ${type}`)
+      return null
+  }
+}
+
+function main(): void {
+  const args = process.argv.slice(2)
+
+  if (args.length < 1) {
+    console.log("Usage: npx tsx src/manualBatch.ts <seed> [action1] [action2] ...")
+    console.log("")
+    console.log("Commands:")
+    console.log("  move <location>              - Move to a location")
+    console.log("  enrol mining|woodcutting     - Enrol in a guild")
+    console.log("  gather <node> focus <mat>    - Focus on one material")
+    console.log("  gather <node> careful        - Carefully extract all")
+    console.log("  gather <node> appraise       - Inspect node contents")
+    console.log("")
+    console.log(
+      "Locations: TOWN, OUTSKIRTS_MINE, COPSE, OLD_QUARRY, DEEP_FOREST, ABANDONED_SHAFT, ANCIENT_GROVE"
+    )
+    process.exit(1)
+  }
+
+  const seed = args[0]
+  const commands = args.slice(1)
+
+  // Create world and execute all actions
+  const state = createGatheringWorld(seed)
+  let lastLog = null
+
+  for (const cmd of commands) {
+    if (state.time.sessionRemainingTicks <= 0) {
+      console.error("Session time exhausted!")
+      break
+    }
+    const action = parseAction(cmd)
+    if (!action) {
+      process.exit(1)
+    }
+    lastLog = executeAction(state, action)
+  }
+
+  // Output: last action result (if any), then current state
+  if (lastLog) {
+    console.log(formatActionLog(lastLog))
+    console.log("")
+  }
+
+  console.log(formatWorldState(state))
+}
+
+main()
