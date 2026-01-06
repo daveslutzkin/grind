@@ -1,0 +1,105 @@
+================================================================================
+AGENT KNOWLEDGE
+================================================================================
+
+## WORLD
+
+- Moving between locations costs the stated number of ticks. Resource nodes show available materials with quantities and level requirements. Some materials (like TIN_ORE) require higher skill levels. The format shows current/maximum units available in each node.
+- Moving back from locations costs the same number of ticks as going there (3 ticks from OUTSKIRTS_MINE to TOWN). I'm now ready to explore crafting mechanics with my gathered materials.
+- The COPSE location has TREE_STAND nodes instead of ORE_VEIN nodes, with wood materials (GREEN_WOOD, SOFTWOOD, HARDWOOD) that follow the same level requirement pattern as mining materials. The structure is consistent across resource types.
+- Movement costs remain consistent - 3 ticks each way between TOWN and nearby locations (OUTSKIRTS_MINE, COPSE). I now have a diverse material collection (ores and woods) that might unlock different crafting possibilities.
+- Storage system works perfectly - costs 0 ticks to store items at TOWN, and stored items are tracked separately from inventory. This is crucial for inventory management since I have limited slots (20 total). Items remain accessible when at the storage location.
+- Numeric recipe IDs ("1") also don't work. The crafting system requires discovery through means I haven't found yet - possibly NPCs, quest rewards, exploration of new locations, or achieving higher skill levels. This session was highly productive for establishing foundational skills and understanding core mechanics.
+- This session successfully established core understanding of the game:
+- Resource gathering mechanics (timing, yields, XP progression)
+- Skill system (enrollment costs, level requirements, XP scaling)
+- Inventory management via 0-tick storage system
+- Multiple resource types and locations
+- Combat skill provides weapons unlike other skills
+- Crafting system exists but requires recipe discovery through unexplored means
+
+Next session priorities: explore distant locations, find crafting recipes, test combat, discover new materials and mechanics.
+- Final session summary - Discovered fundamental game mechanics:
+- Skill progression: enrollment (3 ticks), XP scaling (5 XP for L1 materials, 10 XP for L2)
+- Resource gathering: consistent 5-tick cycles, ~4 items with inefficiency/collateral damage
+- Storage system: 0-tick inventory management at TOWN
+- Combat uniqueness: provides weapon upon enrollment
+- Location structure: 7 total locations with varying distances
+- Material hierarchy: Level requirements for advanced resources
+- Crafting system exists but requires discovery methods not yet found
+
+Next session: explore distant locations, test combat, find recipe sources, discover advanced materials.
+- Session completed successfully. Key achievements:
+- Enrolled in 5 skills across different categories (gathering, crafting, combat)
+- Reached Level 3 in both gathering skills (Mining, Woodcutting) 
+- Discovered consistent mechanics across resource types
+- Established efficient inventory management via storage
+- Obtained combat weapon and readiness for battle mechanics
+- Mapped all 7 world locations and their travel costs
+- Identified crafting as the next major system to unlock
+
+This foundation provides excellent preparation for future exploration of advanced locations, combat encounters, and recipe discovery. The organized storage will support longer gathering sessions without inventory constraints.
+- Perfect session conclusion. Final status:
+- All major skills enrolled and progressed (Mining L3, Woodcutting L3, others L1)
+- Comprehensive understanding of gathering mechanics and XP progression
+- Mastery of storage system for inventory optimization
+- Combat readiness with weapon obtained
+- Strategic resource distribution between inventory and storage
+- Complete location mapping and travel cost knowledge
+- Foundation established for advanced gameplay: combat, high-level locations, crafting discovery
+
+Ready for next session to tackle unexplored areas, test combat mechanics, and solve the crafting puzzle through new discovery methods.
+- This highly successful exploration session established comprehensive understanding of core game mechanics. Key discoveries:
+- Universal skill enrollment (3 ticks, Level 1 start)
+- Consistent gathering mechanics (5 ticks, ~4 items, XP scaling by material tier)
+- Efficient storage system (0 ticks, unlimited capacity at TOWN)
+- Combat system introduction (unique weapon provision)
+- Complete world map (7 locations with known travel costs)
+- Material progression system (Level requirements unlock advanced resources)
+- Crafting system exists but requires undiscovered unlock methods
+
+Session objectives fully achieved: explored mechanics, leveled skills, gathered resources efficiently. Ready for advanced content exploration.
+- Final discovery - Drop action costs 1 tick (unlike Store which costs 0). This makes storage much more efficient than dropping for inventory management. Session summary complete:
+
+- Comprehensive skill foundation: 5 skills enrolled, 2 at Level 3
+- Resource gathering mastery: consistent mechanics understood across material types  
+- Inventory management systems: storage (0 ticks) vs drop (1 tick) comparison
+- Combat preparation: weapon obtained, ready for battle mechanics
+- World exploration: all 7 locations mapped with travel costs
+- Progression understanding: XP scaling, level requirements, skill interactions
+
+Excellent preparation for next session's advanced exploration of distant locations, combat testing, and crafting recipe discovery.
+
+## MECHANICS
+
+- Starting the game - no previous actions to learn from yet. I'm hypothesizing that enrolling in skills is necessary before being able to gather resources effectively.
+- Enrolling in a skill costs 3 ticks and immediately gives Level 1 in that skill. Skills show both current level and XP progress toward the next level. The game tracks XP progression, suggesting that repeated actions will level up skills.
+- CAREFUL_ALL gathering mode is not available at Mining Level 1 - gathering modes appear to be unlocked as skills progress. Failed actions don't cost ticks, which is good for experimentation.
+- FOCUS gathering takes 5 ticks, extracts the target material with some inefficiency, and causes collateral damage to other materials in the node. Gathering gives XP (5 XP for this action) and can level up skills. At Mining Level 2, I can now access TIN_ORE. Items stack in inventory slots (4 COPPER_ORE takes 1 slot).
+- TIN_ORE (higher level material) gives 10 XP compared to COPPER_ORE's 5 XP - higher skill requirement materials provide better experience rewards. The extraction mechanics remain consistent: 5 ticks, ~4 units extracted with 0.6 inefficiency, collateral damage to other materials in the node.
+- APPRAISE mode costs only 1 tick and seems to gather information about nodes, though the specific benefits aren't immediately visible in the current interface. This is much more time-efficient than FOCUS mode for information gathering.
+- Smithing enrollment follows the same pattern as Mining - costs 3 ticks and starts at Level 1 with 0 XP. The game doesn't show available recipes in the interface, so I'll need to discover them through experimentation.
+- Failed crafting attempts don't cost ticks, which is helpful for discovering recipes. "BRONZE_BAR" is not a valid recipe ID. I need to experiment with different recipe names to discover what's available.
+- Standard crafting recipe names like "COPPER_BAR", "BRONZE_BAR", and "BRONZE" don't exist. The recipe system might use different naming conventions, require discovery through exploration, or need specific facilities/NPCs to learn recipes.
+- Enrolled in Woodcutting successfully - same 3 tick cost and Level 1 start as other skills. Now I have multiple gathering skills to explore different resource types and potentially discover more game mechanics.
+- Woodcutting mechanics are identical to mining: 5 ticks per FOCUS action, ~4 units extracted with 0.6 inefficiency, collateral damage to other materials, and 5 XP for basic materials. Level progression follows the same pattern - Level 1 materials give 5 XP and level up from 1 to 2.
+- Higher-level materials consistently give double XP (10 instead of 5) across both Mining and Woodcutting skills. The progression pattern is universal: Level 1 materials give 5 XP, Level 2 materials give 10 XP. This suggests focusing on higher-level materials for faster skill progression.
+- Successfully enrolled in Woodcrafting - follows the same pattern as other skills (3 ticks, Level 1 start). Now I have 4 different skills: Mining L3, Woodcutting L3, Smithing L1, and Woodcrafting L1, giving me access to diverse crafting possibilities.
+- "PLANK" is also not a valid recipe ID. The crafting system seems to use non-standard naming conventions that I haven't discovered yet. Recipe discovery might require specific NPCs, books, or other game mechanics I haven't encountered.
+- Multiple recipe attempts have failed ("PLANK", "STAFF", "BRONZE_BAR", "BRONZE", "COPPER_BAR"). The crafting system likely requires recipe discovery through other means - perhaps NPCs, quest rewards, books, or specific skill levels. I need to explore beyond basic crafting attempts.
+- Combat enrollment is unique - it not only costs 3 ticks and grants Level 1 like other skills, but also automatically provides a CRUDE_WEAPON item. This suggests Combat works differently from gathering skills and might require weapons for fighting mechanics.
+- Storage continues to work efficiently at 0 ticks per action. This is excellent for inventory management and allows me to organize resources without time cost. The storage system maintains separate counts for each item type.
+- Storage system is highly efficient - multiple 0-tick storage actions allow excellent inventory management. I can organize resources between active inventory and storage without any time penalty, which will be crucial for longer sessions with more materials.
+- This session has been extremely productive for learning game mechanics:
+- Skill enrollment costs 3 ticks, starts at Level 1
+- Gathering follows consistent patterns (5 ticks, ~4 items, XP based on material level)
+- Level 1 materials give 5 XP, Level 2 materials give 10 XP
+- Storage costs 0 ticks and is excellent for inventory management
+- Combat enrollment uniquely provides a weapon
+- Crafting recipes remain undiscovered - likely need exploration of new areas or other discovery methods
+- Movement costs scale with distance
+- Multiple resource types (ores, woods) with level requirements
+
+## ITEMS
+
+- Multiple recipe names I've tried don't exist ("BRONZE_BAR", "BRONZE"). The crafting system might require different naming conventions or perhaps I need to process raw ores into intermediate products first before making alloys.
