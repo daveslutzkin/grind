@@ -20,7 +20,7 @@ import type { AgentSessionStats, AgentKnowledge } from "./output.js"
  * Returns false if remaining ticks are insufficient for any productive action.
  *
  * Meaningful actions:
- * - Store: 0 ticks, but only if inventory has items
+ * - Store: 0 ticks, but only if inventory has non-weapon items
  * - APPRAISE: 1 tick (if at a location with nodes and skill level >= 3)
  * - Move: minimum 3 ticks
  * - Enrol: 3 ticks
@@ -30,8 +30,12 @@ import type { AgentSessionStats, AgentKnowledge } from "./output.js"
 function hasViableAction(state: WorldState): boolean {
   const remaining = state.time.sessionRemainingTicks
 
-  // 0-tick actions: Store is only meaningful if we have items in inventory
-  if (state.player.inventory.length > 0 && state.player.location === "TOWN") {
+  // 0-tick actions: Store is only meaningful if we have non-weapon items in inventory
+  // Weapons (CRUDE_WEAPON, IMPROVED_WEAPON) shouldn't be stored as they're needed for combat
+  const storableItems = state.player.inventory.filter(
+    (i) => i.itemId !== "CRUDE_WEAPON" && i.itemId !== "IMPROVED_WEAPON"
+  )
+  if (storableItems.length > 0 && state.player.location === "TOWN") {
     return true // Can store items
   }
 

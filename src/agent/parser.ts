@@ -1,6 +1,25 @@
 import type { Action, GatherMode, SkillID } from "../types.js"
 
 /**
+ * Valid skill names for normalization
+ */
+const VALID_SKILLS: SkillID[] = ["Mining", "Woodcutting", "Combat", "Smithing", "Woodcrafting"]
+
+/**
+ * Normalize a skill name to match the exact SkillID casing
+ * Returns null if no match found
+ */
+function normalizeSkillName(input: string): SkillID | null {
+  const lower = input.toLowerCase()
+  for (const skill of VALID_SKILLS) {
+    if (skill.toLowerCase() === lower) {
+      return skill
+    }
+  }
+  return null
+}
+
+/**
  * Parsed response from the LLM agent
  */
 export interface AgentResponse {
@@ -83,8 +102,12 @@ function parseAction(actionText: string): Action | null {
   // Try to parse Enrol action
   const enrolMatch = text.match(/^enrol\s+(\w+)/i)
   if (enrolMatch) {
-    const skill = enrolMatch[1] as SkillID
-    return { type: "Enrol", skill }
+    const skill = normalizeSkillName(enrolMatch[1])
+    if (skill) {
+      return { type: "Enrol", skill }
+    }
+    // Invalid skill name - will be handled as parse error
+    return null
   }
 
   // Try to parse Craft action

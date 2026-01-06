@@ -480,8 +480,14 @@ export function checkGuildEnrolmentAction(
     return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
   }
 
+  // Check if skill exists (defensive check for invalid skill names)
+  const skillState = state.player.skills[action.skill]
+  if (!skillState) {
+    return { valid: false, failureType: "INSUFFICIENT_SKILL", timeCost: 0, successProbability: 0 }
+  }
+
   // Check if skill is already level 1 or higher
-  if (state.player.skills[action.skill].level >= 1) {
+  if (skillState.level >= 1) {
     return { valid: false, failureType: "ALREADY_ENROLLED", timeCost: 0, successProbability: 0 }
   }
 
