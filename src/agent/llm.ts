@@ -10,6 +10,20 @@ export interface LLMMessage {
 }
 
 /**
+ * Configuration for context management
+ */
+export interface ContextConfig {
+  /** Number of recent exchanges to keep in full detail */
+  recentExchangeCount: number
+  /** Static content to cache (world reference data) */
+  staticContext: string
+  /** Summarized action history */
+  actionSummary: string
+  /** Condensed learnings */
+  learningSummary: string
+}
+
+/**
  * LLM client wrapper for Anthropic API
  */
 export interface LLMClient {
@@ -40,8 +54,24 @@ export interface LLMClient {
 
   /**
    * Set maximum history length for context window management
+   * @deprecated Use setContextConfig instead for better control
    */
   setHistoryLimit(limit: number): void
+
+  /**
+   * Configure context management with summarization
+   */
+  setContextConfig(config: Partial<ContextConfig>): void
+
+  /**
+   * Update the action summary (called as actions accumulate)
+   */
+  updateActionSummary(summary: string): void
+
+  /**
+   * Update the learning summary
+   */
+  updateLearningSummary(summary: string): void
 
   /**
    * Send a message and get a response from the LLM
@@ -66,6 +96,14 @@ export function createLLMClient(config: AgentConfig): LLMClient {
   let systemPrompt: string = ""
   const model = config.model
 
+  // Context management
+  let contextConfig: ContextConfig = {
+    recentExchangeCount: 5,
+    staticContext: "",
+    actionSummary: "",
+    learningSummary: "",
+  }
+
   function trimHistory(): void {
     if (historyLimit !== null && history.length > historyLimit) {
       // Keep system message if present
@@ -77,6 +115,108 @@ export function createLLMClient(config: AgentConfig): LLMClient {
 
       history = systemMessage ? [systemMessage, ...trimmedNonSystem] : trimmedNonSystem
     }
+  }
+
+  /**
+   * Build the memory block containing static context, action summary, and learnings
+   */
+  function buildMemoryBlock(): string {
+    const parts: string[] = []
+
+    if (contextConfig.staticContext) {
+      parts.push(contextConfig.staticContext)
+    }
+
+    if (contextConfig.learningSummary) {
+      parts.push("")
+      parts.push(contextConfig.learningSummary)
+    }
+
+    if (contextConfig.actionSummary) {
+      parts.push("")
+      parts.push("ACTION HISTORY:")
+      parts.push(contextConfig.actionSummary)
+    }
+
+    return parts.join("\n")
+  }
+
+  /**
+   * Build messages array for API call with caching and summarization
+   */
+  function buildMessagesForAPI(): Anthropic.MessageParam[] {
+    // Filter out system messages
+    const nonSystemMessages = history.filter((m) => m.role !== "system")
+
+    // If we have context config with summaries, use the new structure
+    const memoryBlock = buildMemoryBlock()
+    const hasMemory = memoryBlock.length > 0
+
+    // Calculate how many messages to keep in full
+    // An "exchange" is typically: user (state) + assistant (response) + user (result)
+    // We'll keep the last N*2 messages to capture recent exchanges
+    const recentMessageCount = contextConfig.recentExchangeCount * 3
+    const recentMessages = nonSystemMessages.slice(-recentMessageCount)
+
+    const messages: Anthropic.MessageParam[] = []
+
+    // Add memory block as first user message if we have one
+    if (hasMemory) {
+      messages.push({
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: memoryBlock,
+            cache_control: { type: "ephemeral" },
+          },
+        ],
+      })
+
+      // Need a placeholder assistant response after memory block
+      // to maintain user/assistant alternation
+      messages.push({
+        role: "assistant",
+        content:
+          "Understood. I have the world reference and action history. Ready for current state.",
+      })
+    }
+
+    // Add recent messages
+    for (const msg of recentMessages) {
+      messages.push({
+        role: msg.role as "user" | "assistant",
+        content: msg.content,
+      })
+    }
+
+    // Ensure we don't have consecutive user messages (Anthropic requirement)
+    // and that we start with user after the memory block
+    return consolidateMessages(messages)
+  }
+
+  /**
+   * Consolidate consecutive messages of the same role
+   */
+  function consolidateMessages(messages: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
+    if (messages.length === 0) return messages
+
+    const consolidated: Anthropic.MessageParam[] = []
+
+    for (const msg of messages) {
+      const last = consolidated[consolidated.length - 1]
+
+      if (last && last.role === msg.role) {
+        // Merge with previous message
+        const lastContent = typeof last.content === "string" ? last.content : ""
+        const msgContent = typeof msg.content === "string" ? msg.content : ""
+        last.content = lastContent + "\n\n" + msgContent
+      } else {
+        consolidated.push({ ...msg })
+      }
+    }
+
+    return consolidated
   }
 
   return {
@@ -103,6 +243,12 @@ export function createLLMClient(config: AgentConfig): LLMClient {
     clearHistory(): void {
       history = []
       systemPrompt = ""
+      contextConfig = {
+        recentExchangeCount: 5,
+        staticContext: "",
+        actionSummary: "",
+        learningSummary: "",
+      }
     },
 
     setHistoryLimit(limit: number): void {
@@ -110,23 +256,39 @@ export function createLLMClient(config: AgentConfig): LLMClient {
       trimHistory()
     },
 
+    setContextConfig(config: Partial<ContextConfig>): void {
+      contextConfig = { ...contextConfig, ...config }
+    },
+
+    updateActionSummary(summary: string): void {
+      contextConfig.actionSummary = summary
+    },
+
+    updateLearningSummary(summary: string): void {
+      contextConfig.learningSummary = summary
+    },
+
     async chat(userMessage: string): Promise<string> {
       // Add user message to history
       this.addMessage({ role: "user", content: userMessage })
 
-      // Build messages array for Anthropic (exclude system messages)
-      const messages = history
-        .filter((m) => m.role !== "system")
-        .map((m) => ({
-          role: m.role as "user" | "assistant",
-          content: m.content,
-        }))
+      // Build messages with caching and summarization
+      const messages = buildMessagesForAPI()
+
+      // Build system prompt with cache control
+      const systemWithCache: Anthropic.TextBlockParam[] = [
+        {
+          type: "text",
+          text: systemPrompt,
+          cache_control: { type: "ephemeral" },
+        },
+      ]
 
       try {
         const response = await anthropic.messages.create({
           model,
           max_tokens: 1024,
-          system: systemPrompt,
+          system: systemWithCache,
           messages,
         })
 
@@ -154,7 +316,7 @@ export function createLLMClient(config: AgentConfig): LLMClient {
             const response = await anthropic.messages.create({
               model,
               max_tokens: 1024,
-              system: systemPrompt,
+              system: systemWithCache,
               messages,
             })
 

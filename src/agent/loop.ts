@@ -2,6 +2,13 @@ import { createGatheringWorld } from "../gatheringWorld.js"
 import { executeAction } from "../engine.js"
 import type { WorldState, Action, ActionLog } from "../types.js"
 import { formatWorldState, formatActionLog } from "./formatters.js"
+import {
+  summarizeAction,
+  summarizeActionHistory,
+  summarizeLearnings,
+  extractStaticWorldData,
+  formatDynamicState,
+} from "./summarize.js"
 import { parseAgentResponse, AgentResponse } from "./parser.js"
 import { createSystemPrompt } from "./prompts.js"
 import { createLLMClient, LLMClient } from "./llm.js"
@@ -18,6 +25,7 @@ export interface AgentLoopConfig {
   verbose: boolean
   dryRun?: boolean // If true, don't call LLM - use mock responses
   model?: string // Optional model override
+  useSummarization?: boolean // Use summarized history (default: true for cost savings)
 }
 
 /**
@@ -152,6 +160,12 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
   // Conversation history for debugging
   const conversationHistory: string[] = []
 
+  // Track action logs for summarization
+  const actionLogs: ActionLog[] = []
+
+  // Whether to use summarization (default true)
+  const useSummarization = config.useSummarization !== false
+
   // LLM client (only if not dry run)
   let llmClient: LLMClient | null = null
   if (!config.dryRun) {
@@ -161,12 +175,43 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
     }
     llmClient = createLLMClient(agentConfig)
     llmClient.setSystemPrompt(createSystemPrompt(config.objective))
-    llmClient.setHistoryLimit(50) // Limit context window
+
+    if (useSummarization) {
+      // Set up context management with static world data
+      llmClient.setContextConfig({
+        recentExchangeCount: 5,
+        staticContext: extractStaticWorldData(state),
+        actionSummary: "",
+        learningSummary: "",
+      })
+    } else {
+      // Legacy mode: just limit history
+      llmClient.setHistoryLimit(50)
+    }
   }
 
   // Track if we should continue with a repeated action
   let continueCondition: string | null = null
   let lastAction: Action | null = null
+
+  /**
+   * Update the LLM context with current summaries
+   */
+  function updateContextSummaries(): void {
+    if (!llmClient || !useSummarization) return
+
+    // Summarize all but the most recent actions (those are in full context)
+    const actionsToSummarize = actionLogs.slice(0, -5)
+    if (actionsToSummarize.length > 0) {
+      llmClient.updateActionSummary(summarizeActionHistory(actionsToSummarize))
+    }
+
+    // Summarize learnings
+    const learningSummary = summarizeLearnings(knowledge)
+    if (learningSummary) {
+      llmClient.updateLearningSummary(learningSummary)
+    }
+  }
 
   return {
     getWorldState(): WorldState {
@@ -188,8 +233,8 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
         }
       }
 
-      // Format current state
-      const stateText = formatWorldState(state)
+      // Format current state - use compact format if summarization is enabled
+      const stateText = useSummarization ? formatDynamicState(state) : formatWorldState(state)
       conversationHistory.push(`STATE:\n${stateText}`)
 
       let response: AgentResponse
@@ -214,6 +259,9 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
           }
         }
       } else {
+        // Update context summaries before each call
+        updateContextSummaries()
+
         // Check if we should continue previous action
         let prompt: string
         if (continueCondition && lastAction) {
@@ -252,6 +300,9 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
 
       const log = executeAction(state, action)
 
+      // Track action log for summarization
+      actionLogs.push(log)
+
       // Update stats
       stats.ticksUsed = state.time.currentTick
       if (log.success) {
@@ -274,15 +325,17 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
         }
       }
 
-      // Format result
+      // Format result - use concise summary for history, full for debugging
       const resultText = formatActionLog(log)
+      const summaryText = summarizeAction(log)
       conversationHistory.push(`RESULT:\n${resultText}`)
 
       if (!config.dryRun) {
         // Feed result back to LLM as context
+        // Use concise format if summarization is enabled
         llmClient!.addMessage({
           role: "user",
-          content: `Action result:\n${resultText}`,
+          content: useSummarization ? `Result: ${summaryText}` : `Action result:\n${resultText}`,
         })
       }
 
