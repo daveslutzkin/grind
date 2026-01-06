@@ -169,6 +169,28 @@ function isModeUnlocked(mode: GatherMode, skillLevel: number): boolean {
 }
 
 /**
+ * Get list of unlocked gathering modes for a skill level.
+ * Returns modes in order of unlock (FOCUS first, then APPRAISE, then CAREFUL_ALL).
+ */
+export function getUnlockedModes(skillLevel: number): GatherMode[] {
+  const modes: GatherMode[] = []
+  if (skillLevel >= 1) modes.push(GatherMode.FOCUS)
+  if (skillLevel >= 3) modes.push(GatherMode.APPRAISE)
+  if (skillLevel >= 4) modes.push(GatherMode.CAREFUL_ALL)
+  return modes
+}
+
+/**
+ * Get next mode unlock info for a skill level.
+ * Returns null if all modes are unlocked.
+ */
+export function getNextModeUnlock(skillLevel: number): { mode: GatherMode; level: number } | null {
+  if (skillLevel < 3) return { mode: GatherMode.APPRAISE, level: 3 }
+  if (skillLevel < 4) return { mode: GatherMode.CAREFUL_ALL, level: 4 }
+  return null
+}
+
+/**
  * Get required skill level to access a location based on its distance band
  * Per spec:
  * - NEAR: L1

@@ -1,5 +1,6 @@
 import type { ActionLog, WorldState } from "../types.js"
 import type { AgentKnowledge } from "./output.js"
+import { getUnlockedModes, getNextModeUnlock } from "../actionChecks.js"
 
 /**
  * Summarize an action and its result into a single concise line.
@@ -258,13 +259,24 @@ export function formatDynamicState(state: WorldState): string {
 
   // Skills (compact, only show enrolled)
   const skillParts: string[] = []
+  const gatherModes: string[] = []
   for (const [skillId, skillState] of Object.entries(state.player.skills)) {
     if (skillState.level > 0) {
       skillParts.push(`${skillId}:L${skillState.level}(${skillState.xp}xp)`)
+      // Track gather modes for gathering skills
+      if (skillId === "Mining" || skillId === "Woodcutting") {
+        const modes = getUnlockedModes(skillState.level)
+        const nextUnlock = getNextModeUnlock(skillState.level)
+        const nextStr = nextUnlock ? ` [next: ${nextUnlock.mode}@L${nextUnlock.level}]` : ""
+        gatherModes.push(`${skillId}: ${modes.join("/")}${nextStr}`)
+      }
     }
   }
   if (skillParts.length > 0) {
     lines.push(`Skills: ${skillParts.join(", ")}`)
+    if (gatherModes.length > 0) {
+      lines.push(`Gather modes: ${gatherModes.join("; ")}`)
+    }
   } else {
     lines.push("Skills: none enrolled")
   }

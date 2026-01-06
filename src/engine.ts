@@ -511,6 +511,18 @@ function executeMultiMaterialGather(
       extracted: [],
       focusWaste: 0,
       collateralDamage: {},
+      appraisal: {
+        nodeId: node.nodeId,
+        nodeType: node.nodeType,
+        materials: node.materials.map((m) => ({
+          materialId: m.materialId,
+          remaining: m.remainingUnits,
+          max: m.maxUnitsInitial,
+          requiredLevel: m.requiredLevel,
+          requiresSkill: m.requiresSkill,
+          tier: m.tier,
+        })),
+      },
     }
 
     // Check for contract completion

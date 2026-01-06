@@ -89,6 +89,21 @@ describe("Phase 3: Gather Action Overhaul", () => {
       // Log should contain extraction info with node details
       expect(log.extraction).toBeDefined()
       expect(log.extraction!.mode).toBe(GatherMode.APPRAISE)
+
+      // Appraisal should contain detailed node info
+      expect(log.extraction!.appraisal).toBeDefined()
+      expect(log.extraction!.appraisal!.nodeId).toBe(node.nodeId)
+      expect(log.extraction!.appraisal!.nodeType).toBe(node.nodeType)
+      expect(log.extraction!.appraisal!.materials.length).toBeGreaterThan(0)
+
+      // Each material should have all required fields
+      const firstMat = log.extraction!.appraisal!.materials[0]
+      expect(firstMat.materialId).toBeDefined()
+      expect(firstMat.remaining).toBeDefined()
+      expect(firstMat.max).toBeDefined()
+      expect(firstMat.tier).toBeDefined()
+      expect(firstMat.requiresSkill).toBeDefined()
+      expect(firstMat.requiredLevel).toBeDefined()
     })
   })
 

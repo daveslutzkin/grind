@@ -16,6 +16,70 @@ import { loadAgentConfig } from "./config.js"
 import type { AgentSessionStats, AgentKnowledge } from "./output.js"
 
 /**
+ * Check if any meaningful action is possible given the current state.
+ * Returns false if remaining ticks are insufficient for any productive action.
+ *
+ * Meaningful actions:
+ * - Store: 0 ticks, but only if inventory has items
+ * - APPRAISE: 1 tick (if at a location with nodes and skill level >= 3)
+ * - Move: minimum 3 ticks
+ * - Enrol: 3 ticks
+ * - Gather FOCUS: 5 ticks
+ * - Drop: 1 tick (but wasteful, not considered meaningful)
+ */
+function hasViableAction(state: WorldState): boolean {
+  const remaining = state.time.sessionRemainingTicks
+
+  // 0-tick actions: Store is only meaningful if we have items in inventory
+  if (state.player.inventory.length > 0 && state.player.location === "TOWN") {
+    return true // Can store items
+  }
+
+  // 1-tick actions: APPRAISE requires L3+, nodes at location
+  const hasGatheringSkillL3 =
+    state.player.skills.Mining.level >= 3 || state.player.skills.Woodcutting.level >= 3
+  const nodesHere = state.world.nodes?.filter(
+    (n) => n.locationId === state.player.location && !n.depleted
+  )
+  if (remaining >= 1 && hasGatheringSkillL3 && nodesHere && nodesHere.length > 0) {
+    return true // Can appraise
+  }
+
+  // 3-tick actions: Enrol (if not already enrolled)
+  if (remaining >= 3) {
+    if (
+      state.player.skills.Mining.level === 0 ||
+      state.player.skills.Woodcutting.level === 0 ||
+      state.player.skills.Combat.level === 0
+    ) {
+      return true // Can enrol in a skill
+    }
+  }
+
+  // Check minimum travel cost from current location
+  const travelCosts = Object.entries(state.world.travelCosts)
+    .filter(
+      ([key]) =>
+        key.startsWith(`${state.player.location}->`) || key.endsWith(`->${state.player.location}`)
+    )
+    .map(([, cost]) => cost)
+  const minTravelCost = travelCosts.length > 0 ? Math.min(...travelCosts) : Infinity
+
+  if (remaining >= minTravelCost) {
+    return true // Can travel somewhere
+  }
+
+  // 5-tick actions: Gather FOCUS (if nodes here and skill enrolled)
+  if (remaining >= 5 && nodesHere && nodesHere.length > 0) {
+    if (state.player.skills.Mining.level >= 1 || state.player.skills.Woodcutting.level >= 1) {
+      return true // Can gather
+    }
+  }
+
+  return false
+}
+
+/**
  * Configuration for the agent loop
  */
 export interface AgentLoopConfig {
@@ -229,6 +293,22 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
           action: null,
           log: null,
           reasoning: "",
+          learning: "",
+        }
+      }
+
+      // Check if any meaningful action is possible
+      if (!hasViableAction(state)) {
+        if (config.verbose) {
+          console.log(
+            `\n[Tick ${state.time.currentTick}] No viable actions with ${state.time.sessionRemainingTicks} ticks remaining - ending session`
+          )
+        }
+        return {
+          done: true,
+          action: null,
+          log: null,
+          reasoning: "No viable actions possible with remaining ticks",
           learning: "",
         }
       }
