@@ -291,6 +291,20 @@ export interface ContractCompletion {
   levelUps?: LevelUp[]
 }
 
+// Appraisal info returned from APPRAISE mode
+export interface AppraisalInfo {
+  nodeId: NodeID
+  nodeType: NodeType
+  materials: {
+    materialId: MaterialID
+    remaining: number
+    max: number
+    requiredLevel: number
+    requiresSkill: GatheringSkillID
+    tier: number
+  }[]
+}
+
 // Extraction log for gathering actions
 export interface ExtractionLog {
   mode: GatherMode
@@ -303,6 +317,7 @@ export interface ExtractionLog {
     actual: number
     range: [number, number]
   }
+  appraisal?: AppraisalInfo // For APPRAISE mode
 }
 
 // Action log

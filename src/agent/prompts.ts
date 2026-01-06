@@ -18,7 +18,6 @@ Action formats:
 - Gather node <NODE_ID> <MODE> [MATERIAL_ID]
   - Modes: FOCUS (requires material ID), CAREFUL_ALL, APPRAISE
 - Fight <ENEMY_ID>
-- Craft <RECIPE_ID>
 - Store <QUANTITY> <ITEM_ID>
 - Drop <QUANTITY> <ITEM_ID>
 - AcceptContract <CONTRACT_ID>
@@ -44,7 +43,6 @@ AVAILABLE ACTION TYPES:
 - Enrol: Learn a new skill at the guild (one-time unlock)
 - Gather: Extract resources from nodes (various modes available)
 - Fight: Battle enemies (requires Combat skill and a weapon)
-- Craft: Combine materials into new items (requires recipes)
 - Store: Put items in storage at town (frees inventory space)
 - Drop: Discard items (takes time for disposal)
 - AcceptContract: Accept a guild contract for rewards

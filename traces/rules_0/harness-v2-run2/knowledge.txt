@@ -1,0 +1,24 @@
+================================================================================
+AGENT KNOWLEDGE
+================================================================================
+
+## WORLD
+
+- The Enrol Gathering command didn't work - either the skill name is wrong or the action format needs adjustment. Moving to explore other locations to understand what's available and potentially find resource nodes to interact with.
+- Successfully moved between locations - travel costs match the reference (3 ticks each way between TOWN and OUTSKIRTS_MINE). Need to learn the correct skill name format for enrolment.
+- Successfully returned to mining location. Ready to test gathering mechanics with FOCUS mode on a specific material that matches my skill level.
+- Successfully reached TOWN. With very limited ticks remaining, I should focus on storing materials and exploring what services are available in town for future planning.
+- Store actions are completely free - all three store operations happened at T46. This makes inventory management very efficient. Now I should explore what other skills or services are available in TOWN with my remaining ticks.
+
+## MECHANICS
+
+- Found mining nodes! Each node shows material types, current/max quantities, and skill requirements in brackets. STONE and COPPER_ORE require MiningL1, while TIN_ORE requires MiningL2. Need to enrol in Mining skill first before gathering.
+- Enrol action costs 3 ticks and gives L1 in the skill with 0 experience. Skills show available gather modes - I have FOCUS mode now and will get APPRAISE at L3. Ready to start resource gathering!
+- FOCUS gathering costs 5 ticks, gives focused material plus bonus XP that can level up skills. Gathering reduces multiple materials from the same node simultaneously, not just the focused one. Mining L2 unlocked - can now access TIN_ORE nodes.
+- TIN_ORE gives double the XP of COPPER_ORE (10 vs 5), making it more efficient for skill leveling. Mining L3 unlocked APPRAISE mode, and L4 will unlock CAREFUL_ALL. Higher-tier materials seem to give more XP.
+- Yield can vary - got 5 TIN_ORE this time vs 4 last time, but XP stayed consistent at 10. Should test the newly unlocked APPRAISE mode to understand its mechanics.
+- APPRAISE mode costs only 1 tick vs FOCUS's 5 ticks, gives no materials or XP, but may provide hidden information about nodes. It's a cheap scouting action.
+- Reached Mining L4 and unlocked CAREFUL_ALL mode. Consistent 5 TIN_ORE and 10 XP yields with FOCUS mode. Ready to test the new gathering mode to understand its mechanics.
+- CAREFUL_ALL mode gathers all available materials from a node simultaneously (5 each of STONE, COPPER_ORE, TIN_ORE) and gives more total XP (13 vs 10). It's the most efficient gathering method when you want all materials. Takes 5 ticks like FOCUS mode.
+- Store action works efficiently - took no extra time beyond the base action cost. Storage system allows me to preserve materials between sessions. Should continue storing to free up inventory space.
+- Store actions are free (no tick cost) - very important for efficient inventory management. Can store items without wasting precious time. Storage persists between sessions, making it safe to store valuable resources.

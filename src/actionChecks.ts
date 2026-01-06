@@ -169,6 +169,28 @@ function isModeUnlocked(mode: GatherMode, skillLevel: number): boolean {
 }
 
 /**
+ * Get list of unlocked gathering modes for a skill level.
+ * Returns modes in order of unlock (FOCUS first, then APPRAISE, then CAREFUL_ALL).
+ */
+export function getUnlockedModes(skillLevel: number): GatherMode[] {
+  const modes: GatherMode[] = []
+  if (skillLevel >= 1) modes.push(GatherMode.FOCUS)
+  if (skillLevel >= 3) modes.push(GatherMode.APPRAISE)
+  if (skillLevel >= 4) modes.push(GatherMode.CAREFUL_ALL)
+  return modes
+}
+
+/**
+ * Get next mode unlock info for a skill level.
+ * Returns null if all modes are unlocked.
+ */
+export function getNextModeUnlock(skillLevel: number): { mode: GatherMode; level: number } | null {
+  if (skillLevel < 3) return { mode: GatherMode.APPRAISE, level: 3 }
+  if (skillLevel < 4) return { mode: GatherMode.CAREFUL_ALL, level: 4 }
+  return null
+}
+
+/**
  * Get required skill level to access a location based on its distance band
  * Per spec:
  * - NEAR: L1
@@ -458,8 +480,14 @@ export function checkGuildEnrolmentAction(
     return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
   }
 
+  // Check if skill exists (defensive check for invalid skill names)
+  const skillState = state.player.skills[action.skill]
+  if (!skillState) {
+    return { valid: false, failureType: "INSUFFICIENT_SKILL", timeCost: 0, successProbability: 0 }
+  }
+
   // Check if skill is already level 1 or higher
-  if (state.player.skills[action.skill].level >= 1) {
+  if (skillState.level >= 1) {
     return { valid: false, failureType: "ALREADY_ENROLLED", timeCost: 0, successProbability: 0 }
   }
 

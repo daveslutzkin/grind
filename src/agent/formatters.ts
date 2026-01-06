@@ -1,4 +1,5 @@
 import type { WorldState, ActionLog } from "../types.js"
+import { getUnlockedModes, getNextModeUnlock } from "../actionChecks.js"
 
 /**
  * Format WorldState as readable text for LLM consumption
@@ -40,6 +41,14 @@ export function formatWorldState(state: WorldState): string {
   for (const [skillId, skillState] of Object.entries(state.player.skills)) {
     if (skillState.level > 0) {
       lines.push(`  ${skillId}: Level ${skillState.level} (${skillState.xp} XP toward next)`)
+      // Show unlocked gather modes for gathering skills
+      if (skillId === "Mining" || skillId === "Woodcutting") {
+        const modes = getUnlockedModes(skillState.level)
+        const nextUnlock = getNextModeUnlock(skillState.level)
+        const modesStr = modes.join(", ")
+        const nextStr = nextUnlock ? ` (next: ${nextUnlock.mode} at L${nextUnlock.level})` : ""
+        lines.push(`    Gather modes: ${modesStr}${nextStr}`)
+      }
     } else {
       lines.push(`  ${skillId}: Not enrolled`)
     }
@@ -204,6 +213,21 @@ export function formatActionLog(log: ActionLog): string {
   // State delta
   if (log.stateDeltaSummary) {
     lines.push(`Changes: ${log.stateDeltaSummary}`)
+  }
+
+  // Appraisal results (from APPRAISE mode)
+  if (log.extraction?.appraisal) {
+    const appraisal = log.extraction.appraisal
+    lines.push("")
+    lines.push(`Node appraisal - ${appraisal.nodeId} (${appraisal.nodeType}):`)
+    for (const mat of appraisal.materials) {
+      const pct = Math.round((mat.remaining / mat.max) * 100)
+      const levelReq =
+        mat.requiredLevel > 0 ? ` [requires ${mat.requiresSkill} L${mat.requiredLevel}]` : ""
+      lines.push(
+        `  ${mat.materialId}: ${mat.remaining}/${mat.max} units (${pct}%) tier ${mat.tier}${levelReq}`
+      )
+    }
   }
 
   // Items gained (from extraction)

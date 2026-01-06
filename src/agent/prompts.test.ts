@@ -15,11 +15,11 @@ describe("Prompts", () => {
       expect(prompt).toContain("Move")
       expect(prompt).toContain("Gather")
       expect(prompt).toContain("Fight")
-      expect(prompt).toContain("Craft")
       expect(prompt).toContain("Store")
       expect(prompt).toContain("Drop")
       expect(prompt).toContain("AcceptContract")
       expect(prompt).toContain("Enrol")
+      // Note: Craft is not included in gathering MVP (no recipes defined)
     })
 
     it("should include the objective", () => {

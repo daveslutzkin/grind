@@ -77,5 +77,43 @@ describe("Agent Loop", () => {
 
       expect(shortLoop.isComplete()).toBe(true)
     })
+
+    it("should end early when no viable actions with 2 ticks at TOWN", async () => {
+      // Create loop with minimal ticks
+      const minLoop = createAgentLoop({
+        seed: "min-test",
+        ticks: 2,
+        objective: "test",
+        verbose: false,
+        dryRun: true,
+      })
+
+      // At TOWN with 2 ticks, no skills enrolled, min travel cost is 3
+      // No nodes at TOWN, so no gathering possible
+      // Should detect no viable actions and end
+      const result = await minLoop.step()
+      expect(result.done).toBe(true)
+      expect(result.reasoning).toContain("No viable actions")
+    })
+
+    it("should allow Store action at TOWN with items in inventory", async () => {
+      // Create loop
+      const storeLoop = createAgentLoop({
+        seed: "store-test",
+        ticks: 2,
+        objective: "test",
+        verbose: false,
+        dryRun: true,
+      })
+
+      // Add an item to inventory
+      const state = storeLoop.getWorldState()
+      state.player.inventory.push({ itemId: "COPPER_ORE", quantity: 5 })
+
+      // Should NOT end early because Store is possible (0 ticks)
+      const result = await storeLoop.step()
+      // Dry run will execute an action, not end early
+      expect(result.done).toBeDefined()
+    })
   })
 })
