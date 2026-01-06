@@ -25,6 +25,15 @@ Come up with a plan, form a series of actions from the plan, then run the batch 
 6. Pipe the new queue into the batch runner with the known seed
 7. Continue until the session is finished
 
+### Internal Agent Mode
+Run the built-in LLM agent implementation:
+
+```bash
+npx tsx src/agent/index.ts [--seed <seed>] [--ticks <n>] [--objective <goal>]
+```
+
+The agent loops autonomously, choosing actions based on world state until the session ends.
+
 ## Traces
 
 Save traces in the `traces/` directory using `--save <path>` with gatherBatch.
