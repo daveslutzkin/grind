@@ -5,8 +5,8 @@
  */
 
 import { executeAction } from "./engine.js"
-import { createGatheringWorld, LOCATIONS, MATERIALS } from "./gatheringWorld.js"
-import { GatherMode, type GatherAction, type MoveAction, DistanceBand } from "./types.js"
+import { createWorld } from "./world.js"
+import { GatherMode, type GatherAction, type MoveAction } from "./types.js"
 
 describe("Acceptance Tests: Gathering MVP", () => {
   // ============================================================================
@@ -16,13 +16,13 @@ describe("Acceptance Tests: Gathering MVP", () => {
   describe("Geography", () => {
     it("should have fixed travel time that is never modified by skills", () => {
       // Create two worlds with different skill levels
-      const world1 = createGatheringWorld("travel-test")
+      const world1 = createWorld("travel-test")
       world1.player.skills.Mining.level = 1
-      world1.player.location = "TOWN"
+      world1.exploration.playerState.currentAreaId = "TOWN"
 
-      const world2 = createGatheringWorld("travel-test")
+      const world2 = createWorld("travel-test")
       world2.player.skills.Mining.level = 10
-      world2.player.location = "TOWN"
+      world2.exploration.playerState.currentAreaId = "TOWN"
 
       // Travel to the same destination
       const moveAction: MoveAction = { type: "Move", destination: "OUTSKIRTS_MINE" }
@@ -35,26 +35,6 @@ describe("Acceptance Tests: Gathering MVP", () => {
       expect(log1.success).toBe(true)
       expect(log2.success).toBe(true)
     })
-
-    it("should have FAR locations with materials that NEAR locations cannot contain", () => {
-      // Check that FAR-only materials exist in MATERIALS
-      const farOnlyMaterials = Object.entries(MATERIALS).filter(
-        ([_id, def]) => def.requiredLevel >= 9 // L9 required = FAR-only
-      )
-      expect(farOnlyMaterials.length).toBeGreaterThan(0)
-
-      // Check that NEAR locations don't have FAR materials in their pools
-      const nearLocations = LOCATIONS.filter((l) => l.band === DistanceBand.NEAR)
-      const farLocations = LOCATIONS.filter((l) => l.band === DistanceBand.FAR)
-
-      expect(nearLocations.length).toBeGreaterThan(0)
-      expect(farLocations.length).toBeGreaterThan(0)
-
-      // FAR materials should have higher required levels than what's available in NEAR
-      for (const [_matId, def] of farOnlyMaterials) {
-        expect(def.requiredLevel).toBeGreaterThanOrEqual(9)
-      }
-    })
   })
 
   // ============================================================================
@@ -63,11 +43,11 @@ describe("Acceptance Tests: Gathering MVP", () => {
 
   describe("Node Persistence", () => {
     it("should reduce reserves when extracting and persist changes", () => {
-      const world = createGatheringWorld("persist-test")
-      world.player.location = "OUTSKIRTS_MINE"
+      const world = createWorld("persist-test")
+      world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world.player.skills.Mining.level = 5
 
-      const node = world.world.nodes!.find((n) => n.locationId === "OUTSKIRTS_MINE")!
+      const node = world.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Mining.level
       )!
@@ -93,11 +73,11 @@ describe("Acceptance Tests: Gathering MVP", () => {
     })
 
     it("should never regenerate node materials", () => {
-      const world = createGatheringWorld("regen-test")
-      world.player.location = "OUTSKIRTS_MINE"
+      const world = createWorld("regen-test")
+      world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world.player.skills.Mining.level = 5
 
-      const node = world.world.nodes!.find((n) => n.locationId === "OUTSKIRTS_MINE")!
+      const node = world.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Mining.level
       )!
@@ -128,7 +108,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
 
   describe("Multi-Material and Destruction", () => {
     it("should have nodes contain at least 2 materials in most cases", () => {
-      const world = createGatheringWorld("multi-mat-test")
+      const world = createWorld("multi-mat-test")
       const allNodes = world.world.nodes!
 
       // Count nodes with 2+ materials
@@ -139,12 +119,12 @@ describe("Acceptance Tests: Gathering MVP", () => {
     })
 
     it("should cause collateral damage with FOCUS mode", () => {
-      const world = createGatheringWorld("collateral-test")
-      world.player.location = "OUTSKIRTS_MINE"
+      const world = createWorld("collateral-test")
+      world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world.player.skills.Mining.level = 5
 
       const node = world.world.nodes!.find(
-        (n) => n.locationId === "OUTSKIRTS_MINE" && n.materials.length >= 2
+        (n) => n.areaId === "OUTSKIRTS_MINE" && n.materials.length >= 2
       )!
       expect(node.materials.length).toBeGreaterThanOrEqual(2)
 
@@ -168,11 +148,11 @@ describe("Acceptance Tests: Gathering MVP", () => {
     })
 
     it("should NOT cause collateral damage with CAREFUL_ALL mode", () => {
-      const world = createGatheringWorld("careful-test")
-      world.player.location = "OUTSKIRTS_MINE"
+      const world = createWorld("careful-test")
+      world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world.player.skills.Mining.level = 5 // L4+ for CAREFUL_ALL
 
-      const node = world.world.nodes!.find((n) => n.locationId === "OUTSKIRTS_MINE")!
+      const node = world.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!
 
       const action: GatherAction = {
         type: "Gather",
@@ -199,16 +179,16 @@ describe("Acceptance Tests: Gathering MVP", () => {
 
   describe("Focus Yield Progression", () => {
     it("should have focus waste decrease with level and reach 0% at mastery", () => {
-      const world1 = createGatheringWorld("yield-test")
-      world1.player.location = "OUTSKIRTS_MINE"
+      const world1 = createWorld("yield-test")
+      world1.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world1.player.skills.Mining.level = 1
 
-      const world10 = createGatheringWorld("yield-test")
-      world10.player.location = "OUTSKIRTS_MINE"
+      const world10 = createWorld("yield-test")
+      world10.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world10.player.skills.Mining.level = 10
 
-      const node1 = world1.world.nodes!.find((n) => n.locationId === "OUTSKIRTS_MINE")!
-      const node10 = world10.world.nodes!.find((n) => n.locationId === "OUTSKIRTS_MINE")!
+      const node1 = world1.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!
+      const node10 = world10.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!
 
       const focusMat1 = node1.materials.find((m) => m.requiredLevel === 1)!
       const focusMat10 = node10.materials.find((m) => m.requiredLevel === 1)!
@@ -238,12 +218,12 @@ describe("Acceptance Tests: Gathering MVP", () => {
     })
 
     it("should have collateral damage with hard floor at high levels", () => {
-      const world = createGatheringWorld("floor-test")
-      world.player.location = "OUTSKIRTS_MINE"
+      const world = createWorld("floor-test")
+      world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world.player.skills.Mining.level = 10 // Max level
 
       const node = world.world.nodes!.find(
-        (n) => n.locationId === "OUTSKIRTS_MINE" && n.materials.length >= 2
+        (n) => n.areaId === "OUTSKIRTS_MINE" && n.materials.length >= 2
       )!
       const focusMat = node.materials[0]
       const collateralMat = node.materials.find((m) => m.materialId !== focusMat.materialId)!
@@ -269,11 +249,11 @@ describe("Acceptance Tests: Gathering MVP", () => {
 
   describe("Variance", () => {
     it("should have extraction yield vary around expected value", () => {
-      const world = createGatheringWorld("variance-test")
-      world.player.location = "OUTSKIRTS_MINE"
+      const world = createWorld("variance-test")
+      world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world.player.skills.Mining.level = 5
 
-      const node = world.world.nodes!.find((n) => n.locationId === "OUTSKIRTS_MINE")!
+      const node = world.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Mining.level
       )!
@@ -296,11 +276,11 @@ describe("Acceptance Tests: Gathering MVP", () => {
     })
 
     it("should show variance info explicitly (EV, range, actual vs expected)", () => {
-      const world = createGatheringWorld("explicit-variance-test")
-      world.player.location = "OUTSKIRTS_MINE"
+      const world = createWorld("explicit-variance-test")
+      world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world.player.skills.Mining.level = 5
 
-      const node = world.world.nodes!.find((n) => n.locationId === "OUTSKIRTS_MINE")!
+      const node = world.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Mining.level
       )!
@@ -330,9 +310,9 @@ describe("Acceptance Tests: Gathering MVP", () => {
 
   describe("Progression", () => {
     it("should unlock new actions at specific levels", () => {
-      const world = createGatheringWorld("unlock-test")
-      world.player.location = "OUTSKIRTS_MINE"
-      const node = world.world.nodes!.find((n) => n.locationId === "OUTSKIRTS_MINE")!
+      const world = createWorld("unlock-test")
+      world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      const node = world.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!
 
       // L2: APPRAISE should fail
       world.player.skills.Mining.level = 2
@@ -352,9 +332,9 @@ describe("Acceptance Tests: Gathering MVP", () => {
     })
 
     it("should unlock locations at specific levels", () => {
-      const world = createGatheringWorld("location-unlock-test")
-      world.player.location = "OLD_QUARRY" // MID location
-      const node = world.world.nodes!.find((n) => n.locationId === "OLD_QUARRY")!
+      const world = createWorld("location-unlock-test")
+      world.exploration.playerState.currentAreaId = "OLD_QUARRY" // MID location
+      const node = world.world.nodes!.find((n) => n.areaId === "OLD_QUARRY")!
 
       // L4: MID should fail (requires L5) - use APPRAISE to avoid material level issues
       world.player.skills.Mining.level = 4
@@ -380,11 +360,11 @@ describe("Acceptance Tests: Gathering MVP", () => {
 
   describe("XP Model", () => {
     it("should calculate XP based on ticks × tier, not units extracted", () => {
-      const world = createGatheringWorld("xp-test")
-      world.player.location = "OUTSKIRTS_MINE"
+      const world = createWorld("xp-test")
+      world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world.player.skills.Mining.level = 5
 
-      const node = world.world.nodes!.find((n) => n.locationId === "OUTSKIRTS_MINE")!
+      const node = world.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Mining.level
       )!
@@ -405,16 +385,16 @@ describe("Acceptance Tests: Gathering MVP", () => {
 
     it("should not double-punish bad RNG (yield varies, XP stays constant)", () => {
       // Use two different seeds to get different RNG outcomes
-      const world1 = createGatheringWorld("xp-rng-1")
-      world1.player.location = "OUTSKIRTS_MINE"
+      const world1 = createWorld("xp-rng-1")
+      world1.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world1.player.skills.Mining.level = 5
 
-      const world2 = createGatheringWorld("xp-rng-2")
-      world2.player.location = "OUTSKIRTS_MINE"
+      const world2 = createWorld("xp-rng-2")
+      world2.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world2.player.skills.Mining.level = 5
 
-      const node1 = world1.world.nodes!.find((n) => n.locationId === "OUTSKIRTS_MINE")!
-      const node2 = world2.world.nodes!.find((n) => n.locationId === "OUTSKIRTS_MINE")!
+      const node1 = world1.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!
+      const node2 = world2.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!
 
       // Find matching materials (same tier)
       const focusMat1 = node1.materials.find(

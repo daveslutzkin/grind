@@ -8,7 +8,6 @@ describe("Types", () => {
         sessionRemainingTicks: 20,
       },
       player: {
-        location: "TOWN",
         inventory: [],
         inventoryCapacity: 10,
         storage: [],
@@ -26,20 +25,23 @@ describe("Types", () => {
         contractKillProgress: {},
       },
       world: {
-        locations: ["TOWN", "MINE", "FOREST"],
-        travelCosts: {
-          "TOWN->MINE": 2,
-          "MINE->TOWN": 2,
-          "TOWN->FOREST": 3,
-          "FOREST->TOWN": 3,
-          "MINE->FOREST": 4,
-          "FOREST->MINE": 4,
-        },
-        resourceNodes: [],
+        nodes: [],
         enemies: [],
         recipes: [],
         contracts: [],
-        storageLocation: "TOWN",
+        storageAreaId: "TOWN",
+      },
+      exploration: {
+        areas: new Map(),
+        connections: [],
+        playerState: {
+          currentAreaId: "TOWN",
+          knownAreaIds: ["TOWN"],
+          knownLocationIds: [],
+          knownConnectionIds: [],
+          totalLuckDelta: 0,
+          currentStreak: 0,
+        },
       },
       rng: {
         seed: "test-seed",
@@ -48,7 +50,7 @@ describe("Types", () => {
     }
 
     expect(state.time.currentTick).toBe(0)
-    expect(state.player.location).toBe("TOWN")
+    expect(state.exploration.playerState.currentAreaId).toBe("TOWN")
   })
 
   it("should allow creating valid actions", () => {

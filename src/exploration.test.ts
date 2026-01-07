@@ -21,7 +21,7 @@ import type {
   ExplorationTravelAction,
 } from "./types.js"
 import { createRng } from "./rng.js"
-import { createToyWorld } from "./world.js"
+import { createWorld } from "./world.js"
 
 describe("Exploration Utilities", () => {
   describe("getAreaCountForDistance", () => {
@@ -373,7 +373,7 @@ describe("Area Generation", () => {
 
 // Helper to create a world state with exploration enabled
 function createExplorationWorld(seed: string): WorldState {
-  const state = createToyWorld(seed)
+  const state = createWorld(seed)
   const explorationState = initializeExplorationState(state.rng)
   state.exploration = {
     areas: explorationState.areas,

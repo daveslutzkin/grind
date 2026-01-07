@@ -1,85 +1,139 @@
-import { createToyWorld } from "./world.js"
+/**
+ * Tests for World Factory
+ *
+ * Tests for world creation with:
+ * - 7 areas with distance bands
+ * - Material definitions with tiers
+ * - Node generation with multi-material reserves
+ */
 
-describe("World", () => {
-  describe("createToyWorld", () => {
-    it("should create world with 200 tick session", () => {
-      const state = createToyWorld("test-seed")
-      expect(state.time.sessionRemainingTicks).toBe(200)
-      expect(state.time.currentTick).toBe(0)
+import { createWorld, MATERIALS } from "./world.js"
+import { NodeType, type Node } from "./types.js"
+
+describe("World Factory", () => {
+  describe("MATERIALS constant", () => {
+    it("should have mining materials with tiers 1-5", () => {
+      const miningMats = Object.entries(MATERIALS).filter(([_, m]) => m.skill === "Mining")
+      expect(miningMats.length).toBeGreaterThanOrEqual(5)
+
+      const tiers = miningMats.map(([_, m]) => m.tier)
+      expect(tiers).toContain(1)
+      expect(tiers).toContain(2)
+      expect(tiers).toContain(3)
     })
 
-    it("should start player at TOWN", () => {
-      const state = createToyWorld("test-seed")
-      expect(state.player.location).toBe("TOWN")
+    it("should have woodcutting materials with tiers 1-5", () => {
+      const woodMats = Object.entries(MATERIALS).filter(([_, m]) => m.skill === "Woodcutting")
+      expect(woodMats.length).toBeGreaterThanOrEqual(5)
     })
 
-    it("should have three locations", () => {
-      const state = createToyWorld("test-seed")
-      expect(state.world.locations).toEqual(["TOWN", "MINE", "FOREST"])
+    it("should have required levels that increase with tier", () => {
+      const tier1 = Object.values(MATERIALS).filter((m) => m.tier === 1)
+      const tier3 = Object.values(MATERIALS).filter((m) => m.tier === 3)
+
+      // Tier 1 materials should require lower levels
+      tier1.forEach((m) => expect(m.requiredLevel).toBeLessThanOrEqual(2))
+      // Tier 3+ materials should require higher levels
+      tier3.forEach((m) => expect(m.requiredLevel).toBeGreaterThanOrEqual(5))
+    })
+  })
+
+  describe("createWorld", () => {
+    it("should create a valid world state", () => {
+      const world = createWorld("test-seed")
+
+      expect(world.time.currentTick).toBe(0)
+      expect(world.time.sessionRemainingTicks).toBeGreaterThan(0)
+      expect(world.exploration.playerState.currentAreaId).toBe("TOWN")
     })
 
-    it("should have travel costs between all locations", () => {
-      const state = createToyWorld("test-seed")
-      expect(state.world.travelCosts["TOWN->MINE"]).toBeDefined()
-      expect(state.world.travelCosts["MINE->TOWN"]).toBeDefined()
-      expect(state.world.travelCosts["TOWN->FOREST"]).toBeDefined()
-      expect(state.world.travelCosts["FOREST->TOWN"]).toBeDefined()
-      expect(state.world.travelCosts["MINE->FOREST"]).toBeDefined()
-      expect(state.world.travelCosts["FOREST->MINE"]).toBeDefined()
+    it("should have all 6 skills initialized at level 0", () => {
+      const world = createWorld("test-seed")
+
+      expect(world.player.skills.Mining.level).toBe(0)
+      expect(world.player.skills.Woodcutting.level).toBe(0)
+      expect(world.player.skills.Combat.level).toBe(0)
+      expect(world.player.skills.Smithing.level).toBe(0)
+      expect(world.player.skills.Woodcrafting.level).toBe(0)
+      expect(world.player.skills.Exploration.level).toBe(0)
     })
 
-    it("should have iron ore node at MINE", () => {
-      const state = createToyWorld("test-seed")
-      const ironNode = state.world.resourceNodes.find((n) => n.itemId === "IRON_ORE")
-      expect(ironNode).toBeDefined()
-      expect(ironNode?.location).toBe("MINE")
+    it("should have 7 areas in exploration system", () => {
+      const world = createWorld("test-seed")
+
+      // Areas are now in the exploration system
+      expect(world.exploration.areas.size).toBe(7)
     })
 
-    it("should have wood log node at FOREST", () => {
-      const state = createToyWorld("test-seed")
-      const woodNode = state.world.resourceNodes.find((n) => n.itemId === "WOOD_LOG")
-      expect(woodNode).toBeDefined()
-      expect(woodNode?.location).toBe("FOREST")
+    it("should generate nodes for each gathering location", () => {
+      const world = createWorld("test-seed")
+
+      // Should have nodes (stored in world.world.nodes)
+      expect(world.world.nodes).toBeDefined()
+      expect(world.world.nodes!.length).toBeGreaterThan(0)
     })
 
-    it("should have Cave Rat enemy", () => {
-      const state = createToyWorld("test-seed")
-      const caveRat = state.world.enemies.find((e) => e.id === "cave-rat")
-      expect(caveRat).toBeDefined()
-      expect(caveRat?.failureRelocation).toBe("TOWN")
+    it("should generate nodes deterministically based on seed", () => {
+      const world1 = createWorld("seed-123")
+      const world2 = createWorld("seed-123")
+      const world3 = createWorld("different-seed")
+
+      // Same seed should produce same nodes
+      expect(world1.world.nodes).toEqual(world2.world.nodes)
+
+      // Different seed should produce different nodes
+      expect(world1.world.nodes).not.toEqual(world3.world.nodes)
     })
 
-    it("should have iron bar recipe", () => {
-      const state = createToyWorld("test-seed")
-      const ironBarRecipe = state.world.recipes.find((r) => r.output.itemId === "IRON_BAR")
-      expect(ironBarRecipe).toBeDefined()
-      expect(ironBarRecipe?.inputs).toContainEqual({ itemId: "IRON_ORE", quantity: 2 })
+    it("should generate nodes with 2+ materials", () => {
+      const world = createWorld("test-seed")
+
+      world.world.nodes!.forEach((node: Node) => {
+        expect(node.materials.length).toBeGreaterThanOrEqual(2)
+      })
     })
 
-    it("should have Miners Guild contract", () => {
-      const state = createToyWorld("test-seed")
-      const contract = state.world.contracts.find((c) => c.id === "miners-guild-1")
-      expect(contract).toBeDefined()
-      expect(contract?.guildLocation).toBe("TOWN")
+    it("should generate ore nodes in mining areas", () => {
+      const world = createWorld("test-seed")
+
+      const miningAreaIds = ["OUTSKIRTS_MINE", "OLD_QUARRY", "ABANDONED_SHAFT"]
+
+      const oreNodes = world.world.nodes!.filter((n: Node) => n.nodeType === NodeType.ORE_VEIN)
+
+      oreNodes.forEach((node: Node) => {
+        expect(miningAreaIds).toContain(node.areaId)
+      })
     })
 
-    it("should initialize all skills to level 0 with 0 xp", () => {
-      const state = createToyWorld("test-seed")
-      expect(state.player.skills.Mining).toEqual({ level: 0, xp: 0 })
-      expect(state.player.skills.Woodcutting).toEqual({ level: 0, xp: 0 })
-      expect(state.player.skills.Combat).toEqual({ level: 0, xp: 0 })
-      expect(state.player.skills.Smithing).toEqual({ level: 0, xp: 0 })
+    it("should generate tree nodes in woodcutting areas", () => {
+      const world = createWorld("test-seed")
+
+      const woodAreaIds = ["COPSE", "DEEP_FOREST", "ANCIENT_GROVE"]
+
+      const treeNodes = world.world.nodes!.filter((n: Node) => n.nodeType === NodeType.TREE_STAND)
+
+      treeNodes.forEach((node: Node) => {
+        expect(woodAreaIds).toContain(node.areaId)
+      })
     })
 
-    it("should use provided seed for RNG", () => {
-      const state = createToyWorld("my-custom-seed")
-      expect(state.rng.seed).toBe("my-custom-seed")
-      expect(state.rng.counter).toBe(0)
-    })
+    it("should not generate FAR-only materials in NEAR areas", () => {
+      const world = createWorld("test-seed")
 
-    it("should have storage at TOWN", () => {
-      const state = createToyWorld("test-seed")
-      expect(state.world.storageLocation).toBe("TOWN")
+      const nearAreaIds = ["OUTSKIRTS_MINE", "COPSE"]
+
+      // Find materials that require L9+ (FAR-only)
+      const farOnlyMaterials = Object.entries(MATERIALS)
+        .filter(([_, m]) => m.requiredLevel >= 9)
+        .map(([id]) => id)
+
+      const nearNodes = world.world.nodes!.filter((n: Node) => nearAreaIds.includes(n.areaId))
+
+      nearNodes.forEach((node: Node) => {
+        node.materials.forEach((mat) => {
+          expect(farOnlyMaterials).not.toContain(mat.materialId)
+        })
+      })
     })
   })
 })

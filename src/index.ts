@@ -12,7 +12,6 @@ export type {
   SkillID,
   ContractID,
   ItemStack,
-  ResourceNode,
   Enemy,
   Recipe,
   Contract,
@@ -35,7 +34,7 @@ export { executeAction } from "./engine.js"
 export { evaluateAction, evaluatePlan } from "./evaluate.js"
 
 // World factory
-export { createToyWorld } from "./world.js"
+export { createWorld } from "./world.js"
 
 // RNG utilities
 export { createRng, roll } from "./rng.js"

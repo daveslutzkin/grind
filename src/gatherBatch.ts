@@ -2,7 +2,7 @@
  * Batch runner for gathering MVP - executes a plan from command line arguments
  */
 
-import { createGatheringWorld, LOCATIONS } from "./gatheringWorld.js"
+import { createWorld } from "./world.js"
 import { executeAction } from "./engine.js"
 import type { Action, ActionLog, WorldState, SkillID, SkillState, GatherMode } from "./types.js"
 import { getTotalXP } from "./types.js"
@@ -27,7 +27,7 @@ function printState(state: WorldState): void {
 
   console.log(`┌${line}┐`)
   console.log(
-    `│${pad(` 📍 ${state.player.location}  │  ⏱ ${state.time.sessionRemainingTicks} ticks left  │  🎒 ${invStr}`)}`
+    `│${pad(` 📍 ${state.exploration.playerState.currentAreaId}  │  ⏱ ${state.time.sessionRemainingTicks} ticks left  │  🎒 ${invStr}`)}`
   )
   console.log(`│${pad(` 📊 ${skills}`)}`)
   console.log(`└${line}┘`)
@@ -147,9 +147,9 @@ function parseAction(cmd: string): Action | null {
   switch (type) {
     case "move": {
       const dest = parts[1]?.toUpperCase()
-      const validLocations = LOCATIONS.map((l) => l.id)
-      if (!dest || !validLocations.includes(dest)) {
-        console.log(`  ⚠ Invalid location. Valid: ${validLocations.join(", ")}`)
+      // Basic validation - areas are discovered via exploration now
+      if (!dest) {
+        console.log(`  ⚠ Usage: move <areaId>`)
         return null
       }
       return { type: "Move", destination: dest }
@@ -240,7 +240,7 @@ function main(): void {
   const commands = args.slice(1)
 
   console.log(`\n=== Gathering Session (seed: ${seed}) ===\n`)
-  const state = createGatheringWorld(seed)
+  const state = createWorld(seed)
   const stats: SessionStats = {
     logs: [],
     startingSkills: { ...state.player.skills },

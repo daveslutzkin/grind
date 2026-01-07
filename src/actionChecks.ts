@@ -4,7 +4,6 @@
 import type {
   WorldState,
   Action,
-  MoveAction,
   AcceptContractAction,
   GatherAction,
   FightAction,
@@ -18,7 +17,7 @@ import type {
   Node,
   GatheringSkillID,
 } from "./types.js"
-import { GatherMode } from "./types.js"
+import { GatherMode, getCurrentAreaId } from "./types.js"
 
 /**
  * Result of checking action preconditions
@@ -98,27 +97,6 @@ export function canFitItems(
 }
 
 /**
- * Check Move action preconditions
- */
-export function checkMoveAction(state: WorldState, action: MoveAction): ActionCheckResult {
-  const fromLocation = state.player.location
-  const destination = action.destination
-
-  if (fromLocation === destination) {
-    return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
-  }
-
-  const travelKey = `${fromLocation}->${destination}`
-  const travelCost = state.world.travelCosts[travelKey]
-
-  if (travelCost === undefined) {
-    return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
-  }
-
-  return { valid: true, timeCost: travelCost, successProbability: 1 }
-}
-
-/**
  * Check AcceptContract action preconditions
  */
 export function checkAcceptContractAction(
@@ -131,7 +109,7 @@ export function checkAcceptContractAction(
     return { valid: false, failureType: "CONTRACT_NOT_FOUND", timeCost: 0, successProbability: 0 }
   }
 
-  if (state.player.location !== contract.guildLocation) {
+  if (getCurrentAreaId(state) !== contract.guildAreaId) {
     return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
   }
 
@@ -224,35 +202,10 @@ function getGatheringTimeCost(mode: GatherMode): number {
 }
 
 /**
- * Check Gather action preconditions
- * Supports both legacy resourceNodes and new multi-material nodes
+ * Check Gather action preconditions for multi-material nodes
  */
 export function checkGatherAction(state: WorldState, action: GatherAction): ActionCheckResult {
-  // Check for new multi-material nodes first
-  if (action.mode !== undefined && state.world.nodes) {
-    return checkMultiMaterialGatherAction(state, action)
-  }
-
-  // Fall back to legacy resourceNodes behavior
-  const node = state.world.resourceNodes.find((n) => n.id === action.nodeId)
-
-  if (!node) {
-    return { valid: false, failureType: "NODE_NOT_FOUND", timeCost: 0, successProbability: 0 }
-  }
-
-  if (state.player.location !== node.location) {
-    return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
-  }
-
-  if (state.player.skills[node.skillType].level < node.requiredSkillLevel) {
-    return { valid: false, failureType: "INSUFFICIENT_SKILL", timeCost: 0, successProbability: 0 }
-  }
-
-  if (!canGatherItem(state, node.itemId)) {
-    return { valid: false, failureType: "INVENTORY_FULL", timeCost: 0, successProbability: 0 }
-  }
-
-  return { valid: true, timeCost: node.gatherTime, successProbability: node.successProbability }
+  return checkMultiMaterialGatherAction(state, action)
 }
 
 /**
@@ -270,7 +223,7 @@ function checkMultiMaterialGatherAction(
   }
 
   // Check location
-  if (state.player.location !== node.locationId) {
+  if (getCurrentAreaId(state) !== node.areaId) {
     return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
   }
 
@@ -284,7 +237,7 @@ function checkMultiMaterialGatherAction(
   const skillLevel = state.player.skills[skill].level
 
   // Check location access based on skill level (L5 for MID, L9 for FAR)
-  const locationRequirement = getLocationSkillRequirement(node.locationId)
+  const locationRequirement = getLocationSkillRequirement(node.areaId)
   if (skillLevel < locationRequirement) {
     return { valid: false, failureType: "INSUFFICIENT_SKILL", timeCost: 0, successProbability: 0 }
   }
@@ -358,7 +311,7 @@ export function checkFightAction(state: WorldState, action: FightAction): Action
     return { valid: false, failureType: "ENEMY_NOT_FOUND", timeCost: 0, successProbability: 0 }
   }
 
-  if (state.player.location !== enemy.location) {
+  if (getCurrentAreaId(state) !== enemy.areaId) {
     return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
   }
 
@@ -405,7 +358,7 @@ export function checkCraftAction(state: WorldState, action: CraftAction): Action
     return { valid: false, failureType: "RECIPE_NOT_FOUND", timeCost: 0, successProbability: 0 }
   }
 
-  if (state.player.location !== recipe.requiredLocation) {
+  if (getCurrentAreaId(state) !== recipe.requiredAreaId) {
     return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
   }
 
@@ -432,7 +385,7 @@ export function checkCraftAction(state: WorldState, action: CraftAction): Action
  * Store is a free action (0 ticks, no skill required)
  */
 export function checkStoreAction(state: WorldState, action: StoreAction): ActionCheckResult {
-  if (state.player.location !== state.world.storageLocation) {
+  if (getCurrentAreaId(state) !== state.world.storageAreaId) {
     return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
   }
 
@@ -476,7 +429,7 @@ export function checkGuildEnrolmentAction(
 ): ActionCheckResult {
   const enrolTime = 3
 
-  if (state.player.location !== "TOWN") {
+  if (getCurrentAreaId(state) !== "TOWN") {
     return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
   }
 
@@ -503,7 +456,7 @@ export function checkTurnInCombatTokenAction(
   _action: TurnInCombatTokenAction
 ): ActionCheckResult {
   // Must be at Combat Guild (TOWN)
-  if (state.player.location !== "TOWN") {
+  if (getCurrentAreaId(state) !== "TOWN") {
     return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
   }
 
@@ -521,8 +474,6 @@ export function checkTurnInCombatTokenAction(
  */
 export function checkAction(state: WorldState, action: Action): ActionCheckResult {
   switch (action.type) {
-    case "Move":
-      return checkMoveAction(state, action)
     case "AcceptContract":
       return checkAcceptContractAction(state, action)
     case "Gather":
@@ -539,11 +490,11 @@ export function checkAction(state: WorldState, action: Action): ActionCheckResul
       return checkGuildEnrolmentAction(state, action)
     case "TurnInCombatToken":
       return checkTurnInCombatTokenAction(state, action)
-    // Exploration actions - not yet implemented in action checks
+    // Movement and exploration actions have their own validation in exploration.ts
+    case "Move":
     case "Survey":
     case "Explore":
     case "ExplorationTravel":
-      // These actions have their own validation in exploration.ts
       return { valid: true, timeCost: 0, successProbability: 1 }
   }
 }
