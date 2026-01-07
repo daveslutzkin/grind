@@ -120,6 +120,20 @@ Discover a location or connection within your current area.
 - **Skip rule**: Already-known locations/connections are skipped in rolls
 - **Fully explored**: Player is informed when an area has nothing left to discover
 
+**Skill-based discovery probability:**
+
+Gathering nodes are easier to find if you have the relevant gathering skill:
+- **With skill**: Normal discovery chance
+- **Without skill**: 10x lower chance to discover the node
+
+This means:
+- A miner is much more likely to notice ore veins while exploring
+- You can still stumble upon nodes for skills you don't have, just rarely
+- Encourages joining gathering guilds before exploring for those resources
+- Creates interesting decisions: explore now (lower chance) or enrol first?
+
+When rolling for what to discover, the effective weight of each node type is divided by 10 if the player lacks the corresponding skill.
+
 #### Travel
 
 Move between areas.
