@@ -1,4 +1,5 @@
 import type { WorldState, ActionLog } from "../types.js"
+import { getCurrentAreaId } from "../types.js"
 import { getUnlockedModes, getNextModeUnlock } from "../actionChecks.js"
 
 /**
@@ -6,10 +7,11 @@ import { getUnlockedModes, getNextModeUnlock } from "../actionChecks.js"
  */
 export function formatWorldState(state: WorldState): string {
   const lines: string[] = []
+  const currentArea = getCurrentAreaId(state)
 
   // Current status
   lines.push("=== CURRENT STATE ===")
-  lines.push(`Location: ${state.player.location}`)
+  lines.push(`Location: ${currentArea}`)
   lines.push(
     `Ticks remaining: ${state.time.sessionRemainingTicks} (used: ${state.time.currentTick})`
   )
@@ -72,41 +74,35 @@ export function formatWorldState(state: WorldState): string {
     }
   }
 
-  // Available locations with travel costs
+  // Available areas via exploration connections
   lines.push("")
-  lines.push("Available locations:")
-  const travelCosts = Object.entries(state.world.travelCosts)
-    .filter(([key]) => key.startsWith(`${state.player.location}->`))
-    .map(([key, cost]) => {
-      const dest = key.split("->")[1]
-      return { dest, cost }
+  lines.push("Available areas:")
+  const knownConnections = state.exploration.playerState.knownConnectionIds
+  const outgoingConnections = knownConnections
+    .filter((connId) => connId.startsWith(`${currentArea}->`))
+    .map((connId) => {
+      const destArea = connId.split("->")[1]
+      const connection = state.exploration.connections.find(
+        (c) => c.fromAreaId === currentArea && c.toAreaId === destArea
+      )
+      const travelTime = connection?.travelTimeMultiplier ?? 1
+      return { dest: destArea, cost: travelTime }
     })
 
-  if (travelCosts.length === 0) {
-    // Check reverse direction
-    const reverseCosts = Object.entries(state.world.travelCosts)
-      .filter(([key]) => key.endsWith(`->${state.player.location}`))
-      .map(([key, cost]) => {
-        const dest = key.split("->")[0]
-        return { dest, cost }
-      })
-    for (const { dest, cost } of reverseCosts) {
-      lines.push(`  ${dest} (${cost} ticks)`)
-    }
+  if (outgoingConnections.length === 0) {
+    lines.push("  (no known connections)")
   } else {
-    for (const { dest, cost } of travelCosts) {
+    for (const { dest, cost } of outgoingConnections) {
       lines.push(`  ${dest} (${cost} ticks)`)
     }
   }
 
-  // All locations for reference
+  // All known areas for reference
   lines.push("")
-  lines.push(`All world locations: ${state.world.locations.join(", ")}`)
+  lines.push(`Known areas: ${state.exploration.playerState.knownAreaIds.join(", ")}`)
 
   // Resource nodes at current location
-  const nodesHere = state.world.nodes?.filter(
-    (n) => n.locationId === state.player.location && !n.depleted
-  )
+  const nodesHere = state.world.nodes?.filter((n) => n.areaId === currentArea && !n.depleted)
   if (nodesHere && nodesHere.length > 0) {
     lines.push("")
     lines.push("Resource nodes here:")
@@ -120,27 +116,13 @@ export function formatWorldState(state: WorldState): string {
         )
       }
     }
-  } else if (state.player.location !== "TOWN") {
+  } else if (currentArea !== "TOWN") {
     lines.push("")
     lines.push("Resource nodes here: (none available)")
   }
 
-  // Legacy resource nodes (if any)
-  const legacyNodesHere = state.world.resourceNodes.filter(
-    (n) => n.location === state.player.location
-  )
-  if (legacyNodesHere.length > 0) {
-    lines.push("")
-    lines.push("Resource nodes (legacy):")
-    for (const node of legacyNodesHere) {
-      lines.push(
-        `  ${node.id}: ${node.itemId} (${node.gatherTime} ticks, ${Math.round(node.successProbability * 100)}% success)`
-      )
-    }
-  }
-
   // Enemies at current location
-  const enemiesHere = state.world.enemies.filter((e) => e.location === state.player.location)
+  const enemiesHere = state.world.enemies.filter((e) => e.areaId === currentArea)
   if (enemiesHere.length > 0) {
     lines.push("")
     lines.push("Enemies here:")
@@ -150,9 +132,7 @@ export function formatWorldState(state: WorldState): string {
   }
 
   // Available recipes (if at crafting location)
-  const recipesHere = state.world.recipes.filter(
-    (r) => r.requiredLocation === state.player.location
-  )
+  const recipesHere = state.world.recipes.filter((r) => r.requiredAreaId === currentArea)
   if (recipesHere.length > 0) {
     lines.push("")
     lines.push("Recipes available here:")
@@ -164,7 +144,7 @@ export function formatWorldState(state: WorldState): string {
 
   // Available contracts (if at guild location)
   const contractsHere = state.world.contracts.filter(
-    (c) => c.guildLocation === state.player.location && !state.player.activeContracts.includes(c.id)
+    (c) => c.guildAreaId === currentArea && !state.player.activeContracts.includes(c.id)
   )
   if (contractsHere.length > 0) {
     lines.push("")

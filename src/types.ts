@@ -4,7 +4,8 @@
 // String-based IDs (flexible, runtime-validated)
 // ============================================================================
 
-export type LocationID = string
+export type AreaID = string
+export type LocationID = AreaID // Alias for backwards compatibility - areas ARE locations now
 export type ItemID = string
 export type NodeID = string
 export type MaterialID = string // Semantic alias for ItemID in gathering context
@@ -20,10 +21,9 @@ export type SkillID =
 export type GatheringSkillID = "Mining" | "Woodcutting"
 export type CraftingSkillID = "Smithing" | "Woodcrafting"
 export type ContractID = string
-export type AreaID = string
 
 // ============================================================================
-// Exploration Types
+// Exploration Types (now the primary location system)
 // ============================================================================
 
 /**
@@ -64,6 +64,7 @@ export interface AreaConnection {
  */
 export interface Area {
   id: AreaID
+  name?: string // Human-readable name (optional)
   distance: number // How far from town (town = distance 0)
   generated: boolean // Areas are generated when first discovered
   // Locations are discovered via Explore action
@@ -120,19 +121,6 @@ export enum NodeType {
 }
 
 // ============================================================================
-// Location (expanded from simple LocationID)
-// ============================================================================
-
-export interface Location {
-  id: LocationID
-  name: string
-  band: DistanceBand
-  travelTicksFromTown: number
-  nodePools: string[] // Node pool IDs for generation
-  requiredGuildReputation: number | null // Hook for future guild-gating
-}
-
-// ============================================================================
 // Multi-material nodes for gathering MVP
 // ============================================================================
 
@@ -149,7 +137,7 @@ export interface MaterialReserve {
 export interface Node {
   nodeId: NodeID
   nodeType: NodeType
-  locationId: LocationID
+  areaId: AreaID // Which area this node is in
   materials: MaterialReserve[]
   depleted: boolean
 }
@@ -180,26 +168,16 @@ export interface LootTableEntry {
   autoEquip?: boolean // If true, auto-equip this item as a weapon
 }
 
-export interface ResourceNode {
-  id: string
-  location: LocationID
-  itemId: ItemID
-  gatherTime: number
-  successProbability: number
-  requiredSkillLevel: number
-  skillType: GatheringSkillID
-}
-
 export interface Enemy {
   id: string
-  location: LocationID
+  areaId: AreaID // Which area this enemy is in
   // TODO: fightTime and successProbability are currently unused - combat uses weapon stats instead.
   // Consider using these for enemy-specific modifiers or removing if weapon-only combat is intended.
   fightTime: number
   successProbability: number
   requiredSkillLevel: number
   lootTable: LootTableEntry[] // Weighted loot table - exactly one item drops per kill
-  failureRelocation: LocationID
+  failureAreaId: AreaID // Where player goes on combat failure
 }
 
 export interface Recipe {
@@ -207,7 +185,7 @@ export interface Recipe {
   inputs: ItemStack[]
   output: ItemStack
   craftTime: number
-  requiredLocation: LocationID
+  requiredAreaId: AreaID // Must be in this area to craft
   requiredSkillLevel: number
 }
 
@@ -218,7 +196,7 @@ export interface KillRequirement {
 
 export interface Contract {
   id: ContractID
-  guildLocation: LocationID
+  guildAreaId: AreaID // Which area to accept/turn in this contract
   requirements: ItemStack[]
   killRequirements?: KillRequirement[]
   rewards: ItemStack[]
@@ -238,7 +216,6 @@ export interface WorldState {
   }
 
   player: {
-    location: LocationID
     inventory: ItemStack[]
     inventoryCapacity: number
     storage: ItemStack[]
@@ -250,18 +227,15 @@ export interface WorldState {
   }
 
   world: {
-    locations: LocationID[]
-    travelCosts: Record<string, number> // "LOC1->LOC2" format
-    resourceNodes: ResourceNode[]
-    nodes?: Node[] // Multi-material nodes for gathering MVP
+    nodes: Node[] // Multi-material gathering nodes
     enemies: Enemy[]
     recipes: Recipe[]
     contracts: Contract[]
-    storageLocation: LocationID
+    storageAreaId: AreaID // Where storage is located (usually TOWN)
   }
 
-  // Exploration system state (optional - only present when exploration is enabled)
-  exploration?: {
+  // Exploration system - THE location system
+  exploration: {
     // All areas in the world (generated lazily when discovered)
     areas: Map<AreaID, Area>
     // All connections between areas
@@ -281,9 +255,14 @@ export interface WorldState {
   rng: RngState
 }
 
+// Helper to get current area ID from state
+export function getCurrentAreaId(state: WorldState): AreaID {
+  return state.exploration.playerState.currentAreaId
+}
+
 // Action types
 export type ActionType =
-  | "Move"
+  | "Move" // Alias for ExplorationTravel for backwards compat
   | "AcceptContract"
   | "Gather"
   | "Fight"
@@ -298,7 +277,7 @@ export type ActionType =
 
 export interface MoveAction {
   type: "Move"
-  destination: LocationID
+  destination: AreaID // Now an AreaID
 }
 
 export interface AcceptContractAction {
@@ -411,6 +390,7 @@ export type FailureType =
   | "NO_UNDISCOVERED_AREAS"
   | "AREA_FULLY_EXPLORED"
   | "NOT_IN_EXPLORATION_GUILD"
+  | "NO_CONNECTIONS"
 
 // RNG roll log entry
 export interface RngRoll {

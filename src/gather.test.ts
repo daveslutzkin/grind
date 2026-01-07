@@ -18,13 +18,13 @@ describe("Phase 3: Gather Action Overhaul", () => {
   beforeEach(() => {
     world = createGatheringWorld("test-seed")
     // Set player at a mining location with level 1 Mining
-    world.player.location = "OUTSKIRTS_MINE"
+    world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
     world.player.skills.Mining.level = 1
     world.player.skills.Woodcutting.level = 1
   })
 
   function getFirstOreNode(): Node {
-    return world.world.nodes!.find((n) => n.locationId === "OUTSKIRTS_MINE")!
+    return world.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!
   }
 
   describe("APPRAISE mode", () => {
@@ -252,11 +252,11 @@ describe("Phase 3: Gather Action Overhaul", () => {
 
       // Create two worlds to compare
       const world1 = createGatheringWorld("test-seed")
-      world1.player.location = "OUTSKIRTS_MINE"
+      world1.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world1.player.skills.Mining.level = 4 // L4 unlocks CAREFUL_ALL
 
       const world2 = createGatheringWorld("test-seed")
-      world2.player.location = "OUTSKIRTS_MINE"
+      world2.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world2.player.skills.Mining.level = 4
 
       const node1 = world1.world.nodes!.find((n) => n.nodeId === node.nodeId)!
@@ -440,7 +440,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
 
   describe("Location validation", () => {
     it("should fail if player is not at node location", () => {
-      world.player.location = "TOWN" // Not at mining location
+      world.exploration.playerState.currentAreaId = "TOWN" // Not at mining location
       const node = getFirstOreNode()
 
       const action: GatherAction = {
@@ -487,8 +487,8 @@ describe("Phase 3: Gather Action Overhaul", () => {
     describe("Location access gating", () => {
       it("should require L5 Mining to access MID mining locations", () => {
         world.player.skills.Mining.level = 4 // Not enough for MID
-        world.player.location = "OLD_QUARRY" // MID location
-        const node = world.world.nodes!.find((n) => n.locationId === "OLD_QUARRY")!
+        world.exploration.playerState.currentAreaId = "OLD_QUARRY" // MID location
+        const node = world.world.nodes!.find((n) => n.areaId === "OLD_QUARRY")!
 
         const action: GatherAction = {
           type: "Gather",
@@ -504,8 +504,8 @@ describe("Phase 3: Gather Action Overhaul", () => {
 
       it("should allow L5+ Mining to access MID mining locations", () => {
         world.player.skills.Mining.level = 5 // Enough for MID
-        world.player.location = "OLD_QUARRY" // MID location
-        const node = world.world.nodes!.find((n) => n.locationId === "OLD_QUARRY")!
+        world.exploration.playerState.currentAreaId = "OLD_QUARRY" // MID location
+        const node = world.world.nodes!.find((n) => n.areaId === "OLD_QUARRY")!
 
         const action: GatherAction = {
           type: "Gather",
@@ -520,8 +520,8 @@ describe("Phase 3: Gather Action Overhaul", () => {
 
       it("should require L9 Mining to access FAR mining locations", () => {
         world.player.skills.Mining.level = 8 // Not enough for FAR
-        world.player.location = "ABANDONED_SHAFT" // FAR location
-        const node = world.world.nodes!.find((n) => n.locationId === "ABANDONED_SHAFT")!
+        world.exploration.playerState.currentAreaId = "ABANDONED_SHAFT" // FAR location
+        const node = world.world.nodes!.find((n) => n.areaId === "ABANDONED_SHAFT")!
 
         const action: GatherAction = {
           type: "Gather",
@@ -537,8 +537,8 @@ describe("Phase 3: Gather Action Overhaul", () => {
 
       it("should allow L9+ Mining to access FAR mining locations", () => {
         world.player.skills.Mining.level = 9 // Enough for FAR
-        world.player.location = "ABANDONED_SHAFT" // FAR location
-        const node = world.world.nodes!.find((n) => n.locationId === "ABANDONED_SHAFT")!
+        world.exploration.playerState.currentAreaId = "ABANDONED_SHAFT" // FAR location
+        const node = world.world.nodes!.find((n) => n.areaId === "ABANDONED_SHAFT")!
 
         const action: GatherAction = {
           type: "Gather",
@@ -589,9 +589,9 @@ describe("Phase 3: Gather Action Overhaul", () => {
       it("should have lower collateral at L6+ than at L5", () => {
         // Test at L5
         const world5 = createGatheringWorld("collateral-test")
-        world5.player.location = "OUTSKIRTS_MINE"
+        world5.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
         world5.player.skills.Mining.level = 5
-        const node5 = world5.world.nodes!.find((n) => n.locationId === "OUTSKIRTS_MINE")!
+        const node5 = world5.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!
         const focusMat5 = node5.materials.find(
           (m) => m.requiredLevel <= world5.player.skills.Mining.level
         )!
@@ -609,9 +609,9 @@ describe("Phase 3: Gather Action Overhaul", () => {
 
         // Test at L6
         const world6 = createGatheringWorld("collateral-test")
-        world6.player.location = "OUTSKIRTS_MINE"
+        world6.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
         world6.player.skills.Mining.level = 6
-        const node6 = world6.world.nodes!.find((n) => n.locationId === "OUTSKIRTS_MINE")!
+        const node6 = world6.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!
         const focusMat6 = node6.materials.find(
           (m) => m.requiredLevel <= world6.player.skills.Mining.level
         )!

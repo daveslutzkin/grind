@@ -1,6 +1,7 @@
 import type { ActionLog, WorldState } from "../types.js"
 import type { AgentKnowledge } from "./output.js"
 import { getUnlockedModes, getNextModeUnlock } from "../actionChecks.js"
+import { getCurrentAreaId } from "../types.js"
 
 /**
  * Summarize an action and its result into a single concise line.
@@ -25,7 +26,8 @@ function formatActionBrief(log: ActionLog): string {
       return `Gather ${params.nodeId} ${params.mode}${params.materialId ? " " + params.materialId : ""}`
 
     case "Move":
-      return `Move ${params.destination}`
+    case "ExplorationTravel":
+      return `Move ${params.destination || params.destinationAreaId}`
 
     case "Enrol":
       return `Enrol ${params.skill}`
@@ -47,6 +49,12 @@ function formatActionBrief(log: ActionLog): string {
 
     case "TurnInCombatToken":
       return "TurnInCombatToken"
+
+    case "Survey":
+      return "Survey"
+
+    case "Explore":
+      return "Explore"
 
     default:
       return log.actionType
@@ -90,7 +98,7 @@ function formatOutcomeBrief(log: ActionLog): string {
   }
 
   // Time cost for moves and other actions
-  if (log.actionType === "Move" || parts.length === 0) {
+  if (log.actionType === "Move" || log.actionType === "ExplorationTravel" || parts.length === 0) {
     if (log.timeConsumed > 0) {
       parts.push(`${log.timeConsumed}t`)
     } else {
@@ -135,7 +143,7 @@ export function summarizeLearnings(knowledge: AgentKnowledge): string {
       pattern: /(\d+)\s*tick.*?travel|travel.*?(\d+)\s*tick/i,
       template: "Travel costs vary by distance",
     },
-    { pattern: /7.*?location|location.*?7/i, template: "7 world locations" },
+    { pattern: /7.*?(location|area)|(?:location|area).*?7/i, template: "7 world areas" },
     { pattern: /storage.*?town/i, template: "Storage at TOWN" },
   ])
   facts.push(...worldFacts)
@@ -197,13 +205,19 @@ export function extractStaticWorldData(state: WorldState): string {
 
   lines.push("WORLD REFERENCE (static):")
 
-  // All locations
-  lines.push(`Locations: ${state.world.locations.join(", ")}`)
+  // All known areas
+  lines.push(`Areas: ${state.exploration.playerState.knownAreaIds.join(", ")}`)
 
-  // Travel costs (all of them, since they don't change)
+  // Travel connections (known connections)
   const travelPairs: string[] = []
-  for (const [route, cost] of Object.entries(state.world.travelCosts)) {
-    travelPairs.push(`${route}=${cost}t`)
+  for (const connId of state.exploration.playerState.knownConnectionIds) {
+    const [from, to] = connId.split("->")
+    const connection = state.exploration.connections.find(
+      (c) => c.fromAreaId === from && c.toAreaId === to
+    )
+    if (connection) {
+      travelPairs.push(`${connId}=${connection.travelTimeMultiplier}t`)
+    }
   }
   lines.push(`Travel: ${travelPairs.join(", ")}`)
 
@@ -211,7 +225,7 @@ export function extractStaticWorldData(state: WorldState): string {
   if (state.world.recipes.length > 0) {
     const recipeList = state.world.recipes.map((r) => {
       const inputs = r.inputs.map((i) => `${i.quantity}x${i.itemId}`).join("+")
-      return `${r.id}@${r.requiredLocation}:${inputs}→${r.output.quantity}x${r.output.itemId}`
+      return `${r.id}@${r.requiredAreaId}:${inputs}→${r.output.quantity}x${r.output.itemId}`
     })
     lines.push(`Recipes: ${recipeList.join("; ")}`)
   }
@@ -221,7 +235,7 @@ export function extractStaticWorldData(state: WorldState): string {
     const contractList = state.world.contracts.map((c) => {
       const reqs = c.requirements.map((r) => `${r.quantity}x${r.itemId}`).join("+")
       const rewards = c.rewards.map((r) => `${r.quantity}x${r.itemId}`).join("+")
-      return `${c.id}@${c.guildLocation}:${reqs}→${rewards}`
+      return `${c.id}@${c.guildAreaId}:${reqs}→${rewards}`
     })
     lines.push(`Contracts: ${contractList.join("; ")}`)
   }
@@ -234,9 +248,10 @@ export function extractStaticWorldData(state: WorldState): string {
  */
 export function formatDynamicState(state: WorldState): string {
   const lines: string[] = []
+  const currentArea = getCurrentAreaId(state)
 
   lines.push("CURRENT STATE:")
-  lines.push(`Location: ${state.player.location}`)
+  lines.push(`Location: ${currentArea}`)
   lines.push(
     `Ticks: ${state.time.sessionRemainingTicks} remaining (used ${state.time.currentTick})`
   )
@@ -287,9 +302,7 @@ export function formatDynamicState(state: WorldState): string {
   }
 
   // Resource nodes at current location (only show what's here and not depleted)
-  const nodesHere = state.world.nodes?.filter(
-    (n) => n.locationId === state.player.location && !n.depleted
-  )
+  const nodesHere = state.world.nodes?.filter((n) => n.areaId === currentArea && !n.depleted)
   if (nodesHere && nodesHere.length > 0) {
     lines.push("Nodes here:")
     for (const node of nodesHere) {
@@ -304,7 +317,7 @@ export function formatDynamicState(state: WorldState): string {
   }
 
   // Enemies at current location
-  const enemiesHere = state.world.enemies.filter((e) => e.location === state.player.location)
+  const enemiesHere = state.world.enemies.filter((e) => e.areaId === currentArea)
   if (enemiesHere.length > 0) {
     const enemyList = enemiesHere.map((e) => `${e.id}[Combat L${e.requiredSkillLevel}]`).join(", ")
     lines.push(`Enemies here: ${enemyList}`)

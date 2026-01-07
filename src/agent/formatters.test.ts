@@ -30,11 +30,11 @@ describe("Formatters", () => {
       expect(formatted).toContain("iron_ore: 5")
     })
 
-    it("should show available locations", () => {
+    it("should show available areas", () => {
       const state = createGatheringWorld("test-seed")
       const formatted = formatWorldState(state)
 
-      expect(formatted).toContain("Available locations:")
+      expect(formatted).toContain("Available areas:")
     })
 
     it("should show nearby resource nodes at current location", () => {
@@ -59,7 +59,7 @@ describe("Formatters", () => {
       const formatted = formatActionLog(log)
 
       expect(formatted).toContain("SUCCESS")
-      expect(formatted).toContain("Move")
+      expect(formatted).toContain("ExplorationTravel") // Move translates to ExplorationTravel
       expect(formatted).toContain("Time used:")
     })
 
@@ -69,7 +69,7 @@ describe("Formatters", () => {
       executeAction(state, { type: "Move", destination: "OUTSKIRTS_MINE" })
 
       // Find a node
-      const node = state.world.nodes?.find((n) => n.locationId === "OUTSKIRTS_MINE" && !n.depleted)
+      const node = state.world.nodes?.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)
       if (!node) throw new Error("No node found for test")
 
       const log = executeAction(state, {
@@ -89,7 +89,7 @@ describe("Formatters", () => {
       executeAction(state, { type: "Enrol", skill: "Mining" })
       executeAction(state, { type: "Move", destination: "OUTSKIRTS_MINE" })
 
-      const node = state.world.nodes?.find((n) => n.locationId === "OUTSKIRTS_MINE" && !n.depleted)
+      const node = state.world.nodes?.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)
       if (!node) throw new Error("No node found for test")
 
       // Find a material we can actually gather (level 1)
@@ -115,7 +115,7 @@ describe("Formatters", () => {
       executeAction(state, { type: "Enrol", skill: "Mining" })
       executeAction(state, { type: "Move", destination: "OUTSKIRTS_MINE" })
 
-      const node = state.world.nodes?.find((n) => n.locationId === "OUTSKIRTS_MINE" && !n.depleted)
+      const node = state.world.nodes?.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)
       if (!node) throw new Error("No node found for test")
 
       const material = node.materials.find((m) => m.requiredLevel <= 1)
@@ -140,7 +140,7 @@ describe("Formatters", () => {
       executeAction(state, { type: "Enrol", skill: "Mining" })
       executeAction(state, { type: "Move", destination: "OUTSKIRTS_MINE" })
 
-      const node = state.world.nodes?.find((n) => n.locationId === "OUTSKIRTS_MINE" && !n.depleted)
+      const node = state.world.nodes?.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)
       if (!node) throw new Error("No node found for test")
 
       const material = node.materials.find((m) => m.requiredLevel <= 1)

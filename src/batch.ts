@@ -2,10 +2,10 @@
  * Batch runner for executing a plan from command line arguments
  */
 
-import { createToyWorld } from "./world.js"
+import { createGatheringWorld } from "./gatheringWorld.js"
 import { executeAction } from "./engine.js"
 import type { Action, ActionLog, WorldState, SkillID, SkillState } from "./types.js"
-import { getTotalXP } from "./types.js"
+import { getTotalXP, getCurrentAreaId } from "./types.js"
 
 interface SessionStats {
   logs: ActionLog[]
@@ -26,7 +26,7 @@ function printState(state: WorldState): void {
 
   console.log(`┌${line}┐`)
   console.log(
-    `│${pad(` 📍 ${state.player.location}  │  ⏱ ${state.time.sessionRemainingTicks} ticks left  │  🎒 ${invStr}`)}`
+    `│${pad(` 📍 ${getCurrentAreaId(state)}  │  ⏱ ${state.time.sessionRemainingTicks} ticks left  │  🎒 ${invStr}`)}`
   )
   console.log(`│${pad(` 📊 ${skills}`)}`)
   console.log(`└${line}┘`)
@@ -387,7 +387,7 @@ function parseAction(cmd: string): Action | null {
   const type = parts[0]
   switch (type) {
     case "move":
-      return { type: "Move", destination: parts[1]?.toUpperCase() as "TOWN" | "MINE" | "FOREST" }
+      return { type: "ExplorationTravel", destinationAreaId: parts[1]?.toUpperCase() }
     case "gather":
       return { type: "Gather", nodeId: parts[1] }
     case "fight":
@@ -397,13 +397,13 @@ function parseAction(cmd: string): Action | null {
     case "store":
       return {
         type: "Store",
-        itemId: parts[1]?.toUpperCase() as "IRON_ORE" | "WOOD_LOG" | "IRON_BAR",
+        itemId: parts[1]?.toUpperCase(),
         quantity: parseInt(parts[2] || "1"),
       }
     case "drop":
       return {
         type: "Drop",
-        itemId: parts[1]?.toUpperCase() as "IRON_ORE" | "WOOD_LOG" | "IRON_BAR",
+        itemId: parts[1]?.toUpperCase(),
         quantity: parseInt(parts[2] || "1"),
       }
     case "accept":
@@ -439,7 +439,7 @@ function main(): void {
   const commands = args.slice(1)
 
   console.log(`=== Plan Execution (seed: ${seed}) ===\n`)
-  const state = createToyWorld(seed)
+  const state = createGatheringWorld(seed)
   const stats: SessionStats = {
     logs: [],
     startingSkills: { ...state.player.skills },

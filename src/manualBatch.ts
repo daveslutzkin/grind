@@ -3,32 +3,39 @@
  * Usage: npx tsx src/manualBatch.ts <seed> [action1] [action2] ...
  */
 
-import { createGatheringWorld, LOCATIONS } from "./gatheringWorld.js"
+import { createGatheringWorld } from "./gatheringWorld.js"
 import { executeAction } from "./engine.js"
-import type { Action, GatherMode } from "./types.js"
+import type { Action, GatherMode, WorldState } from "./types.js"
 import { formatWorldState, formatActionLog } from "./agent/formatters.js"
+
+/**
+ * Get list of known area IDs from state
+ */
+function getKnownAreas(state: WorldState): string[] {
+  return state.exploration.playerState.knownAreaIds
+}
 
 /**
  * Parse gathering-specific actions
  * Format:
- *   move <location>
+ *   move <area>
  *   enrol mining|woodcutting
  *   gather <nodeId> <mode> [focusMaterial]
  *     mode: focus|careful|appraise
  */
-function parseAction(cmd: string): Action | null {
+function parseAction(cmd: string, state: WorldState): Action | null {
   const parts = cmd.trim().split(/\s+/)
   const type = parts[0].toLowerCase()
 
   switch (type) {
     case "move": {
       const dest = parts[1]?.toUpperCase()
-      const validLocations = LOCATIONS.map((l) => l.id)
-      if (!dest || !validLocations.includes(dest)) {
-        console.error(`Invalid location. Valid: ${validLocations.join(", ")}`)
+      const validAreas = getKnownAreas(state)
+      if (!dest || !validAreas.includes(dest)) {
+        console.error(`Invalid area. Known areas: ${validAreas.join(", ")}`)
         return null
       }
-      return { type: "Move", destination: dest }
+      return { type: "ExplorationTravel", destinationAreaId: dest }
     }
 
     case "enrol":
@@ -86,14 +93,14 @@ function main(): void {
     console.log("Usage: npx tsx src/manualBatch.ts <seed> [action1] [action2] ...")
     console.log("")
     console.log("Commands:")
-    console.log("  move <location>              - Move to a location")
+    console.log("  move <area>                  - Travel to an area")
     console.log("  enrol mining|woodcutting     - Enrol in a guild")
     console.log("  gather <node> focus <mat>    - Focus on one material")
     console.log("  gather <node> careful        - Carefully extract all")
     console.log("  gather <node> appraise       - Inspect node contents")
     console.log("")
     console.log(
-      "Locations: TOWN, OUTSKIRTS_MINE, COPSE, OLD_QUARRY, DEEP_FOREST, ABANDONED_SHAFT, ANCIENT_GROVE"
+      "Areas: TOWN, OUTSKIRTS_MINE, COPSE, OLD_QUARRY, DEEP_FOREST, ABANDONED_SHAFT, ANCIENT_GROVE"
     )
     process.exit(1)
   }
@@ -110,7 +117,7 @@ function main(): void {
       console.error("Session time exhausted!")
       break
     }
-    const action = parseAction(cmd)
+    const action = parseAction(cmd, state)
     if (!action) {
       process.exit(1)
     }

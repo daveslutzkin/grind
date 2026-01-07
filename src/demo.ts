@@ -2,10 +2,11 @@
  * Demo script showing a complete session with the simulation engine
  */
 
-import { createToyWorld } from "./world.js"
+import { createGatheringWorld } from "./gatheringWorld.js"
 import { executeAction } from "./engine.js"
 import { evaluatePlan } from "./evaluate.js"
-import type { Action, ActionLog } from "./types.js"
+import type { Action, ActionLog, WorldState } from "./types.js"
+import { getCurrentAreaId } from "./types.js"
 
 function printLog(log: ActionLog): void {
   const status = log.success ? "✓" : "✗"
@@ -31,9 +32,9 @@ function printLog(log: ActionLog): void {
   console.log(`    Time: ${log.timeConsumed} ticks`)
 }
 
-function printState(state: ReturnType<typeof createToyWorld>): void {
+function printState(state: WorldState): void {
   console.log(`\nState:`)
-  console.log(`  Location: ${state.player.location}`)
+  console.log(`  Location: ${getCurrentAreaId(state)}`)
   console.log(
     `  Time: ${state.time.currentTick}/${state.time.currentTick + state.time.sessionRemainingTicks} ticks`
   )
@@ -52,7 +53,7 @@ function printState(state: ReturnType<typeof createToyWorld>): void {
 
 // Create world
 console.log("=== GRIND Simulation Demo ===\n")
-const state = createToyWorld("demo-seed-123")
+const state = createGatheringWorld("demo-seed-123")
 printState(state)
 
 // Define a plan
@@ -60,13 +61,7 @@ const plan: Action[] = [
   { type: "Enrol", skill: "Mining" },
   { type: "Enrol", skill: "Smithing" },
   { type: "AcceptContract", contractId: "miners-guild-1" },
-  { type: "Move", destination: "MINE" },
-  { type: "Gather", nodeId: "iron-node" },
-  { type: "Gather", nodeId: "iron-node" },
-  { type: "Gather", nodeId: "iron-node" },
-  { type: "Gather", nodeId: "iron-node" },
-  { type: "Move", destination: "TOWN" },
-  { type: "Craft", recipeId: "iron-bar-recipe" },
+  { type: "ExplorationTravel", destinationAreaId: "MINE" },
 ]
 
 // Evaluate plan first

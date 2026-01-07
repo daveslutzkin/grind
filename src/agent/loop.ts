@@ -1,6 +1,7 @@
 import { createGatheringWorld } from "../gatheringWorld.js"
 import { executeAction } from "../engine.js"
 import type { WorldState, Action, ActionLog } from "../types.js"
+import { getCurrentAreaId } from "../types.js"
 import { formatWorldState, formatActionLog } from "./formatters.js"
 import {
   summarizeAction,
@@ -22,29 +23,28 @@ import type { AgentSessionStats, AgentKnowledge } from "./output.js"
  * Meaningful actions:
  * - Store: 0 ticks, but only if inventory has non-weapon items
  * - APPRAISE: 1 tick (if at a location with nodes and skill level >= 3)
- * - Move: minimum 3 ticks
+ * - Move: minimum travel time via connections
  * - Enrol: 3 ticks
  * - Gather FOCUS: 5 ticks
  * - Drop: 1 tick (but wasteful, not considered meaningful)
  */
 function hasViableAction(state: WorldState): boolean {
   const remaining = state.time.sessionRemainingTicks
+  const currentArea = getCurrentAreaId(state)
 
   // 0-tick actions: Store is only meaningful if we have non-weapon items in inventory
   // Weapons (CRUDE_WEAPON, IMPROVED_WEAPON) shouldn't be stored as they're needed for combat
   const storableItems = state.player.inventory.filter(
     (i) => i.itemId !== "CRUDE_WEAPON" && i.itemId !== "IMPROVED_WEAPON"
   )
-  if (storableItems.length > 0 && state.player.location === "TOWN") {
+  if (storableItems.length > 0 && currentArea === "TOWN") {
     return true // Can store items
   }
 
   // 1-tick actions: APPRAISE requires L3+, nodes at location
   const hasGatheringSkillL3 =
     state.player.skills.Mining.level >= 3 || state.player.skills.Woodcutting.level >= 3
-  const nodesHere = state.world.nodes?.filter(
-    (n) => n.locationId === state.player.location && !n.depleted
-  )
+  const nodesHere = state.world.nodes?.filter((n) => n.areaId === currentArea && !n.depleted)
   if (remaining >= 1 && hasGatheringSkillL3 && nodesHere && nodesHere.length > 0) {
     return true // Can appraise
   }
@@ -60,14 +60,18 @@ function hasViableAction(state: WorldState): boolean {
     }
   }
 
-  // Check minimum travel cost from current location
-  const travelCosts = Object.entries(state.world.travelCosts)
-    .filter(
-      ([key]) =>
-        key.startsWith(`${state.player.location}->`) || key.endsWith(`->${state.player.location}`)
-    )
-    .map(([, cost]) => cost)
-  const minTravelCost = travelCosts.length > 0 ? Math.min(...travelCosts) : Infinity
+  // Check minimum travel cost from current location via known connections
+  const knownConnections = state.exploration.playerState.knownConnectionIds
+  const outgoingConnections = knownConnections
+    .filter((connId) => connId.startsWith(`${currentArea}->`))
+    .map((connId) => {
+      const destArea = connId.split("->")[1]
+      const connection = state.exploration.connections.find(
+        (c) => c.fromAreaId === currentArea && c.toAreaId === destArea
+      )
+      return connection?.travelTimeMultiplier ?? Infinity
+    })
+  const minTravelCost = outgoingConnections.length > 0 ? Math.min(...outgoingConnections) : Infinity
 
   if (remaining >= minTravelCost) {
     return true // Can travel somewhere

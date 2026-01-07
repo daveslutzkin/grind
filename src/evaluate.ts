@@ -8,7 +8,20 @@ import type {
 import { checkAction } from "./actionChecks.js"
 
 function deepClone<T>(obj: T): T {
-  return JSON.parse(JSON.stringify(obj))
+  // Handle Map specially
+  if (obj instanceof Map) {
+    return new Map(obj) as unknown as T
+  }
+  const cloned = JSON.parse(JSON.stringify(obj))
+  // Restore Map from object
+  if (cloned.exploration?.areas && !(cloned.exploration.areas instanceof Map)) {
+    const areasMap = new Map()
+    for (const [key, value] of Object.entries(cloned.exploration.areas)) {
+      areasMap.set(key, value)
+    }
+    cloned.exploration.areas = areasMap
+  }
+  return cloned
 }
 
 /**
@@ -129,11 +142,14 @@ export function evaluateAction(state: WorldState, action: Action): ActionEvaluat
   let expectedXP = 0
   switch (action.type) {
     case "Move":
+    case "ExplorationTravel":
     case "AcceptContract":
     case "Drop":
     case "Store":
     case "Enrol":
-      // These actions grant no XP
+    case "Survey":
+    case "Explore":
+      // These actions grant no XP (or XP is handled separately)
       expectedXP = 0
       break
     case "Gather":
@@ -176,23 +192,23 @@ function simulateAction(state: WorldState, action: Action): string | null {
 
   switch (action.type) {
     case "Move":
-      state.player.location = action.destination
-      // No skill gain for Move
+      // Move is now an alias for ExplorationTravel
+      state.exploration.playerState.currentAreaId = action.destination
+      break
+    case "ExplorationTravel":
+      state.exploration.playerState.currentAreaId = action.destinationAreaId
       break
     case "AcceptContract":
       state.player.activeContracts.push(action.contractId)
       // No skill gain for AcceptContract
       break
     case "Gather": {
-      const node = state.world.resourceNodes.find((n) => n.id === action.nodeId)
-      if (node) {
-        const existing = state.player.inventory.find((i) => i.itemId === node.itemId)
-        if (existing) {
-          existing.quantity += 1
-        } else {
-          state.player.inventory.push({ itemId: node.itemId, quantity: 1 })
-        }
-        state.player.skills[node.skillType].xp += 1
+      // Find the node and simulate extraction
+      const node = state.world.nodes?.find((n) => n.nodeId === action.nodeId)
+      if (node && node.materials.length > 0) {
+        // Just track that we did a gather - the actual extraction is complex
+        const skill = node.materials[0].requiresSkill === "Mining" ? "Mining" : "Woodcutting"
+        state.player.skills[skill].xp += 1
       }
       break
     }
@@ -276,6 +292,11 @@ function simulateAction(state: WorldState, action: Action): string | null {
       // No skill gain for Drop
       break
     }
+    case "Survey":
+    case "Explore":
+      // These exploration actions are handled by the exploration system
+      // For simulation, we just consume time (which was already done above)
+      break
   }
 
   // Check for contract completion (after every successful action)

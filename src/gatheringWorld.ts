@@ -2,82 +2,85 @@
  * Gathering World Factory
  *
  * Creates the world state for the gathering MVP with:
- * - 7 locations with distance bands
+ * - 7 areas with distance bands
  * - Material definitions with tiers
  * - Node generation with multi-material reserves
  */
 
 import type {
   WorldState,
-  Location,
+  Area,
+  AreaConnection,
   Node,
   MaterialReserve,
   GatheringSkillID,
   RngState,
+  AreaID,
 } from "./types.js"
 import { DistanceBand, NodeType } from "./types.js"
 import { createRng, rollFloat } from "./rng.js"
 
 // ============================================================================
-// Location Definitions
+// Area Definitions (replaces old Location type)
 // ============================================================================
 
-export const LOCATIONS: Location[] = [
+interface AreaDefinition {
+  id: AreaID
+  name: string
+  band: DistanceBand
+  distance: number // Numeric distance for exploration
+  nodePools: string[]
+}
+
+const AREA_DEFINITIONS: AreaDefinition[] = [
   {
     id: "TOWN",
     name: "Town",
     band: DistanceBand.TOWN,
-    travelTicksFromTown: 0,
+    distance: 0,
     nodePools: [],
-    requiredGuildReputation: null,
   },
   {
     id: "OUTSKIRTS_MINE",
     name: "Outskirts Mine",
     band: DistanceBand.NEAR,
-    travelTicksFromTown: 3,
+    distance: 1,
     nodePools: ["near_ore"],
-    requiredGuildReputation: null,
   },
   {
     id: "COPSE",
     name: "Copse",
     band: DistanceBand.NEAR,
-    travelTicksFromTown: 3,
+    distance: 1,
     nodePools: ["near_trees"],
-    requiredGuildReputation: null,
   },
   {
     id: "OLD_QUARRY",
     name: "Old Quarry",
     band: DistanceBand.MID,
-    travelTicksFromTown: 8,
+    distance: 2,
     nodePools: ["mid_ore"],
-    requiredGuildReputation: null,
   },
   {
     id: "DEEP_FOREST",
     name: "Deep Forest",
     band: DistanceBand.MID,
-    travelTicksFromTown: 8,
+    distance: 2,
     nodePools: ["mid_trees"],
-    requiredGuildReputation: null,
   },
   {
     id: "ABANDONED_SHAFT",
     name: "Abandoned Shaft",
     band: DistanceBand.FAR,
-    travelTicksFromTown: 15,
+    distance: 3,
     nodePools: ["far_ore"],
-    requiredGuildReputation: null,
   },
   {
     id: "ANCIENT_GROVE",
     name: "Ancient Grove",
     band: DistanceBand.FAR,
-    travelTicksFromTown: 15,
+    distance: 3,
     nodePools: ["far_trees"],
-    requiredGuildReputation: null,
   },
 ]
 
@@ -179,34 +182,75 @@ const NODE_POOLS: Record<string, NodePoolConfig> = {
 }
 
 // ============================================================================
-// Travel Cost Generation
+// Connection Generation
 // ============================================================================
 
-export function generateTravelCosts(locations: Location[]): Record<string, number> {
-  const costs: Record<string, number> = {}
+function generateConnections(areas: AreaDefinition[]): AreaConnection[] {
+  const connections: AreaConnection[] = []
+  const town = areas.find((a) => a.distance === 0)!
 
-  for (const from of locations) {
-    for (const to of locations) {
-      if (from.id !== to.id) {
-        // Cost is based on Manhattan-style distance through town
-        // If going via town: from.travelTicksFromTown + to.travelTicksFromTown
-        // Direct: we use the simpler model of just the target's distance if from town,
-        // or sum of both distances for cross-travel
-        let cost: number
-        if (from.id === "TOWN") {
-          cost = to.travelTicksFromTown
-        } else if (to.id === "TOWN") {
-          cost = from.travelTicksFromTown
-        } else {
-          // Travel between non-town locations goes through town
-          cost = from.travelTicksFromTown + to.travelTicksFromTown
-        }
-        costs[`${from.id}->${to.id}`] = cost
+  // Connect town to all distance-1 areas
+  for (const area of areas) {
+    if (area.distance === 1) {
+      connections.push({
+        fromAreaId: town.id,
+        toAreaId: area.id,
+        travelTimeMultiplier: 2,
+      })
+      connections.push({
+        fromAreaId: area.id,
+        toAreaId: town.id,
+        travelTimeMultiplier: 2,
+      })
+    }
+  }
+
+  // Connect distance-1 to distance-2
+  const dist1 = areas.filter((a) => a.distance === 1)
+  const dist2 = areas.filter((a) => a.distance === 2)
+  for (const near of dist1) {
+    for (const mid of dist2) {
+      // Connect areas of matching type (mining to mining, woodcutting to woodcutting)
+      const nearIsOre = near.nodePools.some((p) => p.includes("ore"))
+      const midIsOre = mid.nodePools.some((p) => p.includes("ore"))
+      if (nearIsOre === midIsOre) {
+        connections.push({
+          fromAreaId: near.id,
+          toAreaId: mid.id,
+          travelTimeMultiplier: 3,
+        })
+        connections.push({
+          fromAreaId: mid.id,
+          toAreaId: near.id,
+          travelTimeMultiplier: 3,
+        })
       }
     }
   }
 
-  return costs
+  // Connect distance-2 to distance-3
+  const dist3 = areas.filter((a) => a.distance === 3)
+  for (const mid of dist2) {
+    for (const far of dist3) {
+      // Connect areas of matching type
+      const midIsOre = mid.nodePools.some((p) => p.includes("ore"))
+      const farIsOre = far.nodePools.some((p) => p.includes("ore"))
+      if (midIsOre === farIsOre) {
+        connections.push({
+          fromAreaId: mid.id,
+          toAreaId: far.id,
+          travelTimeMultiplier: 4,
+        })
+        connections.push({
+          fromAreaId: far.id,
+          toAreaId: mid.id,
+          travelTimeMultiplier: 4,
+        })
+      }
+    }
+  }
+
+  return connections
 }
 
 // ============================================================================
@@ -231,7 +275,7 @@ function generateMaterialReserve(materialId: string, rng: RngState): MaterialRes
 
 function generateNode(
   nodeId: string,
-  locationId: string,
+  areaId: AreaID,
   poolConfig: NodePoolConfig,
   rng: RngState
 ): Node {
@@ -247,22 +291,22 @@ function generateNode(
   return {
     nodeId,
     nodeType: poolConfig.nodeType,
-    locationId,
+    areaId,
     materials,
     depleted: false,
   }
 }
 
-function generateNodesForLocation(location: Location, rng: RngState): Node[] {
+function generateNodesForArea(areaDef: AreaDefinition, rng: RngState): Node[] {
   const nodes: Node[] = []
 
-  for (const poolId of location.nodePools) {
+  for (const poolId of areaDef.nodePools) {
     const poolConfig = NODE_POOLS[poolId]
     if (!poolConfig) continue
 
     for (let i = 0; i < poolConfig.nodesPerLocation; i++) {
-      const nodeId = `${location.id}-${poolId}-${i}`
-      nodes.push(generateNode(nodeId, location.id, poolConfig, rng))
+      const nodeId = `${areaDef.id}-${poolId}-${i}`
+      nodes.push(generateNode(nodeId, areaDef.id, poolConfig, rng))
     }
   }
 
@@ -272,9 +316,9 @@ function generateNodesForLocation(location: Location, rng: RngState): Node[] {
 function generateAllNodes(rng: RngState): Node[] {
   const allNodes: Node[] = []
 
-  for (const location of LOCATIONS) {
-    const locationNodes = generateNodesForLocation(location, rng)
-    allNodes.push(...locationNodes)
+  for (const areaDef of AREA_DEFINITIONS) {
+    const areaNodes = generateNodesForArea(areaDef, rng)
+    allNodes.push(...areaNodes)
   }
 
   return allNodes
@@ -288,6 +332,32 @@ export function createGatheringWorld(seed: string): WorldState {
   const rng = createRng(seed)
   const nodes = generateAllNodes(rng)
 
+  // Create areas map
+  const areas = new Map<AreaID, Area>()
+  let indexByDistance: Record<number, number> = {}
+
+  for (const areaDef of AREA_DEFINITIONS) {
+    const idx = indexByDistance[areaDef.distance] ?? 0
+    indexByDistance[areaDef.distance] = idx + 1
+
+    const area: Area = {
+      id: areaDef.id,
+      name: areaDef.name,
+      distance: areaDef.distance,
+      generated: true,
+      locations: [], // Exploration locations (not gathering nodes)
+      indexInDistance: idx,
+    }
+    areas.set(areaDef.id, area)
+  }
+
+  // Generate connections
+  const connections = generateConnections(AREA_DEFINITIONS)
+
+  // All areas and connections are known at start for gathering world
+  const knownAreaIds = AREA_DEFINITIONS.map((a) => a.id)
+  const knownConnectionIds = connections.map((c) => `${c.fromAreaId}->${c.toAreaId}`)
+
   return {
     time: {
       currentTick: 0,
@@ -295,7 +365,6 @@ export function createGatheringWorld(seed: string): WorldState {
     },
 
     player: {
-      location: "TOWN",
       inventory: [],
       inventoryCapacity: 20,
       storage: [],
@@ -314,14 +383,70 @@ export function createGatheringWorld(seed: string): WorldState {
     },
 
     world: {
-      locations: LOCATIONS.map((l) => l.id),
-      travelCosts: generateTravelCosts(LOCATIONS),
-      resourceNodes: [], // Legacy - empty for gathering world
       nodes,
-      enemies: [],
-      recipes: [], // TODO: Add smelting/crafting recipes
-      contracts: [],
-      storageLocation: "TOWN",
+      enemies: [
+        {
+          id: "cave-rat",
+          areaId: "OUTSKIRTS_MINE",
+          fightTime: 3,
+          successProbability: 0.7,
+          requiredSkillLevel: 1,
+          lootTable: [
+            { itemId: "COPPER_ORE", quantity: 1, weight: 89 },
+            {
+              itemId: "IMPROVED_WEAPON",
+              quantity: 1,
+              weight: 10,
+              replacesItem: "CRUDE_WEAPON",
+              autoEquip: true,
+            },
+            { itemId: "COMBAT_GUILD_TOKEN", quantity: 1, weight: 1 },
+          ],
+          failureAreaId: "TOWN",
+        },
+      ],
+      recipes: [
+        {
+          id: "iron-bar-recipe",
+          inputs: [{ itemId: "IRON_ORE", quantity: 2 }],
+          output: { itemId: "IRON_BAR", quantity: 1 },
+          craftTime: 3,
+          requiredAreaId: "TOWN",
+          requiredSkillLevel: 1,
+        },
+        {
+          id: "copper-bar-recipe",
+          inputs: [{ itemId: "COPPER_ORE", quantity: 2 }],
+          output: { itemId: "COPPER_BAR", quantity: 1 },
+          craftTime: 2,
+          requiredAreaId: "TOWN",
+          requiredSkillLevel: 1,
+        },
+      ],
+      contracts: [
+        {
+          id: "miners-guild-1",
+          guildAreaId: "TOWN",
+          requirements: [{ itemId: "COPPER_BAR", quantity: 2 }],
+          rewards: [{ itemId: "COPPER_ORE", quantity: 5 }],
+          reputationReward: 10,
+          xpReward: { skill: "Mining", amount: 2 },
+        },
+      ],
+      storageAreaId: "TOWN",
+    },
+
+    exploration: {
+      areas,
+      connections,
+      playerState: {
+        currentAreaId: "TOWN",
+        knownAreaIds,
+        knownLocationIds: [],
+        knownConnectionIds,
+        totalLuckDelta: 0,
+        currentStreak: 0,
+      },
     },
 
     rng,

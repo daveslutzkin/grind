@@ -3,7 +3,6 @@ import type {
   Action,
   ActionLog,
   RngRoll,
-  MoveAction,
   AcceptContractAction,
   GatherAction,
   FightAction,
@@ -32,7 +31,6 @@ import {
 } from "./exploration.js"
 
 import {
-  checkMoveAction,
   checkAcceptContractAction,
   checkGatherAction,
   checkFightAction,
@@ -278,42 +276,6 @@ function checkContractCompletion(state: WorldState): ContractCompletion[] {
   return completions
 }
 
-function executeMove(state: WorldState, action: MoveAction, rolls: RngRoll[]): ActionLog {
-  const tickBefore = state.time.currentTick
-  const fromLocation = state.player.location
-  const destination = action.destination
-
-  // Use shared precondition check
-  const check = checkMoveAction(state, action)
-  if (!check.valid) {
-    return createFailureLog(state, action, check.failureType!)
-  }
-
-  // Check if enough time remaining
-  if (state.time.sessionRemainingTicks < check.timeCost) {
-    return createFailureLog(state, action, "SESSION_ENDED")
-  }
-
-  // Move player
-  state.player.location = destination
-  consumeTime(state, check.timeCost)
-
-  // Check for contract completion (after every successful action)
-  const contractsCompleted = checkContractCompletion(state)
-
-  return {
-    tickBefore,
-    actionType: "Move",
-    parameters: { destination },
-    success: true,
-    timeConsumed: check.timeCost,
-    levelUps: mergeLevelUps([], contractsCompleted),
-    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
-    rngRolls: rolls,
-    stateDeltaSummary: `Moved from ${fromLocation} to ${destination}`,
-  }
-}
-
 export function executeAction(state: WorldState, action: Action): ActionLog {
   const rolls: RngRoll[] = []
 
@@ -324,7 +286,11 @@ export function executeAction(state: WorldState, action: Action): ActionLog {
 
   switch (action.type) {
     case "Move":
-      return executeMove(state, action, rolls)
+      // Move is an alias for ExplorationTravel
+      return executeExplorationTravel(state, {
+        type: "ExplorationTravel",
+        destinationAreaId: action.destination,
+      })
     case "AcceptContract":
       return executeAcceptContract(state, action, rolls)
     case "Gather":
@@ -385,7 +351,6 @@ function executeAcceptContract(
 
 function executeGather(state: WorldState, action: GatherAction, rolls: RngRoll[]): ActionLog {
   const tickBefore = state.time.currentTick
-  const nodeId = action.nodeId
 
   // Use shared precondition check
   const check = checkGatherAction(state, action)
@@ -398,54 +363,8 @@ function executeGather(state: WorldState, action: GatherAction, rolls: RngRoll[]
     return createFailureLog(state, action, "SESSION_ENDED")
   }
 
-  // Check if this is a new multi-material node gather
-  if (action.mode !== undefined && state.world.nodes) {
-    return executeMultiMaterialGather(state, action, rolls, tickBefore, check.timeCost)
-  }
-
-  // Legacy resourceNodes behavior
-  const node = state.world.resourceNodes.find((n) => n.id === nodeId)!
-
-  // Consume time
-  consumeTime(state, check.timeCost)
-
-  // Roll for success
-  const success = roll(state.rng, check.successProbability, `gather:${nodeId}`, rolls)
-
-  if (!success) {
-    return {
-      tickBefore,
-      actionType: "Gather",
-      parameters: { nodeId },
-      success: false,
-      failureType: "GATHER_FAILURE",
-      timeConsumed: check.timeCost,
-      rngRolls: rolls,
-      stateDeltaSummary: `Failed to gather from ${nodeId}`,
-    }
-  }
-
-  // Add item to inventory
-  addToInventory(state, node.itemId, 1)
-
-  // Grant XP (uses node-specific skill type)
-  const levelUps = grantXP(state, node.skillType, 1)
-
-  // Check for contract completion (after every successful action)
-  const contractsCompleted = checkContractCompletion(state)
-
-  return {
-    tickBefore,
-    actionType: "Gather",
-    parameters: { nodeId },
-    success: true,
-    timeConsumed: check.timeCost,
-    skillGained: { skill: node.skillType, amount: 1 },
-    levelUps: mergeLevelUps(levelUps, contractsCompleted),
-    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
-    rngRolls: rolls,
-    stateDeltaSummary: `Gathered 1 ${node.itemId} from ${nodeId}`,
-  }
+  // Execute multi-material node gather
+  return executeMultiMaterialGather(state, action, rolls, tickBefore, check.timeCost)
 }
 
 /**
@@ -607,8 +526,8 @@ function executeFocusExtraction(
   const yieldPercent = calculateFocusYieldPercent(skillLevel, focusMaterial.requiredLevel)
   const focusWaste = 1 - yieldPercent
 
-  // Get variance range based on location
-  const [varMin, varMax] = getVarianceRange(node.locationId)
+  // Get variance range based on area
+  const [varMin, varMax] = getVarianceRange(node.areaId)
   const variance = rollFloat(state.rng, varMin, varMax, `variance_${focusMaterialId}`)
 
   // Base extraction amount (units per 5-tick action)
@@ -984,7 +903,7 @@ function executeTurnInCombatToken(
   if (!state.world.contracts.find((c) => c.id === "combat-guild-1")) {
     state.world.contracts.push({
       id: "combat-guild-1",
-      guildLocation: "TOWN",
+      guildAreaId: "TOWN",
       requirements: [],
       killRequirements: [{ enemyId: "cave-rat", count: 2 }],
       rewards: [],
@@ -1042,7 +961,7 @@ function executeGuildEnrolment(
 
   // Exploration enrolment grants one distance 1 area and connection
   let explorationBenefits: { discoveredAreaId: string; discoveredConnectionId: string } | undefined
-  if (skill === "Exploration" && state.exploration) {
+  if (skill === "Exploration") {
     explorationBenefits = grantExplorationGuildBenefits(state)
   }
 

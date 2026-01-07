@@ -15,7 +15,7 @@ import {
   type GatheringSkillID,
   type CraftingSkillID,
   // New interfaces
-  type Location,
+  type Area,
   type Node,
   type MaterialReserve,
   // Updated GatherAction
@@ -74,36 +74,35 @@ describe("Phase 1: Type System Foundation", () => {
     })
   })
 
-  describe("Location interface", () => {
+  describe("Area interface", () => {
     it("should have required fields", () => {
-      const location: Location = {
+      const area: Area = {
         id: "OUTSKIRTS_MINE",
         name: "Outskirts Mine",
-        band: DistanceBand.NEAR,
-        travelTicksFromTown: 3,
-        nodePools: ["near_ore"],
-        requiredGuildReputation: null,
+        distance: 1,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
       }
 
-      expect(location.id).toBe("OUTSKIRTS_MINE")
-      expect(location.name).toBe("Outskirts Mine")
-      expect(location.band).toBe(DistanceBand.NEAR)
-      expect(location.travelTicksFromTown).toBe(3)
-      expect(location.nodePools).toEqual(["near_ore"])
-      expect(location.requiredGuildReputation).toBeNull()
+      expect(area.id).toBe("OUTSKIRTS_MINE")
+      expect(area.name).toBe("Outskirts Mine")
+      expect(area.distance).toBe(1)
+      expect(area.generated).toBe(true)
+      expect(area.locations).toEqual([])
+      expect(area.indexInDistance).toBe(0)
     })
 
-    it("should allow requiredGuildReputation to be a number", () => {
-      const location: Location = {
-        id: "ANCIENT_GROVE",
-        name: "Ancient Grove",
-        band: DistanceBand.FAR,
-        travelTicksFromTown: 15,
-        nodePools: ["far_trees"],
-        requiredGuildReputation: 50,
+    it("should allow optional name field", () => {
+      const area: Area = {
+        id: "AREA_123",
+        distance: 2,
+        generated: false,
+        locations: [],
+        indexInDistance: 5,
       }
 
-      expect(location.requiredGuildReputation).toBe(50)
+      expect(area.name).toBeUndefined()
     })
   })
 
@@ -146,7 +145,7 @@ describe("Phase 1: Type System Foundation", () => {
       const node: Node = {
         nodeId: "node-001",
         nodeType: NodeType.ORE_VEIN,
-        locationId: "OUTSKIRTS_MINE",
+        areaId: "OUTSKIRTS_MINE",
         materials: [
           {
             materialId: "COPPER_ORE",
@@ -170,7 +169,7 @@ describe("Phase 1: Type System Foundation", () => {
 
       expect(node.nodeId).toBe("node-001")
       expect(node.nodeType).toBe(NodeType.ORE_VEIN)
-      expect(node.locationId).toBe("OUTSKIRTS_MINE")
+      expect(node.areaId).toBe("OUTSKIRTS_MINE")
       expect(node.materials).toHaveLength(2)
       expect(node.depleted).toBe(false)
     })
@@ -179,7 +178,7 @@ describe("Phase 1: Type System Foundation", () => {
       const depletedNode: Node = {
         nodeId: "node-002",
         nodeType: NodeType.TREE_STAND,
-        locationId: "COPSE",
+        areaId: "COPSE",
         materials: [
           {
             materialId: "GREEN_WOOD",

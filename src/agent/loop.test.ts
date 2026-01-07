@@ -34,7 +34,7 @@ describe("Agent Loop", () => {
     it("should initialize world with seed", () => {
       const state = loop.getWorldState()
       expect(state).toBeDefined()
-      expect(state.player.location).toBe("TOWN")
+      expect(state.exploration.playerState.currentAreaId).toBe("TOWN")
       expect(state.time.sessionRemainingTicks).toBe(25)
     })
 
@@ -78,17 +78,17 @@ describe("Agent Loop", () => {
       expect(shortLoop.isComplete()).toBe(true)
     })
 
-    it("should end early when no viable actions with 2 ticks at TOWN", async () => {
+    it("should end early when no viable actions with 1 tick at TOWN", async () => {
       // Create loop with minimal ticks
       const minLoop = createAgentLoop({
         seed: "min-test",
-        ticks: 2,
+        ticks: 1,
         objective: "test",
         verbose: false,
         dryRun: true,
       })
 
-      // At TOWN with 2 ticks, no skills enrolled, min travel cost is 3
+      // At TOWN with 1 tick, no skills enrolled, min travel cost is 2 (TOWN->OUTSKIRTS_MINE)
       // No nodes at TOWN, so no gathering possible
       // Should detect no viable actions and end
       const result = await minLoop.step()

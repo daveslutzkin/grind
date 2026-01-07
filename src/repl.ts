@@ -3,7 +3,7 @@
  */
 
 import * as readline from "readline"
-import { createToyWorld } from "./world.js"
+import { createGatheringWorld } from "./gatheringWorld.js"
 import { executeAction } from "./engine.js"
 import { evaluateAction } from "./evaluate.js"
 import type { Action, ActionLog, WorldState, SkillID, SkillState } from "./types.js"
@@ -45,7 +45,7 @@ function printState(state: WorldState): void {
 
   console.log(`\n┌${line}┐`)
   console.log(
-    `│${pad(` 📍 ${state.player.location}  │  ⏱ ${state.time.sessionRemainingTicks} ticks left  │  ⭐ Rep: ${state.player.guildReputation}  │  📜 Contracts: ${contracts}`)}`
+    `│${pad(` 📍 ${state.exploration.playerState.currentAreaId}  │  ⏱ ${state.time.sessionRemainingTicks} ticks left  │  ⭐ Rep: ${state.player.guildReputation}  │  📜 Contracts: ${contracts}`)}`
   )
   console.log(`├${line}┤`)
   console.log(
@@ -158,17 +158,26 @@ function printHelp(state: WorldState): void {
   console.log("└─────────────────────────────────────────────────────────────┘")
 
   // Show what's available at current location
-  console.log(`\nAt ${state.player.location}:`)
-  const nodes = state.world.resourceNodes.filter((n) => n.location === state.player.location)
-  const enemies = state.world.enemies.filter((e) => e.location === state.player.location)
-  const recipes = state.world.recipes.filter((r) => r.requiredLocation === state.player.location)
-  const contracts = state.world.contracts.filter((c) => c.guildLocation === state.player.location)
+  console.log(`\nAt ${state.exploration.playerState.currentAreaId}:`)
+  const nodes = state.world.nodes.filter(
+    (n) => n.areaId === state.exploration.playerState.currentAreaId
+  )
+  const enemies = state.world.enemies.filter(
+    (e) => e.areaId === state.exploration.playerState.currentAreaId
+  )
+  const recipes = state.world.recipes.filter(
+    (r) => r.requiredAreaId === state.exploration.playerState.currentAreaId
+  )
+  const contracts = state.world.contracts.filter(
+    (c) => c.guildAreaId === state.exploration.playerState.currentAreaId
+  )
 
-  if (nodes.length > 0) console.log(`  Nodes: ${nodes.map((n) => n.id).join(", ")}`)
+  if (nodes.length > 0) console.log(`  Nodes: ${nodes.map((n) => n.nodeId).join(", ")}`)
   if (enemies.length > 0) console.log(`  Enemies: ${enemies.map((e) => e.id).join(", ")}`)
   if (recipes.length > 0) console.log(`  Recipes: ${recipes.map((r) => r.id).join(", ")}`)
   if (contracts.length > 0) console.log(`  Contracts: ${contracts.map((c) => c.id).join(", ")}`)
-  if (state.player.location === state.world.storageLocation) console.log(`  Storage available`)
+  if (state.exploration.playerState.currentAreaId === state.world.storageAreaId)
+    console.log(`  Storage available`)
 }
 
 function printWorld(state: WorldState): void {
@@ -178,19 +187,15 @@ function printWorld(state: WorldState): void {
   console.log("│ LOCATIONS: TOWN, MINE, FOREST                               │")
   console.log("│ Travel costs: TOWN↔MINE: 2, TOWN↔FOREST: 3, MINE↔FOREST: 4  │")
   console.log("├─────────────────────────────────────────────────────────────┤")
-  console.log("│ RESOURCE NODES                                              │")
-  for (const node of state.world.resourceNodes) {
-    console.log(`│   ${node.id} @ ${node.location}`.padEnd(62) + "│")
-    console.log(
-      `│     → ${node.itemId}, ${node.gatherTime} ticks, ${(node.successProbability * 100).toFixed(0)}% success`.padEnd(
-        62
-      ) + "│"
-    )
+  console.log("│ NODES                                                       │")
+  for (const node of state.world.nodes) {
+    console.log(`│   ${node.nodeId} @ ${node.areaId}`.padEnd(62) + "│")
+    console.log(`│     → ${node.materials.map((m) => m.materialId).join(", ")}`.padEnd(62) + "│")
   }
   console.log("├─────────────────────────────────────────────────────────────┤")
   console.log("│ ENEMIES                                                     │")
   for (const enemy of state.world.enemies) {
-    console.log(`│   ${enemy.id} @ ${enemy.location}`.padEnd(62) + "│")
+    console.log(`│   ${enemy.id} @ ${enemy.areaId}`.padEnd(62) + "│")
     const lootStr = enemy.lootTable
       .map((l) => `${l.quantity}x ${l.itemId}(${l.weight}%)`)
       .join(", ")
@@ -203,7 +208,7 @@ function printWorld(state: WorldState): void {
   console.log("├─────────────────────────────────────────────────────────────┤")
   console.log("│ RECIPES                                                     │")
   for (const recipe of state.world.recipes) {
-    console.log(`│   ${recipe.id} @ ${recipe.requiredLocation}`.padEnd(62) + "│")
+    console.log(`│   ${recipe.id} @ ${recipe.requiredAreaId}`.padEnd(62) + "│")
     console.log(
       `│     → ${recipe.inputs.map((i) => `${i.quantity}x ${i.itemId}`).join(" + ")} = ${recipe.output.quantity}x ${recipe.output.itemId}`.padEnd(
         62
@@ -213,7 +218,7 @@ function printWorld(state: WorldState): void {
   console.log("├─────────────────────────────────────────────────────────────┤")
   console.log("│ CONTRACTS                                                   │")
   for (const contract of state.world.contracts) {
-    console.log(`│   ${contract.id} @ ${contract.guildLocation}`.padEnd(62) + "│")
+    console.log(`│   ${contract.id} @ ${contract.guildAreaId}`.padEnd(62) + "│")
     console.log(
       `│     Requires: ${contract.requirements.map((r) => `${r.quantity}x ${r.itemId}`).join(", ")}`.padEnd(
         62
@@ -622,7 +627,7 @@ async function main(): Promise<void> {
   const seed = process.argv[2] || `session-${Date.now()}`
   console.log(`\nSeed: ${seed}`)
 
-  const state = createToyWorld(seed)
+  const state = createGatheringWorld(seed)
 
   // Initialize session tracking
   const stats: SessionStats = {
