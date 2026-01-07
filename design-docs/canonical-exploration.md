@@ -112,14 +112,16 @@ Both Survey and Explore roll for success periodically until something is found (
 #### Roll Frequency
 
 Rolls happen every N ticks, where N decreases with level:
-- **Base interval**: 5 ticks
-- **Reduction**: 0.5 ticks per 5 levels
-- Level 1-4: every 5 ticks
-- Level 5-9: every 4.5 ticks
-- Level 10-14: every 4 ticks
-- Level 15-19: every 3.5 ticks
-- Level 20-24: every 3 ticks
-- etc.
+- **Base interval**: 2 ticks
+- **Reduction**: 0.1 ticks per 10 levels
+- **Minimum**: 1 tick (reached at level 100)
+- Level 1-9: every 2 ticks
+- Level 10-19: every 1.9 ticks
+- Level 20-29: every 1.8 ticks
+- Level 50-59: every 1.5 ticks
+- Level 100+: every 1 tick
+
+Formula: `max(1, 2 - floor(level / 10) × 0.1)`
 
 #### Base Formula
 
@@ -241,10 +243,10 @@ knowledge_bonus:
   - non-connected: 0% (no other distance-1 areas known yet)
 
 success_chance = 5% + 0% - 0% + 5% = 10%
-roll_interval = 5 ticks (level 1-4)
+roll_interval = 2 ticks (level 1-9)
 ```
 
-Expected ticks to find something: 5 ticks / 0.10 = **50 ticks**
+Expected ticks to find something: 2 ticks / 0.10 = **20 ticks**
 
 #### Example 2: Level 5 Explorer at Distance 5
 
@@ -259,10 +261,10 @@ knowledge_bonus:
   - non-connected: 20% × (10/34) = 20% × 0.29 = 5.9%
 
 success_chance = 5% + 20% - 20% + 15% + 5.9% = 25.9%
-roll_interval = 4.5 ticks (level 5-9)
+roll_interval = 2 ticks (level 1-9)
 ```
 
-Expected ticks to find something: 4.5 ticks / 0.259 = **17 ticks**
+Expected ticks to find something: 2 ticks / 0.259 = **8 ticks**
 
 #### Example 3: Level 5 Explorer Pushing to Distance 8
 
@@ -277,10 +279,10 @@ knowledge_bonus:
   - non-connected: 20% × (5/144) = 20% × 0.035 = 0.7%
 
 success_chance = 5% + 20% - 35% + 10% + 0.7% = 0.7%
-roll_interval = 4.5 ticks (level 5-9)
+roll_interval = 2 ticks (level 1-9)
 ```
 
-Expected ticks to find something: 4.5 ticks / 0.007 = **643 ticks** - pushing too far is very slow!
+Expected ticks to find something: 2 ticks / 0.007 = **286 ticks** - pushing too far is very slow!
 
 #### Example 4: No Guild, Distance 1
 
@@ -288,10 +290,10 @@ Expected ticks to find something: 4.5 ticks / 0.007 = **643 ticks** - pushing to
 
 ```
 success_chance = 1% (fixed, no bonuses apply)
-roll_interval = 5 ticks (no level scaling)
+roll_interval = 2 ticks (no level scaling)
 ```
 
-Expected ticks to find something: 5 ticks / 0.01 = **500 ticks** - painfully slow
+Expected ticks to find something: 2 ticks / 0.01 = **200 ticks** - painfully slow
 
 #### Example 5: Level 10 Explorer at Distance 10 (Well-Prepared)
 
@@ -306,10 +308,10 @@ knowledge_bonus:
   - non-connected: 20% × (100/377) = 20% × 0.27 = 5.3%
 
 success_chance = 5% + 45% - 45% + 25% + 5.3% = 35.3%
-roll_interval = 4 ticks (level 10-14)
+roll_interval = 1.9 ticks (level 10-19)
 ```
 
-Expected ticks to find something: 4 ticks / 0.353 = **11 ticks**
+Expected ticks to find something: 1.9 ticks / 0.353 = **5 ticks**
 
 At level = distance, the base and penalty cancel out. Connected knowledge becomes the differentiator.
 
@@ -326,10 +328,10 @@ knowledge_bonus:
   - non-connected: 20% × (200/610) = 20% × 0.33 = 6.6%
 
 success_chance = 5% + 95% - 70% + 40% + 6.6% = 76.6%
-roll_interval = 3 ticks (level 20-24)
+roll_interval = 1.8 ticks (level 20-29)
 ```
 
-Expected ticks to find something: 3 ticks / 0.766 = **4 ticks**
+Expected ticks to find something: 1.8 ticks / 0.766 = **2 ticks**
 
 High level + good knowledge = very efficient exploration even at high distances.
 
@@ -368,15 +370,15 @@ Total areas by distance (Fibonacci starting at 5):
 
 #### Example 9: Fresh Explorer Building Knowledge at Distance 1
 
-**Setup**: Level 1 explorer gradually discovering distance 1 areas. 5 total areas at distance 1.
+**Setup**: Level 1 explorer gradually discovering distance 1 areas. 5 total areas at distance 1. Roll interval = 2 ticks.
 
 | Known | Connected Bonus | Non-Connected Bonus | Total Chance | Ticks/Find |
 |-------|-----------------|---------------------|--------------|------------|
-| 1     | 5% (town)       | 0%                  | 10%          | 50         |
-| 2     | 10%             | 0%                  | 15%          | 33         |
-| 3     | 15%             | 0%                  | 20%          | 25         |
-| 4     | 20%             | 0%                  | 25%          | 20         |
-| 5     | 25%             | 0%                  | 30%          | 17         |
+| 1     | 5% (town)       | 0%                  | 10%          | 20         |
+| 2     | 10%             | 0%                  | 15%          | 13         |
+| 3     | 15%             | 0%                  | 20%          | 10         |
+| 4     | 20%             | 0%                  | 25%          | 8          |
+| 5     | 25%             | 0%                  | 30%          | 7          |
 
 Note: Assumes all distance-1 areas are connected to town (which they are). As knowledge grows, exploration speeds up significantly.
 
