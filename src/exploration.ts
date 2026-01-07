@@ -16,9 +16,10 @@ import type {
   ActionLog,
   RngRoll,
   ExplorationLuckInfo,
+  LevelUp,
 } from "./types.js"
 import { rollFloat, roll, rollNormal } from "./rng.js"
-import { addXPToSkill, ExplorationLocationType } from "./types.js"
+import { ExplorationLocationType } from "./types.js"
 
 // ============================================================================
 // Constants
@@ -595,15 +596,60 @@ function createFailureLog(
 }
 
 /**
- * Grant XP to Exploration skill and return level ups
+ * Get XP threshold to reach the next Exploration level.
+ * Thresholds are set slightly above expected discoveries per distance,
+ * where each discovery (area, location, or connection) grants 1 XP.
+ *
+ * Distance N should get you to approximately level N+1.
+ */
+const EXPLORATION_XP_THRESHOLDS = [
+  25, // L1→L2: D1 has ~20 discoveries
+  35, // L2→L3: D2 has ~31 discoveries
+  55, // L3→L4: D3 has ~50 discoveries
+  90, // L4→L5: D4 has ~81 discoveries
+  140, // L5→L6: D5 has ~131 discoveries
+  225, // L6→L7: D6 has ~212 discoveries
+  360, // L7→L8: D7 has ~342 discoveries
+  575, // L8→L9: D8 has ~554 discoveries
+  925, // L9→L10: D9 has ~897 discoveries
+  1500, // L10→L11: D10 has ~1451 discoveries
+]
+
+function getExplorationXPThreshold(currentLevel: number): number {
+  if (currentLevel <= 0) return EXPLORATION_XP_THRESHOLDS[0]
+  if (currentLevel <= EXPLORATION_XP_THRESHOLDS.length) {
+    return EXPLORATION_XP_THRESHOLDS[currentLevel - 1]
+  }
+  // Beyond defined thresholds, scale by ~1.6x (golden ratio)
+  const lastThreshold = EXPLORATION_XP_THRESHOLDS[EXPLORATION_XP_THRESHOLDS.length - 1]
+  const levelsOver = currentLevel - EXPLORATION_XP_THRESHOLDS.length
+  return Math.round(lastThreshold * Math.pow(1.6, levelsOver))
+}
+
+/**
+ * Grant XP to Exploration skill and return level ups.
+ * Uses Exploration-specific thresholds based on discovery counts.
  */
 function grantExplorationXP(
   state: WorldState,
   amount: number
 ): { levelUps: ActionLog["levelUps"] } {
-  const result = addXPToSkill(state.player.skills.Exploration, amount)
-  state.player.skills.Exploration = result.skill
-  const levelUps = result.levelUps.map((lu) => ({ ...lu, skill: "Exploration" as const }))
+  const levelUps: LevelUp[] = []
+  const skill = state.player.skills.Exploration
+  let { level, xp } = skill
+  xp += amount
+
+  // Check for level-ups using Exploration-specific thresholds
+  let threshold = getExplorationXPThreshold(level)
+  while (xp >= threshold) {
+    const fromLevel = level
+    xp -= threshold
+    level++
+    levelUps.push({ skill: "Exploration", fromLevel, toLevel: level })
+    threshold = getExplorationXPThreshold(level)
+  }
+
+  state.player.skills.Exploration = { level, xp }
   return { levelUps: levelUps.length > 0 ? levelUps : undefined }
 }
 
@@ -790,15 +836,8 @@ export function executeSurvey(state: WorldState, _action: SurveyAction): ActionL
     }
   }
 
-  // Grant XP regardless of success (per spec: "regardless of success")
-  // XP scaled to match spec: "discovering all areas/locations at distance N → level N+1"
-  // At D1: ~58 ticks survey + ~100 ticks explore = ~160 ticks total → 4 XP needed
-  // Rate: ~0.025 XP/tick, so divisor of ~40; using 30 for slight margin
-  const xpGained = Math.max(1, Math.ceil((ticksConsumed * (currentArea.distance + 1)) / 30))
-  const { levelUps } =
-    ticksConsumed > 0 ? grantExplorationXP(state, xpGained) : { levelUps: undefined }
-
   if (!succeeded) {
+    // No discovery = no XP
     return {
       tickBefore,
       actionType: "Survey",
@@ -806,12 +845,14 @@ export function executeSurvey(state: WorldState, _action: SurveyAction): ActionL
       success: false,
       failureType: "SESSION_ENDED",
       timeConsumed: ticksConsumed,
-      skillGained: ticksConsumed > 0 ? { skill: "Exploration", amount: xpGained } : undefined,
-      levelUps,
       rngRolls: rolls,
       stateDeltaSummary: "Survey interrupted - session ended",
     }
   }
+
+  // Grant 2 XP on success: 1 for area discovery + 1 for connection discovery
+  const xpGained = 2
+  const { levelUps } = grantExplorationXP(state, xpGained)
 
   // Calculate luck info
   const luckInfo = updateLuckTracking(exploration, expectedTicks, ticksConsumed)
@@ -1007,13 +1048,8 @@ export function executeExplore(state: WorldState, _action: ExploreAction): Actio
     }
   }
 
-  // Grant XP regardless of success (per spec: "regardless of success")
-  // XP scaled to match spec: "discovering all areas/locations at distance N → level N+1"
-  const xpGained = Math.max(1, Math.ceil((ticksConsumed * (currentArea.distance + 1)) / 30))
-  const { levelUps } =
-    ticksConsumed > 0 ? grantExplorationXP(state, xpGained) : { levelUps: undefined }
-
   if (!succeeded) {
+    // No discovery = no XP
     return {
       tickBefore,
       actionType: "Explore",
@@ -1021,12 +1057,14 @@ export function executeExplore(state: WorldState, _action: ExploreAction): Actio
       success: false,
       failureType: "SESSION_ENDED",
       timeConsumed: ticksConsumed,
-      skillGained: ticksConsumed > 0 ? { skill: "Exploration", amount: xpGained } : undefined,
-      levelUps,
       rngRolls: rolls,
       stateDeltaSummary: "Explore interrupted - session ended",
     }
   }
+
+  // Grant 1 XP on success: 1 discovery (location or connection)
+  const xpGained = 1
+  const { levelUps } = grantExplorationXP(state, xpGained)
 
   // Calculate luck info
   const luckInfo = updateLuckTracking(exploration, expectedTicks, ticksConsumed)

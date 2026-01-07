@@ -719,7 +719,7 @@ describe("ExplorationTravel Action", () => {
 })
 
 describe("XP on Session End", () => {
-  it("should grant XP even when Survey fails due to session end", () => {
+  it("should NOT grant XP when Survey fails due to session end (no discovery)", () => {
     const state = createExplorationWorld("survey-session-end")
     state.player.skills.Exploration = { level: 1, xp: 0 }
     state.time.sessionRemainingTicks = 4 // Just enough for 2 rolls
@@ -727,14 +727,13 @@ describe("XP on Session End", () => {
 
     const log = executeSurvey(state, action)
 
-    // Whether it succeeds or fails, XP should be granted for time spent
-    if (log.timeConsumed > 0) {
-      expect(log.skillGained).toBeDefined()
-      expect(log.skillGained?.amount).toBeGreaterThan(0)
+    // XP is only granted on successful discovery, not on failed attempts
+    if (!log.success) {
+      expect(log.skillGained).toBeUndefined()
     }
   })
 
-  it("should grant XP even when Explore fails due to session end", () => {
+  it("should NOT grant XP when Explore fails due to session end (no discovery)", () => {
     const state = createExplorationWorld("explore-session-end")
     state.player.skills.Exploration = { level: 1, xp: 0 }
     // Move to an area that has content
@@ -746,10 +745,9 @@ describe("XP on Session End", () => {
     const action: ExploreAction = { type: "Explore" }
     const log = executeExplore(state, action)
 
-    // Whether it succeeds or fails, XP should be granted for time spent
-    if (log.timeConsumed > 0) {
-      expect(log.skillGained).toBeDefined()
-      expect(log.skillGained?.amount).toBeGreaterThan(0)
+    // XP is only granted on successful discovery, not on failed attempts
+    if (!log.success) {
+      expect(log.skillGained).toBeUndefined()
     }
   })
 })
