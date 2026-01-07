@@ -2,6 +2,7 @@ import type { ActionLog, WorldState } from "../types.js"
 import type { AgentKnowledge } from "./output.js"
 import { getUnlockedModes, getNextModeUnlock } from "../actionChecks.js"
 import { getCurrentAreaId } from "../types.js"
+import { getPlayerNodeView, getNodeTypeName } from "../visibility.js"
 
 /**
  * Summarize an action and its result into a single concise line.
@@ -306,37 +307,24 @@ export function formatDynamicState(state: WorldState): string {
   if (nodesHere && nodesHere.length > 0) {
     lines.push("Nodes here:")
     for (const node of nodesHere) {
-      // Determine required skill from node type
-      const requiredSkill = node.nodeType === "ORE_VEIN" ? "Mining" : "Woodcutting"
-      const skillLevel = state.player.skills[requiredSkill]?.level ?? 0
-      const hasSkill = skillLevel > 0
-      const isAppraised = state.player.appraisedNodeIds.includes(node.nodeId)
+      const view = getPlayerNodeView(node, state)
 
-      // Can only see materials up to current level + 2
-      const maxVisibleLevel = skillLevel + 2
-      const visibleMaterials = node.materials.filter((m) => m.requiredLevel <= maxVisibleLevel)
-
-      if (!hasSkill) {
-        // No skill - just show node type
-        const nodeTypeName = node.nodeType === "ORE_VEIN" ? "Mining node" : "Woodcutting node"
-        lines.push(`  ${node.nodeId}: ${nodeTypeName}`)
-      } else if (visibleMaterials.length === 0) {
-        // Has skill but no visible materials (all too high level)
-        const nodeTypeName = node.nodeType === "ORE_VEIN" ? "Mining node" : "Woodcutting node"
-        lines.push(`  ${node.nodeId}: ${nodeTypeName}`)
-      } else if (!isAppraised) {
+      if (view.visibilityTier === "none" || view.visibleMaterials.length === 0) {
+        // No skill or no visible materials - just show node type
+        lines.push(`  ${view.nodeId}: ${getNodeTypeName(view.nodeType)}`)
+      } else if (view.visibilityTier === "materials") {
         // Has skill but not appraised - show material names only
-        const mats = visibleMaterials.map((m) => m.materialId).join(", ")
-        lines.push(`  ${node.nodeId}(${node.nodeType}): ${mats}`)
+        const mats = view.visibleMaterials.map((m) => m.materialId).join(", ")
+        lines.push(`  ${view.nodeId}(${view.nodeType}): ${mats}`)
       } else {
         // Appraised - show full details with counts
-        const mats = visibleMaterials
+        const mats = view.visibleMaterials
           .map((m) => {
             const req = m.requiredLevel > 0 ? `[${m.requiresSkill}L${m.requiredLevel}]` : ""
             return `${m.materialId}:${m.remainingUnits}/${m.maxUnitsInitial}${req}`
           })
           .join(", ")
-        lines.push(`  ${node.nodeId}(${node.nodeType}): ${mats}`)
+        lines.push(`  ${view.nodeId}(${view.nodeType}): ${mats}`)
       }
     }
   }
