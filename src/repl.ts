@@ -141,14 +141,14 @@ function printHelp(state: WorldState): void {
   console.log("\n┌─────────────────────────────────────────────────────────────┐")
   console.log("│ AVAILABLE ACTIONS                                           │")
   console.log("├─────────────────────────────────────────────────────────────┤")
-  console.log("│ move <location>     - Move to TOWN, MINE, or FOREST         │")
-  console.log("│ gather <node>       - Gather from iron-node or wood-node    │")
-  console.log("│ fight <enemy>       - Fight cave-rat                        │")
-  console.log("│ craft <recipe>      - Craft iron-bar-recipe                 │")
-  console.log("│ store <item> <qty>  - Store items (e.g., store IRON_ORE 2)  │")
-  console.log("│ drop <item> <qty>   - Drop items (e.g., drop IRON_ORE 1)    │")
-  console.log("│ accept <contract>   - Accept miners-guild-1                 │")
-  console.log("│ enrol <skill>       - Enrol in a skill guild (3 ticks)      │")
+  console.log("│ enrol <skill>       - Enrol in guild (Exploration first!)   │")
+  console.log("│ move <area>         - Travel to a known area                │")
+  console.log("│ gather <node>       - Gather from a node at current area    │")
+  console.log("│ fight <enemy>       - Fight an enemy at current area        │")
+  console.log("│ craft <recipe>      - Craft with a recipe at TOWN           │")
+  console.log("│ store <item> <qty>  - Store items at TOWN                   │")
+  console.log("│ drop <item> <qty>   - Drop items                            │")
+  console.log("│ accept <contract>   - Accept a contract                     │")
   console.log("├─────────────────────────────────────────────────────────────┤")
   console.log("│ state               - Show current world state              │")
   console.log("│ world               - Show world data (nodes, enemies, etc) │")
@@ -181,20 +181,33 @@ function printHelp(state: WorldState): void {
 }
 
 function printWorld(state: WorldState): void {
+  const knownAreas = state.exploration.playerState.knownAreaIds
   console.log("\n┌─────────────────────────────────────────────────────────────┐")
   console.log("│ WORLD DATA                                                  │")
   console.log("├─────────────────────────────────────────────────────────────┤")
-  console.log("│ LOCATIONS: TOWN, MINE, FOREST                               │")
-  console.log("│ Travel costs: TOWN↔MINE: 2, TOWN↔FOREST: 3, MINE↔FOREST: 4  │")
+  console.log(`│ Known areas: ${knownAreas.join(", ")}`.padEnd(62) + "│")
+  console.log(`│ Total areas in world: ${state.exploration.areas.size}`.padEnd(62) + "│")
   console.log("├─────────────────────────────────────────────────────────────┤")
-  console.log("│ NODES                                                       │")
-  for (const node of state.world.nodes) {
-    console.log(`│   ${node.nodeId} @ ${node.areaId}`.padEnd(62) + "│")
-    console.log(`│     → ${node.materials.map((m) => m.materialId).join(", ")}`.padEnd(62) + "│")
+  console.log("│ NODES AT KNOWN AREAS                                        │")
+  for (const areaId of knownAreas) {
+    const areaNodes = state.world.nodes.filter((n) => n.areaId === areaId)
+    if (areaNodes.length > 0) {
+      console.log(`│   ${areaId}:`.padEnd(62) + "│")
+      for (const node of areaNodes) {
+        console.log(`│     ${node.nodeId} (${node.nodeType})`.padEnd(62) + "│")
+        console.log(
+          `│       → ${node.materials.map((m) => m.materialId).join(", ")}`.padEnd(62) + "│"
+        )
+      }
+    }
   }
   console.log("├─────────────────────────────────────────────────────────────┤")
-  console.log("│ ENEMIES                                                     │")
-  for (const enemy of state.world.enemies) {
+  console.log("│ ENEMIES AT KNOWN AREAS                                      │")
+  const knownEnemies = state.world.enemies.filter((e) => knownAreas.includes(e.areaId))
+  if (knownEnemies.length === 0) {
+    console.log("│   (no enemies discovered yet)".padEnd(62) + "│")
+  }
+  for (const enemy of knownEnemies) {
     console.log(`│   ${enemy.id} @ ${enemy.areaId}`.padEnd(62) + "│")
     const lootStr = enemy.lootTable
       .map((l) => `${l.quantity}x ${l.itemId}(${l.weight}%)`)
@@ -515,18 +528,23 @@ function printSummary(state: WorldState, stats: SessionStats): void {
   console.log(`╚${dline}╝`)
 }
 
-function parseAction(input: string): Action | null {
+function parseAction(input: string, state: WorldState): Action | null {
   const parts = input.trim().toLowerCase().split(/\s+/)
   const cmd = parts[0]
 
   switch (cmd) {
     case "move": {
       const dest = parts[1]?.toUpperCase()
-      if (!dest || !["TOWN", "MINE", "FOREST"].includes(dest)) {
-        console.log("Usage: move <TOWN|MINE|FOREST>")
+      // Check if it's a partially typed area name
+      const knownAreas = state.exploration.playerState.knownAreaIds
+      const matchedArea = dest
+        ? knownAreas.find((a) => a.toUpperCase() === dest || a.toUpperCase().startsWith(dest))
+        : undefined
+      if (!matchedArea) {
+        console.log(`Usage: move <area>  (known areas: ${knownAreas.join(", ")})`)
         return null
       }
-      return { type: "Move", destination: dest as "TOWN" | "MINE" | "FOREST" }
+      return { type: "ExplorationTravel", destinationAreaId: matchedArea }
     }
 
     case "gather": {
@@ -597,10 +615,14 @@ function parseAction(input: string): Action | null {
     case "enroll": {
       const skillName = parts[1]
       if (!skillName) {
-        console.log("Usage: enrol <skill>  (Mining, Woodcutting, Combat, Smithing)")
+        console.log("Usage: enrol <skill>  (Exploration, Mining, Woodcutting, Combat, Smithing)")
         return null
       }
-      const skillMap: Record<string, "Mining" | "Woodcutting" | "Combat" | "Smithing"> = {
+      const skillMap: Record<
+        string,
+        "Exploration" | "Mining" | "Woodcutting" | "Combat" | "Smithing"
+      > = {
+        exploration: "Exploration",
         mining: "Mining",
         woodcutting: "Woodcutting",
         combat: "Combat",
@@ -608,7 +630,7 @@ function parseAction(input: string): Action | null {
       }
       const skill = skillMap[skillName.toLowerCase()]
       if (!skill) {
-        console.log("Invalid skill. Choose: Mining, Woodcutting, Combat, Smithing")
+        console.log("Invalid skill. Choose: Exploration, Mining, Woodcutting, Combat, Smithing")
         return null
       }
       return { type: "Enrol", skill }
@@ -669,7 +691,7 @@ async function main(): Promise<void> {
       continue
     }
 
-    const action = parseAction(input)
+    const action = parseAction(input, state)
     if (!action) {
       if (trimmed !== "") {
         console.log("Unknown command. Type 'help' for available actions.")
