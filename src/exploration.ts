@@ -791,7 +791,10 @@ export function executeSurvey(state: WorldState, _action: SurveyAction): ActionL
   }
 
   // Grant XP regardless of success (per spec: "regardless of success")
-  const xpGained = ticksConsumed * (currentArea.distance + 1)
+  // XP scaled to match spec: "discovering all areas/locations at distance N → level N+1"
+  // At D1: ~58 ticks survey + ~100 ticks explore = ~160 ticks total → 4 XP needed
+  // Rate: ~0.025 XP/tick, so divisor of ~40; using 30 for slight margin
+  const xpGained = Math.max(1, Math.ceil((ticksConsumed * (currentArea.distance + 1)) / 30))
   const { levelUps } =
     ticksConsumed > 0 ? grantExplorationXP(state, xpGained) : { levelUps: undefined }
 
@@ -1005,7 +1008,8 @@ export function executeExplore(state: WorldState, _action: ExploreAction): Actio
   }
 
   // Grant XP regardless of success (per spec: "regardless of success")
-  const xpGained = ticksConsumed * (currentArea.distance + 1)
+  // XP scaled to match spec: "discovering all areas/locations at distance N → level N+1"
+  const xpGained = Math.max(1, Math.ceil((ticksConsumed * (currentArea.distance + 1)) / 30))
   const { levelUps } =
     ticksConsumed > 0 ? grantExplorationXP(state, xpGained) : { levelUps: undefined }
 
