@@ -89,7 +89,7 @@ describe("Formatters", () => {
       discoverAllLocations(state, areaId) // Must discover locations to see nodes
       const formatted = formatWorldState(state)
 
-      expect(formatted).toContain("Nodes:")
+      expect(formatted).toContain("Nodes (")
     })
   })
 

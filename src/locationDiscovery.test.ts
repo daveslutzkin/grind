@@ -77,9 +77,10 @@ describe("Location Discovery", () => {
       // But locations are NOT discovered yet
       expect(state.exploration.playerState.knownLocationIds.length).toBe(0)
 
-      // Format state should NOT show resource nodes
+      // Format state should NOT show resource nodes (shows unexplored instead)
       const formatted = formatWorldState(state)
-      expect(formatted).not.toContain("Nodes:")
+      expect(formatted).toContain("unexplored")
+      expect(formatted).not.toContain("Ore vein")
     })
 
     it("should show nodes AFTER their location is discovered", () => {
@@ -95,7 +96,8 @@ describe("Location Discovery", () => {
 
       // Now format state SHOULD show resource nodes
       const formatted = formatWorldState(state)
-      expect(formatted).toContain("Nodes:")
+      expect(formatted).toContain("Nodes (")
+      expect(formatted).toContain("Ore vein")
     })
   })
 
