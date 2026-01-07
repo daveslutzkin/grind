@@ -76,19 +76,39 @@ export function formatWorldState(state: WorldState): string {
     }
   }
 
-  // Travel - available connections
+  // Travel - available connections (bidirectional - can go back the way you came)
   const knownConnections = state.exploration.playerState.knownConnectionIds
-  const outgoing = knownConnections
-    .filter((connId) => connId.startsWith(`${currentArea}->`))
-    .map((connId) => {
-      const dest = connId.split("->")[1]
-      const conn = state.exploration.connections.find(
-        (c) => c.fromAreaId === currentArea && c.toAreaId === dest
+  const destinations = new Map<string, number>() // dest -> travel time
+
+  for (const connId of knownConnections) {
+    const [from, to] = connId.split("->")
+    let dest: string | null = null
+    let conn
+
+    if (from === currentArea) {
+      // Outgoing connection: currentArea -> somewhere
+      dest = to
+      conn = state.exploration.connections.find(
+        (c) => c.fromAreaId === currentArea && c.toAreaId === to
       )
-      return `${dest} (${conn?.travelTimeMultiplier ?? 1}t)`
-    })
-  if (outgoing.length > 0) {
-    lines.push(`Travel: ${outgoing.join(", ")}`)
+    } else if (to === currentArea) {
+      // Incoming connection: somewhere -> currentArea (can travel back)
+      dest = from
+      conn = state.exploration.connections.find(
+        (c) => c.fromAreaId === from && c.toAreaId === currentArea
+      )
+    }
+
+    if (dest && !destinations.has(dest)) {
+      destinations.set(dest, conn?.travelTimeMultiplier ?? 1)
+    }
+  }
+
+  if (destinations.size > 0) {
+    const travelList = Array.from(destinations.entries())
+      .map(([dest, time]) => `${dest} (${time}t)`)
+      .join(", ")
+    lines.push(`Travel: ${travelList}`)
   } else {
     lines.push("Travel: none known")
   }
