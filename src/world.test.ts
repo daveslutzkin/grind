@@ -7,7 +7,7 @@
  * - Node generation with multi-material reserves
  */
 
-import { createGatheringWorld, MATERIALS } from "./gatheringWorld.js"
+import { createWorld, MATERIALS } from "./world.js"
 import { NodeType, type Node } from "./types.js"
 
 describe("Phase 2: World Factory", () => {
@@ -52,9 +52,9 @@ describe("Phase 2: World Factory", () => {
     })
   })
 
-  describe("createGatheringWorld", () => {
+  describe("createWorld", () => {
     it("should create a valid world state", () => {
-      const world = createGatheringWorld("test-seed")
+      const world = createWorld("test-seed")
 
       expect(world.time.currentTick).toBe(0)
       expect(world.time.sessionRemainingTicks).toBeGreaterThan(0)
@@ -62,7 +62,7 @@ describe("Phase 2: World Factory", () => {
     })
 
     it("should have all 6 skills initialized at level 0", () => {
-      const world = createGatheringWorld("test-seed")
+      const world = createWorld("test-seed")
 
       expect(world.player.skills.Mining.level).toBe(0)
       expect(world.player.skills.Woodcutting.level).toBe(0)
@@ -73,7 +73,7 @@ describe("Phase 2: World Factory", () => {
     })
 
     it("should have 7 areas in exploration system", () => {
-      const world = createGatheringWorld("test-seed")
+      const world = createWorld("test-seed")
 
       // Areas are now in the exploration system
       expect(world.exploration.areas.size).toBe(7)
@@ -84,7 +84,7 @@ describe("Phase 2: World Factory", () => {
     })
 
     it("should generate nodes for each gathering location", () => {
-      const world = createGatheringWorld("test-seed")
+      const world = createWorld("test-seed")
 
       // Should have nodes (stored in world.world.nodes)
       expect(world.world.nodes).toBeDefined()
@@ -92,9 +92,9 @@ describe("Phase 2: World Factory", () => {
     })
 
     it("should generate nodes deterministically based on seed", () => {
-      const world1 = createGatheringWorld("seed-123")
-      const world2 = createGatheringWorld("seed-123")
-      const world3 = createGatheringWorld("different-seed")
+      const world1 = createWorld("seed-123")
+      const world2 = createWorld("seed-123")
+      const world3 = createWorld("different-seed")
 
       // Same seed should produce same nodes
       expect(world1.world.nodes).toEqual(world2.world.nodes)
@@ -104,7 +104,7 @@ describe("Phase 2: World Factory", () => {
     })
 
     it("should generate nodes with 2+ materials", () => {
-      const world = createGatheringWorld("test-seed")
+      const world = createWorld("test-seed")
 
       world.world.nodes!.forEach((node: Node) => {
         expect(node.materials.length).toBeGreaterThanOrEqual(2)
@@ -112,7 +112,7 @@ describe("Phase 2: World Factory", () => {
     })
 
     it("should generate ore nodes in mining areas", () => {
-      const world = createGatheringWorld("test-seed")
+      const world = createWorld("test-seed")
 
       const miningAreaIds = ["OUTSKIRTS_MINE", "OLD_QUARRY", "ABANDONED_SHAFT"]
 
@@ -124,7 +124,7 @@ describe("Phase 2: World Factory", () => {
     })
 
     it("should generate tree nodes in woodcutting areas", () => {
-      const world = createGatheringWorld("test-seed")
+      const world = createWorld("test-seed")
 
       const woodAreaIds = ["COPSE", "DEEP_FOREST", "ANCIENT_GROVE"]
 
@@ -136,7 +136,7 @@ describe("Phase 2: World Factory", () => {
     })
 
     it("should not generate FAR-only materials in NEAR areas", () => {
-      const world = createGatheringWorld("test-seed")
+      const world = createWorld("test-seed")
 
       const nearAreaIds = ["OUTSKIRTS_MINE", "COPSE"]
 

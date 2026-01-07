@@ -3,7 +3,7 @@
  * Usage: npx tsx src/manualBatch.ts <seed> [action1] [action2] ...
  */
 
-import { createGatheringWorld } from "./gatheringWorld.js"
+import { createWorld } from "./world.js"
 import { executeAction } from "./engine.js"
 import type { Action, GatherMode, WorldState } from "./types.js"
 import { formatWorldState, formatActionLog } from "./agent/formatters.js"
@@ -109,7 +109,7 @@ function main(): void {
   const commands = args.slice(1)
 
   // Create world and execute all actions
-  const state = createGatheringWorld(seed)
+  const state = createWorld(seed)
   let lastLog = null
 
   for (const cmd of commands) {

@@ -2,7 +2,7 @@
  * Demo script showing a complete session with the simulation engine
  */
 
-import { createGatheringWorld } from "./gatheringWorld.js"
+import { createWorld } from "./world.js"
 import { executeAction } from "./engine.js"
 import { evaluatePlan } from "./evaluate.js"
 import type { Action, ActionLog, WorldState } from "./types.js"
@@ -53,7 +53,7 @@ function printState(state: WorldState): void {
 
 // Create world
 console.log("=== GRIND Simulation Demo ===\n")
-const state = createGatheringWorld("demo-seed-123")
+const state = createWorld("demo-seed-123")
 printState(state)
 
 // Define a plan

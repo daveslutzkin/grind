@@ -1,4 +1,4 @@
-import { createGatheringWorld } from "../gatheringWorld.js"
+import { createWorld } from "../world.js"
 import { executeAction } from "../engine.js"
 import type { WorldState, Action, ActionLog } from "../types.js"
 import { getCurrentAreaId } from "../types.js"
@@ -206,7 +206,7 @@ function categorizeLearning(learning: string): keyof AgentKnowledge | null {
  */
 export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
   // Initialize world
-  const state = createGatheringWorld(config.seed)
+  const state = createWorld(config.seed)
   state.time.sessionRemainingTicks = config.ticks
 
   // Track stats

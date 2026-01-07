@@ -9,7 +9,7 @@ import {
 import { formatWorldState } from "./formatters.js"
 import { GatherMode, type ActionLog } from "../types.js"
 import type { AgentKnowledge } from "./output.js"
-import { createGatheringWorld } from "../gatheringWorld.js"
+import { createWorld } from "../world.js"
 
 describe("summarizeAction", () => {
   it("should summarize a successful gather action", () => {
@@ -233,7 +233,7 @@ describe("summarizeLearnings", () => {
 
 describe("extractStaticWorldData", () => {
   it("should extract locations and travel costs", () => {
-    const state = createGatheringWorld("test-seed")
+    const state = createWorld("test-seed")
 
     const staticData = extractStaticWorldData(state)
 
@@ -244,7 +244,7 @@ describe("extractStaticWorldData", () => {
   })
 
   it("should include recipes if present", () => {
-    const state = createGatheringWorld("test-seed")
+    const state = createWorld("test-seed")
     // Add a test recipe
     state.world.recipes.push({
       id: "TEST_RECIPE",
@@ -262,7 +262,7 @@ describe("extractStaticWorldData", () => {
   })
 
   it("should include contracts if present", () => {
-    const state = createGatheringWorld("test-seed")
+    const state = createWorld("test-seed")
 
     const staticData = extractStaticWorldData(state)
 
@@ -275,7 +275,7 @@ describe("extractStaticWorldData", () => {
 
 describe("formatDynamicState", () => {
   it("should format current state compactly", () => {
-    const state = createGatheringWorld("test-seed")
+    const state = createWorld("test-seed")
     state.time.sessionRemainingTicks = 45
     state.time.currentTick = 5
 
@@ -288,7 +288,7 @@ describe("formatDynamicState", () => {
   })
 
   it("should show inventory compactly", () => {
-    const state = createGatheringWorld("test-seed")
+    const state = createWorld("test-seed")
     state.player.inventory = [
       { itemId: "COPPER_ORE", quantity: 10 },
       { itemId: "TIN_ORE", quantity: 5 },
@@ -302,7 +302,7 @@ describe("formatDynamicState", () => {
   })
 
   it("should show skills compactly", () => {
-    const state = createGatheringWorld("test-seed")
+    const state = createWorld("test-seed")
     state.player.skills.Mining = { level: 3, xp: 15 }
 
     const dynamicState = formatDynamicState(state)
@@ -312,7 +312,7 @@ describe("formatDynamicState", () => {
   })
 
   it("should show nodes at current location", () => {
-    const state = createGatheringWorld("test-seed")
+    const state = createWorld("test-seed")
     state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
 
     const dynamicState = formatDynamicState(state)
@@ -322,7 +322,7 @@ describe("formatDynamicState", () => {
   })
 
   it("should be more compact than full state", () => {
-    const state = createGatheringWorld("test-seed")
+    const state = createWorld("test-seed")
     state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
     state.player.skills.Mining = { level: 2, xp: 10 }
 

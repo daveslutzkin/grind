@@ -1,12 +1,12 @@
 import { executeAction } from "./engine.js"
 import { evaluatePlan } from "./evaluate.js"
-import { createGatheringWorld } from "./gatheringWorld.js"
+import { createWorld } from "./world.js"
 import type { Action, ActionLog, LocationID } from "./types.js"
 import { GatherMode } from "./types.js"
 
 describe("Integration: Full Session Flow", () => {
   it("should run a complete session with various actions", () => {
-    const state = createGatheringWorld("integration-test-seed")
+    const state = createWorld("integration-test-seed")
     // Set skills to level 1 to allow actions
     state.player.skills.Mining = { level: 1, xp: 0 }
     state.player.skills.Smithing = { level: 1, xp: 0 }
@@ -79,7 +79,7 @@ describe("Integration: Full Session Flow", () => {
   })
 
   it("should demonstrate logging shows what happened and why", () => {
-    const state = createGatheringWorld("logging-test")
+    const state = createWorld("logging-test")
     state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
     const logs: ActionLog[] = []
 
@@ -124,7 +124,7 @@ describe("Integration: Full Session Flow", () => {
   })
 
   it("should demonstrate plan evaluation finds violations", () => {
-    const state = createGatheringWorld("plan-test")
+    const state = createWorld("plan-test")
     state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
 
     // Get a node from the mine
@@ -169,7 +169,7 @@ describe("Integration: Full Session Flow", () => {
   })
 
   it("should demonstrate session ends when ticks run out", () => {
-    const state = createGatheringWorld("session-end-test")
+    const state = createWorld("session-end-test")
     const logs: ActionLog[] = []
 
     // Keep moving until session ends
@@ -196,7 +196,7 @@ describe("Integration: Full Session Flow", () => {
 
   it("should show how dominant strategies might form", () => {
     // This test demonstrates that we can evaluate different strategies
-    const state = createGatheringWorld("strategy-test")
+    const state = createWorld("strategy-test")
     state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
     state.player.skills.Combat = { level: 1, xp: 0 } // Need level 1 to fight
     state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
@@ -261,7 +261,7 @@ describe("Integration: Full Session Flow", () => {
   })
 
   it("should demonstrate contract completion consumes items and cannot be exploited", () => {
-    const state = createGatheringWorld("contract-exploit-test")
+    const state = createWorld("contract-exploit-test")
 
     // Give player 2 COPPER_BAR directly (simulating they crafted them)
     state.player.inventory.push({ itemId: "COPPER_BAR", quantity: 2 })
@@ -323,7 +323,7 @@ describe("Integration: Full Session Flow", () => {
   })
 
   it.skip("should not complete contract if rewards would overflow inventory", () => {
-    const state = createGatheringWorld("true-overflow-test")
+    const state = createWorld("true-overflow-test")
 
     // Create a custom contract that would overflow
     // Requires: 2 IRON_BAR (1 slot)
@@ -390,7 +390,7 @@ describe("Integration: Full Session Flow", () => {
   })
 
   it("should include contract XP level-ups in ActionLog.levelUps", () => {
-    const state = createGatheringWorld("contract-levelup-test")
+    const state = createWorld("contract-levelup-test")
     // Set Smithing to level 1 so contract XP causes level up from 1->2
     state.player.skills.Smithing = { level: 1, xp: 0 }
 
@@ -441,7 +441,7 @@ describe("Integration: Full Session Flow", () => {
   })
 
   it("should merge action level-ups with contract level-ups", () => {
-    const state = createGatheringWorld("merged-levelup-test")
+    const state = createWorld("merged-levelup-test")
     // Set skills to level 1 so we can do actions and level up
     state.player.skills.Mining = { level: 1, xp: 0 }
     state.player.skills.Combat = { level: 1, xp: 0 }
@@ -504,9 +504,9 @@ describe("Integration: Full Session Flow", () => {
 // Helper function to run a standard session
 function runSession(seed: string): {
   logs: ActionLog[]
-  state: ReturnType<typeof createGatheringWorld>
+  state: ReturnType<typeof createWorld>
 } {
-  const state = createGatheringWorld(seed)
+  const state = createWorld(seed)
   // Set skills to level 1 to allow actions
   state.player.skills.Mining = { level: 1, xp: 0 }
   state.player.skills.Combat = { level: 1, xp: 0 }

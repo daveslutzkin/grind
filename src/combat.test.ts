@@ -1,11 +1,11 @@
 import { executeAction } from "./engine.js"
-import { createGatheringWorld } from "./gatheringWorld.js"
+import { createWorld } from "./world.js"
 import type { FightAction, GuildEnrolmentAction, ItemStack, WorldState } from "./types.js"
 
 describe("Combat Progression", () => {
   describe("New item types", () => {
     it("should allow CRUDE_WEAPON as a valid ItemID", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       const item: ItemStack = { itemId: "CRUDE_WEAPON", quantity: 1 }
       state.player.inventory.push(item)
 
@@ -13,7 +13,7 @@ describe("Combat Progression", () => {
     })
 
     it("should allow IMPROVED_WEAPON as a valid ItemID", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       const item: ItemStack = { itemId: "IMPROVED_WEAPON", quantity: 1 }
       state.player.inventory.push(item)
 
@@ -21,7 +21,7 @@ describe("Combat Progression", () => {
     })
 
     it("should allow COMBAT_GUILD_TOKEN as a valid ItemID", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       const item: ItemStack = { itemId: "COMBAT_GUILD_TOKEN", quantity: 1 }
       state.player.inventory.push(item)
 
@@ -31,7 +31,7 @@ describe("Combat Progression", () => {
 
   describe("Combat enrolment grants CrudeWeapon", () => {
     it("should grant CRUDE_WEAPON when enrolling in Combat", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Combat" }
 
       const log = executeAction(state, action)
@@ -44,7 +44,7 @@ describe("Combat Progression", () => {
     })
 
     it("should NOT grant weapon when enrolling in Mining", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
       executeAction(state, action)
@@ -54,7 +54,7 @@ describe("Combat Progression", () => {
     })
 
     it("should NOT grant weapon when enrolling in other skills", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
 
       executeAction(state, { type: "Enrol", skill: "Woodcutting" })
       executeAction(state, { type: "Enrol", skill: "Smithing" })
@@ -66,14 +66,14 @@ describe("Combat Progression", () => {
 
   describe("Weapon equipment system", () => {
     it("should have equippedWeapon field in player state", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
 
       expect(state.player).toHaveProperty("equippedWeapon")
       expect(state.player.equippedWeapon).toBeNull()
     })
 
     it("should auto-equip CRUDE_WEAPON when granted from Combat enrolment", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Combat" }
 
       executeAction(state, action)
@@ -84,7 +84,7 @@ describe("Combat Progression", () => {
 
   describe("Fight requires weapon", () => {
     it("should fail Fight if no weapon equipped", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Combat = { level: 1, xp: 0 }
       // No weapon equipped
@@ -98,7 +98,7 @@ describe("Combat Progression", () => {
     })
 
     it("should fail Fight if weapon equipped but not in inventory", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Combat = { level: 1, xp: 0 }
       // Weapon "equipped" but not actually owned
@@ -114,7 +114,7 @@ describe("Combat Progression", () => {
     })
 
     it("should succeed Fight if CRUDE_WEAPON equipped", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
@@ -128,7 +128,7 @@ describe("Combat Progression", () => {
     })
 
     it("should succeed Fight if IMPROVED_WEAPON equipped", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "IMPROVED_WEAPON", quantity: 1 })
@@ -143,7 +143,7 @@ describe("Combat Progression", () => {
 
   describe("Weapon determines fight parameters", () => {
     it("should use 3 ticks and 70% success with CRUDE_WEAPON", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
@@ -157,7 +157,7 @@ describe("Combat Progression", () => {
     })
 
     it("should use 2 ticks and 80% success with IMPROVED_WEAPON", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "IMPROVED_WEAPON", quantity: 1 })
@@ -173,7 +173,7 @@ describe("Combat Progression", () => {
 
   describe("Combat failure does NOT relocate", () => {
     it("should NOT relocate player on combat failure", () => {
-      const state = createGatheringWorld("fight-fail-no-relocate")
+      const state = createWorld("fight-fail-no-relocate")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
@@ -192,7 +192,7 @@ describe("Combat Progression", () => {
     })
 
     it("should consume time on combat failure", () => {
-      const state = createGatheringWorld("fight-fail-time")
+      const state = createWorld("fight-fail-time")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
@@ -213,7 +213,7 @@ describe("Combat Progression", () => {
   describe("Combat loot table", () => {
     it("should have 10% chance to drop IMPROVED_WEAPON on successful fight", () => {
       // We need to test this with controlled RNG
-      const state = createGatheringWorld("test-improved-drop")
+      const state = createWorld("test-improved-drop")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
@@ -233,7 +233,7 @@ describe("Combat Progression", () => {
     })
 
     it("should have 1% chance to drop COMBAT_GUILD_TOKEN on successful fight", () => {
-      const state = createGatheringWorld("test-token-drop")
+      const state = createWorld("test-token-drop")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
@@ -254,7 +254,7 @@ describe("Combat Progression", () => {
 
     it("should replace CRUDE_WEAPON with IMPROVED_WEAPON when dropped", () => {
       // Use a seed that drops improved weapon
-      const state = createGatheringWorld("improved-weapon-drop-seed")
+      const state = createWorld("improved-weapon-drop-seed")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
@@ -273,7 +273,7 @@ describe("Combat Progression", () => {
     })
 
     it("should add COMBAT_GUILD_TOKEN to inventory when dropped", () => {
-      const state = createGatheringWorld("token-drop-test")
+      const state = createWorld("token-drop-test")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
@@ -295,7 +295,7 @@ describe("Combat Progression", () => {
     }
 
     it("should consume the token", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       setupStateWithToken(state)
 
       const log = executeAction(state, { type: "TurnInCombatToken" })
@@ -306,7 +306,7 @@ describe("Combat Progression", () => {
     })
 
     it("should cost 0 ticks", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       setupStateWithToken(state)
       const initialTicks = state.time.sessionRemainingTicks
 
@@ -317,7 +317,7 @@ describe("Combat Progression", () => {
     })
 
     it("should fail if not at Combat Guild (TOWN)", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       setupStateWithToken(state)
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
 
@@ -328,7 +328,7 @@ describe("Combat Progression", () => {
     })
 
     it("should fail if player does not have token", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.player.skills.Combat = { level: 1, xp: 0 }
       // No token in inventory
 
@@ -339,7 +339,7 @@ describe("Combat Progression", () => {
     })
 
     it("should unlock combat-guild-1 contract", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       setupStateWithToken(state)
 
       const log = executeAction(state, { type: "TurnInCombatToken" })
@@ -362,7 +362,7 @@ describe("Combat Progression", () => {
     }
 
     it("should be unlocked after turning in token", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       setupStateForCombatContract(state)
 
       const contract = state.world.contracts.find((c) => c.id === "combat-guild-1")
@@ -370,7 +370,7 @@ describe("Combat Progression", () => {
     })
 
     it("should require defeating 2 cave rats", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       setupStateForCombatContract(state)
 
       const contract = state.world.contracts.find((c) => c.id === "combat-guild-1")
@@ -380,7 +380,7 @@ describe("Combat Progression", () => {
     })
 
     it("should reward 4-6 Combat XP on completion", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       setupStateForCombatContract(state)
 
       const contract = state.world.contracts.find((c) => c.id === "combat-guild-1")

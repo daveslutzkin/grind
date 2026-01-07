@@ -2,7 +2,7 @@
  * Batch runner for gathering MVP - executes a plan from command line arguments
  */
 
-import { createGatheringWorld } from "./gatheringWorld.js"
+import { createWorld } from "./world.js"
 import { executeAction } from "./engine.js"
 import type { Action, ActionLog, WorldState, SkillID, SkillState, GatherMode } from "./types.js"
 import { getTotalXP } from "./types.js"
@@ -240,7 +240,7 @@ function main(): void {
   const commands = args.slice(1)
 
   console.log(`\n=== Gathering Session (seed: ${seed}) ===\n`)
-  const state = createGatheringWorld(seed)
+  const state = createWorld(seed)
   const stats: SessionStats = {
     logs: [],
     startingSkills: { ...state.player.skills },

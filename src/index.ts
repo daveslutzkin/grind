@@ -34,7 +34,7 @@ export { executeAction } from "./engine.js"
 export { evaluateAction, evaluatePlan } from "./evaluate.js"
 
 // World factory
-export { createGatheringWorld } from "./gatheringWorld.js"
+export { createWorld } from "./world.js"
 
 // RNG utilities
 export { createRng, roll } from "./rng.js"

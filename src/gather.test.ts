@@ -9,14 +9,14 @@
  */
 
 import { executeAction } from "./engine.js"
-import { createGatheringWorld } from "./gatheringWorld.js"
+import { createWorld } from "./world.js"
 import { GatherMode, type GatherAction, type WorldState, type Node } from "./types.js"
 
 describe("Phase 3: Gather Action Overhaul", () => {
   let world: WorldState
 
   beforeEach(() => {
-    world = createGatheringWorld("test-seed")
+    world = createWorld("test-seed")
     // Set player at a mining location with level 1 Mining
     world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
     world.player.skills.Mining.level = 1
@@ -251,11 +251,11 @@ describe("Phase 3: Gather Action Overhaul", () => {
       const node = getFirstOreNode()
 
       // Create two worlds to compare
-      const world1 = createGatheringWorld("test-seed")
+      const world1 = createWorld("test-seed")
       world1.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world1.player.skills.Mining.level = 4 // L4 unlocks CAREFUL_ALL
 
-      const world2 = createGatheringWorld("test-seed")
+      const world2 = createWorld("test-seed")
       world2.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world2.player.skills.Mining.level = 4
 
@@ -588,7 +588,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
     describe("Collateral damage step reduction at L6", () => {
       it("should have lower collateral at L6+ than at L5", () => {
         // Test at L5
-        const world5 = createGatheringWorld("collateral-test")
+        const world5 = createWorld("collateral-test")
         world5.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
         world5.player.skills.Mining.level = 5
         const node5 = world5.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!
@@ -608,7 +608,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         const collateralDamage5 = collateralBefore5 - collateralMat5.remainingUnits
 
         // Test at L6
-        const world6 = createGatheringWorld("collateral-test")
+        const world6 = createWorld("collateral-test")
         world6.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
         world6.player.skills.Mining.level = 6
         const node6 = world6.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!

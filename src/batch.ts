@@ -2,7 +2,7 @@
  * Batch runner for executing a plan from command line arguments
  */
 
-import { createGatheringWorld } from "./gatheringWorld.js"
+import { createWorld } from "./world.js"
 import { executeAction } from "./engine.js"
 import type { Action, ActionLog, WorldState, SkillID, SkillState } from "./types.js"
 import { getTotalXP, getCurrentAreaId } from "./types.js"
@@ -439,7 +439,7 @@ function main(): void {
   const commands = args.slice(1)
 
   console.log(`=== Plan Execution (seed: ${seed}) ===\n`)
-  const state = createGatheringWorld(seed)
+  const state = createWorld(seed)
   const stats: SessionStats = {
     logs: [],
     startingSkills: { ...state.player.skills },

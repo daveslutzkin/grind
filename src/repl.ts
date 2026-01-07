@@ -3,7 +3,7 @@
  */
 
 import * as readline from "readline"
-import { createGatheringWorld } from "./gatheringWorld.js"
+import { createWorld } from "./world.js"
 import { executeAction } from "./engine.js"
 import { evaluateAction } from "./evaluate.js"
 import type { Action, ActionLog, WorldState, SkillID, SkillState } from "./types.js"
@@ -627,7 +627,7 @@ async function main(): Promise<void> {
   const seed = process.argv[2] || `session-${Date.now()}`
   console.log(`\nSeed: ${seed}`)
 
-  const state = createGatheringWorld(seed)
+  const state = createWorld(seed)
 
   // Initialize session tracking
   const stats: SessionStats = {

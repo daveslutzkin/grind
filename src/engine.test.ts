@@ -1,5 +1,5 @@
 import { executeAction } from "./engine.js"
-import { createGatheringWorld } from "./gatheringWorld.js"
+import { createWorld } from "./world.js"
 import type {
   MoveAction,
   AcceptContractAction,
@@ -15,7 +15,7 @@ import { GatherMode } from "./types.js"
 describe("Engine", () => {
   describe("Move action", () => {
     it("should move player to destination", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       const action: MoveAction = { type: "Move", destination: "OUTSKIRTS_MINE" }
 
       const log = executeAction(state, action)
@@ -25,7 +25,7 @@ describe("Engine", () => {
     })
 
     it("should consume travel time", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       const initialTicks = state.time.sessionRemainingTicks
       const action: MoveAction = { type: "Move", destination: "OUTSKIRTS_MINE" }
 
@@ -37,7 +37,7 @@ describe("Engine", () => {
     })
 
     it("should not grant XP (travel is purely logistical)", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       const action: MoveAction = { type: "Move", destination: "OUTSKIRTS_MINE" }
 
       const log = executeAction(state, action)
@@ -46,7 +46,7 @@ describe("Engine", () => {
     })
 
     it("should fail if already at destination", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       const action: MoveAction = { type: "Move", destination: "OUTSKIRTS_MINE" }
 
@@ -58,7 +58,7 @@ describe("Engine", () => {
     })
 
     it("should fail if session has ended", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.time.sessionRemainingTicks = 0
       const action: MoveAction = { type: "Move", destination: "OUTSKIRTS_MINE" }
 
@@ -69,7 +69,7 @@ describe("Engine", () => {
     })
 
     it("should log action details", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       const action: MoveAction = { type: "Move", destination: "OUTSKIRTS_MINE" }
 
       const log = executeAction(state, action)
@@ -81,7 +81,7 @@ describe("Engine", () => {
     })
 
     it("should work for all location pairs", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
 
       // TOWN -> COPSE (base 10 * multiplier 2 = 20)
       let log = executeAction(state, { type: "Move", destination: "COPSE" })
@@ -99,7 +99,7 @@ describe("Engine", () => {
 
   describe("AcceptContract action", () => {
     it("should add contract to active contracts", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       const action: AcceptContractAction = { type: "AcceptContract", contractId: "miners-guild-1" }
 
       const log = executeAction(state, action)
@@ -109,7 +109,7 @@ describe("Engine", () => {
     })
 
     it("should consume 0 ticks", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       const initialTicks = state.time.sessionRemainingTicks
       const action: AcceptContractAction = { type: "AcceptContract", contractId: "miners-guild-1" }
 
@@ -120,7 +120,7 @@ describe("Engine", () => {
     })
 
     it("should not grant XP", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       const action: AcceptContractAction = { type: "AcceptContract", contractId: "miners-guild-1" }
 
       const log = executeAction(state, action)
@@ -129,7 +129,7 @@ describe("Engine", () => {
     })
 
     it("should fail if not at guild location", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       const action: AcceptContractAction = { type: "AcceptContract", contractId: "miners-guild-1" }
 
@@ -140,7 +140,7 @@ describe("Engine", () => {
     })
 
     it("should fail if contract not found", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       const action: AcceptContractAction = { type: "AcceptContract", contractId: "nonexistent" }
 
       const log = executeAction(state, action)
@@ -150,7 +150,7 @@ describe("Engine", () => {
     })
 
     it("should fail if already has contract", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.player.activeContracts.push("miners-guild-1")
       const action: AcceptContractAction = { type: "AcceptContract", contractId: "miners-guild-1" }
 
@@ -163,7 +163,7 @@ describe("Engine", () => {
 
   describe("Gather action", () => {
     it("should add item to inventory on success", () => {
-      const state = createGatheringWorld("gather-success-seed")
+      const state = createWorld("gather-success-seed")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       // Get a real node from the area
@@ -191,7 +191,7 @@ describe("Engine", () => {
     })
 
     it("should consume gather time", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const initialTicks = state.time.sessionRemainingTicks
@@ -215,7 +215,7 @@ describe("Engine", () => {
     })
 
     it("should grant Mining XP on success", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       // Get a real node from the area
@@ -240,7 +240,7 @@ describe("Engine", () => {
     })
 
     it("should fail if not at node location", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       // Player starts at TOWN, nodes are at OUTSKIRTS_MINE
       const node = state.world.nodes?.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)
       expect(node).toBeDefined()
@@ -260,7 +260,7 @@ describe("Engine", () => {
     })
 
     it("should fail if node not found", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       const action: GatherAction = { type: "Gather", nodeId: "nonexistent-node" }
 
@@ -271,7 +271,7 @@ describe("Engine", () => {
     })
 
     it("should log RNG roll", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const node = state.world.nodes?.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)
@@ -297,7 +297,7 @@ describe("Engine", () => {
     })
 
     it("should stack items in inventory", () => {
-      const state = createGatheringWorld("stack-test")
+      const state = createWorld("stack-test")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const node = state.world.nodes?.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)
@@ -330,7 +330,7 @@ describe("Engine", () => {
     })
 
     it("should succeed if inventory full but already has that item (slot-based)", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const node = state.world.nodes?.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)
@@ -356,7 +356,7 @@ describe("Engine", () => {
   })
 
   describe("Fight action", () => {
-    function setupCombatState(state: ReturnType<typeof createGatheringWorld>): void {
+    function setupCombatState(state: ReturnType<typeof createWorld>): void {
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
@@ -364,7 +364,7 @@ describe("Engine", () => {
     }
 
     it("should add loot to inventory on success", () => {
-      const state = createGatheringWorld("fight-success")
+      const state = createWorld("fight-success")
       setupCombatState(state)
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
@@ -377,7 +377,7 @@ describe("Engine", () => {
     })
 
     it("should consume fight time", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       setupCombatState(state)
       const initialTicks = state.time.sessionRemainingTicks
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
@@ -389,7 +389,7 @@ describe("Engine", () => {
     })
 
     it("should grant Combat XP on success", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       setupCombatState(state)
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
@@ -402,7 +402,7 @@ describe("Engine", () => {
     })
 
     it("should fail if not at enemy location", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       // Player starts at TOWN, cave-rat is at OUTSKIRTS_MINE
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
       state.player.equippedWeapon = "CRUDE_WEAPON"
@@ -416,7 +416,7 @@ describe("Engine", () => {
     })
 
     it("should fail if enemy not found", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
       state.player.equippedWeapon = "CRUDE_WEAPON"
@@ -429,7 +429,7 @@ describe("Engine", () => {
     })
 
     it("should NOT relocate player on RNG failure (per spec)", () => {
-      const state = createGatheringWorld("fight-fail")
+      const state = createWorld("fight-fail")
       setupCombatState(state)
       state.rng.seed = "force-fight-fail"
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
@@ -443,7 +443,7 @@ describe("Engine", () => {
     })
 
     it("should log RNG roll", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       setupCombatState(state)
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
@@ -457,7 +457,7 @@ describe("Engine", () => {
 
   describe("Craft action", () => {
     it("should consume inputs and produce output", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 5 })
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
@@ -472,7 +472,7 @@ describe("Engine", () => {
     })
 
     it("should consume craft time", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
       const initialTicks = state.time.sessionRemainingTicks
@@ -485,7 +485,7 @@ describe("Engine", () => {
     })
 
     it("should grant Smithing XP", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
@@ -497,7 +497,7 @@ describe("Engine", () => {
     })
 
     it("should fail if not at required location", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
@@ -510,7 +510,7 @@ describe("Engine", () => {
     })
 
     it("should fail if recipe not found", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       const action: CraftAction = { type: "Craft", recipeId: "nonexistent" }
 
       const log = executeAction(state, action)
@@ -520,7 +520,7 @@ describe("Engine", () => {
     })
 
     it("should fail if missing inputs", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 }) // need 2
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
@@ -534,7 +534,7 @@ describe("Engine", () => {
 
   describe("Store action", () => {
     it("should move item from inventory to storage", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 5 })
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 3 }
 
@@ -548,7 +548,7 @@ describe("Engine", () => {
     })
 
     it("should consume 0 ticks (free action)", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const initialTicks = state.time.sessionRemainingTicks
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
@@ -560,7 +560,7 @@ describe("Engine", () => {
     })
 
     it("should not grant XP", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
 
@@ -570,7 +570,7 @@ describe("Engine", () => {
     })
 
     it("should fail if not at storage location", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
@@ -582,7 +582,7 @@ describe("Engine", () => {
     })
 
     it("should fail if item not in inventory", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
 
       const log = executeAction(state, action)
@@ -592,7 +592,7 @@ describe("Engine", () => {
     })
 
     it("should fail if not enough quantity", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 5 }
 
@@ -605,7 +605,7 @@ describe("Engine", () => {
 
   describe("Drop action", () => {
     it("should remove item from inventory", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 5 })
       const action: DropAction = { type: "Drop", itemId: "IRON_ORE", quantity: 3 }
 
@@ -617,7 +617,7 @@ describe("Engine", () => {
     })
 
     it("should consume 1 tick", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const initialTicks = state.time.sessionRemainingTicks
       const action: DropAction = { type: "Drop", itemId: "IRON_ORE", quantity: 1 }
@@ -629,7 +629,7 @@ describe("Engine", () => {
     })
 
     it("should not grant XP", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const action: DropAction = { type: "Drop", itemId: "IRON_ORE", quantity: 1 }
 
@@ -639,7 +639,7 @@ describe("Engine", () => {
     })
 
     it("should fail if item not in inventory", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       const action: DropAction = { type: "Drop", itemId: "IRON_ORE", quantity: 1 }
 
       const log = executeAction(state, action)
@@ -649,7 +649,7 @@ describe("Engine", () => {
     })
 
     it("should fail if not enough quantity", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
       const action: DropAction = { type: "Drop", itemId: "IRON_ORE", quantity: 5 }
 
@@ -660,7 +660,7 @@ describe("Engine", () => {
     })
 
     it("should remove item stack if quantity becomes 0", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 3 })
       const action: DropAction = { type: "Drop", itemId: "IRON_ORE", quantity: 3 }
 
@@ -674,7 +674,7 @@ describe("Engine", () => {
 
   describe("Skills starting at level 0", () => {
     it("should start all skills at level 0", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
 
       expect(state.player.skills.Mining.level).toBe(0)
       expect(state.player.skills.Woodcutting.level).toBe(0)
@@ -683,7 +683,7 @@ describe("Engine", () => {
     })
 
     it("should not have Logistics skill", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
 
       expect((state.player.skills as Record<string, unknown>).Logistics).toBeUndefined()
     })
@@ -691,7 +691,7 @@ describe("Engine", () => {
 
   describe("Level 0 blocks skill actions", () => {
     it("should fail Gather when Mining is level 0", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       // Get a real node from the area
       const node = state.world.nodes?.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)
@@ -713,7 +713,7 @@ describe("Engine", () => {
     })
 
     it("should fail Gather when Woodcutting is level 0", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.exploration.playerState.currentAreaId = "COPSE"
       // Get a real node from the area
       const node = state.world.nodes?.find((n) => n.areaId === "COPSE" && !n.depleted)
@@ -734,7 +734,7 @@ describe("Engine", () => {
     })
 
     it("should fail Fight when Combat is level 0", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       // Skills start at 0, so Combat should be 0
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
@@ -747,7 +747,7 @@ describe("Engine", () => {
     })
 
     it("should fail Craft when Smithing is level 0", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
       // Skills start at 0, so Smithing should be 0
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
@@ -760,7 +760,7 @@ describe("Engine", () => {
     })
 
     it("should succeed Gather when Mining is level 1", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Mining = { level: 1, xp: 0 }
       // Get a real node from the area
@@ -786,7 +786,7 @@ describe("Engine", () => {
 
   describe("GuildEnrolment action", () => {
     it("should take skill from level 0 to level 1", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       expect(state.player.skills.Mining.level).toBe(0)
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
@@ -798,7 +798,7 @@ describe("Engine", () => {
     })
 
     it("should consume 3 ticks", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       const initialTicks = state.time.sessionRemainingTicks
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
@@ -809,7 +809,7 @@ describe("Engine", () => {
     })
 
     it("should fail if not at guild location (TOWN)", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
@@ -820,7 +820,7 @@ describe("Engine", () => {
     })
 
     it("should not grant XP (just unlocks the skill)", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
       const log = executeAction(state, action)
@@ -830,7 +830,7 @@ describe("Engine", () => {
     })
 
     it("should fail if skill is already level 1 or higher", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.player.skills.Mining = { level: 1, xp: 0 }
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
@@ -842,7 +842,7 @@ describe("Engine", () => {
     })
 
     it("should work for all skills", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
 
       // Enrol in Mining
       let log = executeAction(state, { type: "Enrol", skill: "Mining" })
@@ -866,7 +866,7 @@ describe("Engine", () => {
     })
 
     it("should log action details", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
       const log = executeAction(state, action)
@@ -877,7 +877,7 @@ describe("Engine", () => {
     })
 
     it("should fail if session has ended", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.time.sessionRemainingTicks = 0
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
@@ -888,7 +888,7 @@ describe("Engine", () => {
     })
 
     it("should fail if not enough time remaining", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.time.sessionRemainingTicks = 2 // Need 3 ticks
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 

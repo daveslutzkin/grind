@@ -1,12 +1,12 @@
 import { evaluateAction, evaluatePlan } from "./evaluate.js"
-import { createGatheringWorld } from "./gatheringWorld.js"
+import { createWorld } from "./world.js"
 import type { Action } from "./types.js"
 import { GatherMode } from "./types.js"
 
 describe("Evaluation APIs", () => {
   describe("evaluateAction", () => {
     it("should evaluate Move action", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       const action: Action = { type: "Move", destination: "OUTSKIRTS_MINE" }
 
       const result = evaluateAction(state, action)
@@ -17,7 +17,7 @@ describe("Evaluation APIs", () => {
     })
 
     it("should evaluate AcceptContract action", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       const action: Action = { type: "AcceptContract", contractId: "miners-guild-1" }
 
       const result = evaluateAction(state, action)
@@ -28,7 +28,7 @@ describe("Evaluation APIs", () => {
     })
 
     it("should evaluate Gather action", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const node = state.world.nodes.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)!
@@ -48,7 +48,7 @@ describe("Evaluation APIs", () => {
     })
 
     it("should evaluate Fight action", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Combat = { level: 1, xp: 0 } // Need level 1 to fight
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
@@ -63,7 +63,7 @@ describe("Evaluation APIs", () => {
     })
 
     it("should evaluate Craft action", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
       const action: Action = { type: "Craft", recipeId: "iron-bar-recipe" }
@@ -76,7 +76,7 @@ describe("Evaluation APIs", () => {
     })
 
     it("should evaluate Store action", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const action: Action = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
 
@@ -88,7 +88,7 @@ describe("Evaluation APIs", () => {
     })
 
     it("should evaluate Drop action", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const action: Action = { type: "Drop", itemId: "IRON_ORE", quantity: 1 }
 
@@ -100,7 +100,7 @@ describe("Evaluation APIs", () => {
     })
 
     it("should return 0 probability for invalid action", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       // Try to gather without being at the node location
       const node = state.world.nodes.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)!
       const focusMat = node.materials[0]
@@ -117,7 +117,7 @@ describe("Evaluation APIs", () => {
     })
 
     it("should return 0 probability for Gather with insufficient skill level", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       // Skills start at 0, so action should fail
       const node = state.world.nodes.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)!
@@ -135,7 +135,7 @@ describe("Evaluation APIs", () => {
     })
 
     it("should not mutate state", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       const stateBefore = JSON.stringify(state)
       const action: Action = { type: "Move", destination: "OUTSKIRTS_MINE" }
 
@@ -147,7 +147,7 @@ describe("Evaluation APIs", () => {
 
   describe("evaluatePlan", () => {
     it("should evaluate empty plan", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
 
       const result = evaluatePlan(state, [])
 
@@ -157,7 +157,7 @@ describe("Evaluation APIs", () => {
     })
 
     it("should evaluate simple plan", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const node = state.world.nodes.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)!
       const focusMat = node.materials.find((m) => m.requiredLevel === 1)!
@@ -179,7 +179,7 @@ describe("Evaluation APIs", () => {
     })
 
     it("should detect violations in plan", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       const node = state.world.nodes.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)!
       const focusMat = node.materials[0]
       const actions: Action[] = [
@@ -199,7 +199,7 @@ describe("Evaluation APIs", () => {
     })
 
     it.skip("should track state changes through plan", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       const node = state.world.nodes.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)!
@@ -223,7 +223,7 @@ describe("Evaluation APIs", () => {
     })
 
     it("should not mutate state", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const node = state.world.nodes.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)!
       const focusMat = node.materials.find((m) => m.requiredLevel === 1)!
@@ -244,7 +244,7 @@ describe("Evaluation APIs", () => {
     })
 
     it("should detect session time exceeded", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       state.time.sessionRemainingTicks = 3 // Only 3 ticks remaining
       const node = state.world.nodes.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)!
@@ -270,7 +270,7 @@ describe("Evaluation APIs", () => {
     })
 
     it("should reject 0-tick action when session has ended", () => {
-      const state = createGatheringWorld("test-seed")
+      const state = createWorld("test-seed")
       state.time.sessionRemainingTicks = 0 // Session already ended
       const actions: Action[] = [
         { type: "AcceptContract", contractId: "miners-guild-1" }, // 0 ticks but session ended

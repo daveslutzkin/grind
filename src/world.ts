@@ -1,10 +1,11 @@
 /**
- * Gathering World Factory
+ * World Factory
  *
- * Creates the world state for the gathering MVP with:
+ * Creates the world state with:
  * - 7 areas with distance bands
  * - Material definitions with tiers
  * - Node generation with multi-material reserves
+ * - Enemies, recipes, and contracts
  */
 
 import type {
@@ -328,7 +329,7 @@ function generateAllNodes(rng: RngState): Node[] {
 // World Factory
 // ============================================================================
 
-export function createGatheringWorld(seed: string): WorldState {
+export function createWorld(seed: string): WorldState {
   const rng = createRng(seed)
   const nodes = generateAllNodes(rng)
 
