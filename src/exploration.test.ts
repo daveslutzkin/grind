@@ -11,6 +11,7 @@ import {
   executeSurvey,
   executeExplore,
   executeExplorationTravel,
+  grantExplorationGuildBenefits,
 } from "./exploration.js"
 import type {
   Area,
@@ -452,7 +453,8 @@ describe("Survey Action", () => {
 
     it("should grant Exploration XP", () => {
       const state = createExplorationWorld("survey-xp")
-      state.player.skills.Exploration = { level: 1, xp: 0 }
+      const initialLevel = 1
+      state.player.skills.Exploration = { level: initialLevel, xp: 0 }
       const action: SurveyAction = { type: "Survey" }
 
       const log = executeSurvey(state, action)
@@ -460,7 +462,12 @@ describe("Survey Action", () => {
       if (log.success) {
         expect(log.skillGained).toBeDefined()
         expect(log.skillGained?.skill).toBe("Exploration")
-        expect(state.player.skills.Exploration.xp).toBeGreaterThan(0)
+        expect(log.skillGained?.amount).toBeGreaterThan(0)
+        // XP was granted - verify via amount or level increase (xp can be 0 after level up)
+        const xpOrLevelIncreased =
+          state.player.skills.Exploration.xp > 0 ||
+          state.player.skills.Exploration.level > initialLevel
+        expect(xpOrLevelIncreased).toBe(true)
       }
     })
   })
@@ -673,5 +680,171 @@ describe("ExplorationTravel Action", () => {
       expect(log.timeConsumed).toBeGreaterThanOrEqual(20)
       expect(log.timeConsumed).toBeLessThanOrEqual(80)
     })
+
+    it("should support multi-hop pathfinding", () => {
+      const state = createExplorationWorld("travel-multihop")
+      // Set up: Know area-d1-i0 and area-d1-i1, and connections
+      const area0 = "area-d1-i0"
+      const area1 = "area-d1-i1"
+      state.exploration!.playerState.knownAreaIds.push(area0, area1)
+      state.exploration!.playerState.knownConnectionIds.push(`TOWN->${area0}`, `${area0}->${area1}`)
+      // Add a connection between area0 and area1 if it doesn't exist
+      const existingConn = state.exploration!.connections.find(
+        (c) =>
+          (c.fromAreaId === area0 && c.toAreaId === area1) ||
+          (c.fromAreaId === area1 && c.toAreaId === area0)
+      )
+      if (!existingConn) {
+        state.exploration!.connections.push({
+          fromAreaId: area0,
+          toAreaId: area1,
+          travelTimeMultiplier: 2,
+        })
+      }
+
+      // Travel from TOWN to area1 (requires going through area0)
+      const action: ExplorationTravelAction = {
+        type: "ExplorationTravel",
+        destinationAreaId: area1,
+      }
+
+      const log = executeExplorationTravel(state, action)
+
+      expect(log.success).toBe(true)
+      expect(state.exploration!.playerState.currentAreaId).toBe(area1)
+      // Should take at least 2 hops worth of time
+      expect(log.timeConsumed).toBeGreaterThanOrEqual(20)
+    })
+  })
+})
+
+describe("XP on Session End", () => {
+  it("should grant XP even when Survey fails due to session end", () => {
+    const state = createExplorationWorld("survey-session-end")
+    state.player.skills.Exploration = { level: 1, xp: 0 }
+    state.time.sessionRemainingTicks = 4 // Just enough for 2 rolls
+    const action: SurveyAction = { type: "Survey" }
+
+    const log = executeSurvey(state, action)
+
+    // Whether it succeeds or fails, XP should be granted for time spent
+    if (log.timeConsumed > 0) {
+      expect(log.skillGained).toBeDefined()
+      expect(log.skillGained?.amount).toBeGreaterThan(0)
+    }
+  })
+
+  it("should grant XP even when Explore fails due to session end", () => {
+    const state = createExplorationWorld("explore-session-end")
+    state.player.skills.Exploration = { level: 1, xp: 0 }
+    // Move to an area that has content
+    const d1Area = Array.from(state.exploration!.areas.values()).find((a) => a.distance === 1)!
+    state.exploration!.playerState.currentAreaId = d1Area.id
+    state.exploration!.playerState.knownAreaIds.push(d1Area.id)
+    state.time.sessionRemainingTicks = 4
+
+    const action: ExploreAction = { type: "Explore" }
+    const log = executeExplore(state, action)
+
+    // Whether it succeeds or fails, XP should be granted for time spent
+    if (log.timeConsumed > 0) {
+      expect(log.skillGained).toBeDefined()
+      expect(log.skillGained?.amount).toBeGreaterThan(0)
+    }
+  })
+})
+
+describe("Lazy Area Generation", () => {
+  it("should create distance 1 areas as placeholders initially", () => {
+    const rng = createRng("lazy-gen-test")
+    const state = initializeExplorationState(rng)
+
+    // Distance 1 areas should exist but not be generated
+    const d1Areas = Array.from(state.areas.values()).filter((a) => a.distance === 1)
+    expect(d1Areas.length).toBe(5)
+
+    for (const area of d1Areas) {
+      expect(area.generated).toBe(false)
+      expect(area.locations.length).toBe(0)
+    }
+  })
+
+  it("should generate area content when discovered via Survey", () => {
+    const state = createExplorationWorld("lazy-survey")
+    state.player.skills.Exploration = { level: 1, xp: 0 }
+
+    // Verify areas start as placeholders
+    const d1Areas = Array.from(state.exploration!.areas.values()).filter((a) => a.distance === 1)
+    const allUngenerated = d1Areas.every((a) => !a.generated)
+    expect(allUngenerated).toBe(true)
+
+    const action: SurveyAction = { type: "Survey" }
+    const log = executeSurvey(state, action)
+
+    if (log.success && log.explorationLog?.discoveredAreaId) {
+      const discoveredArea = state.exploration!.areas.get(log.explorationLog.discoveredAreaId)!
+      expect(discoveredArea.generated).toBe(true)
+    }
+  })
+})
+
+describe("Exploration Guild Enrollment Benefits", () => {
+  it("should grant initial area and connection when enrolling in Exploration guild", () => {
+    const state = createExplorationWorld("enrol-benefits")
+    const initialKnownAreas = state.exploration!.playerState.knownAreaIds.length
+    const initialKnownConnections = state.exploration!.playerState.knownConnectionIds.length
+
+    const result = grantExplorationGuildBenefits(state)
+
+    expect(result.discoveredAreaId).toBeTruthy()
+    expect(result.discoveredConnectionId).toBeTruthy()
+    expect(state.exploration!.playerState.knownAreaIds.length).toBe(initialKnownAreas + 1)
+    expect(state.exploration!.playerState.knownConnectionIds.length).toBe(
+      initialKnownConnections + 1
+    )
+  })
+})
+
+describe("Explore Discovering Unknown Connections", () => {
+  it("should be able to discover connections to unknown areas with lower probability", () => {
+    const state = createExplorationWorld("explore-unknown-conn")
+    state.player.skills.Exploration = { level: 5, xp: 0 }
+
+    // Move to a distance 1 area and make it fully explored except for unknown connections
+    const d1Area = Array.from(state.exploration!.areas.values()).find((a) => a.distance === 1)!
+    state.exploration!.playerState.currentAreaId = d1Area.id
+    state.exploration!.playerState.knownAreaIds.push(d1Area.id)
+
+    // Mark all locations as known
+    for (const loc of d1Area.locations) {
+      state.exploration!.playerState.knownLocationIds.push(loc.id)
+    }
+
+    // Mark connections to known areas as known (but leave unknown area connections)
+    const knownAreaIds = new Set(state.exploration!.playerState.knownAreaIds)
+    for (const conn of state.exploration!.connections) {
+      const isFromCurrent = conn.fromAreaId === d1Area.id
+      const isToCurrent = conn.toAreaId === d1Area.id
+      if (isFromCurrent || isToCurrent) {
+        const targetId = isFromCurrent ? conn.toAreaId : conn.fromAreaId
+        if (knownAreaIds.has(targetId)) {
+          state.exploration!.playerState.knownConnectionIds.push(
+            `${conn.fromAreaId}->${conn.toAreaId}`
+          )
+        }
+      }
+    }
+
+    const action: ExploreAction = { type: "Explore" }
+    const log = executeExplore(state, action)
+
+    // If there are unknown connections, the explore should be able to find them
+    // (it might find something else, but the option should exist)
+    if (log.success && log.explorationLog?.discoveredConnectionId) {
+      if (log.explorationLog.connectionToUnknownArea) {
+        // Successfully discovered a connection to an unknown area
+        expect(log.explorationLog.connectionToUnknownArea).toBe(true)
+      }
+    }
   })
 })

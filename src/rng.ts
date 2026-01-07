@@ -58,6 +58,24 @@ export function roll(rng: RngState, probability: number, label: string, rolls: R
 }
 
 /**
+ * Get a normally distributed random value using Box-Muller transform.
+ * Returns a value with the specified mean and standard deviation.
+ */
+export function rollNormal(rng: RngState, mean: number, stdDev: number, _label: string): number {
+  // Box-Muller transform requires two uniform random numbers
+  const u1 = getRandomValue(rng.seed, rng.counter)
+  rng.counter++
+  const u2 = getRandomValue(rng.seed, rng.counter)
+  rng.counter++
+
+  // Transform to normal distribution with mean 0 and stdDev 1
+  const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2)
+
+  // Scale and shift to desired mean and stdDev
+  return mean + z0 * stdDev
+}
+
+/**
  * Roll on a weighted loot table and return the selected entry index.
  * Weights are relative - they don't need to sum to 100.
  * Records a roll for each entry showing whether it was selected.

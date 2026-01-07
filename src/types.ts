@@ -467,6 +467,7 @@ export interface ExplorationLog {
   discoveredAreaId?: AreaID
   discoveredLocationId?: string
   discoveredConnectionId?: string // "areaId1->areaId2" format
+  connectionToUnknownArea?: boolean // True if connection leads to an unknown area
   // Whether the area is fully explored
   areaFullyExplored?: boolean
   // Luck surfacing per RNG canon
