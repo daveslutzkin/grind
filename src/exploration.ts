@@ -997,16 +997,31 @@ export function executeExplore(state: WorldState, _action: ExploreAction): Actio
     if (success) {
       // Build weighted pool of discoverable things
       // Unknown connections have lower probability per spec
+      // Gathering nodes have 10x lower weight if player lacks the skill
       type Discoverable = {
         type: "location" | "knownConnection" | "unknownConnection"
         id: string
         weight: number
       }
+
+      // Calculate weight for a location based on skill
+      const getLocationWeight = (loc: ExplorationLocation): number => {
+        // If it's a gathering node, check if player has the skill
+        if (loc.type === "GATHERING_NODE" && loc.gatheringSkillType) {
+          const skillLevel = state.player.skills[loc.gatheringSkillType]?.level ?? 0
+          if (skillLevel === 0) {
+            // 10x lower chance to discover without the skill
+            return 0.1
+          }
+        }
+        return 1
+      }
+
       const pool: Discoverable[] = [
         ...undiscoveredLocations.map((loc) => ({
           type: "location" as const,
           id: loc.id,
-          weight: 1,
+          weight: getLocationWeight(loc),
         })),
         ...undiscoveredKnownConnections.map((conn) => ({
           type: "knownConnection" as const,
