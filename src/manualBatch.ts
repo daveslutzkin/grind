@@ -153,7 +153,7 @@ function main(): void {
 
   // Output: last action result (if any), then current state
   if (lastLog) {
-    console.log(formatActionLog(lastLog))
+    console.log(formatActionLog(lastLog, state))
     console.log("")
   }
 

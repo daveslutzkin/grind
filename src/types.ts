@@ -224,6 +224,7 @@ export interface WorldState {
     activeContracts: ContractID[]
     equippedWeapon: WeaponID | null
     contractKillProgress: Record<ContractID, Record<string, number>>
+    appraisedNodeIds: NodeID[] // Nodes that have been appraised (show full details)
   }
 
   world: {

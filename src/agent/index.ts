@@ -158,7 +158,7 @@ async function main(): Promise<void> {
         action: result.action
           ? `${result.action.type} ${JSON.stringify(result.action)}`
           : "(no action)",
-        result: result.log ? formatActionLog(result.log) : "(no result)",
+        result: result.log ? formatActionLog(result.log, state) : "(no result)",
         learning: result.learning,
       })
 

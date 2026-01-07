@@ -23,6 +23,7 @@ describe("Types", () => {
         activeContracts: [],
         equippedWeapon: null,
         contractKillProgress: {},
+        appraisedNodeIds: [],
       },
       world: {
         nodes: [],

@@ -456,6 +456,11 @@ function executeMultiMaterialGather(
       },
     }
 
+    // Track that this node has been appraised
+    if (!state.player.appraisedNodeIds.includes(node.nodeId)) {
+      state.player.appraisedNodeIds.push(node.nodeId)
+    }
+
     // Check for contract completion
     const contractsCompleted = checkContractCompletion(state)
 
