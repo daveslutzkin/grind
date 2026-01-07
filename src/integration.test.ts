@@ -39,6 +39,18 @@ function makeAreaKnown(state: WorldState, areaId: AreaID): void {
   }
 }
 
+/** Discover all locations in an area (required for Gather to work) */
+function discoverAllLocations(state: WorldState, areaId: AreaID): void {
+  const area = state.exploration.areas.get(areaId)
+  if (area) {
+    for (const loc of area.locations) {
+      if (!state.exploration.playerState.knownLocationIds.includes(loc.id)) {
+        state.exploration.playerState.knownLocationIds.push(loc.id)
+      }
+    }
+  }
+}
+
 describe("Integration: Full Session Flow", () => {
   it("should run a complete session with various actions", () => {
     const state = createWorld("integration-test-seed")
@@ -55,6 +67,7 @@ describe("Integration: Full Session Flow", () => {
     // Get ore area and make it known
     const oreAreaId = getOreAreaId(state)
     makeAreaKnown(state, oreAreaId)
+    discoverAllLocations(state, oreAreaId)
 
     // Move to ore area
     logs.push(executeAction(state, { type: "Move", destination: oreAreaId }))
@@ -125,6 +138,7 @@ describe("Integration: Full Session Flow", () => {
     // Get ore area and make it known
     const oreAreaId = getOreAreaId(state)
     makeAreaKnown(state, oreAreaId)
+    discoverAllLocations(state, oreAreaId)
 
     // Move to ore area
     logs.push(executeAction(state, { type: "Move", destination: oreAreaId }))
@@ -173,6 +187,7 @@ describe("Integration: Full Session Flow", () => {
     // Get ore area and make it known
     const oreAreaId = getOreAreaId(state)
     makeAreaKnown(state, oreAreaId)
+    discoverAllLocations(state, oreAreaId)
 
     // Get a node from the area
     const mineNode = state.world.nodes.find((n) => n.areaId === oreAreaId)!
@@ -261,6 +276,7 @@ describe("Integration: Full Session Flow", () => {
     // Get ore area and make it known
     const oreAreaId = getOreAreaId(state)
     makeAreaKnown(state, oreAreaId)
+    discoverAllLocations(state, oreAreaId)
 
     // Add an enemy at this location for fight strategy
     state.world.enemies = state.world.enemies || []
@@ -454,6 +470,7 @@ describe("Integration: Full Session Flow", () => {
     // Get ore area and make it known
     const oreAreaId = getOreAreaId(state)
     makeAreaKnown(state, oreAreaId)
+    discoverAllLocations(state, oreAreaId)
 
     // Get a node from the area
     const mineNode = state.world.nodes.find((n) => n.areaId === oreAreaId)!
@@ -526,6 +543,7 @@ function runSession(seed: string): {
   // Get ore area and make it known
   const oreAreaId = getOreAreaId(state)
   makeAreaKnown(state, oreAreaId)
+  discoverAllLocations(state, oreAreaId)
 
   // Add an enemy at this location
   state.world.enemies = state.world.enemies || []

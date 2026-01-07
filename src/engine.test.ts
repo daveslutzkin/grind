@@ -78,6 +78,18 @@ function makeConnectionKnown(state: WorldState, fromAreaId: AreaID, toAreaId: Ar
   }
 }
 
+/** Discover all locations in an area (required for Gather to work) */
+function discoverAllLocations(state: WorldState, areaId: AreaID): void {
+  const area = state.exploration.areas.get(areaId)
+  if (area) {
+    for (const loc of area.locations) {
+      if (!state.exploration.playerState.knownLocationIds.includes(loc.id)) {
+        state.exploration.playerState.knownLocationIds.push(loc.id)
+      }
+    }
+  }
+}
+
 describe("Engine", () => {
   describe("Move action", () => {
     it("should move player to destination", () => {
@@ -252,6 +264,7 @@ describe("Engine", () => {
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
       state.exploration.playerState.currentAreaId = areaId
+      discoverAllLocations(state, areaId)
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       // Get a real node from the area
       const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
@@ -282,6 +295,7 @@ describe("Engine", () => {
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
       state.exploration.playerState.currentAreaId = areaId
+      discoverAllLocations(state, areaId)
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const initialTicks = state.time.sessionRemainingTicks
       // Get a real node from the area
@@ -308,6 +322,7 @@ describe("Engine", () => {
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
       state.exploration.playerState.currentAreaId = areaId
+      discoverAllLocations(state, areaId)
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       // Get a real node from the area
       const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
@@ -369,6 +384,7 @@ describe("Engine", () => {
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
       state.exploration.playerState.currentAreaId = areaId
+      discoverAllLocations(state, areaId)
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
       expect(node).toBeDefined()
@@ -392,6 +408,7 @@ describe("Engine", () => {
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
       state.exploration.playerState.currentAreaId = areaId
+      discoverAllLocations(state, areaId)
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
       expect(node).toBeDefined()
@@ -422,6 +439,7 @@ describe("Engine", () => {
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
       state.exploration.playerState.currentAreaId = areaId
+      discoverAllLocations(state, areaId)
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
       expect(node).toBeDefined()
@@ -817,6 +835,7 @@ describe("Engine", () => {
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
       state.exploration.playerState.currentAreaId = areaId
+      discoverAllLocations(state, areaId)
       // Get a real node from the area
       const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
       expect(node).toBeDefined()
@@ -841,6 +860,7 @@ describe("Engine", () => {
       const areaId = getTreeAreaId(state)
       makeAreaKnown(state, areaId)
       state.exploration.playerState.currentAreaId = areaId
+      discoverAllLocations(state, areaId)
       // Get a real node from the area
       const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
       expect(node).toBeDefined()
@@ -906,6 +926,7 @@ describe("Engine", () => {
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
       state.exploration.playerState.currentAreaId = areaId
+      discoverAllLocations(state, areaId)
       state.player.skills.Mining = { level: 1, xp: 0 }
       // Get a real node from the area
       const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)

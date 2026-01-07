@@ -35,6 +35,18 @@ function makeAreaKnown(state: WorldState, areaId: AreaID): void {
   }
 }
 
+/** Discover all locations in an area (required for nodes to be visible and Gather to work) */
+function discoverAllLocations(state: WorldState, areaId: AreaID): void {
+  const area = state.exploration.areas.get(areaId)
+  if (area) {
+    for (const loc of area.locations) {
+      if (!state.exploration.playerState.knownLocationIds.includes(loc.id)) {
+        state.exploration.playerState.knownLocationIds.push(loc.id)
+      }
+    }
+  }
+}
+
 describe("Formatters", () => {
   describe("formatWorldState", () => {
     it("should format basic world state as readable text", () => {
@@ -74,6 +86,7 @@ describe("Formatters", () => {
       makeAreaKnown(state, areaId)
       // Set player at the ore area directly (not testing travel here)
       state.exploration.playerState.currentAreaId = areaId
+      discoverAllLocations(state, areaId) // Must discover locations to see nodes
       const formatted = formatWorldState(state)
 
       expect(formatted).toContain("Resource nodes here:")
@@ -89,6 +102,7 @@ describe("Formatters", () => {
       makeAreaKnown(state, areaId)
       // Position player at ore area and gather (testing gather log, not travel)
       state.exploration.playerState.currentAreaId = areaId
+      discoverAllLocations(state, areaId)
 
       const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
       if (!node) throw new Error("No node found for test")
@@ -114,6 +128,7 @@ describe("Formatters", () => {
       makeAreaKnown(state, areaId)
       // Position player at ore area directly
       state.exploration.playerState.currentAreaId = areaId
+      discoverAllLocations(state, areaId)
 
       // Find a node
       const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
@@ -139,6 +154,7 @@ describe("Formatters", () => {
       makeAreaKnown(state, areaId)
       // Position player at ore area directly
       state.exploration.playerState.currentAreaId = areaId
+      discoverAllLocations(state, areaId)
 
       const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
       if (!node) throw new Error("No node found for test")

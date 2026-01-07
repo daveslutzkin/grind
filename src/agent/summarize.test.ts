@@ -30,6 +30,18 @@ function getOreAreaId(state: WorldState): AreaID {
   throw new Error("No ore area found")
 }
 
+/** Discover all locations in an area (required for nodes to be visible) */
+function discoverAllLocations(state: WorldState, areaId: AreaID): void {
+  const area = state.exploration.areas.get(areaId)
+  if (area) {
+    for (const loc of area.locations) {
+      if (!state.exploration.playerState.knownLocationIds.includes(loc.id)) {
+        state.exploration.playerState.knownLocationIds.push(loc.id)
+      }
+    }
+  }
+}
+
 describe("summarizeAction", () => {
   it("should summarize a successful gather action", () => {
     const log: ActionLog = {
@@ -334,6 +346,7 @@ describe("formatDynamicState", () => {
     const state = createWorld("test-seed")
     const areaId = getOreAreaId(state)
     state.exploration.playerState.currentAreaId = areaId
+    discoverAllLocations(state, areaId)
 
     const dynamicState = formatDynamicState(state)
 
@@ -345,6 +358,7 @@ describe("formatDynamicState", () => {
     const state = createWorld("test-seed")
     const areaId = getOreAreaId(state)
     state.exploration.playerState.currentAreaId = areaId
+    discoverAllLocations(state, areaId)
     state.player.skills.Mining = { level: 2, xp: 10 }
 
     const fullState = formatWorldState(state)

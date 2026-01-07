@@ -41,6 +41,18 @@ function makeAreaKnown(state: WorldState, areaId: AreaID): void {
   }
 }
 
+/** Discover all locations in an area (required for Gather to work) */
+function discoverAllLocations(state: WorldState, areaId: AreaID): void {
+  const area = state.exploration.areas.get(areaId)
+  if (area) {
+    for (const loc of area.locations) {
+      if (!state.exploration.playerState.knownLocationIds.includes(loc.id)) {
+        state.exploration.playerState.knownLocationIds.push(loc.id)
+      }
+    }
+  }
+}
+
 describe("Evaluation APIs", () => {
   describe("evaluateAction", () => {
     it("should evaluate Move action", () => {
@@ -70,6 +82,7 @@ describe("Evaluation APIs", () => {
       const state = createWorld("ore-test")
       const areaId = getOreAreaId(state)
       state.exploration.playerState.currentAreaId = areaId
+      discoverAllLocations(state, areaId)
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const node = state.world.nodes!.find((n) => n.areaId === areaId && !n.depleted)!
       const focusMat = node.materials.find((m) => m.requiredLevel === 1)!
@@ -173,6 +186,7 @@ describe("Evaluation APIs", () => {
       const state = createWorld("ore-test")
       const areaId = getOreAreaId(state)
       state.exploration.playerState.currentAreaId = areaId
+      discoverAllLocations(state, areaId)
       // Skills start at 0, so action should fail
       const node = state.world.nodes!.find((n) => n.areaId === areaId && !n.depleted)!
       const focusMat = node.materials[0]
@@ -215,6 +229,7 @@ describe("Evaluation APIs", () => {
       const state = createWorld("ore-test")
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
+      discoverAllLocations(state, areaId)
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const node = state.world.nodes!.find((n) => n.areaId === areaId && !n.depleted)!
       const focusMat = node.materials.find((m) => m.requiredLevel === 1)!
@@ -283,6 +298,7 @@ describe("Evaluation APIs", () => {
       const state = createWorld("ore-test")
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
+      discoverAllLocations(state, areaId)
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       state.time.sessionRemainingTicks = 3 // Only 3 ticks remaining
       const node = state.world.nodes!.find((n) => n.areaId === areaId && !n.depleted)!

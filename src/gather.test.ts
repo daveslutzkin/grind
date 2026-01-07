@@ -68,6 +68,18 @@ function getFarOreAreaId(state: WorldState): AreaID {
   throw new Error("No far-distance ore area found")
 }
 
+/** Discover all locations in an area (required for Gather to work) */
+function discoverAllLocations(state: WorldState, areaId: AreaID): void {
+  const area = state.exploration.areas.get(areaId)
+  if (area) {
+    for (const loc of area.locations) {
+      if (!state.exploration.playerState.knownLocationIds.includes(loc.id)) {
+        state.exploration.playerState.knownLocationIds.push(loc.id)
+      }
+    }
+  }
+}
+
 describe("Phase 3: Gather Action Overhaul", () => {
   let world: WorldState
   let oreAreaId: AreaID
@@ -80,6 +92,8 @@ describe("Phase 3: Gather Action Overhaul", () => {
     world.exploration.playerState.currentAreaId = oreAreaId
     world.player.skills.Mining.level = 1
     world.player.skills.Woodcutting.level = 1
+    // Discover all locations in the area (required for Gather)
+    discoverAllLocations(world, oreAreaId)
   })
 
   function getFirstOreNode(): Node {
@@ -313,11 +327,13 @@ describe("Phase 3: Gather Action Overhaul", () => {
       const area1 = getOreAreaId(world1)
       world1.exploration.playerState.currentAreaId = area1
       world1.player.skills.Mining.level = 4 // L4 unlocks CAREFUL_ALL
+      discoverAllLocations(world1, area1)
 
       const world2 = createWorld("ore-test")
       const area2 = getOreAreaId(world2)
       world2.exploration.playerState.currentAreaId = area2
       world2.player.skills.Mining.level = 4
+      discoverAllLocations(world2, area2)
 
       const node1 = world1.world.nodes!.find((n) => n.areaId === area1)!
       const node2 = world2.world.nodes!.find((n) => n.areaId === area2)!
@@ -556,6 +572,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
           return
         }
         world.exploration.playerState.currentAreaId = midAreaId
+        discoverAllLocations(world, midAreaId)
         const node = world.world.nodes!.find((n) => n.areaId === midAreaId)!
 
         const action: GatherAction = {
@@ -581,6 +598,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
           return
         }
         world.exploration.playerState.currentAreaId = midAreaId
+        discoverAllLocations(world, midAreaId)
         const node = world.world.nodes!.find((n) => n.areaId === midAreaId)!
 
         const action: GatherAction = {
@@ -605,6 +623,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
           return
         }
         world.exploration.playerState.currentAreaId = farAreaId
+        discoverAllLocations(world, farAreaId)
         const node = world.world.nodes!.find((n) => n.areaId === farAreaId)!
 
         const action: GatherAction = {
@@ -630,6 +649,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
           return
         }
         world.exploration.playerState.currentAreaId = farAreaId
+        discoverAllLocations(world, farAreaId)
         const node = world.world.nodes!.find((n) => n.areaId === farAreaId)!
 
         const action: GatherAction = {

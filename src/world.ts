@@ -15,8 +15,9 @@ import type {
   GatheringSkillID,
   RngState,
   AreaID,
+  ExplorationLocation,
 } from "./types.js"
-import { NodeType } from "./types.js"
+import { NodeType, ExplorationLocationType } from "./types.js"
 import { createRng, rollFloat } from "./rng.js"
 import {
   getAreaCountForDistance,
@@ -168,16 +169,31 @@ function generateNode(
 }
 
 /**
+ * Result of generating nodes for an area - includes both nodes and their locations
+ */
+export interface NodeGenerationResult {
+  nodes: Node[]
+  locations: ExplorationLocation[]
+}
+
+/**
  * Generate nodes for an area based on its distance.
  * Per spec: Each location type rolls independently for existence.
  * Most rolls fail, so most areas are naturally sparse.
+ * Also generates corresponding ExplorationLocation entries for discovery tracking.
  */
-export function generateNodesForArea(areaId: AreaID, distance: number, rng: RngState): Node[] {
+export function generateNodesForArea(
+  areaId: AreaID,
+  distance: number,
+  rng: RngState
+): NodeGenerationResult {
   const pools = getNodePoolsForDistance(distance)
-  if (pools.length === 0) return []
+  if (pools.length === 0) return { nodes: [], locations: [] }
 
   const nodes: Node[] = []
+  const locations: ExplorationLocation[] = []
   let nodeIndex = 0
+  let locationIndex = 0
 
   // Roll for each location type independently
   for (const pool of pools) {
@@ -187,10 +203,21 @@ export function generateNodesForArea(areaId: AreaID, distance: number, rng: RngS
       const nodeId = `${areaId}-node-${nodeIndex}`
       nodes.push(generateNode(nodeId, areaId, pool, rng))
       nodeIndex++
+
+      // Also create the corresponding ExplorationLocation
+      const skillType: GatheringSkillID =
+        pool.nodeType === NodeType.ORE_VEIN ? "Mining" : "Woodcutting"
+      locations.push({
+        id: `${areaId}-loc-${locationIndex}`,
+        areaId,
+        type: ExplorationLocationType.GATHERING_NODE,
+        gatheringSkillType: skillType,
+      })
+      locationIndex++
     }
   }
 
-  return nodes
+  return { nodes, locations }
 }
 
 // ============================================================================
@@ -227,12 +254,14 @@ export function createWorld(seed: string): WorldState {
   // Generate connections between all areas
   const connections = generateAreaConnections(rng, town, Array.from(areas.values()))
 
-  // Generate nodes for all non-town areas
+  // Generate nodes and locations for all non-town areas
   const allNodes: Node[] = []
   for (const area of areas.values()) {
     if (area.id !== "TOWN") {
-      const areaNodes = generateNodesForArea(area.id, area.distance, rng)
-      allNodes.push(...areaNodes)
+      const result = generateNodesForArea(area.id, area.distance, rng)
+      allNodes.push(...result.nodes)
+      // Populate the area's locations for discovery tracking
+      area.locations = result.locations
     }
   }
 
