@@ -23,41 +23,47 @@ import {
  * Test helpers for procedural area IDs
  */
 
-/** Get a distance-1 area that has ore nodes */
+/** Get an area that has ore nodes (any distance) */
 function getOreAreaId(state: WorldState): AreaID {
-  for (const area of state.exploration.areas.values()) {
-    if (area.distance === 1) {
-      const hasOre = state.world.nodes?.some(
-        (n) => n.areaId === area.id && n.nodeType === NodeType.ORE_VEIN
-      )
-      if (hasOre) return area.id
-    }
+  // Sort areas by distance so we prefer closer ones
+  const areas = Array.from(state.exploration.areas.values())
+    .filter((a) => a.distance > 0)
+    .sort((a, b) => a.distance - b.distance)
+  for (const area of areas) {
+    const hasOre = state.world.nodes?.some(
+      (n) => n.areaId === area.id && n.nodeType === NodeType.ORE_VEIN
+    )
+    if (hasOre) return area.id
   }
   throw new Error("No ore area found")
 }
 
-/** Get a distance-2 (MID) area that has ore nodes */
+/** Get an area at distance 2+ that has ore nodes */
 function getMidOreAreaId(state: WorldState): AreaID {
-  for (const area of state.exploration.areas.values()) {
-    if (area.distance === 2) {
-      const hasOre = state.world.nodes?.some(
-        (n) => n.areaId === area.id && n.nodeType === NodeType.ORE_VEIN
-      )
-      if (hasOre) return area.id
-    }
+  // Sort areas by distance, prefer closer areas that are distance 2+
+  const areas = Array.from(state.exploration.areas.values())
+    .filter((a) => a.distance >= 2)
+    .sort((a, b) => a.distance - b.distance)
+  for (const area of areas) {
+    const hasOre = state.world.nodes?.some(
+      (n) => n.areaId === area.id && n.nodeType === NodeType.ORE_VEIN
+    )
+    if (hasOre) return area.id
   }
   throw new Error("No mid-distance ore area found")
 }
 
-/** Get a distance-3 (FAR) area that has ore nodes */
+/** Get an area at distance 3+ that has ore nodes */
 function getFarOreAreaId(state: WorldState): AreaID {
-  for (const area of state.exploration.areas.values()) {
-    if (area.distance === 3) {
-      const hasOre = state.world.nodes?.some(
-        (n) => n.areaId === area.id && n.nodeType === NodeType.ORE_VEIN
-      )
-      if (hasOre) return area.id
-    }
+  // Sort areas by distance, prefer closer areas that are distance 3+
+  const areas = Array.from(state.exploration.areas.values())
+    .filter((a) => a.distance >= 3)
+    .sort((a, b) => a.distance - b.distance)
+  for (const area of areas) {
+    const hasOre = state.world.nodes?.some(
+      (n) => n.areaId === area.id && n.nodeType === NodeType.ORE_VEIN
+    )
+    if (hasOre) return area.id
   }
   throw new Error("No far-distance ore area found")
 }
@@ -67,7 +73,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
   let oreAreaId: AreaID
 
   beforeEach(() => {
-    world = createWorld("test-seed")
+    world = createWorld("ore-test")
     // Find an area with ore nodes
     oreAreaId = getOreAreaId(world)
     // Set player at a mining location with level 1 Mining
@@ -303,12 +309,12 @@ describe("Phase 3: Gather Action Overhaul", () => {
       // CAREFUL_ALL should be slower
 
       // Create two worlds to compare
-      const world1 = createWorld("test-seed")
+      const world1 = createWorld("ore-test")
       const area1 = getOreAreaId(world1)
       world1.exploration.playerState.currentAreaId = area1
       world1.player.skills.Mining.level = 4 // L4 unlocks CAREFUL_ALL
 
-      const world2 = createWorld("test-seed")
+      const world2 = createWorld("ore-test")
       const area2 = getOreAreaId(world2)
       world2.exploration.playerState.currentAreaId = area2
       world2.player.skills.Mining.level = 4

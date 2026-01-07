@@ -70,24 +70,28 @@ export const MATERIALS: Record<string, MaterialDefinition> = {
 interface NodePoolConfig {
   nodeType: NodeType
   materialsPool: string[]
-  nodesPerArea: number
+  probability: number // Probability of this location type existing in an area
 }
 
 /** Get node pools available at a given distance */
 function getNodePoolsForDistance(distance: number): NodePoolConfig[] {
   if (distance === 0) return [] // TOWN has no gathering nodes
 
+  // Each location type rolls independently with low probability
+  // Spec: "Most rolls fail, so most areas are naturally sparse"
+  // Spec: "Many areas have nothing, and that's ok"
+
   if (distance === 1) {
     return [
       {
         nodeType: NodeType.ORE_VEIN,
         materialsPool: ["STONE", "COPPER_ORE", "TIN_ORE"],
-        nodesPerArea: 5,
+        probability: 0.25, // 25% chance of an ore vein
       },
       {
         nodeType: NodeType.TREE_STAND,
         materialsPool: ["GREEN_WOOD", "SOFTWOOD", "HARDWOOD"],
-        nodesPerArea: 5,
+        probability: 0.25, // 25% chance of a tree stand
       },
     ]
   }
@@ -97,12 +101,12 @@ function getNodePoolsForDistance(distance: number): NodePoolConfig[] {
       {
         nodeType: NodeType.ORE_VEIN,
         materialsPool: ["STONE", "COPPER_ORE", "TIN_ORE", "IRON_ORE", "SILVER_ORE"],
-        nodesPerArea: 4,
+        probability: 0.25,
       },
       {
         nodeType: NodeType.TREE_STAND,
         materialsPool: ["GREEN_WOOD", "SOFTWOOD", "HARDWOOD", "OAK_WOOD", "IRONWOOD"],
-        nodesPerArea: 4,
+        probability: 0.25,
       },
     ]
   }
@@ -112,12 +116,12 @@ function getNodePoolsForDistance(distance: number): NodePoolConfig[] {
     {
       nodeType: NodeType.ORE_VEIN,
       materialsPool: ["IRON_ORE", "SILVER_ORE", "DEEP_ORE", "MITHRIL_ORE"],
-      nodesPerArea: 3,
+      probability: 0.2, // Slightly lower at higher distances
     },
     {
       nodeType: NodeType.TREE_STAND,
       materialsPool: ["OAK_WOOD", "IRONWOOD", "ANCIENT_WOOD", "SPIRITWOOD"],
-      nodesPerArea: 3,
+      probability: 0.2,
     },
   ]
 }
@@ -165,20 +169,25 @@ function generateNode(
 
 /**
  * Generate nodes for an area based on its distance.
- * Each area gets one random node type (ore OR trees, not both).
+ * Per spec: Each location type rolls independently for existence.
+ * Most rolls fail, so most areas are naturally sparse.
  */
 export function generateNodesForArea(areaId: AreaID, distance: number, rng: RngState): Node[] {
   const pools = getNodePoolsForDistance(distance)
   if (pools.length === 0) return []
 
-  // Pick one pool type randomly (ore or trees)
-  const poolIndex = Math.floor(rollFloat(rng, 0, pools.length - 0.01, `pool_${areaId}`))
-  const pool = pools[poolIndex]
-
   const nodes: Node[] = []
-  for (let i = 0; i < pool.nodesPerArea; i++) {
-    const nodeId = `${areaId}-node-${i}`
-    nodes.push(generateNode(nodeId, areaId, pool, rng))
+  let nodeIndex = 0
+
+  // Roll for each location type independently
+  for (const pool of pools) {
+    const roll = rollFloat(rng, 0, 1, `location_roll_${areaId}_${pool.nodeType}`)
+    if (roll < pool.probability) {
+      // Success! Generate one node of this type
+      const nodeId = `${areaId}-node-${nodeIndex}`
+      nodes.push(generateNode(nodeId, areaId, pool, rng))
+      nodeIndex++
+    }
   }
 
   return nodes

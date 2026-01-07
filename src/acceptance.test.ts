@@ -19,28 +19,32 @@ import {
  * Test helpers for procedural area IDs
  */
 
-/** Get a distance-1 area that has ore nodes */
+/** Get an area that has ore nodes (any distance) */
 function getOreAreaId(state: WorldState): AreaID {
-  for (const area of state.exploration.areas.values()) {
-    if (area.distance === 1) {
-      const hasOre = state.world.nodes?.some(
-        (n) => n.areaId === area.id && n.nodeType === NodeType.ORE_VEIN
-      )
-      if (hasOre) return area.id
-    }
+  // Sort areas by distance so we prefer closer ones
+  const areas = Array.from(state.exploration.areas.values())
+    .filter((a) => a.distance > 0)
+    .sort((a, b) => a.distance - b.distance)
+  for (const area of areas) {
+    const hasOre = state.world.nodes?.some(
+      (n) => n.areaId === area.id && n.nodeType === NodeType.ORE_VEIN
+    )
+    if (hasOre) return area.id
   }
   throw new Error("No ore area found")
 }
 
-/** Get a distance-2 (MID) area that has ore nodes */
+/** Get an area at distance 2+ that has ore nodes */
 function getMidOreAreaId(state: WorldState): AreaID {
-  for (const area of state.exploration.areas.values()) {
-    if (area.distance === 2) {
-      const hasOre = state.world.nodes?.some(
-        (n) => n.areaId === area.id && n.nodeType === NodeType.ORE_VEIN
-      )
-      if (hasOre) return area.id
-    }
+  // Sort areas by distance, prefer closer areas that are distance 2+
+  const areas = Array.from(state.exploration.areas.values())
+    .filter((a) => a.distance >= 2)
+    .sort((a, b) => a.distance - b.distance)
+  for (const area of areas) {
+    const hasOre = state.world.nodes?.some(
+      (n) => n.areaId === area.id && n.nodeType === NodeType.ORE_VEIN
+    )
+    if (hasOre) return area.id
   }
   throw new Error("No MID ore area found")
 }
@@ -64,14 +68,15 @@ describe("Acceptance Tests: Gathering MVP", () => {
   describe("Geography", () => {
     it("should have fixed travel time that is never modified by skills", () => {
       // Create two worlds with different skill levels
-      const world1 = createWorld("travel-test")
+      // Use "ore-test" seed which has ore at distance 1 (reachable from TOWN)
+      const world1 = createWorld("ore-test")
       world1.player.skills.Mining.level = 1
       world1.exploration.playerState.currentAreaId = "TOWN"
       // Get and make ore area known
       const oreAreaId = getOreAreaId(world1)
       makeAreaKnown(world1, oreAreaId)
 
-      const world2 = createWorld("travel-test")
+      const world2 = createWorld("ore-test")
       world2.player.skills.Mining.level = 10
       world2.exploration.playerState.currentAreaId = "TOWN"
       // Use the same area ID for comparison
