@@ -163,6 +163,25 @@ Players not in the exploration guild:
 - No XP gain from exploration actions
 - Can still buy maps from NPC explorers
 
+#### Luck Surfacing
+
+Per RNG canon, all randomness must be explicit and measured. On every discovery:
+
+**Show immediately**:
+- Actual ticks taken
+- Expected ticks (based on success chance and roll interval)
+- Luck delta: `(expected - actual)` ticks saved/lost
+
+**Example outputs**:
+- "Found mining node in 8 ticks (expected: 20) — 12 ticks faster than average"
+- "Found connection in 45 ticks (expected: 20) — 25 ticks slower than average"
+
+**Track cumulatively**:
+- Total exploration luck delta (ticks saved/lost across all discoveries)
+- Current streak (consecutive lucky/unlucky discoveries)
+
+This surfaces whether the player is running hot or cold, enabling informed decisions about whether to push further or consolidate.
+
 ---
 
 ### Guilds and Starting Benefits
