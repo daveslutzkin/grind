@@ -1047,14 +1047,11 @@ export function executeExplore(state: WorldState, _action: ExploreAction): Actio
 
   let discovered: string
   if (discoveredLocationId) {
-    // Convert location ID to node ID for player-facing message
-    const nodeId = discoveredLocationId.replace("-loc-", "-node-")
     const location = currentArea.locations.find((loc) => loc.id === discoveredLocationId)
     if (location?.gatheringSkillType) {
-      const nodeType = location.gatheringSkillType === "Mining" ? "mining" : "woodcutting"
-      discovered = `${nodeType} node ${nodeId}`
+      discovered = location.gatheringSkillType === "Mining" ? "ore vein" : "tree stand"
     } else {
-      discovered = `node ${nodeId}`
+      discovered = "node"
     }
   } else if (connectionToUnknownArea) {
     discovered = `connection to unknown area (${discoveredConnectionId})`

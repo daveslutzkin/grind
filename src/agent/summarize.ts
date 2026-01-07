@@ -308,14 +308,15 @@ export function formatDynamicState(state: WorldState): string {
     lines.push("Nodes here:")
     for (const node of nodesHere) {
       const view = getPlayerNodeView(node, state)
+      const nodeName = getNodeTypeName(view.nodeType)
 
       if (view.visibilityTier === "none" || view.visibleMaterials.length === 0) {
         // No skill or no visible materials - just show node type
-        lines.push(`  ${view.nodeId}: ${getNodeTypeName(view.nodeType)}`)
+        lines.push(`  ${nodeName}`)
       } else if (view.visibilityTier === "materials") {
         // Has skill but not appraised - show material names only
         const mats = view.visibleMaterials.map((m) => m.materialId).join(", ")
-        lines.push(`  ${view.nodeId}(${view.nodeType}): ${mats}`)
+        lines.push(`  ${nodeName}: ${mats}`)
       } else {
         // Appraised - show full details with counts
         const mats = view.visibleMaterials
@@ -324,7 +325,7 @@ export function formatDynamicState(state: WorldState): string {
             return `${m.materialId}:${m.remainingUnits}/${m.maxUnitsInitial}${req}`
           })
           .join(", ")
-        lines.push(`  ${view.nodeId}(${view.nodeType}): ${mats}`)
+        lines.push(`  ${nodeName}: ${mats}`)
       }
     }
   }

@@ -106,12 +106,12 @@ describe("visibility", () => {
   })
 
   describe("getNodeTypeName", () => {
-    it("should return Mining node for ORE_VEIN", () => {
-      expect(getNodeTypeName(NodeType.ORE_VEIN)).toBe("Mining node")
+    it("should return Ore vein for ORE_VEIN", () => {
+      expect(getNodeTypeName(NodeType.ORE_VEIN)).toBe("Ore vein")
     })
 
-    it("should return Woodcutting node for TREE_STAND", () => {
-      expect(getNodeTypeName(NodeType.TREE_STAND)).toBe("Woodcutting node")
+    it("should return Tree stand for TREE_STAND", () => {
+      expect(getNodeTypeName(NodeType.TREE_STAND)).toBe("Tree stand")
     })
   })
 

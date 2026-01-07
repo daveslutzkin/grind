@@ -113,14 +113,15 @@ export function formatWorldState(state: WorldState): string {
     lines.push("Nodes:")
     for (const node of nodesHere) {
       const view = getPlayerNodeView(node, state)
+      const nodeName = getNodeTypeName(view.nodeType)
 
       if (view.visibilityTier === "none" || view.visibleMaterials.length === 0) {
         // No skill or no visible materials - just show node type
-        lines.push(`  ${view.nodeId}: ${getNodeTypeName(view.nodeType)}`)
+        lines.push(`  ${nodeName}`)
       } else if (view.visibilityTier === "materials") {
         // Has skill but not appraised - show material names only
         const mats = view.visibleMaterials.map((m) => m.materialId).join(", ")
-        lines.push(`  ${view.nodeId}: ${mats}`)
+        lines.push(`  ${nodeName}: ${mats}`)
       } else {
         // Appraised - show full details with counts
         const mats = view.visibleMaterials
@@ -129,7 +130,7 @@ export function formatWorldState(state: WorldState): string {
             return `${m.remainingUnits}/${m.maxUnitsInitial} ${m.materialId}${req}`
           })
           .join(", ")
-        lines.push(`  ${view.nodeId}: ${mats}`)
+        lines.push(`  ${nodeName}: ${mats}`)
       }
     }
   }
@@ -278,15 +279,30 @@ export function formatActionLog(log: ActionLog, state?: WorldState): string {
       const expectedTicks = Math.round(expectedTicksPerSuccess * successCount)
       const actualTicks = log.timeConsumed
       const delta = expectedTicks - actualTicks
+      const deltaPercent = expectedTicks > 0 ? (delta / expectedTicks) * 100 : 0
 
-      const luckStr =
+      // Determine luck label based on how far from expected
+      let luckLabel: string
+      if (deltaPercent >= 50) {
+        luckLabel = "very lucky"
+      } else if (deltaPercent > 0) {
+        luckLabel = "lucky"
+      } else if (deltaPercent <= -50) {
+        luckLabel = "very unlucky"
+      } else if (deltaPercent < 0) {
+        luckLabel = "unlucky"
+      } else {
+        luckLabel = "average"
+      }
+
+      const deltaStr =
         delta > 0
-          ? `${delta}t faster than expected`
+          ? `${delta}t faster`
           : delta < 0
-            ? `${Math.abs(delta)}t slower than expected`
-            : "as expected"
+            ? `${Math.abs(delta)}t slower`
+            : "on target"
 
-      lines.push(`  RNG: [${rolls.join(", ")}] — ${luckStr}`)
+      lines.push(`  RNG: [${rolls.join(", ")}] — ${deltaStr} (${luckLabel})`)
     } else {
       lines.push(`  RNG: [${rolls.join(", ")}]`)
     }
