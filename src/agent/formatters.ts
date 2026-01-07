@@ -12,6 +12,22 @@ export function formatWorldState(state: WorldState): string {
   // Location + ticks on one line
   lines.push(`Location: ${currentArea} (${state.time.sessionRemainingTicks} ticks left)`)
 
+  // Exploration progress for current area (if not TOWN)
+  if (currentArea !== "TOWN") {
+    const area = state.exploration.areas.get(currentArea)
+    if (area) {
+      const totalLocs = area.locations.length
+      const knownLocs = area.locations.filter((loc) =>
+        state.exploration.playerState.knownLocationIds.includes(loc.id)
+      ).length
+      if (knownLocs < totalLocs) {
+        lines.push(`Explored: ${knownLocs}/${totalLocs} locations`)
+      } else {
+        lines.push(`Explored: fully (${totalLocs} locations)`)
+      }
+    }
+  }
+
   // Inventory - compact
   if (state.player.inventory.length === 0) {
     lines.push(`Inventory: empty (0/${state.player.inventoryCapacity})`)
