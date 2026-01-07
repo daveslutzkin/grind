@@ -155,7 +155,7 @@ describe("Location Discovery", () => {
   })
 
   describe("Explore discovers locations", () => {
-    it("should discover a gathering node location via Explore action", () => {
+    it("should discover a location or connection via Explore action", () => {
       const state = createWorld("ore-test")
       state.player.skills.Exploration = { level: 1, xp: 0 }
       const oreAreaId = getOreAreaId(state)
@@ -167,16 +167,21 @@ describe("Location Discovery", () => {
       expect(area.locations.length).toBeGreaterThan(0)
 
       const initialKnownLocations = state.exploration.playerState.knownLocationIds.length
+      const initialKnownConnections = state.exploration.playerState.knownConnectionIds.length
       const action: ExploreAction = { type: "Explore" }
 
       const log = executeExplore(state, action)
 
       if (log.success) {
-        // Should have discovered a location
-        expect(state.exploration.playerState.knownLocationIds.length).toBe(
-          initialKnownLocations + 1
-        )
-        expect(log.explorationLog?.discoveredLocationId).toBeDefined()
+        // Should have discovered either a location or a connection
+        const discoveredLocation =
+          state.exploration.playerState.knownLocationIds.length > initialKnownLocations
+        const discoveredConnection =
+          state.exploration.playerState.knownConnectionIds.length > initialKnownConnections
+        expect(discoveredLocation || discoveredConnection).toBe(true)
+        expect(
+          log.explorationLog?.discoveredLocationId || log.explorationLog?.discoveredConnectionId
+        ).toBeDefined()
       }
     })
 

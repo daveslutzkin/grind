@@ -302,6 +302,64 @@ export function ensureAreaGenerated(rng: RngState, area: Area): Area {
 }
 
 /**
+ * Ensure an area is fully generated INCLUDING its connections.
+ * This should be called when first visiting or discovering an area.
+ * It will:
+ * 1. Generate the area's content (locations)
+ * 2. Create placeholders for the next distance if they don't exist
+ * 3. Generate connections from this area to same/adjacent distances
+ */
+export function ensureAreaFullyGenerated(
+  rng: RngState,
+  exploration: NonNullable<WorldState["exploration"]>,
+  area: Area
+): void {
+  // Skip if already fully generated (has connections)
+  const hasConnections = exploration.connections.some(
+    (c) => c.fromAreaId === area.id || c.toAreaId === area.id
+  )
+  if (area.generated && hasConnections) return
+
+  // Generate area content
+  ensureAreaGenerated(rng, area)
+
+  // Don't generate connections for TOWN (already done at init)
+  if (area.id === "TOWN") return
+
+  // Create placeholders for next distance if they don't exist
+  const nextDistance = area.distance + 1
+  const existingNextDistAreas = Array.from(exploration.areas.values()).filter(
+    (a) => a.distance === nextDistance
+  )
+  if (existingNextDistAreas.length === 0) {
+    const nextDistCount = getAreaCountForDistance(nextDistance)
+    for (let i = 0; i < nextDistCount; i++) {
+      const placeholder = createAreaPlaceholder(nextDistance, i)
+      exploration.areas.set(placeholder.id, placeholder)
+    }
+  }
+
+  // Generate connections from this area (if not already done)
+  const existingFromThis = exploration.connections.filter((c) => c.fromAreaId === area.id)
+  if (existingFromThis.length === 0) {
+    const allAreas = Array.from(exploration.areas.values())
+    const newConnections = generateAreaConnections(rng, area, allAreas)
+
+    // Filter out duplicates (connection may already exist in reverse direction)
+    for (const conn of newConnections) {
+      const exists = exploration.connections.some(
+        (c) =>
+          (c.fromAreaId === conn.fromAreaId && c.toAreaId === conn.toAreaId) ||
+          (c.fromAreaId === conn.toAreaId && c.toAreaId === conn.fromAreaId)
+      )
+      if (!exists) {
+        exploration.connections.push(conn)
+      }
+    }
+  }
+}
+
+/**
  * Generate locations within an area.
  * Each potential location type rolls independently for existence.
  * Most rolls fail, so most areas are naturally sparse.
@@ -544,8 +602,8 @@ export function grantExplorationGuildBenefits(state: WorldState): {
   // Pick the first one (deterministic)
   const areaToDiscover = unknownD1Areas[0]
 
-  // Ensure the area is generated (lazy generation)
-  ensureAreaGenerated(state.rng, areaToDiscover)
+  // Ensure the area is fully generated (content + connections)
+  ensureAreaFullyGenerated(state.rng, exploration, areaToDiscover)
 
   // Mark area and connection as known
   exploration.playerState.knownAreaIds.push(areaToDiscover.id)
@@ -821,9 +879,9 @@ export function executeSurvey(state: WorldState, _action: SurveyAction): ActionL
         continue
       }
 
-      // Discover the area - ensure it's generated first (lazy generation)
+      // Discover the area - ensure it's fully generated (content + connections)
       const targetArea = exploration.areas.get(targetId)!
-      ensureAreaGenerated(state.rng, targetArea)
+      ensureAreaFullyGenerated(state.rng, exploration, targetArea)
 
       // Mark area and connection as known
       exploration.playerState.knownAreaIds.push(targetId)
@@ -903,8 +961,8 @@ export function executeExplore(state: WorldState, _action: ExploreAction): Actio
   const currentArea = exploration.areas.get(exploration.playerState.currentAreaId)!
   const level = state.player.skills.Exploration.level
 
-  // Ensure area is generated (lazy generation)
-  ensureAreaGenerated(state.rng, currentArea)
+  // Ensure area is fully generated (content + connections)
+  ensureAreaFullyGenerated(state.rng, exploration, currentArea)
 
   // Find undiscovered locations in current area
   const knownLocationIds = new Set(exploration.playerState.knownLocationIds)
@@ -1244,6 +1302,10 @@ export function executeExplorationTravel(
   // Consume time and move
   consumeTime(state, travelTime)
   exploration.playerState.currentAreaId = destinationAreaId
+
+  // Ensure destination area is fully generated (content + connections)
+  const destArea = exploration.areas.get(destinationAreaId)!
+  ensureAreaFullyGenerated(state.rng, exploration, destArea)
 
   // TODO: Scavenge rolls for gathering drops (future implementation)
 
