@@ -290,9 +290,12 @@ export function createAreaPlaceholder(distance: number, indexInDistance: number)
 export function ensureAreaGenerated(rng: RngState, area: Area): Area {
   if (area.generated) return area
 
-  // Generate the actual content
-  const locations = generateAreaLocations(rng, area.id, area.distance)
-  area.locations = locations
+  // Only generate locations if they weren't already populated by node generation
+  // (locations are synced with nodes in world.ts createWorld)
+  if (area.locations.length === 0) {
+    const locations = generateAreaLocations(rng, area.id, area.distance)
+    area.locations = locations
+  }
   area.generated = true
   return area
 }

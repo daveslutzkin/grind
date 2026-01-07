@@ -93,6 +93,16 @@ function parseAction(cmd: string, state: WorldState): Action | null {
       return null
     }
 
+    case "explore": {
+      // Explore action to discover locations (nodes) in the current area
+      return { type: "Explore" }
+    }
+
+    case "survey": {
+      // Survey action to discover new areas (connections)
+      return { type: "Survey" }
+    }
+
     default:
       console.error(`Unknown command: ${type}`)
       return null
@@ -108,11 +118,16 @@ function main(): void {
     console.log("Commands:")
     console.log("  move <area>                          - Travel to a known area")
     console.log("  enrol exploration|mining|woodcutting - Enrol in a guild")
+    console.log("  survey                               - Discover new areas")
+    console.log(
+      "  explore                              - Discover locations (nodes) in current area"
+    )
     console.log("  gather <node> focus <mat>            - Focus on one material")
     console.log("  gather <node> careful                - Carefully extract all")
     console.log("  gather <node> appraise               - Inspect node contents")
     console.log("")
     console.log("Start by enrolling in Exploration to discover areas (starts at TOWN)")
+    console.log("Then use 'explore' to discover node locations before gathering")
     console.log("Areas are procedurally generated: area-d1-i0, area-d2-i0, etc.")
     process.exit(1)
   }
