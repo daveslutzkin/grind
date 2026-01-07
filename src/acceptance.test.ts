@@ -5,7 +5,7 @@
  */
 
 import { executeAction } from "./engine.js"
-import { createWorld, MATERIALS } from "./world.js"
+import { createWorld } from "./world.js"
 import { GatherMode, type GatherAction, type MoveAction } from "./types.js"
 
 describe("Acceptance Tests: Gathering MVP", () => {
@@ -34,27 +34,6 @@ describe("Acceptance Tests: Gathering MVP", () => {
       expect(log1.timeConsumed).toBe(log2.timeConsumed)
       expect(log1.success).toBe(true)
       expect(log2.success).toBe(true)
-    })
-
-    it.skip("should have FAR locations with materials that NEAR locations cannot contain", () => {
-      // Check that FAR-only materials exist in MATERIALS
-      const farOnlyMaterials = Object.entries(MATERIALS).filter(
-        ([_id, def]) => def.requiredLevel >= 9 // L9 required = FAR-only
-      )
-      expect(farOnlyMaterials.length).toBeGreaterThan(0)
-
-      // Check that NEAR locations don't have FAR materials in their pools
-      // SKIPPED: LOCATIONS array no longer exists in exploration-based system
-      // const nearLocations = LOCATIONS.filter((l) => l.band === DistanceBand.NEAR)
-      // const farLocations = LOCATIONS.filter((l) => l.band === DistanceBand.FAR)
-
-      // expect(nearLocations.length).toBeGreaterThan(0)
-      // expect(farLocations.length).toBeGreaterThan(0)
-
-      // FAR materials should have higher required levels than what's available in NEAR
-      for (const [_matId, def] of farOnlyMaterials) {
-        expect(def.requiredLevel).toBeGreaterThanOrEqual(9)
-      }
     })
   })
 

@@ -1,7 +1,7 @@
 /**
- * TDD Tests for Phase 2: World Factory
+ * Tests for World Factory
  *
- * Tests for gathering world creation with:
+ * Tests for world creation with:
  * - 7 areas with distance bands
  * - Material definitions with tiers
  * - Node generation with multi-material reserves
@@ -10,14 +10,7 @@
 import { createWorld, MATERIALS } from "./world.js"
 import { NodeType, type Node } from "./types.js"
 
-describe("Phase 2: World Factory", () => {
-  // NOTE: LOCATIONS constant no longer exported - areas are now in exploration system
-  describe.skip("LOCATIONS constant (deprecated - now using exploration system)", () => {
-    it("should have 7 locations", () => {
-      // Skip - LOCATIONS no longer exported
-    })
-  })
-
+describe("World Factory", () => {
   describe("MATERIALS constant", () => {
     it("should have mining materials with tiers 1-5", () => {
       const miningMats = Object.entries(MATERIALS).filter(([_, m]) => m.skill === "Mining")
@@ -42,13 +35,6 @@ describe("Phase 2: World Factory", () => {
       tier1.forEach((m) => expect(m.requiredLevel).toBeLessThanOrEqual(2))
       // Tier 3+ materials should require higher levels
       tier3.forEach((m) => expect(m.requiredLevel).toBeGreaterThanOrEqual(5))
-    })
-  })
-
-  // NOTE: generateTravelCosts no longer exported - now using exploration connections
-  describe.skip("generateTravelCosts (deprecated - now using exploration system)", () => {
-    it("should generate costs between all location pairs", () => {
-      // Skip - generateTravelCosts no longer exported
     })
   })
 
@@ -77,10 +63,6 @@ describe("Phase 2: World Factory", () => {
 
       // Areas are now in the exploration system
       expect(world.exploration.areas.size).toBe(7)
-    })
-
-    it.skip("should have travel costs for all location pairs", () => {
-      // Skip - travel costs no longer used, now using exploration connections
     })
 
     it("should generate nodes for each gathering location", () => {

@@ -198,30 +198,6 @@ describe("Evaluation APIs", () => {
       expect(result.violations[0].reason).toContain("WRONG_LOCATION")
     })
 
-    it.skip("should track state changes through plan", () => {
-      const state = createWorld("test-seed")
-      state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
-      state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
-      const node = state.world.nodes.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)!
-      const focusMat = node.materials.find((m) => m.requiredLevel === 1)!
-      const actions: Action[] = [
-        { type: "Move", destination: "OUTSKIRTS_MINE" },
-        {
-          type: "Gather",
-          nodeId: node.nodeId,
-          mode: GatherMode.FOCUS,
-          focusMaterialId: focusMat.materialId,
-        },
-        { type: "Move", destination: "TOWN" },
-        { type: "Craft", recipeId: "iron-bar-recipe" }, // Will fail - needs 2 IRON_ORE
-      ]
-
-      const result = evaluatePlan(state, actions)
-
-      // This test is complex due to material extraction variance
-      expect(result.violations.length).toBeGreaterThan(0)
-    })
-
     it("should not mutate state", () => {
       const state = createWorld("test-seed")
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather

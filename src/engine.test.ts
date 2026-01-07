@@ -291,11 +291,6 @@ describe("Engine", () => {
       expect(log).toBeDefined()
     })
 
-    it.skip("should fail RNG but still consume time", () => {
-      // FOCUS mode is deterministic and doesn't use RNG for success/failure
-      // This test is not applicable to the new gather system
-    })
-
     it("should stack items in inventory", () => {
       const state = createWorld("stack-test")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
@@ -322,11 +317,6 @@ describe("Engine", () => {
           1
         )
       }
-    })
-
-    it.skip("should fail if inventory slots are full with different items", () => {
-      // Inventory management may have changed in the new gather system
-      // This test needs review
     })
 
     it("should succeed if inventory full but already has that item (slot-based)", () => {
