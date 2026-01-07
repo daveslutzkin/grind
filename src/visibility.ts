@@ -20,7 +20,7 @@ export function getSkillForNodeType(nodeType: NodeType): GatheringSkillID {
  * Get the human-readable name for a node type
  */
 export function getNodeTypeName(nodeType: NodeType): string {
-  return nodeType === "ORE_VEIN" ? "Mining node" : "Woodcutting node"
+  return nodeType === "ORE_VEIN" ? "Ore vein" : "Tree stand"
 }
 
 /**

@@ -15,24 +15,113 @@ export function formatWorldState(state: WorldState): string {
   const lines: string[] = []
   const currentArea = getCurrentAreaId(state)
 
+  // ========== LOCATION SECTION ==========
+
   // Location + ticks on one line
   lines.push(`Location: ${currentArea} (${state.time.sessionRemainingTicks} ticks left)`)
 
-  // Exploration progress for current area (if not TOWN)
+  // Nodes + exploration progress combined (if not TOWN)
   if (currentArea !== "TOWN") {
     const area = state.exploration.areas.get(currentArea)
+    const knownLocationIds = state.exploration.playerState.knownLocationIds
+    const nodesHere = state.world.nodes?.filter((n) => {
+      if (n.areaId !== currentArea || n.depleted) return false
+      const match = n.nodeId.match(/-node-(\d+)$/)
+      if (!match) return false
+      const locationId = `${n.areaId}-loc-${match[1]}`
+      return knownLocationIds.includes(locationId)
+    })
+
     if (area) {
       const totalLocs = area.locations.length
       const knownLocs = area.locations.filter((loc) =>
-        state.exploration.playerState.knownLocationIds.includes(loc.id)
+        knownLocationIds.includes(loc.id)
       ).length
-      if (knownLocs < totalLocs) {
-        lines.push(`Explored: ${knownLocs} location${knownLocs !== 1 ? "s" : ""} found (more remain)`)
+
+      // Only show nodes section if we've discovered at least one location
+      if (knownLocs > 0) {
+        const exploredStatus =
+          knownLocs < totalLocs
+            ? `${knownLocs} found, more remain`
+            : "fully explored"
+
+        if (nodesHere && nodesHere.length > 0) {
+          lines.push(`Nodes (${exploredStatus}):`)
+          for (const node of nodesHere) {
+            const view = getPlayerNodeView(node, state)
+            const nodeName = getNodeTypeName(view.nodeType)
+
+            if (view.visibilityTier === "none" || view.visibleMaterials.length === 0) {
+              lines.push(`  ${nodeName}`)
+            } else if (view.visibilityTier === "materials") {
+              const mats = view.visibleMaterials.map((m) => m.materialId).join(", ")
+              lines.push(`  ${nodeName}: ${mats}`)
+            } else {
+              const mats = view.visibleMaterials
+                .map((m) => {
+                  const req = m.requiredLevel > 0 ? ` [${m.requiresSkill} L${m.requiredLevel}]` : ""
+                  return `${m.remainingUnits}/${m.maxUnitsInitial} ${m.materialId}${req}`
+                })
+                .join(", ")
+              lines.push(`  ${nodeName}: ${mats}`)
+            }
+          }
+        } else {
+          lines.push(`Nodes (${exploredStatus}): none visible`)
+        }
       } else {
-        lines.push(`Explored: fully (${totalLocs} locations)`)
+        // No locations discovered yet - show unexplored status
+        lines.push("Nodes: unexplored (use 'explore' to discover)")
       }
     }
   }
+
+  // Travel - available connections (bidirectional - can go back the way you came)
+  const knownConnections = state.exploration.playerState.knownConnectionIds
+  const destinations = new Map<string, number>() // dest -> travel time
+
+  for (const connId of knownConnections) {
+    const [from, to] = connId.split("->")
+    let dest: string | null = null
+    let conn
+
+    if (from === currentArea) {
+      // Outgoing connection: currentArea -> somewhere
+      dest = to
+      conn = state.exploration.connections.find(
+        (c) => c.fromAreaId === currentArea && c.toAreaId === to
+      )
+    } else if (to === currentArea) {
+      // Incoming connection: somewhere -> currentArea (can travel back)
+      dest = from
+      conn = state.exploration.connections.find(
+        (c) => c.fromAreaId === from && c.toAreaId === currentArea
+      )
+    }
+
+    if (dest && !destinations.has(dest)) {
+      destinations.set(dest, conn?.travelTimeMultiplier ?? 1)
+    }
+  }
+
+  if (destinations.size > 0) {
+    const travelList = Array.from(destinations.entries())
+      .map(([dest, time]) => `${dest} (${time}t)`)
+      .join(", ")
+    lines.push(`Travel: ${travelList}`)
+  } else {
+    lines.push("Travel: none known")
+  }
+
+  // Enemies at current location
+  const enemies = state.world.enemies.filter((e) => e.areaId === currentArea)
+  if (enemies.length > 0) {
+    const enemyStr = enemies.map((e) => `${e.id} (Combat L${e.requiredSkillLevel})`).join(", ")
+    lines.push(`Enemies: ${enemyStr}`)
+  }
+
+  // ========== PLAYER SECTION (separated by blank line) ==========
+  lines.push("")
 
   // Inventory - compact
   if (state.player.inventory.length === 0) {
@@ -82,66 +171,7 @@ export function formatWorldState(state: WorldState): string {
     lines.push(`Active: ${contracts}`)
   }
 
-  // Travel - available connections
-  const knownConnections = state.exploration.playerState.knownConnectionIds
-  const outgoing = knownConnections
-    .filter((connId) => connId.startsWith(`${currentArea}->`))
-    .map((connId) => {
-      const dest = connId.split("->")[1]
-      const conn = state.exploration.connections.find(
-        (c) => c.fromAreaId === currentArea && c.toAreaId === dest
-      )
-      return `${dest} (${conn?.travelTimeMultiplier ?? 1}t)`
-    })
-  if (outgoing.length > 0) {
-    lines.push(`Travel: ${outgoing.join(", ")}`)
-  } else {
-    lines.push("Travel: none known")
-  }
-
-  // Resource nodes at current location (discovered only)
-  const knownLocationIds = state.exploration.playerState.knownLocationIds
-  const nodesHere = state.world.nodes?.filter((n) => {
-    if (n.areaId !== currentArea || n.depleted) return false
-    const match = n.nodeId.match(/-node-(\d+)$/)
-    if (!match) return false
-    const locationId = `${n.areaId}-loc-${match[1]}`
-    return knownLocationIds.includes(locationId)
-  })
-  if (nodesHere && nodesHere.length > 0) {
-    lines.push("")
-    lines.push("Nodes:")
-    for (const node of nodesHere) {
-      const view = getPlayerNodeView(node, state)
-
-      if (view.visibilityTier === "none" || view.visibleMaterials.length === 0) {
-        // No skill or no visible materials - just show node type
-        lines.push(`  ${view.nodeId}: ${getNodeTypeName(view.nodeType)}`)
-      } else if (view.visibilityTier === "materials") {
-        // Has skill but not appraised - show material names only
-        const mats = view.visibleMaterials.map((m) => m.materialId).join(", ")
-        lines.push(`  ${view.nodeId}: ${mats}`)
-      } else {
-        // Appraised - show full details with counts
-        const mats = view.visibleMaterials
-          .map((m) => {
-            const req = m.requiredLevel > 0 ? ` [${m.requiresSkill} L${m.requiredLevel}]` : ""
-            return `${m.remainingUnits}/${m.maxUnitsInitial} ${m.materialId}${req}`
-          })
-          .join(", ")
-        lines.push(`  ${view.nodeId}: ${mats}`)
-      }
-    }
-  }
-
-  // Enemies at current location
-  const enemies = state.world.enemies.filter((e) => e.areaId === currentArea)
-  if (enemies.length > 0) {
-    const enemyStr = enemies.map((e) => `${e.id} (Combat L${e.requiredSkillLevel})`).join(", ")
-    lines.push(`Enemies: ${enemyStr}`)
-  }
-
-  // Recipes - compact
+  // Recipes - compact (location-specific but useful for player)
   const recipes = state.world.recipes.filter((r) => r.requiredAreaId === currentArea)
   if (recipes.length > 0) {
     const recipeStr = recipes
@@ -154,7 +184,7 @@ export function formatWorldState(state: WorldState): string {
     lines.push(`Recipes: ${recipeStr}`)
   }
 
-  // Contracts - compact
+  // Contracts - compact (location-specific but useful for player)
   const contracts = state.world.contracts.filter(
     (c) => c.guildAreaId === currentArea && !state.player.activeContracts.includes(c.id)
   )
@@ -278,15 +308,30 @@ export function formatActionLog(log: ActionLog, state?: WorldState): string {
       const expectedTicks = Math.round(expectedTicksPerSuccess * successCount)
       const actualTicks = log.timeConsumed
       const delta = expectedTicks - actualTicks
+      const deltaPercent = expectedTicks > 0 ? (delta / expectedTicks) * 100 : 0
 
-      const luckStr =
+      // Determine luck label based on how far from expected
+      let luckLabel: string
+      if (deltaPercent >= 50) {
+        luckLabel = "very lucky"
+      } else if (deltaPercent > 0) {
+        luckLabel = "lucky"
+      } else if (deltaPercent <= -50) {
+        luckLabel = "very unlucky"
+      } else if (deltaPercent < 0) {
+        luckLabel = "unlucky"
+      } else {
+        luckLabel = "average"
+      }
+
+      const deltaStr =
         delta > 0
-          ? `${delta}t faster than expected`
+          ? `${delta}t faster`
           : delta < 0
-            ? `${Math.abs(delta)}t slower than expected`
-            : "as expected"
+            ? `${Math.abs(delta)}t slower`
+            : "on target"
 
-      lines.push(`  RNG: [${rolls.join(", ")}] — ${luckStr}`)
+      lines.push(`  RNG: [${rolls.join(", ")}] — ${deltaStr} (${luckLabel})`)
     } else {
       lines.push(`  RNG: [${rolls.join(", ")}]`)
     }
