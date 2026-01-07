@@ -1,6 +1,32 @@
 import { executeAction } from "./engine.js"
 import { createWorld } from "./world.js"
-import type { FightAction, GuildEnrolmentAction, ItemStack, WorldState } from "./types.js"
+import type { FightAction, GuildEnrolmentAction, ItemStack, WorldState, AreaID } from "./types.js"
+
+/** Get a distance-1 area ID */
+function getDistance1AreaId(state: WorldState): AreaID {
+  for (const area of state.exploration.areas.values()) {
+    if (area.distance === 1) return area.id
+  }
+  throw new Error("No distance-1 area found")
+}
+
+/** Set up combat state: player at a distance-1 area with an enemy */
+function setupCombatArea(state: WorldState): AreaID {
+  const areaId = getDistance1AreaId(state)
+  state.exploration.playerState.currentAreaId = areaId
+  // Add a test enemy at this location
+  state.world.enemies = state.world.enemies || []
+  state.world.enemies.push({
+    id: "cave-rat",
+    areaId: areaId,
+    fightTime: 3,
+    successProbability: 0.7,
+    requiredSkillLevel: 1,
+    lootTable: [{ itemId: "COPPER_ORE", quantity: 1, weight: 1 }],
+    failureAreaId: "TOWN",
+  })
+  return areaId
+}
 
 describe("Combat Progression", () => {
   describe("New item types", () => {
@@ -85,7 +111,7 @@ describe("Combat Progression", () => {
   describe("Fight requires weapon", () => {
     it("should fail Fight if no weapon equipped", () => {
       const state = createWorld("test-seed")
-      state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      setupCombatArea(state)
       state.player.skills.Combat = { level: 1, xp: 0 }
       // No weapon equipped
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
@@ -99,7 +125,7 @@ describe("Combat Progression", () => {
 
     it("should fail Fight if weapon equipped but not in inventory", () => {
       const state = createWorld("test-seed")
-      state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      setupCombatArea(state)
       state.player.skills.Combat = { level: 1, xp: 0 }
       // Weapon "equipped" but not actually owned
       state.player.equippedWeapon = "CRUDE_WEAPON"
@@ -115,7 +141,7 @@ describe("Combat Progression", () => {
 
     it("should succeed Fight if CRUDE_WEAPON equipped", () => {
       const state = createWorld("test-seed")
-      state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      setupCombatArea(state)
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
       state.player.equippedWeapon = "CRUDE_WEAPON"
@@ -129,7 +155,7 @@ describe("Combat Progression", () => {
 
     it("should succeed Fight if IMPROVED_WEAPON equipped", () => {
       const state = createWorld("test-seed")
-      state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      setupCombatArea(state)
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "IMPROVED_WEAPON", quantity: 1 })
       state.player.equippedWeapon = "IMPROVED_WEAPON"
@@ -144,7 +170,7 @@ describe("Combat Progression", () => {
   describe("Weapon determines fight parameters", () => {
     it("should use 3 ticks and 70% success with CRUDE_WEAPON", () => {
       const state = createWorld("test-seed")
-      state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      setupCombatArea(state)
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
       state.player.equippedWeapon = "CRUDE_WEAPON"
@@ -158,7 +184,7 @@ describe("Combat Progression", () => {
 
     it("should use 2 ticks and 80% success with IMPROVED_WEAPON", () => {
       const state = createWorld("test-seed")
-      state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      setupCombatArea(state)
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "IMPROVED_WEAPON", quantity: 1 })
       state.player.equippedWeapon = "IMPROVED_WEAPON"
@@ -174,7 +200,7 @@ describe("Combat Progression", () => {
   describe("Combat failure does NOT relocate", () => {
     it("should NOT relocate player on combat failure", () => {
       const state = createWorld("fight-fail-no-relocate")
-      state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      const areaId = setupCombatArea(state)
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
       state.player.equippedWeapon = "CRUDE_WEAPON"
@@ -185,15 +211,15 @@ describe("Combat Progression", () => {
       const log = executeAction(state, action)
 
       if (log.failureType === "COMBAT_FAILURE") {
-        // Player should stay at OUTSKIRTS_MINE, not relocate to TOWN
-        expect(state.exploration.playerState.currentAreaId).toBe("OUTSKIRTS_MINE")
+        // Player should stay at combat area, not relocate to TOWN
+        expect(state.exploration.playerState.currentAreaId).toBe(areaId)
         expect(log.timeConsumed).toBe(3)
       }
     })
 
     it("should consume time on combat failure", () => {
       const state = createWorld("fight-fail-time")
-      state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      setupCombatArea(state)
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
       state.player.equippedWeapon = "CRUDE_WEAPON"
@@ -214,7 +240,7 @@ describe("Combat Progression", () => {
     it("should have 10% chance to drop IMPROVED_WEAPON on successful fight", () => {
       // We need to test this with controlled RNG
       const state = createWorld("test-improved-drop")
-      state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      setupCombatArea(state)
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
       state.player.equippedWeapon = "CRUDE_WEAPON"
@@ -234,7 +260,7 @@ describe("Combat Progression", () => {
 
     it("should have 1% chance to drop COMBAT_GUILD_TOKEN on successful fight", () => {
       const state = createWorld("test-token-drop")
-      state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      setupCombatArea(state)
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
       state.player.equippedWeapon = "CRUDE_WEAPON"
@@ -255,7 +281,7 @@ describe("Combat Progression", () => {
     it("should replace CRUDE_WEAPON with IMPROVED_WEAPON when dropped", () => {
       // Use a seed that drops improved weapon
       const state = createWorld("improved-weapon-drop-seed")
-      state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      setupCombatArea(state)
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
       state.player.equippedWeapon = "CRUDE_WEAPON"
@@ -274,7 +300,7 @@ describe("Combat Progression", () => {
 
     it("should add COMBAT_GUILD_TOKEN to inventory when dropped", () => {
       const state = createWorld("token-drop-test")
-      state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      setupCombatArea(state)
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
       state.player.equippedWeapon = "CRUDE_WEAPON"
@@ -319,7 +345,9 @@ describe("Combat Progression", () => {
     it("should fail if not at Combat Guild (TOWN)", () => {
       const state = createWorld("test-seed")
       setupStateWithToken(state)
-      state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      // Move to a non-TOWN location
+      const areaId = getDistance1AreaId(state)
+      state.exploration.playerState.currentAreaId = areaId
 
       const log = executeAction(state, { type: "TurnInCombatToken" })
 

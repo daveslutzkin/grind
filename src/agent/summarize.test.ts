@@ -7,9 +7,26 @@ import {
   formatDynamicState,
 } from "./summarize.js"
 import { formatWorldState } from "./formatters.js"
-import { GatherMode, type ActionLog } from "../types.js"
+import { GatherMode, NodeType, type ActionLog, type WorldState, type AreaID } from "../types.js"
 import type { AgentKnowledge } from "./output.js"
 import { createWorld } from "../world.js"
+
+/**
+ * Test helpers for procedural area IDs
+ */
+
+/** Get a distance-1 area that has ore nodes */
+function getOreAreaId(state: WorldState): AreaID {
+  for (const area of state.exploration.areas.values()) {
+    if (area.distance === 1) {
+      const hasOre = state.world.nodes?.some(
+        (n) => n.areaId === area.id && n.nodeType === NodeType.ORE_VEIN
+      )
+      if (hasOre) return area.id
+    }
+  }
+  throw new Error("No ore area found")
+}
 
 describe("summarizeAction", () => {
   it("should summarize a successful gather action", () => {
@@ -313,17 +330,19 @@ describe("formatDynamicState", () => {
 
   it("should show nodes at current location", () => {
     const state = createWorld("test-seed")
-    state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+    const areaId = getOreAreaId(state)
+    state.exploration.playerState.currentAreaId = areaId
 
     const dynamicState = formatDynamicState(state)
 
-    // Should show nodes at mine
+    // Should show nodes at the ore area
     expect(dynamicState).toContain("Nodes here:")
   })
 
   it("should be more compact than full state", () => {
     const state = createWorld("test-seed")
-    state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+    const areaId = getOreAreaId(state)
+    state.exploration.playerState.currentAreaId = areaId
     state.player.skills.Mining = { level: 2, xp: 10 }
 
     const fullState = formatWorldState(state)

@@ -1,8 +1,41 @@
 import { executeAction } from "./engine.js"
 import { evaluatePlan } from "./evaluate.js"
 import { createWorld } from "./world.js"
-import type { Action, ActionLog, LocationID } from "./types.js"
-import { GatherMode } from "./types.js"
+import type { Action, ActionLog, WorldState, AreaID } from "./types.js"
+import { GatherMode, NodeType } from "./types.js"
+
+/**
+ * Test helpers for procedural area IDs
+ */
+
+/** Get a distance-1 area that has ore nodes */
+function getOreAreaId(state: WorldState): AreaID {
+  for (const area of state.exploration.areas.values()) {
+    if (area.distance === 1) {
+      const hasOre = state.world.nodes?.some(
+        (n) => n.areaId === area.id && n.nodeType === NodeType.ORE_VEIN
+      )
+      if (hasOre) return area.id
+    }
+  }
+  throw new Error("No ore area found")
+}
+
+/** Make an area and its connection from TOWN known */
+function makeAreaKnown(state: WorldState, areaId: AreaID): void {
+  if (!state.exploration.playerState.knownAreaIds.includes(areaId)) {
+    state.exploration.playerState.knownAreaIds.push(areaId)
+  }
+  const connectionId = `TOWN->${areaId}`
+  if (!state.exploration.playerState.knownConnectionIds.includes(connectionId)) {
+    state.exploration.playerState.knownConnectionIds.push(connectionId)
+  }
+  // Also add return connection
+  const returnConnectionId = `${areaId}->TOWN`
+  if (!state.exploration.playerState.knownConnectionIds.includes(returnConnectionId)) {
+    state.exploration.playerState.knownConnectionIds.push(returnConnectionId)
+  }
+}
 
 describe("Integration: Full Session Flow", () => {
   it("should run a complete session with various actions", () => {
@@ -17,17 +50,18 @@ describe("Integration: Full Session Flow", () => {
     expect(logs[logs.length - 1].success).toBe(true)
     expect(state.player.activeContracts).toContain("miners-guild-1")
 
-    // Make OUTSKIRTS_MINE known
-    state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
-    state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
-    // Move to OUTSKIRTS_MINE
-    logs.push(executeAction(state, { type: "Move", destination: "OUTSKIRTS_MINE" }))
-    expect(logs[logs.length - 1].success).toBe(true)
-    expect(state.exploration.playerState.currentAreaId).toBe("OUTSKIRTS_MINE")
+    // Get ore area and make it known
+    const oreAreaId = getOreAreaId(state)
+    makeAreaKnown(state, oreAreaId)
 
-    // Get a copper ore node ID from the mine
+    // Move to ore area
+    logs.push(executeAction(state, { type: "Move", destination: oreAreaId }))
+    expect(logs[logs.length - 1].success).toBe(true)
+    expect(state.exploration.playerState.currentAreaId).toBe(oreAreaId)
+
+    // Get a copper ore node ID from the area
     const copperNode = state.world.nodes.find(
-      (n) => n.areaId === "OUTSKIRTS_MINE" && n.materials.some((m) => m.materialId === "COPPER_ORE")
+      (n) => n.areaId === oreAreaId && n.materials.some((m) => m.materialId === "COPPER_ORE")
     )
 
     // Gather copper ore multiple times
@@ -86,14 +120,15 @@ describe("Integration: Full Session Flow", () => {
     state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
     const logs: ActionLog[] = []
 
-    // Make OUTSKIRTS_MINE known
-    state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
-    state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
-    // Move to mine
-    logs.push(executeAction(state, { type: "Move", destination: "OUTSKIRTS_MINE" }))
+    // Get ore area and make it known
+    const oreAreaId = getOreAreaId(state)
+    makeAreaKnown(state, oreAreaId)
 
-    // Get a node from the mine
-    const mineNode = state.world.nodes.find((n) => n.areaId === "OUTSKIRTS_MINE")
+    // Move to ore area
+    logs.push(executeAction(state, { type: "Move", destination: oreAreaId }))
+
+    // Get a node from the area
+    const mineNode = state.world.nodes.find((n) => n.areaId === oreAreaId)
     const material = mineNode?.materials[0]
 
     // Gather (may succeed or fail based on RNG)
@@ -133,17 +168,17 @@ describe("Integration: Full Session Flow", () => {
     const state = createWorld("plan-test")
     state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
 
-    // Make OUTSKIRTS_MINE known
-    state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
-    state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
+    // Get ore area and make it known
+    const oreAreaId = getOreAreaId(state)
+    makeAreaKnown(state, oreAreaId)
 
-    // Get a node from the mine
-    const mineNode = state.world.nodes.find((n) => n.areaId === "OUTSKIRTS_MINE")!
+    // Get a node from the area
+    const mineNode = state.world.nodes.find((n) => n.areaId === oreAreaId)!
     const material = mineNode.materials[0]
 
-    // Valid plan: move to mine, gather, move back
+    // Valid plan: move to ore area, gather, move back
     const validPlan: Action[] = [
-      { type: "Move", destination: "OUTSKIRTS_MINE" },
+      { type: "Move", destination: oreAreaId },
       {
         type: "Gather",
         nodeId: mineNode.nodeId,
@@ -182,18 +217,18 @@ describe("Integration: Full Session Flow", () => {
     const state = createWorld("session-end-test")
     const logs: ActionLog[] = []
 
-    // Make areas known
-    state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE", "COPSE")
-    state.exploration.playerState.knownConnectionIds.push(
-      "TOWN->OUTSKIRTS_MINE",
-      "TOWN->COPSE",
-      "OUTSKIRTS_MINE->TOWN",
-      "COPSE->TOWN"
-    )
+    // Get two distance-1 areas and make them known
+    const areas: AreaID[] = []
+    for (const area of state.exploration.areas.values()) {
+      if (area.distance === 1 && areas.length < 2) {
+        areas.push(area.id)
+        makeAreaKnown(state, area.id)
+      }
+    }
+    const destinations: AreaID[] = [...areas, "TOWN"]
 
     // Keep moving until session ends
     let sessionEnded = false
-    const destinations: LocationID[] = ["OUTSKIRTS_MINE", "COPSE", "TOWN"]
     let i = 0
 
     while (!sessionEnded && i < 100) {
@@ -221,17 +256,29 @@ describe("Integration: Full Session Flow", () => {
     state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
     state.player.equippedWeapon = "CRUDE_WEAPON" // Need weapon to fight
 
-    // Make OUTSKIRTS_MINE known
-    state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
-    state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
+    // Get ore area and make it known
+    const oreAreaId = getOreAreaId(state)
+    makeAreaKnown(state, oreAreaId)
 
-    // Get a node from the mine
-    const mineNode = state.world.nodes.find((n) => n.areaId === "OUTSKIRTS_MINE")!
+    // Add an enemy at this location for fight strategy
+    state.world.enemies = state.world.enemies || []
+    state.world.enemies.push({
+      id: "cave-rat",
+      areaId: oreAreaId,
+      fightTime: 3,
+      successProbability: 0.7,
+      requiredSkillLevel: 1,
+      lootTable: [{ itemId: "COPPER_ORE", quantity: 1, weight: 1 }],
+      failureAreaId: "TOWN",
+    })
+
+    // Get a node from the area
+    const mineNode = state.world.nodes.find((n) => n.areaId === oreAreaId)!
     const material = mineNode.materials[0]
 
     // Strategy 1: Pure gathering
     const gatherStrategy: Action[] = [
-      { type: "Move", destination: "OUTSKIRTS_MINE" },
+      { type: "Move", destination: oreAreaId },
       {
         type: "Gather",
         nodeId: mineNode.nodeId,
@@ -260,7 +307,7 @@ describe("Integration: Full Session Flow", () => {
 
     // Strategy 2: Fighting
     const fightStrategy: Action[] = [
-      { type: "Move", destination: "OUTSKIRTS_MINE" },
+      { type: "Move", destination: oreAreaId },
       { type: "Fight", enemyId: "cave-rat" },
       { type: "Fight", enemyId: "cave-rat" },
       { type: "Fight", enemyId: "cave-rat" },
@@ -402,25 +449,25 @@ describe("Integration: Full Session Flow", () => {
     state.player.skills.Mining = { level: 1, xp: 0 }
     state.player.skills.Combat = { level: 1, xp: 0 }
 
-    // Make OUTSKIRTS_MINE known
-    state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
-    state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
+    // Get ore area and make it known
+    const oreAreaId = getOreAreaId(state)
+    makeAreaKnown(state, oreAreaId)
 
-    // Get a node from the mine
-    const mineNode = state.world.nodes.find((n) => n.areaId === "OUTSKIRTS_MINE")!
+    // Get a node from the area
+    const mineNode = state.world.nodes.find((n) => n.areaId === oreAreaId)!
 
     // Create a contract that gives XP reward
     state.world.contracts.push({
       id: "mining-xp-contract",
-      guildAreaId: "OUTSKIRTS_MINE",
+      guildAreaId: oreAreaId,
       requirements: [{ itemId: "COPPER_ORE", quantity: 1 }],
       rewards: [],
       reputationReward: 5,
       xpReward: { skill: "Combat", amount: 5 }, // Enough to level up Combat
     })
 
-    // Move to mine and accept contract
-    executeAction(state, { type: "Move", destination: "OUTSKIRTS_MINE" })
+    // Move to ore area and accept contract
+    executeAction(state, { type: "Move", destination: oreAreaId })
     executeAction(state, { type: "AcceptContract", contractId: "mining-xp-contract" })
 
     // Give player enough Mining XP to be close to level up (need 4 XP total)
@@ -474,15 +521,27 @@ function runSession(seed: string): {
   state.player.equippedWeapon = "CRUDE_WEAPON"
   const logs: ActionLog[] = []
 
-  // Make OUTSKIRTS_MINE known
-  state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
-  state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
+  // Get ore area and make it known
+  const oreAreaId = getOreAreaId(state)
+  makeAreaKnown(state, oreAreaId)
 
-  // Get a node from the mine
-  const mineNode = state.world.nodes.find((n) => n.areaId === "OUTSKIRTS_MINE")!
+  // Add an enemy at this location
+  state.world.enemies = state.world.enemies || []
+  state.world.enemies.push({
+    id: "cave-rat",
+    areaId: oreAreaId,
+    fightTime: 3,
+    successProbability: 0.7,
+    requiredSkillLevel: 1,
+    lootTable: [{ itemId: "COPPER_ORE", quantity: 1, weight: 1 }],
+    failureAreaId: "TOWN",
+  })
+
+  // Get a node from the area
+  const mineNode = state.world.nodes.find((n) => n.areaId === oreAreaId)!
   const material = mineNode.materials[0]
 
-  logs.push(executeAction(state, { type: "Move", destination: "OUTSKIRTS_MINE" }))
+  logs.push(executeAction(state, { type: "Move", destination: oreAreaId }))
   logs.push(
     executeAction(state, {
       type: "Gather",
