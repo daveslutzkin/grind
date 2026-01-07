@@ -306,13 +306,23 @@ export function formatDynamicState(state: WorldState): string {
   if (nodesHere && nodesHere.length > 0) {
     lines.push("Nodes here:")
     for (const node of nodesHere) {
-      const mats = node.materials
-        .map((m) => {
-          const req = m.requiredLevel > 0 ? `[${m.requiresSkill}L${m.requiredLevel}]` : ""
-          return `${m.materialId}:${m.remainingUnits}/${m.maxUnitsInitial}${req}`
-        })
-        .join(", ")
-      lines.push(`  ${node.nodeId}(${node.nodeType}): ${mats}`)
+      // Determine required skill from node type
+      const requiredSkill = node.nodeType === "ORE_VEIN" ? "Mining" : "Woodcutting"
+      const hasSkill = (state.player.skills[requiredSkill]?.level ?? 0) > 0
+
+      if (!hasSkill) {
+        // Player hasn't enrolled in the gathering skill - just show node type
+        const nodeTypeName = node.nodeType === "ORE_VEIN" ? "Mining node" : "Woodcutting node"
+        lines.push(`  ${node.nodeId}: ${nodeTypeName}`)
+      } else {
+        const mats = node.materials
+          .map((m) => {
+            const req = m.requiredLevel > 0 ? `[${m.requiresSkill}L${m.requiredLevel}]` : ""
+            return `${m.materialId}:${m.remainingUnits}/${m.maxUnitsInitial}${req}`
+          })
+          .join(", ")
+        lines.push(`  ${node.nodeId}(${node.nodeType}): ${mats}`)
+      }
     }
   }
 
