@@ -10,10 +10,92 @@ export type NodeID = string
 export type MaterialID = string // Semantic alias for ItemID in gathering context
 
 export type WeaponID = "CRUDE_WEAPON" | "IMPROVED_WEAPON"
-export type SkillID = "Mining" | "Woodcutting" | "Combat" | "Smithing" | "Woodcrafting"
+export type SkillID =
+  | "Mining"
+  | "Woodcutting"
+  | "Combat"
+  | "Smithing"
+  | "Woodcrafting"
+  | "Exploration"
 export type GatheringSkillID = "Mining" | "Woodcutting"
 export type CraftingSkillID = "Smithing" | "Woodcrafting"
 export type ContractID = string
+export type AreaID = string
+
+// ============================================================================
+// Exploration Types
+// ============================================================================
+
+/**
+ * Location types that can be discovered within an area
+ */
+export enum ExplorationLocationType {
+  GATHERING_NODE = "GATHERING_NODE",
+  MOB_CAMP = "MOB_CAMP",
+  PLACE = "PLACE", // Future feature (stub)
+  PERSON = "PERSON", // Future feature, always within places (stub)
+}
+
+/**
+ * A discoverable location within an area
+ */
+export interface ExplorationLocation {
+  id: string
+  areaId: AreaID
+  type: ExplorationLocationType
+  // For GATHERING_NODE: which gathering skill type
+  gatheringSkillType?: GatheringSkillID
+  // For MOB_CAMP: creature type and difficulty
+  creatureType?: string
+  difficulty?: number // area distance ± 3, normally distributed around 0
+}
+
+/**
+ * A connection between two areas
+ */
+export interface AreaConnection {
+  fromAreaId: AreaID
+  toAreaId: AreaID
+  travelTimeMultiplier: 1 | 2 | 3 | 4 // Distribution: 15% = 1x, 35% = 2x, 35% = 3x, 15% = 4x
+}
+
+/**
+ * An area in the exploration graph
+ */
+export interface Area {
+  id: AreaID
+  distance: number // How far from town (town = distance 0)
+  generated: boolean // Areas are generated when first discovered
+  // Locations are discovered via Explore action
+  locations: ExplorationLocation[]
+  // Index within the distance band (for deterministic generation)
+  indexInDistance: number
+}
+
+/**
+ * Player's exploration state
+ */
+export interface ExplorationState {
+  currentAreaId: AreaID // Which area the player is in
+  currentLocationId: string | null // Which location within that area (if any)
+  knownAreaIds: Set<AreaID> // Discovered areas
+  knownLocationIds: Set<string> // Discovered locations within areas
+  knownConnectionIds: Set<string> // Discovered connections (formatted as "areaId1->areaId2")
+  // Luck tracking
+  totalLuckDelta: number // Cumulative ticks saved/lost
+  currentStreak: number // Consecutive lucky (positive) or unlucky (negative) discoveries
+}
+
+/**
+ * Luck surfacing info for exploration actions
+ */
+export interface ExplorationLuckInfo {
+  actualTicks: number
+  expectedTicks: number
+  luckDelta: number // expected - actual (positive = lucky)
+  totalLuckDelta: number // Cumulative
+  currentStreak: number // After this discovery
+}
 
 // ============================================================================
 // Enums for gathering MVP
@@ -178,6 +260,24 @@ export interface WorldState {
     storageLocation: LocationID
   }
 
+  // Exploration system state (optional - only present when exploration is enabled)
+  exploration?: {
+    // All areas in the world (generated lazily when discovered)
+    areas: Map<AreaID, Area>
+    // All connections between areas
+    connections: AreaConnection[]
+    // Player's exploration progress
+    playerState: {
+      currentAreaId: AreaID
+      knownAreaIds: AreaID[] // Using array for serialization compatibility
+      knownLocationIds: string[]
+      knownConnectionIds: string[] // "areaId1->areaId2" format
+      // Luck tracking for surfacing
+      totalLuckDelta: number
+      currentStreak: number
+    }
+  }
+
   rng: RngState
 }
 
@@ -192,6 +292,9 @@ export type ActionType =
   | "Drop"
   | "Enrol"
   | "TurnInCombatToken"
+  | "Survey"
+  | "Explore"
+  | "ExplorationTravel"
 
 export interface MoveAction {
   type: "Move"
@@ -241,6 +344,31 @@ export interface TurnInCombatTokenAction {
   type: "TurnInCombatToken"
 }
 
+/**
+ * Survey action - discover a new area connected to current area
+ */
+export interface SurveyAction {
+  type: "Survey"
+  // No parameters - surveys from current area
+}
+
+/**
+ * Explore action - discover a location or connection within current area
+ */
+export interface ExploreAction {
+  type: "Explore"
+  // No parameters - explores current area
+}
+
+/**
+ * Travel action in exploration system - move between areas
+ */
+export interface ExplorationTravelAction {
+  type: "ExplorationTravel"
+  destinationAreaId: AreaID
+  scavenge?: boolean // If true, 2x travel time but chance to find resources
+}
+
 export type Action =
   | MoveAction
   | AcceptContractAction
@@ -251,6 +379,9 @@ export type Action =
   | DropAction
   | GuildEnrolmentAction
   | TurnInCombatTokenAction
+  | SurveyAction
+  | ExploreAction
+  | ExplorationTravelAction
 
 // Failure types
 export type FailureType =
@@ -272,6 +403,14 @@ export type FailureType =
   | "MISSING_FOCUS_MATERIAL"
   | "NODE_DEPLETED"
   | "MODE_NOT_UNLOCKED"
+  // Exploration failure types
+  | "AREA_NOT_FOUND"
+  | "AREA_NOT_KNOWN"
+  | "NO_PATH_TO_DESTINATION"
+  | "ALREADY_IN_AREA"
+  | "NO_UNDISCOVERED_AREAS"
+  | "AREA_FULLY_EXPLORED"
+  | "NOT_IN_EXPLORATION_GUILD"
 
 // RNG roll log entry
 export interface RngRoll {
@@ -320,6 +459,21 @@ export interface ExtractionLog {
   appraisal?: AppraisalInfo // For APPRAISE mode
 }
 
+/**
+ * Log info for exploration actions (Survey, Explore)
+ */
+export interface ExplorationLog {
+  // What was discovered
+  discoveredAreaId?: AreaID
+  discoveredLocationId?: string
+  discoveredConnectionId?: string // "areaId1->areaId2" format
+  connectionToUnknownArea?: boolean // True if connection leads to an unknown area
+  // Whether the area is fully explored
+  areaFullyExplored?: boolean
+  // Luck surfacing per RNG canon
+  luckInfo?: ExplorationLuckInfo
+}
+
 // Action log
 export interface ActionLog {
   tickBefore: number
@@ -335,6 +489,7 @@ export interface ActionLog {
   stateDeltaSummary: string
   extraction?: ExtractionLog // For gathering actions
   xpSource?: string // Attribution for future contract tracking
+  explorationLog?: ExplorationLog // For exploration actions
 }
 
 // Evaluation results

@@ -24,6 +24,12 @@ import type {
 } from "./types.js"
 import { addXPToSkill, GatherMode } from "./types.js"
 import { roll, rollLootTable, rollFloat } from "./rng.js"
+import {
+  executeSurvey,
+  executeExplore,
+  executeExplorationTravel,
+  grantExplorationGuildBenefits,
+} from "./exploration.js"
 
 import {
   checkMoveAction,
@@ -335,6 +341,12 @@ export function executeAction(state: WorldState, action: Action): ActionLog {
       return executeGuildEnrolment(state, action, rolls)
     case "TurnInCombatToken":
       return executeTurnInCombatToken(state, action, rolls)
+    case "Survey":
+      return executeSurvey(state, action)
+    case "Explore":
+      return executeExplore(state, action)
+    case "ExplorationTravel":
+      return executeExplorationTravel(state, action)
   }
 }
 
@@ -1028,8 +1040,18 @@ function executeGuildEnrolment(
     state.player.equippedWeapon = "CRUDE_WEAPON"
   }
 
+  // Exploration enrolment grants one distance 1 area and connection
+  let explorationBenefits: { discoveredAreaId: string; discoveredConnectionId: string } | undefined
+  if (skill === "Exploration" && state.exploration) {
+    explorationBenefits = grantExplorationGuildBenefits(state)
+  }
+
   // Check for contract completion (after every successful action)
   const contractsCompleted = checkContractCompletion(state)
+
+  const summary = explorationBenefits?.discoveredAreaId
+    ? `Enrolled in ${skill} guild, discovered area ${explorationBenefits.discoveredAreaId}`
+    : `Enrolled in ${skill} guild`
 
   return {
     tickBefore,
@@ -1040,6 +1062,12 @@ function executeGuildEnrolment(
     levelUps: mergeLevelUps([], contractsCompleted),
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
-    stateDeltaSummary: `Enrolled in ${skill} guild`,
+    stateDeltaSummary: summary,
+    explorationLog: explorationBenefits
+      ? {
+          discoveredAreaId: explorationBenefits.discoveredAreaId,
+          discoveredConnectionId: explorationBenefits.discoveredConnectionId,
+        }
+      : undefined,
   }
 }

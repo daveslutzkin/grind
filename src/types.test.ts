@@ -18,6 +18,7 @@ describe("Types", () => {
           Combat: { level: 0, xp: 0 },
           Smithing: { level: 0, xp: 0 },
           Woodcrafting: { level: 0, xp: 0 },
+          Exploration: { level: 0, xp: 0 },
         },
         guildReputation: 0,
         activeContracts: [],
