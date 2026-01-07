@@ -17,6 +17,9 @@ describe("Integration: Full Session Flow", () => {
     expect(logs[logs.length - 1].success).toBe(true)
     expect(state.player.activeContracts).toContain("miners-guild-1")
 
+    // Make OUTSKIRTS_MINE known
+    state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+    state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
     // Move to OUTSKIRTS_MINE
     logs.push(executeAction(state, { type: "Move", destination: "OUTSKIRTS_MINE" }))
     expect(logs[logs.length - 1].success).toBe(true)
@@ -83,6 +86,9 @@ describe("Integration: Full Session Flow", () => {
     state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
     const logs: ActionLog[] = []
 
+    // Make OUTSKIRTS_MINE known
+    state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+    state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
     // Move to mine
     logs.push(executeAction(state, { type: "Move", destination: "OUTSKIRTS_MINE" }))
 
@@ -126,6 +132,10 @@ describe("Integration: Full Session Flow", () => {
   it("should demonstrate plan evaluation finds violations", () => {
     const state = createWorld("plan-test")
     state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
+
+    // Make OUTSKIRTS_MINE known
+    state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+    state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
 
     // Get a node from the mine
     const mineNode = state.world.nodes.find((n) => n.areaId === "OUTSKIRTS_MINE")!
@@ -172,6 +182,15 @@ describe("Integration: Full Session Flow", () => {
     const state = createWorld("session-end-test")
     const logs: ActionLog[] = []
 
+    // Make areas known
+    state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE", "COPSE")
+    state.exploration.playerState.knownConnectionIds.push(
+      "TOWN->OUTSKIRTS_MINE",
+      "TOWN->COPSE",
+      "OUTSKIRTS_MINE->TOWN",
+      "COPSE->TOWN"
+    )
+
     // Keep moving until session ends
     let sessionEnded = false
     const destinations: LocationID[] = ["OUTSKIRTS_MINE", "COPSE", "TOWN"]
@@ -201,6 +220,10 @@ describe("Integration: Full Session Flow", () => {
     state.player.skills.Combat = { level: 1, xp: 0 } // Need level 1 to fight
     state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
     state.player.equippedWeapon = "CRUDE_WEAPON" // Need weapon to fight
+
+    // Make OUTSKIRTS_MINE known
+    state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+    state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
 
     // Get a node from the mine
     const mineNode = state.world.nodes.find((n) => n.areaId === "OUTSKIRTS_MINE")!
@@ -379,6 +402,10 @@ describe("Integration: Full Session Flow", () => {
     state.player.skills.Mining = { level: 1, xp: 0 }
     state.player.skills.Combat = { level: 1, xp: 0 }
 
+    // Make OUTSKIRTS_MINE known
+    state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+    state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
+
     // Get a node from the mine
     const mineNode = state.world.nodes.find((n) => n.areaId === "OUTSKIRTS_MINE")!
 
@@ -446,6 +473,10 @@ function runSession(seed: string): {
   state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
   state.player.equippedWeapon = "CRUDE_WEAPON"
   const logs: ActionLog[] = []
+
+  // Make OUTSKIRTS_MINE known
+  state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+  state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
 
   // Get a node from the mine
   const mineNode = state.world.nodes.find((n) => n.areaId === "OUTSKIRTS_MINE")!

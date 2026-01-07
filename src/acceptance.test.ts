@@ -19,10 +19,16 @@ describe("Acceptance Tests: Gathering MVP", () => {
       const world1 = createWorld("travel-test")
       world1.player.skills.Mining.level = 1
       world1.exploration.playerState.currentAreaId = "TOWN"
+      // Make OUTSKIRTS_MINE known
+      world1.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      world1.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
 
       const world2 = createWorld("travel-test")
       world2.player.skills.Mining.level = 10
       world2.exploration.playerState.currentAreaId = "TOWN"
+      // Make OUTSKIRTS_MINE known
+      world2.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      world2.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
 
       // Travel to the same destination
       const moveAction: MoveAction = { type: "Move", destination: "OUTSKIRTS_MINE" }
@@ -44,6 +50,9 @@ describe("Acceptance Tests: Gathering MVP", () => {
   describe("Node Persistence", () => {
     it("should reduce reserves when extracting and persist changes", () => {
       const world = createWorld("persist-test")
+      // Make OUTSKIRTS_MINE known
+      world.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      world.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world.player.skills.Mining.level = 5
 
@@ -74,6 +83,9 @@ describe("Acceptance Tests: Gathering MVP", () => {
 
     it("should never regenerate node materials", () => {
       const world = createWorld("regen-test")
+      // Make OUTSKIRTS_MINE known
+      world.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      world.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world.player.skills.Mining.level = 5
 
@@ -120,6 +132,9 @@ describe("Acceptance Tests: Gathering MVP", () => {
 
     it("should cause collateral damage with FOCUS mode", () => {
       const world = createWorld("collateral-test")
+      // Make OUTSKIRTS_MINE known
+      world.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      world.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world.player.skills.Mining.level = 5
 
@@ -149,6 +164,9 @@ describe("Acceptance Tests: Gathering MVP", () => {
 
     it("should NOT cause collateral damage with CAREFUL_ALL mode", () => {
       const world = createWorld("careful-test")
+      // Make OUTSKIRTS_MINE known
+      world.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      world.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world.player.skills.Mining.level = 5 // L4+ for CAREFUL_ALL
 
@@ -180,10 +198,16 @@ describe("Acceptance Tests: Gathering MVP", () => {
   describe("Focus Yield Progression", () => {
     it("should have focus waste decrease with level and reach 0% at mastery", () => {
       const world1 = createWorld("yield-test")
+      // Make OUTSKIRTS_MINE known
+      world1.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      world1.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       world1.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world1.player.skills.Mining.level = 1
 
       const world10 = createWorld("yield-test")
+      // Make OUTSKIRTS_MINE known
+      world10.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      world10.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       world10.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world10.player.skills.Mining.level = 10
 
@@ -219,6 +243,9 @@ describe("Acceptance Tests: Gathering MVP", () => {
 
     it("should have collateral damage with hard floor at high levels", () => {
       const world = createWorld("floor-test")
+      // Make OUTSKIRTS_MINE known
+      world.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      world.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world.player.skills.Mining.level = 10 // Max level
 
@@ -250,6 +277,9 @@ describe("Acceptance Tests: Gathering MVP", () => {
   describe("Variance", () => {
     it("should have extraction yield vary around expected value", () => {
       const world = createWorld("variance-test")
+      // Make OUTSKIRTS_MINE known
+      world.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      world.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world.player.skills.Mining.level = 5
 
@@ -277,6 +307,9 @@ describe("Acceptance Tests: Gathering MVP", () => {
 
     it("should show variance info explicitly (EV, range, actual vs expected)", () => {
       const world = createWorld("explicit-variance-test")
+      // Make OUTSKIRTS_MINE known
+      world.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      world.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world.player.skills.Mining.level = 5
 
@@ -311,6 +344,9 @@ describe("Acceptance Tests: Gathering MVP", () => {
   describe("Progression", () => {
     it("should unlock new actions at specific levels", () => {
       const world = createWorld("unlock-test")
+      // Make OUTSKIRTS_MINE known
+      world.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      world.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       const node = world.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!
 
@@ -333,6 +369,9 @@ describe("Acceptance Tests: Gathering MVP", () => {
 
     it("should unlock locations at specific levels", () => {
       const world = createWorld("location-unlock-test")
+      // Make OLD_QUARRY known
+      world.exploration.playerState.knownAreaIds.push("OLD_QUARRY")
+      world.exploration.playerState.knownConnectionIds.push("TOWN->OLD_QUARRY")
       world.exploration.playerState.currentAreaId = "OLD_QUARRY" // MID location
       const node = world.world.nodes!.find((n) => n.areaId === "OLD_QUARRY")!
 
@@ -361,6 +400,9 @@ describe("Acceptance Tests: Gathering MVP", () => {
   describe("XP Model", () => {
     it("should calculate XP based on ticks × tier, not units extracted", () => {
       const world = createWorld("xp-test")
+      // Make OUTSKIRTS_MINE known
+      world.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      world.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world.player.skills.Mining.level = 5
 
@@ -386,10 +428,16 @@ describe("Acceptance Tests: Gathering MVP", () => {
     it("should not double-punish bad RNG (yield varies, XP stays constant)", () => {
       // Use two different seeds to get different RNG outcomes
       const world1 = createWorld("xp-rng-1")
+      // Make OUTSKIRTS_MINE known
+      world1.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      world1.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       world1.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world1.player.skills.Mining.level = 5
 
       const world2 = createWorld("xp-rng-2")
+      // Make OUTSKIRTS_MINE known
+      world2.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      world2.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       world2.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       world2.player.skills.Mining.level = 5
 
