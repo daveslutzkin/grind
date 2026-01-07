@@ -208,12 +208,33 @@ export function formatActionLog(log: ActionLog): string {
     }
   }
 
-  // RNG rolls (compact)
+  // RNG rolls (compact, without names) + luck calculation
   if (log.rngRolls.length > 0) {
-    const rolls = log.rngRolls
-      .map((r) => `${r.label} ${Math.round(r.probability * 100)}%:${r.result ? "✓" : "✗"}`)
-      .join(", ")
-    lines.push(`  RNG: ${rolls}`)
+    const rolls = log.rngRolls.map((r) => `${Math.round(r.probability * 100)}%:${r.result ? "✓" : "✗"}`)
+
+    // Calculate luck: expected ticks vs actual ticks
+    // For repeated rolls at probability p every N ticks, expected = N/p per success
+    // Assume 2-tick intervals for exploration-style rolls
+    const successCount = log.rngRolls.filter((r) => r.result).length
+    if (successCount > 0 && log.rngRolls.length > 0) {
+      const avgProb = log.rngRolls.reduce((sum, r) => sum + r.probability, 0) / log.rngRolls.length
+      const rollInterval = 2 // ticks per roll attempt
+      const expectedTicksPerSuccess = rollInterval / avgProb
+      const expectedTicks = Math.round(expectedTicksPerSuccess * successCount)
+      const actualTicks = log.timeConsumed
+      const delta = expectedTicks - actualTicks
+
+      const luckStr =
+        delta > 0
+          ? `${delta}t faster than expected`
+          : delta < 0
+            ? `${Math.abs(delta)}t slower than expected`
+            : "as expected"
+
+      lines.push(`  RNG: [${rolls.join(", ")}] — ${luckStr}`)
+    } else {
+      lines.push(`  RNG: [${rolls.join(", ")}]`)
+    }
   }
 
   return lines.join("\n")
