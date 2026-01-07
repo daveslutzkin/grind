@@ -101,8 +101,17 @@ export function formatWorldState(state: WorldState): string {
   lines.push("")
   lines.push(`Known areas: ${state.exploration.playerState.knownAreaIds.join(", ")}`)
 
-  // Resource nodes at current location
-  const nodesHere = state.world.nodes?.filter((n) => n.areaId === currentArea && !n.depleted)
+  // Resource nodes at current location (only show if location is discovered)
+  const knownLocationIds = state.exploration.playerState.knownLocationIds
+  const nodesHere = state.world.nodes?.filter((n) => {
+    if (n.areaId !== currentArea || n.depleted) return false
+    // Extract node index and check if corresponding location is discovered
+    const nodeIndexMatch = n.nodeId.match(/-node-(\d+)$/)
+    if (!nodeIndexMatch) return false
+    const nodeIndex = nodeIndexMatch[1]
+    const locationId = `${n.areaId}-loc-${nodeIndex}`
+    return knownLocationIds.includes(locationId)
+  })
   if (nodesHere && nodesHere.length > 0) {
     lines.push("")
     lines.push("Resource nodes here:")
@@ -117,8 +126,7 @@ export function formatWorldState(state: WorldState): string {
       }
     }
   } else if (currentArea !== "TOWN") {
-    lines.push("")
-    lines.push("Resource nodes here: (none available)")
+    // Don't show anything - nodes are hidden until locations are discovered via Explore
   }
 
   // Enemies at current location

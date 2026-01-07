@@ -19,28 +19,32 @@ import {
  * Test helpers for procedural area IDs
  */
 
-/** Get a distance-1 area that has ore nodes */
+/** Get an area that has ore nodes (any distance) */
 function getOreAreaId(state: WorldState): AreaID {
-  for (const area of state.exploration.areas.values()) {
-    if (area.distance === 1) {
-      const hasOre = state.world.nodes?.some(
-        (n) => n.areaId === area.id && n.nodeType === NodeType.ORE_VEIN
-      )
-      if (hasOre) return area.id
-    }
+  // Sort areas by distance so we prefer closer ones
+  const areas = Array.from(state.exploration.areas.values())
+    .filter((a) => a.distance > 0)
+    .sort((a, b) => a.distance - b.distance)
+  for (const area of areas) {
+    const hasOre = state.world.nodes?.some(
+      (n) => n.areaId === area.id && n.nodeType === NodeType.ORE_VEIN
+    )
+    if (hasOre) return area.id
   }
   throw new Error("No ore area found")
 }
 
-/** Get a distance-2 (MID) area that has ore nodes */
+/** Get an area at distance 2+ that has ore nodes */
 function getMidOreAreaId(state: WorldState): AreaID {
-  for (const area of state.exploration.areas.values()) {
-    if (area.distance === 2) {
-      const hasOre = state.world.nodes?.some(
-        (n) => n.areaId === area.id && n.nodeType === NodeType.ORE_VEIN
-      )
-      if (hasOre) return area.id
-    }
+  // Sort areas by distance, prefer closer areas that are distance 2+
+  const areas = Array.from(state.exploration.areas.values())
+    .filter((a) => a.distance >= 2)
+    .sort((a, b) => a.distance - b.distance)
+  for (const area of areas) {
+    const hasOre = state.world.nodes?.some(
+      (n) => n.areaId === area.id && n.nodeType === NodeType.ORE_VEIN
+    )
+    if (hasOre) return area.id
   }
   throw new Error("No MID ore area found")
 }
@@ -56,6 +60,18 @@ function makeAreaKnown(state: WorldState, areaId: AreaID): void {
   }
 }
 
+/** Discover all locations in an area (required for Gather to work) */
+function discoverAllLocations(state: WorldState, areaId: AreaID): void {
+  const area = state.exploration.areas.get(areaId)
+  if (area) {
+    for (const loc of area.locations) {
+      if (!state.exploration.playerState.knownLocationIds.includes(loc.id)) {
+        state.exploration.playerState.knownLocationIds.push(loc.id)
+      }
+    }
+  }
+}
+
 describe("Acceptance Tests: Gathering MVP", () => {
   // ============================================================================
   // Geography
@@ -64,14 +80,15 @@ describe("Acceptance Tests: Gathering MVP", () => {
   describe("Geography", () => {
     it("should have fixed travel time that is never modified by skills", () => {
       // Create two worlds with different skill levels
-      const world1 = createWorld("travel-test")
+      // Use "ore-test" seed which has ore at distance 1 (reachable from TOWN)
+      const world1 = createWorld("ore-test")
       world1.player.skills.Mining.level = 1
       world1.exploration.playerState.currentAreaId = "TOWN"
       // Get and make ore area known
       const oreAreaId = getOreAreaId(world1)
       makeAreaKnown(world1, oreAreaId)
 
-      const world2 = createWorld("travel-test")
+      const world2 = createWorld("ore-test")
       world2.player.skills.Mining.level = 10
       world2.exploration.playerState.currentAreaId = "TOWN"
       // Use the same area ID for comparison
@@ -101,6 +118,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
       const oreAreaId = getOreAreaId(world)
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
+      discoverAllLocations(world, oreAreaId)
       world.player.skills.Mining.level = 5
 
       const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
@@ -134,6 +152,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
       const oreAreaId = getOreAreaId(world)
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
+      discoverAllLocations(world, oreAreaId)
       world.player.skills.Mining.level = 5
 
       const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
@@ -183,6 +202,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
       const oreAreaId = getOreAreaId(world)
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
+      discoverAllLocations(world, oreAreaId)
       world.player.skills.Mining.level = 5
 
       const node = world.world.nodes!.find(
@@ -215,6 +235,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
       const oreAreaId = getOreAreaId(world)
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
+      discoverAllLocations(world, oreAreaId)
       world.player.skills.Mining.level = 5 // L4+ for CAREFUL_ALL
 
       const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
@@ -249,12 +270,14 @@ describe("Acceptance Tests: Gathering MVP", () => {
       const oreAreaId = getOreAreaId(world1)
       makeAreaKnown(world1, oreAreaId)
       world1.exploration.playerState.currentAreaId = oreAreaId
+      discoverAllLocations(world1, oreAreaId)
       world1.player.skills.Mining.level = 1
 
       const world10 = createWorld("yield-test")
       // Use the same area for comparison
       makeAreaKnown(world10, oreAreaId)
       world10.exploration.playerState.currentAreaId = oreAreaId
+      discoverAllLocations(world10, oreAreaId)
       world10.player.skills.Mining.level = 10
 
       const node1 = world1.world.nodes!.find((n) => n.areaId === oreAreaId)!
@@ -293,6 +316,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
       const oreAreaId = getOreAreaId(world)
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
+      discoverAllLocations(world, oreAreaId)
       world.player.skills.Mining.level = 10 // Max level
 
       const node = world.world.nodes!.find(
@@ -327,6 +351,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
       const oreAreaId = getOreAreaId(world)
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
+      discoverAllLocations(world, oreAreaId)
       world.player.skills.Mining.level = 5
 
       const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
@@ -357,6 +382,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
       const oreAreaId = getOreAreaId(world)
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
+      discoverAllLocations(world, oreAreaId)
       world.player.skills.Mining.level = 5
 
       const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
@@ -395,6 +421,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
       const oreAreaId = getOreAreaId(world)
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
+      discoverAllLocations(world, oreAreaId)
       const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
 
       // L2: APPRAISE should fail
@@ -420,6 +447,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
       const midAreaId = getMidOreAreaId(world)
       makeAreaKnown(world, midAreaId)
       world.exploration.playerState.currentAreaId = midAreaId
+      discoverAllLocations(world, midAreaId)
       const node = world.world.nodes!.find((n) => n.areaId === midAreaId)!
 
       // L4: MID should fail (requires L5) - use APPRAISE to avoid material level issues
@@ -451,6 +479,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
       const oreAreaId = getOreAreaId(world)
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
+      discoverAllLocations(world, oreAreaId)
       world.player.skills.Mining.level = 5
 
       const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
@@ -479,6 +508,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
       const oreAreaId1 = getOreAreaId(world1)
       makeAreaKnown(world1, oreAreaId1)
       world1.exploration.playerState.currentAreaId = oreAreaId1
+      discoverAllLocations(world1, oreAreaId1)
       world1.player.skills.Mining.level = 5
 
       const world2 = createWorld("xp-rng-2")
@@ -486,6 +516,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
       const oreAreaId2 = getOreAreaId(world2)
       makeAreaKnown(world2, oreAreaId2)
       world2.exploration.playerState.currentAreaId = oreAreaId2
+      discoverAllLocations(world2, oreAreaId2)
       world2.player.skills.Mining.level = 5
 
       const node1 = world1.world.nodes!.find((n) => n.areaId === oreAreaId1)!

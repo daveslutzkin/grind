@@ -15,17 +15,31 @@ import { createWorld } from "../world.js"
  * Test helpers for procedural area IDs
  */
 
-/** Get a distance-1 area that has ore nodes */
+/** Get an area that has ore nodes (any distance) */
 function getOreAreaId(state: WorldState): AreaID {
-  for (const area of state.exploration.areas.values()) {
-    if (area.distance === 1) {
-      const hasOre = state.world.nodes?.some(
-        (n) => n.areaId === area.id && n.nodeType === NodeType.ORE_VEIN
-      )
-      if (hasOre) return area.id
-    }
+  // Sort areas by distance so we prefer closer ones
+  const areas = Array.from(state.exploration.areas.values())
+    .filter((a) => a.distance > 0)
+    .sort((a, b) => a.distance - b.distance)
+  for (const area of areas) {
+    const hasOre = state.world.nodes?.some(
+      (n) => n.areaId === area.id && n.nodeType === NodeType.ORE_VEIN
+    )
+    if (hasOre) return area.id
   }
   throw new Error("No ore area found")
+}
+
+/** Discover all locations in an area (required for nodes to be visible) */
+function discoverAllLocations(state: WorldState, areaId: AreaID): void {
+  const area = state.exploration.areas.get(areaId)
+  if (area) {
+    for (const loc of area.locations) {
+      if (!state.exploration.playerState.knownLocationIds.includes(loc.id)) {
+        state.exploration.playerState.knownLocationIds.push(loc.id)
+      }
+    }
+  }
 }
 
 describe("summarizeAction", () => {
@@ -332,6 +346,7 @@ describe("formatDynamicState", () => {
     const state = createWorld("test-seed")
     const areaId = getOreAreaId(state)
     state.exploration.playerState.currentAreaId = areaId
+    discoverAllLocations(state, areaId)
 
     const dynamicState = formatDynamicState(state)
 
@@ -343,6 +358,7 @@ describe("formatDynamicState", () => {
     const state = createWorld("test-seed")
     const areaId = getOreAreaId(state)
     state.exploration.playerState.currentAreaId = areaId
+    discoverAllLocations(state, areaId)
     state.player.skills.Mining = { level: 2, xp: 10 }
 
     const fullState = formatWorldState(state)

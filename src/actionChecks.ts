@@ -242,6 +242,22 @@ function checkMultiMaterialGatherAction(
     return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
   }
 
+  // Check if node's location has been discovered via Explore
+  const nodeIndexMatch = node.nodeId.match(/-node-(\d+)$/)
+  if (nodeIndexMatch) {
+    const nodeIndex = nodeIndexMatch[1]
+    const locationId = `${node.areaId}-loc-${nodeIndex}`
+    const knownLocationIds = state.exploration.playerState.knownLocationIds
+    if (!knownLocationIds.includes(locationId)) {
+      return {
+        valid: false,
+        failureType: "LOCATION_NOT_DISCOVERED",
+        timeCost: 0,
+        successProbability: 0,
+      }
+    }
+  }
+
   // Check if node is depleted
   const hasAnyMaterials = node.materials.some((m) => m.remainingUnits > 0)
   if (!hasAnyMaterials || node.depleted) {

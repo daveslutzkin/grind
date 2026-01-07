@@ -15,8 +15,9 @@ import type {
   GatheringSkillID,
   RngState,
   AreaID,
+  ExplorationLocation,
 } from "./types.js"
-import { NodeType } from "./types.js"
+import { NodeType, ExplorationLocationType } from "./types.js"
 import { createRng, rollFloat } from "./rng.js"
 import {
   getAreaCountForDistance,
@@ -70,24 +71,28 @@ export const MATERIALS: Record<string, MaterialDefinition> = {
 interface NodePoolConfig {
   nodeType: NodeType
   materialsPool: string[]
-  nodesPerArea: number
+  probability: number // Probability of this location type existing in an area
 }
 
 /** Get node pools available at a given distance */
 function getNodePoolsForDistance(distance: number): NodePoolConfig[] {
   if (distance === 0) return [] // TOWN has no gathering nodes
 
+  // Each location type rolls independently with low probability
+  // Spec: "Most rolls fail, so most areas are naturally sparse"
+  // Spec: "Many areas have nothing, and that's ok"
+
   if (distance === 1) {
     return [
       {
         nodeType: NodeType.ORE_VEIN,
         materialsPool: ["STONE", "COPPER_ORE", "TIN_ORE"],
-        nodesPerArea: 5,
+        probability: 0.25, // 25% chance of an ore vein
       },
       {
         nodeType: NodeType.TREE_STAND,
         materialsPool: ["GREEN_WOOD", "SOFTWOOD", "HARDWOOD"],
-        nodesPerArea: 5,
+        probability: 0.25, // 25% chance of a tree stand
       },
     ]
   }
@@ -97,12 +102,12 @@ function getNodePoolsForDistance(distance: number): NodePoolConfig[] {
       {
         nodeType: NodeType.ORE_VEIN,
         materialsPool: ["STONE", "COPPER_ORE", "TIN_ORE", "IRON_ORE", "SILVER_ORE"],
-        nodesPerArea: 4,
+        probability: 0.25,
       },
       {
         nodeType: NodeType.TREE_STAND,
         materialsPool: ["GREEN_WOOD", "SOFTWOOD", "HARDWOOD", "OAK_WOOD", "IRONWOOD"],
-        nodesPerArea: 4,
+        probability: 0.25,
       },
     ]
   }
@@ -112,12 +117,12 @@ function getNodePoolsForDistance(distance: number): NodePoolConfig[] {
     {
       nodeType: NodeType.ORE_VEIN,
       materialsPool: ["IRON_ORE", "SILVER_ORE", "DEEP_ORE", "MITHRIL_ORE"],
-      nodesPerArea: 3,
+      probability: 0.2, // Slightly lower at higher distances
     },
     {
       nodeType: NodeType.TREE_STAND,
       materialsPool: ["OAK_WOOD", "IRONWOOD", "ANCIENT_WOOD", "SPIRITWOOD"],
-      nodesPerArea: 3,
+      probability: 0.2,
     },
   ]
 }
@@ -164,24 +169,55 @@ function generateNode(
 }
 
 /**
- * Generate nodes for an area based on its distance.
- * Each area gets one random node type (ore OR trees, not both).
+ * Result of generating nodes for an area - includes both nodes and their locations
  */
-export function generateNodesForArea(areaId: AreaID, distance: number, rng: RngState): Node[] {
-  const pools = getNodePoolsForDistance(distance)
-  if (pools.length === 0) return []
+export interface NodeGenerationResult {
+  nodes: Node[]
+  locations: ExplorationLocation[]
+}
 
-  // Pick one pool type randomly (ore or trees)
-  const poolIndex = Math.floor(rollFloat(rng, 0, pools.length - 0.01, `pool_${areaId}`))
-  const pool = pools[poolIndex]
+/**
+ * Generate nodes for an area based on its distance.
+ * Per spec: Each location type rolls independently for existence.
+ * Most rolls fail, so most areas are naturally sparse.
+ * Also generates corresponding ExplorationLocation entries for discovery tracking.
+ */
+export function generateNodesForArea(
+  areaId: AreaID,
+  distance: number,
+  rng: RngState
+): NodeGenerationResult {
+  const pools = getNodePoolsForDistance(distance)
+  if (pools.length === 0) return { nodes: [], locations: [] }
 
   const nodes: Node[] = []
-  for (let i = 0; i < pool.nodesPerArea; i++) {
-    const nodeId = `${areaId}-node-${i}`
-    nodes.push(generateNode(nodeId, areaId, pool, rng))
+  const locations: ExplorationLocation[] = []
+  let nodeIndex = 0
+  let locationIndex = 0
+
+  // Roll for each location type independently
+  for (const pool of pools) {
+    const roll = rollFloat(rng, 0, 1, `location_roll_${areaId}_${pool.nodeType}`)
+    if (roll < pool.probability) {
+      // Success! Generate one node of this type
+      const nodeId = `${areaId}-node-${nodeIndex}`
+      nodes.push(generateNode(nodeId, areaId, pool, rng))
+      nodeIndex++
+
+      // Also create the corresponding ExplorationLocation
+      const skillType: GatheringSkillID =
+        pool.nodeType === NodeType.ORE_VEIN ? "Mining" : "Woodcutting"
+      locations.push({
+        id: `${areaId}-loc-${locationIndex}`,
+        areaId,
+        type: ExplorationLocationType.GATHERING_NODE,
+        gatheringSkillType: skillType,
+      })
+      locationIndex++
+    }
   }
 
-  return nodes
+  return { nodes, locations }
 }
 
 // ============================================================================
@@ -218,12 +254,14 @@ export function createWorld(seed: string): WorldState {
   // Generate connections between all areas
   const connections = generateAreaConnections(rng, town, Array.from(areas.values()))
 
-  // Generate nodes for all non-town areas
+  // Generate nodes and locations for all non-town areas
   const allNodes: Node[] = []
   for (const area of areas.values()) {
     if (area.id !== "TOWN") {
-      const areaNodes = generateNodesForArea(area.id, area.distance, rng)
-      allNodes.push(...areaNodes)
+      const result = generateNodesForArea(area.id, area.distance, rng)
+      allNodes.push(...result.nodes)
+      // Populate the area's locations for discovery tracking
+      area.locations = result.locations
     }
   }
 

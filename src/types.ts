@@ -391,6 +391,7 @@ export type FailureType =
   | "AREA_FULLY_EXPLORED"
   | "NOT_IN_EXPLORATION_GUILD"
   | "NO_CONNECTIONS"
+  | "LOCATION_NOT_DISCOVERED"
 
 // RNG roll log entry
 export interface RngRoll {

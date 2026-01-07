@@ -15,15 +15,17 @@ function getDistance1AreaId(state: WorldState): AreaID {
   throw new Error("No distance-1 area found")
 }
 
-/** Get a distance-1 area that has ore nodes */
+/** Get an area that has ore nodes (any distance) */
 function getOreAreaId(state: WorldState): AreaID {
-  for (const area of state.exploration.areas.values()) {
-    if (area.distance === 1) {
-      const hasOre = state.world.nodes?.some(
-        (n) => n.areaId === area.id && n.nodeType === NodeType.ORE_VEIN
-      )
-      if (hasOre) return area.id
-    }
+  // Sort areas by distance so we prefer closer ones
+  const areas = Array.from(state.exploration.areas.values())
+    .filter((a) => a.distance > 0)
+    .sort((a, b) => a.distance - b.distance)
+  for (const area of areas) {
+    const hasOre = state.world.nodes?.some(
+      (n) => n.areaId === area.id && n.nodeType === NodeType.ORE_VEIN
+    )
+    if (hasOre) return area.id
   }
   throw new Error("No ore area found")
 }
@@ -39,10 +41,22 @@ function makeAreaKnown(state: WorldState, areaId: AreaID): void {
   }
 }
 
+/** Discover all locations in an area (required for Gather to work) */
+function discoverAllLocations(state: WorldState, areaId: AreaID): void {
+  const area = state.exploration.areas.get(areaId)
+  if (area) {
+    for (const loc of area.locations) {
+      if (!state.exploration.playerState.knownLocationIds.includes(loc.id)) {
+        state.exploration.playerState.knownLocationIds.push(loc.id)
+      }
+    }
+  }
+}
+
 describe("Evaluation APIs", () => {
   describe("evaluateAction", () => {
     it("should evaluate Move action", () => {
-      const state = createWorld("test-seed")
+      const state = createWorld("ore-test")
       const areaId = getDistance1AreaId(state)
       const action: Action = { type: "Move", destination: areaId }
 
@@ -54,7 +68,7 @@ describe("Evaluation APIs", () => {
     })
 
     it("should evaluate AcceptContract action", () => {
-      const state = createWorld("test-seed")
+      const state = createWorld("ore-test")
       const action: Action = { type: "AcceptContract", contractId: "miners-guild-1" }
 
       const result = evaluateAction(state, action)
@@ -65,9 +79,10 @@ describe("Evaluation APIs", () => {
     })
 
     it("should evaluate Gather action", () => {
-      const state = createWorld("test-seed")
+      const state = createWorld("ore-test")
       const areaId = getOreAreaId(state)
       state.exploration.playerState.currentAreaId = areaId
+      discoverAllLocations(state, areaId)
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const node = state.world.nodes!.find((n) => n.areaId === areaId && !n.depleted)!
       const focusMat = node.materials.find((m) => m.requiredLevel === 1)!
@@ -86,7 +101,7 @@ describe("Evaluation APIs", () => {
     })
 
     it("should evaluate Fight action", () => {
-      const state = createWorld("test-seed")
+      const state = createWorld("ore-test")
       const areaId = getDistance1AreaId(state)
       state.exploration.playerState.currentAreaId = areaId
       state.player.skills.Combat = { level: 1, xp: 0 } // Need level 1 to fight
@@ -113,7 +128,7 @@ describe("Evaluation APIs", () => {
     })
 
     it("should evaluate Craft action", () => {
-      const state = createWorld("test-seed")
+      const state = createWorld("ore-test")
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
       const action: Action = { type: "Craft", recipeId: "iron-bar-recipe" }
@@ -126,7 +141,7 @@ describe("Evaluation APIs", () => {
     })
 
     it("should evaluate Store action", () => {
-      const state = createWorld("test-seed")
+      const state = createWorld("ore-test")
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const action: Action = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
 
@@ -138,7 +153,7 @@ describe("Evaluation APIs", () => {
     })
 
     it("should evaluate Drop action", () => {
-      const state = createWorld("test-seed")
+      const state = createWorld("ore-test")
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const action: Action = { type: "Drop", itemId: "IRON_ORE", quantity: 1 }
 
@@ -150,7 +165,7 @@ describe("Evaluation APIs", () => {
     })
 
     it("should return 0 probability for invalid action", () => {
-      const state = createWorld("test-seed")
+      const state = createWorld("ore-test")
       const areaId = getOreAreaId(state)
       // Try to gather without being at the node location
       const node = state.world.nodes!.find((n) => n.areaId === areaId && !n.depleted)!
@@ -168,9 +183,10 @@ describe("Evaluation APIs", () => {
     })
 
     it("should return 0 probability for Gather with insufficient skill level", () => {
-      const state = createWorld("test-seed")
+      const state = createWorld("ore-test")
       const areaId = getOreAreaId(state)
       state.exploration.playerState.currentAreaId = areaId
+      discoverAllLocations(state, areaId)
       // Skills start at 0, so action should fail
       const node = state.world.nodes!.find((n) => n.areaId === areaId && !n.depleted)!
       const focusMat = node.materials[0]
@@ -187,7 +203,7 @@ describe("Evaluation APIs", () => {
     })
 
     it("should not mutate state", () => {
-      const state = createWorld("test-seed")
+      const state = createWorld("ore-test")
       const areaId = getDistance1AreaId(state)
       const stateBefore = JSON.stringify(state)
       const action: Action = { type: "Move", destination: areaId }
@@ -200,7 +216,7 @@ describe("Evaluation APIs", () => {
 
   describe("evaluatePlan", () => {
     it("should evaluate empty plan", () => {
-      const state = createWorld("test-seed")
+      const state = createWorld("ore-test")
 
       const result = evaluatePlan(state, [])
 
@@ -210,9 +226,10 @@ describe("Evaluation APIs", () => {
     })
 
     it("should evaluate simple plan", () => {
-      const state = createWorld("test-seed")
+      const state = createWorld("ore-test")
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
+      discoverAllLocations(state, areaId)
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const node = state.world.nodes!.find((n) => n.areaId === areaId && !n.depleted)!
       const focusMat = node.materials.find((m) => m.requiredLevel === 1)!
@@ -234,7 +251,7 @@ describe("Evaluation APIs", () => {
     })
 
     it("should detect violations in plan", () => {
-      const state = createWorld("test-seed")
+      const state = createWorld("ore-test")
       const areaId = getOreAreaId(state)
       const node = state.world.nodes!.find((n) => n.areaId === areaId && !n.depleted)!
       const focusMat = node.materials[0]
@@ -255,7 +272,7 @@ describe("Evaluation APIs", () => {
     })
 
     it("should not mutate state", () => {
-      const state = createWorld("test-seed")
+      const state = createWorld("ore-test")
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
@@ -278,9 +295,10 @@ describe("Evaluation APIs", () => {
     })
 
     it("should detect session time exceeded", () => {
-      const state = createWorld("test-seed")
+      const state = createWorld("ore-test")
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
+      discoverAllLocations(state, areaId)
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       state.time.sessionRemainingTicks = 3 // Only 3 ticks remaining
       const node = state.world.nodes!.find((n) => n.areaId === areaId && !n.depleted)!
@@ -306,7 +324,7 @@ describe("Evaluation APIs", () => {
     })
 
     it("should reject 0-tick action when session has ended", () => {
-      const state = createWorld("test-seed")
+      const state = createWorld("ore-test")
       state.time.sessionRemainingTicks = 0 // Session already ended
       const actions: Action[] = [
         { type: "AcceptContract", contractId: "miners-guild-1" }, // 0 ticks but session ended

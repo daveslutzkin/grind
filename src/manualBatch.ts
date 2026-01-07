@@ -29,25 +29,38 @@ function parseAction(cmd: string, state: WorldState): Action | null {
 
   switch (type) {
     case "move": {
-      const dest = parts[1]?.toUpperCase()
+      const dest = parts[1]
       const validAreas = getKnownAreas(state)
-      if (!dest || !validAreas.includes(dest)) {
+      // Case-insensitive matching for area names
+      const matchedArea = dest
+        ? validAreas.find((a) => a.toLowerCase() === dest.toLowerCase())
+        : undefined
+      if (!matchedArea) {
         console.error(`Invalid area. Known areas: ${validAreas.join(", ")}`)
         return null
       }
-      return { type: "ExplorationTravel", destinationAreaId: dest }
+      return { type: "ExplorationTravel", destinationAreaId: matchedArea }
     }
 
     case "enrol":
     case "enroll": {
       const skillName = parts[1]?.toLowerCase()
-      if (skillName === "mining") {
-        return { type: "Enrol", skill: "Mining" }
-      } else if (skillName === "woodcutting") {
-        return { type: "Enrol", skill: "Woodcutting" }
+      const skillMap: Record<
+        string,
+        "Mining" | "Woodcutting" | "Exploration" | "Combat" | "Smithing"
+      > = {
+        mining: "Mining",
+        woodcutting: "Woodcutting",
+        exploration: "Exploration",
+        combat: "Combat",
+        smithing: "Smithing",
       }
-      console.error("Usage: enrol mining|woodcutting")
-      return null
+      const skill = skillMap[skillName]
+      if (!skill) {
+        console.error("Usage: enrol mining|woodcutting|exploration|combat|smithing")
+        return null
+      }
+      return { type: "Enrol", skill }
     }
 
     case "gather": {
@@ -93,15 +106,14 @@ function main(): void {
     console.log("Usage: npx tsx src/manualBatch.ts <seed> [action1] [action2] ...")
     console.log("")
     console.log("Commands:")
-    console.log("  move <area>                  - Travel to an area")
-    console.log("  enrol mining|woodcutting     - Enrol in a guild")
-    console.log("  gather <node> focus <mat>    - Focus on one material")
-    console.log("  gather <node> careful        - Carefully extract all")
-    console.log("  gather <node> appraise       - Inspect node contents")
+    console.log("  move <area>                          - Travel to a known area")
+    console.log("  enrol exploration|mining|woodcutting - Enrol in a guild")
+    console.log("  gather <node> focus <mat>            - Focus on one material")
+    console.log("  gather <node> careful                - Carefully extract all")
+    console.log("  gather <node> appraise               - Inspect node contents")
     console.log("")
-    console.log(
-      "Areas: TOWN, OUTSKIRTS_MINE, COPSE, OLD_QUARRY, DEEP_FOREST, ABANDONED_SHAFT, ANCIENT_GROVE"
-    )
+    console.log("Start by enrolling in Exploration to discover areas (starts at TOWN)")
+    console.log("Areas are procedurally generated: area-d1-i0, area-d2-i0, etc.")
     process.exit(1)
   }
 
