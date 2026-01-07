@@ -57,6 +57,7 @@ Connection properties:
 - Connections are discovered via:
   - Surveying (auto-discovers connection to newly found area)
   - Exploring (can discover connections to already-known areas)
+  - Exploring (can also discover connections to *new* areas with lower probability, but does not reveal the area itself - just that a connection exists to somewhere unknown)
 
 Dead ends are possible - an area may have 0 connections to distance + 1.
 
@@ -70,11 +71,11 @@ Discover a new area connected to your current area.
 
 - **Effect**: Finds an undiscovered area at distance -1, 0, or +1 from current area (random)
 - **Connection**: Also discovers the connection to that area
-- **Constraint**: Can only discover areas that are connected to current area
+- **Constraint**: Can only discover areas that are connected to current area (from any connected area, not just current)
 - **Failure modes**:
-  - If all areas at the rolled distance are already discovered, the tick is wasted
+  - If the roll hits an already-discovered area, the roll is wasted
   - Keep rolling until a new area is found (or player abandons)
-- **Strategic note**: Surveying from the frontier is more efficient (less chance of rediscovering)
+- **Strategic note**: Surveying from the frontier is more efficient (less chance of rediscovering known areas)
 
 #### Explore
 
@@ -99,13 +100,26 @@ Move between areas while foraging.
 
 - **Time cost**: 2x normal travel time
 - **Effect**: Small chance of finding resources appropriate to your gathering skill at ~current distance level
+- **Level range**: Can find resources up to +3 levels above your current gathering skill level, but with correspondingly lower probability
 - **Resources**: Rarer than dedicated gathering, but "free" opportunity during travel
 
 ---
 
 ### Success Mechanics
 
-Both Survey and Explore roll for success each tick until something is found (or player abandons).
+Both Survey and Explore roll for success periodically until something is found (or player abandons).
+
+#### Roll Frequency
+
+Rolls happen every N ticks, where N decreases with level:
+- **Base interval**: 5 ticks
+- **Reduction**: 0.5 ticks per 5 levels
+- Level 1-4: every 5 ticks
+- Level 5-9: every 4.5 ticks
+- Level 10-14: every 4 ticks
+- Level 15-19: every 3.5 ticks
+- Level 20-24: every 3 ticks
+- etc.
 
 #### Base Formula
 
@@ -117,19 +131,27 @@ success_chance = base_rate + level_bonus - distance_penalty + knowledge_bonus
 
 **Base rate**: 5%
 
-**Level bonus**: +5% per exploration level
-- Level 1: +5% (total 10% at distance 1)
-- Level 10: +50% (total 55% at distance 1)
-- Level 20: +100% (total 105% at distance 1, capped at 100%)
+**Level bonus**: +5% per exploration level above 1
+- Level 1: 0% (no bonus)
+- Level 2: +5%
+- Level 5: +20%
+- Level 10: +45%
+- Level 20: +95%
+
+Formula: `(level - 1) × 5%`
 
 **Distance penalty**: -5% per distance beyond 1
 - Distance 1: 0%
 - Distance 5: -20%
 - Distance 10: -45%
 
+Formula: `(distance - 1) × 5%`
+
 **Knowledge bonus**: Based on known adjacent areas
-- +5% per directly connected known area
-- +2% per same-distance non-connected known area
+- +5% per directly connected known area (only if you know the connection)
+- +20% max from same-distance non-connected areas, scaling proportionally to % of such areas known
+
+Formula for non-connected bonus: `20% × (known non-connected areas at this distance / total areas at this distance)`
 
 #### Without Exploration Guild
 
@@ -208,48 +230,57 @@ Town always has an explorer NPC who sells map information.
 
 #### Example 1: Fresh Explorer at Distance 1
 
-**Setup**: Level 1 explorer, just joined guild, knows 1 area at distance 1, exploring that area.
+**Setup**: Level 1 explorer, just joined guild, knows 1 area at distance 1, exploring that area. Town is connected (and connection is known).
 
 ```
 base_rate = 5%
-level_bonus = 5% (level 1)
-distance_penalty = 0% (distance 1)
-knowledge_bonus = 5% (town is connected, town counts)
+level_bonus = 0% (level 1: (1-1) × 5% = 0%)
+distance_penalty = 0% (distance 1: (1-1) × 5% = 0%)
+knowledge_bonus:
+  - connected: 5% (town, connection known)
+  - non-connected: 0% (no other distance-1 areas known yet)
 
-success_chance = 5% + 5% - 0% + 5% = 15%
+success_chance = 5% + 0% - 0% + 5% = 10%
+roll_interval = 5 ticks (level 1-4)
 ```
 
-Expected ticks to find something: ~7 ticks (1/0.15)
+Expected ticks to find something: 5 ticks / 0.10 = **50 ticks**
 
 #### Example 2: Level 5 Explorer at Distance 5
 
-**Setup**: Level 5 explorer at distance 5, knows 3 connected areas, knows 10 other distance-5 areas.
+**Setup**: Level 5 explorer at distance 5. Knows 3 connected areas (with connections known). Knows 10 other distance-5 areas (non-connected). Distance 5 has 34 total areas.
 
 ```
 base_rate = 5%
-level_bonus = 25% (level 5)
-distance_penalty = 20% (distance 5: 4 × 5%)
-knowledge_bonus = 3 × 5% + 10 × 2% = 15% + 20% = 35%
+level_bonus = 20% (level 5: (5-1) × 5% = 20%)
+distance_penalty = 20% (distance 5: (5-1) × 5% = 20%)
+knowledge_bonus:
+  - connected: 3 × 5% = 15%
+  - non-connected: 20% × (10/34) = 20% × 0.29 = 5.9%
 
-success_chance = 5% + 25% - 20% + 35% = 45%
+success_chance = 5% + 20% - 20% + 15% + 5.9% = 25.9%
+roll_interval = 4.5 ticks (level 5-9)
 ```
 
-Expected ticks to find something: ~2 ticks (1/0.45)
+Expected ticks to find something: 4.5 ticks / 0.259 = **17 ticks**
 
 #### Example 3: Level 5 Explorer Pushing to Distance 8
 
-**Setup**: Level 5 explorer at distance 8, knows 2 connected areas, knows 5 other distance-8 areas.
+**Setup**: Level 5 explorer at distance 8. Knows 2 connected areas (connections known). Knows 5 other distance-8 areas (non-connected). Distance 8 has 144 total areas.
 
 ```
 base_rate = 5%
-level_bonus = 25% (level 5)
-distance_penalty = 35% (distance 8: 7 × 5%)
-knowledge_bonus = 2 × 5% + 5 × 2% = 10% + 10% = 20%
+level_bonus = 20% (level 5: (5-1) × 5% = 20%)
+distance_penalty = 35% (distance 8: (8-1) × 5% = 35%)
+knowledge_bonus:
+  - connected: 2 × 5% = 10%
+  - non-connected: 20% × (5/144) = 20% × 0.035 = 0.7%
 
-success_chance = 5% + 25% - 35% + 20% = 15%
+success_chance = 5% + 20% - 35% + 10% + 0.7% = 0.7%
+roll_interval = 4.5 ticks (level 5-9)
 ```
 
-Expected ticks to find something: ~7 ticks - back to "early game" efficiency
+Expected ticks to find something: 4.5 ticks / 0.007 = **643 ticks** - pushing too far is very slow!
 
 #### Example 4: No Guild, Distance 1
 
@@ -257,26 +288,52 @@ Expected ticks to find something: ~7 ticks - back to "early game" efficiency
 
 ```
 success_chance = 1% (fixed, no bonuses apply)
+roll_interval = 5 ticks (no level scaling)
 ```
 
-Expected ticks to find something: ~100 ticks - painfully slow
+Expected ticks to find something: 5 ticks / 0.01 = **500 ticks** - painfully slow
 
-#### Example 5: Master Explorer (Level 20) at Distance 15
+#### Example 5: Level 10 Explorer at Distance 10 (Well-Prepared)
 
-**Setup**: Level 20 explorer at distance 15, knows 5 connected areas, knows 40 other distance-15 areas.
+**Setup**: Level 10 explorer at distance 10. Knows 5 connected areas (connections known). Knows 100 of 377 distance-10 areas (non-connected).
 
 ```
 base_rate = 5%
-level_bonus = 100% (level 20)
-distance_penalty = 70% (distance 15: 14 × 5%)
-knowledge_bonus = 5 × 5% + 40 × 2% = 25% + 80% = 105%
+level_bonus = 45% (level 10: (10-1) × 5% = 45%)
+distance_penalty = 45% (distance 10: (10-1) × 5% = 45%)
+knowledge_bonus:
+  - connected: 5 × 5% = 25%
+  - non-connected: 20% × (100/377) = 20% × 0.27 = 5.3%
 
-success_chance = 5% + 100% - 70% + 105% = 140% → capped at 100%
+success_chance = 5% + 45% - 45% + 25% + 5.3% = 35.3%
+roll_interval = 4 ticks (level 10-14)
 ```
 
-Even at extreme distance, a master explorer with thorough knowledge auto-succeeds.
+Expected ticks to find something: 4 ticks / 0.353 = **11 ticks**
 
-#### Example 6: Travel Time Calculation
+At level = distance, the base and penalty cancel out. Connected knowledge becomes the differentiator.
+
+#### Example 6: Master Explorer (Level 20) at Distance 15
+
+**Setup**: Level 20 explorer at distance 15. Knows 8 connected areas (connections known). Knows 200 of 610 distance-15 areas (non-connected).
+
+```
+base_rate = 5%
+level_bonus = 95% (level 20: (20-1) × 5% = 95%)
+distance_penalty = 70% (distance 15: (15-1) × 5% = 70%)
+knowledge_bonus:
+  - connected: 8 × 5% = 40%
+  - non-connected: 20% × (200/610) = 20% × 0.33 = 6.6%
+
+success_chance = 5% + 95% - 70% + 40% + 6.6% = 76.6%
+roll_interval = 3 ticks (level 20-24)
+```
+
+Expected ticks to find something: 3 ticks / 0.766 = **4 ticks**
+
+High level + good knowledge = very efficient exploration even at high distances.
+
+#### Example 7: Travel Time Calculation
 
 **Setup**: Player in town, wants to travel to area at distance 3.
 
@@ -292,21 +349,36 @@ Total: 60 ticks
 
 With scavenge: 120 ticks (2x), but chance for gathering drops along the way.
 
-#### Example 7: Area Generation (Fibonacci Check)
+#### Example 8: Area Generation (Fibonacci Check)
 
-Total areas by distance:
-- Distance 1: 5 areas
-- Distance 2: 8 areas (total: 13)
-- Distance 3: 13 areas (total: 26)
-- Distance 4: 21 areas (total: 47)
-- Distance 5: 34 areas (total: 81)
-- Distance 6: 55 areas (total: 136)
-- Distance 7: 89 areas (total: 225)
-- Distance 8: 144 areas (total: 369)
-- Distance 9: 233 areas (total: 602)
-- Distance 10: 377 areas (total: 979)
+Total areas by distance (Fibonacci starting at 5):
+- Distance 1: 5 areas (Fib 5)
+- Distance 2: 8 areas (Fib 6)
+- Distance 3: 13 areas (Fib 7)
+- Distance 4: 21 areas (Fib 8)
+- Distance 5: 34 areas (Fib 9)
+- Distance 6: 55 areas (Fib 10)
+- Distance 7: 89 areas (Fib 11)
+- Distance 8: 144 areas (Fib 12)
+- Distance 9: 233 areas (Fib 13)
+- Distance 10: 377 areas (Fib 14)
+- Distance 15: 610 areas (Fib 19)
 
 ~1000 areas within distance 10 of town.
+
+#### Example 9: Fresh Explorer Building Knowledge at Distance 1
+
+**Setup**: Level 1 explorer gradually discovering distance 1 areas. 5 total areas at distance 1.
+
+| Known | Connected Bonus | Non-Connected Bonus | Total Chance | Ticks/Find |
+|-------|-----------------|---------------------|--------------|------------|
+| 1     | 5% (town)       | 0%                  | 10%          | 50         |
+| 2     | 10%             | 0%                  | 15%          | 33         |
+| 3     | 15%             | 0%                  | 20%          | 25         |
+| 4     | 20%             | 0%                  | 25%          | 20         |
+| 5     | 25%             | 0%                  | 30%          | 17         |
+
+Note: Assumes all distance-1 areas are connected to town (which they are). As knowledge grows, exploration speeds up significantly.
 
 ---
 
@@ -324,9 +396,9 @@ Total areas by distance:
 
 6. **XP curve formula**: Exact formula for XP-to-level conversion (should match other skills).
 
-7. **Travel + Scavenge probabilities**: What's the actual chance of finding resources while scavenging?
+7. **Travel + Scavenge probabilities**: What's the actual chance of finding resources while scavenging? How does the +3 level range affect probability?
 
-8. **Knowledge bonus cap**: Should there be a maximum knowledge bonus to prevent trivializing very high distances?
+8. **Unknown connection discovery probability**: When exploring discovers a connection to a *new* (unknown) area, what's the probability compared to discovering connections to known areas?
 
 ---
 
