@@ -539,5 +539,11 @@ export function checkAction(state: WorldState, action: Action): ActionCheckResul
       return checkGuildEnrolmentAction(state, action)
     case "TurnInCombatToken":
       return checkTurnInCombatTokenAction(state, action)
+    // Exploration actions - not yet implemented in action checks
+    case "Survey":
+    case "Explore":
+    case "ExplorationTravel":
+      // These actions have their own validation in exploration.ts
+      return { valid: true, timeCost: 0, successProbability: 1 }
   }
 }

@@ -24,6 +24,7 @@ import type {
 } from "./types.js"
 import { addXPToSkill, GatherMode } from "./types.js"
 import { roll, rollLootTable, rollFloat } from "./rng.js"
+import { executeSurvey, executeExplore, executeExplorationTravel } from "./exploration.js"
 
 import {
   checkMoveAction,
@@ -335,6 +336,12 @@ export function executeAction(state: WorldState, action: Action): ActionLog {
       return executeGuildEnrolment(state, action, rolls)
     case "TurnInCombatToken":
       return executeTurnInCombatToken(state, action, rolls)
+    case "Survey":
+      return executeSurvey(state, action)
+    case "Explore":
+      return executeExplore(state, action)
+    case "ExplorationTravel":
+      return executeExplorationTravel(state, action)
   }
 }
 
