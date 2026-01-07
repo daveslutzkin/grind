@@ -355,9 +355,9 @@ export function createWorld(seed: string): WorldState {
   // Generate connections
   const connections = generateConnections(AREA_DEFINITIONS)
 
-  // All areas and connections are known at start for gathering world
-  const knownAreaIds = AREA_DEFINITIONS.map((a) => a.id)
-  const knownConnectionIds = connections.map((c) => `${c.fromAreaId}->${c.toAreaId}`)
+  // Start knowing only TOWN - must explore to discover other areas
+  const knownAreaIds = ["TOWN"]
+  const knownConnectionIds: string[] = []
 
   return {
     time: {

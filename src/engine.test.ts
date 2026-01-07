@@ -16,6 +16,9 @@ describe("Engine", () => {
   describe("Move action", () => {
     it("should move player to destination", () => {
       const state = createWorld("test-seed")
+      // Make OUTSKIRTS_MINE known
+      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       const action: MoveAction = { type: "Move", destination: "OUTSKIRTS_MINE" }
 
       const log = executeAction(state, action)
@@ -26,6 +29,9 @@ describe("Engine", () => {
 
     it("should consume travel time", () => {
       const state = createWorld("test-seed")
+      // Make OUTSKIRTS_MINE known
+      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       const initialTicks = state.time.sessionRemainingTicks
       const action: MoveAction = { type: "Move", destination: "OUTSKIRTS_MINE" }
 
@@ -38,6 +44,9 @@ describe("Engine", () => {
 
     it("should not grant XP (travel is purely logistical)", () => {
       const state = createWorld("test-seed")
+      // Make OUTSKIRTS_MINE known
+      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       const action: MoveAction = { type: "Move", destination: "OUTSKIRTS_MINE" }
 
       const log = executeAction(state, action)
@@ -70,6 +79,9 @@ describe("Engine", () => {
 
     it("should log action details", () => {
       const state = createWorld("test-seed")
+      // Make OUTSKIRTS_MINE known
+      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       const action: MoveAction = { type: "Move", destination: "OUTSKIRTS_MINE" }
 
       const log = executeAction(state, action)
@@ -82,6 +94,9 @@ describe("Engine", () => {
 
     it("should work for all location pairs", () => {
       const state = createWorld("test-seed")
+      // Make COPSE known
+      state.exploration.playerState.knownAreaIds.push("COPSE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->COPSE")
 
       // TOWN -> COPSE (base 10 * multiplier 2 = 20)
       let log = executeAction(state, { type: "Move", destination: "COPSE" })
@@ -89,6 +104,9 @@ describe("Engine", () => {
       expect(log.timeConsumed).toBe(20)
       expect(state.exploration.playerState.currentAreaId).toBe("COPSE")
 
+      // Make DEEP_FOREST known
+      state.exploration.playerState.knownAreaIds.push("DEEP_FOREST")
+      state.exploration.playerState.knownConnectionIds.push("COPSE->DEEP_FOREST")
       // COPSE -> DEEP_FOREST (base 10 * multiplier 3 = 30)
       log = executeAction(state, { type: "Move", destination: "DEEP_FOREST" })
       expect(log.success).toBe(true)
@@ -130,6 +148,9 @@ describe("Engine", () => {
 
     it("should fail if not at guild location", () => {
       const state = createWorld("test-seed")
+      // Make OUTSKIRTS_MINE known
+      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       const action: AcceptContractAction = { type: "AcceptContract", contractId: "miners-guild-1" }
 
@@ -164,6 +185,9 @@ describe("Engine", () => {
   describe("Gather action", () => {
     it("should add item to inventory on success", () => {
       const state = createWorld("gather-success-seed")
+      // Make OUTSKIRTS_MINE known
+      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       // Get a real node from the area
@@ -192,6 +216,9 @@ describe("Engine", () => {
 
     it("should consume gather time", () => {
       const state = createWorld("test-seed")
+      // Make OUTSKIRTS_MINE known
+      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const initialTicks = state.time.sessionRemainingTicks
@@ -216,6 +243,9 @@ describe("Engine", () => {
 
     it("should grant Mining XP on success", () => {
       const state = createWorld("test-seed")
+      // Make OUTSKIRTS_MINE known
+      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       // Get a real node from the area
@@ -261,6 +291,9 @@ describe("Engine", () => {
 
     it("should fail if node not found", () => {
       const state = createWorld("test-seed")
+      // Make OUTSKIRTS_MINE known
+      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       const action: GatherAction = { type: "Gather", nodeId: "nonexistent-node" }
 
@@ -272,6 +305,9 @@ describe("Engine", () => {
 
     it("should log RNG roll", () => {
       const state = createWorld("test-seed")
+      // Make OUTSKIRTS_MINE known
+      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const node = state.world.nodes?.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)
@@ -293,6 +329,9 @@ describe("Engine", () => {
 
     it("should stack items in inventory", () => {
       const state = createWorld("stack-test")
+      // Make OUTSKIRTS_MINE known
+      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const node = state.world.nodes?.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)
@@ -321,6 +360,9 @@ describe("Engine", () => {
 
     it("should succeed if inventory full but already has that item (slot-based)", () => {
       const state = createWorld("test-seed")
+      // Make OUTSKIRTS_MINE known
+      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const node = state.world.nodes?.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)
@@ -347,6 +389,9 @@ describe("Engine", () => {
 
   describe("Fight action", () => {
     function setupCombatState(state: ReturnType<typeof createWorld>): void {
+      // Make OUTSKIRTS_MINE known
+      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
@@ -407,6 +452,9 @@ describe("Engine", () => {
 
     it("should fail if enemy not found", () => {
       const state = createWorld("test-seed")
+      // Make OUTSKIRTS_MINE known
+      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
       state.player.equippedWeapon = "CRUDE_WEAPON"
@@ -489,6 +537,9 @@ describe("Engine", () => {
     it("should fail if not at required location", () => {
       const state = createWorld("test-seed")
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
+      // Make OUTSKIRTS_MINE known
+      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
@@ -561,6 +612,9 @@ describe("Engine", () => {
 
     it("should fail if not at storage location", () => {
       const state = createWorld("test-seed")
+      // Make OUTSKIRTS_MINE known
+      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
@@ -682,6 +736,9 @@ describe("Engine", () => {
   describe("Level 0 blocks skill actions", () => {
     it("should fail Gather when Mining is level 0", () => {
       const state = createWorld("test-seed")
+      // Make OUTSKIRTS_MINE known
+      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       // Get a real node from the area
       const node = state.world.nodes?.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)
@@ -704,6 +761,9 @@ describe("Engine", () => {
 
     it("should fail Gather when Woodcutting is level 0", () => {
       const state = createWorld("test-seed")
+      // Make COPSE known
+      state.exploration.playerState.knownAreaIds.push("COPSE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->COPSE")
       state.exploration.playerState.currentAreaId = "COPSE"
       // Get a real node from the area
       const node = state.world.nodes?.find((n) => n.areaId === "COPSE" && !n.depleted)
@@ -725,6 +785,9 @@ describe("Engine", () => {
 
     it("should fail Fight when Combat is level 0", () => {
       const state = createWorld("test-seed")
+      // Make OUTSKIRTS_MINE known
+      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       // Skills start at 0, so Combat should be 0
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
@@ -751,6 +814,9 @@ describe("Engine", () => {
 
     it("should succeed Gather when Mining is level 1", () => {
       const state = createWorld("test-seed")
+      // Make OUTSKIRTS_MINE known
+      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       state.player.skills.Mining = { level: 1, xp: 0 }
       // Get a real node from the area
@@ -800,6 +866,9 @@ describe("Engine", () => {
 
     it("should fail if not at guild location (TOWN)", () => {
       const state = createWorld("test-seed")
+      // Make OUTSKIRTS_MINE known
+      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 

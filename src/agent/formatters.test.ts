@@ -39,6 +39,9 @@ describe("Formatters", () => {
 
     it("should show nearby resource nodes at current location", () => {
       const state = createWorld("test-seed")
+      // Make OUTSKIRTS_MINE known
+      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       // Move to a location with nodes
       executeAction(state, { type: "Move", destination: "OUTSKIRTS_MINE" })
       const formatted = formatWorldState(state)
@@ -52,6 +55,9 @@ describe("Formatters", () => {
       const state = createWorld("test-seed")
       // Enrol in Mining first
       executeAction(state, { type: "Enrol", skill: "Mining" })
+      // Make OUTSKIRTS_MINE known
+      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       const log = executeAction(state, {
         type: "Move",
         destination: "OUTSKIRTS_MINE",
@@ -65,6 +71,9 @@ describe("Formatters", () => {
 
     it("should format failed action log with failure reason", () => {
       const state = createWorld("test-seed")
+      // Make OUTSKIRTS_MINE known
+      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       // Try to gather without enrolling - should fail
       executeAction(state, { type: "Move", destination: "OUTSKIRTS_MINE" })
 
@@ -87,6 +96,9 @@ describe("Formatters", () => {
     it("should include XP gain information when present", () => {
       const state = createWorld("test-seed")
       executeAction(state, { type: "Enrol", skill: "Mining" })
+      // Make OUTSKIRTS_MINE known
+      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       executeAction(state, { type: "Move", destination: "OUTSKIRTS_MINE" })
 
       const node = state.world.nodes?.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)
@@ -113,6 +125,9 @@ describe("Formatters", () => {
     it("should include RNG roll outcomes when present", () => {
       const state = createWorld("test-seed")
       executeAction(state, { type: "Enrol", skill: "Mining" })
+      // Make OUTSKIRTS_MINE known
+      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       executeAction(state, { type: "Move", destination: "OUTSKIRTS_MINE" })
 
       const node = state.world.nodes?.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)
@@ -138,6 +153,9 @@ describe("Formatters", () => {
     it("should include items gained/lost", () => {
       const state = createWorld("test-seed")
       executeAction(state, { type: "Enrol", skill: "Mining" })
+      // Make OUTSKIRTS_MINE known
+      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
+      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
       executeAction(state, { type: "Move", destination: "OUTSKIRTS_MINE" })
 
       const node = state.world.nodes?.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)
