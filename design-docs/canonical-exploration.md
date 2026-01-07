@@ -41,6 +41,40 @@ Location generation:
 - Most rolls fail, so most areas are naturally sparse
 - "Many areas have nothing, and that's ok"
 
+#### Node Visibility
+
+What players can see about discovered gathering nodes depends on their skill level and whether they've appraised the node.
+
+**Three tiers of visibility:**
+
+1. **No gathering skill**: Only see the node type
+   - Example: `area-d1-i0-node-1: Mining node`
+   - You know a node exists and what skill it requires, but nothing about contents
+
+2. **Has skill, not appraised**: See material names only (no quantities)
+   - Example: `area-d1-i0-node-1: STONE, COPPER_ORE`
+   - Limited to materials within your level range (see below)
+   - You can identify what's there but not how much
+
+3. **Appraised**: See full details with quantities
+   - Example: `area-d1-i0-node-1: 129/129 STONE, 50/50 COPPER_ORE`
+   - Still limited to materials within your level range
+   - Requires APPRAISE action (unlocks at gathering skill L3)
+
+**Material visibility by level:**
+
+You can only see materials up to your current skill level + 2:
+- Mining L1: Can see materials requiring up to L3
+- Mining L3: Can see materials requiring up to L5
+- Mining L8: Can see all materials (L10 cap)
+
+Materials above your visibility threshold:
+- Are completely hidden from node display
+- Collateral damage to them is not shown
+- You don't know they exist until you level up
+
+This creates natural discovery moments as you level: "Oh, this node also had DEEP_ORE I couldn't see before!"
+
 #### Connections
 
 Areas form a graph with discoverable edges.

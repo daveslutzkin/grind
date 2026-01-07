@@ -92,20 +92,29 @@ export function formatWorldState(state: WorldState): string {
     for (const node of nodesHere) {
       // Determine required skill from node type
       const requiredSkill = node.nodeType === "ORE_VEIN" ? "Mining" : "Woodcutting"
-      const hasSkill = (state.player.skills[requiredSkill]?.level ?? 0) > 0
+      const skillLevel = state.player.skills[requiredSkill]?.level ?? 0
+      const hasSkill = skillLevel > 0
       const isAppraised = state.player.appraisedNodeIds.includes(node.nodeId)
+
+      // Can only see materials up to current level + 2
+      const maxVisibleLevel = skillLevel + 2
+      const visibleMaterials = node.materials.filter((m) => m.requiredLevel <= maxVisibleLevel)
 
       if (!hasSkill) {
         // No skill - just show node type
         const nodeTypeName = node.nodeType === "ORE_VEIN" ? "Mining node" : "Woodcutting node"
         lines.push(`  ${node.nodeId}: ${nodeTypeName}`)
+      } else if (visibleMaterials.length === 0) {
+        // Has skill but no visible materials (all too high level)
+        const nodeTypeName = node.nodeType === "ORE_VEIN" ? "Mining node" : "Woodcutting node"
+        lines.push(`  ${node.nodeId}: ${nodeTypeName}`)
       } else if (!isAppraised) {
         // Has skill but not appraised - show material names only
-        const mats = node.materials.map((m) => m.materialId).join(", ")
+        const mats = visibleMaterials.map((m) => m.materialId).join(", ")
         lines.push(`  ${node.nodeId}: ${mats}`)
       } else {
         // Appraised - show full details with counts
-        const mats = node.materials
+        const mats = visibleMaterials
           .map((m) => {
             const req = m.requiredLevel > 0 ? ` [${m.requiresSkill} L${m.requiredLevel}]` : ""
             return `${m.remainingUnits}/${m.maxUnitsInitial} ${m.materialId}${req}`
@@ -156,8 +165,10 @@ export function formatWorldState(state: WorldState): string {
 
 /**
  * Format ActionLog as concise text for LLM consumption
+ * @param log The action log to format
+ * @param state Optional world state for filtering material visibility
  */
-export function formatActionLog(log: ActionLog): string {
+export function formatActionLog(log: ActionLog, state?: WorldState): string {
   const lines: string[] = []
 
   // One-line summary
@@ -177,16 +188,40 @@ export function formatActionLog(log: ActionLog): string {
 
   lines.push(summary)
 
+  // Helper to check if a material is visible based on skill level
+  const isMaterialVisible = (materialId: string): boolean => {
+    if (!state) return true // No state = show all
+    // Find the material in nodes to get its required level
+    for (const node of state.world.nodes || []) {
+      const mat = node.materials.find((m) => m.materialId === materialId)
+      if (mat) {
+        const skillLevel = state.player.skills[mat.requiresSkill]?.level ?? 0
+        const maxVisibleLevel = skillLevel + 2
+        return mat.requiredLevel <= maxVisibleLevel
+      }
+    }
+    return true // Material not found in nodes = show it
+  }
+
   // Appraisal results (important detail to show)
   if (log.extraction?.appraisal) {
     const a = log.extraction.appraisal
-    const mats = a.materials
-      .map((m) => {
-        const req = m.requiredLevel > 0 ? ` [${m.requiresSkill} L${m.requiredLevel}]` : ""
-        return `${m.remaining}/${m.max} ${m.materialId}${req}`
-      })
-      .join(", ")
-    lines.push(`  ${a.nodeId}: ${mats}`)
+    // Filter materials by visibility if state is provided
+    const visibleMats = state
+      ? a.materials.filter((m) => {
+          const skillLevel = state.player.skills[m.requiresSkill]?.level ?? 0
+          return m.requiredLevel <= skillLevel + 2
+        })
+      : a.materials
+    if (visibleMats.length > 0) {
+      const mats = visibleMats
+        .map((m) => {
+          const req = m.requiredLevel > 0 ? ` [${m.requiresSkill} L${m.requiredLevel}]` : ""
+          return `${m.remaining}/${m.max} ${m.materialId}${req}`
+        })
+        .join(", ")
+      lines.push(`  ${a.nodeId}: ${mats}`)
+    }
   }
 
   // Items gained
@@ -198,10 +233,12 @@ export function formatActionLog(log: ActionLog): string {
     }
     lines.push(itemLine)
 
-    if (Object.keys(log.extraction.collateralDamage).length > 0) {
-      const dmg = Object.entries(log.extraction.collateralDamage)
-        .map(([m, d]) => `-${d} ${m}`)
-        .join(", ")
+    // Filter collateral damage by material visibility
+    const visibleCollateral = Object.entries(log.extraction.collateralDamage).filter(([m]) =>
+      isMaterialVisible(m)
+    )
+    if (visibleCollateral.length > 0) {
+      const dmg = visibleCollateral.map(([m, d]) => `-${d} ${m}`).join(", ")
       lines.push(`  Collateral: ${dmg}`)
     }
   }

@@ -308,20 +308,29 @@ export function formatDynamicState(state: WorldState): string {
     for (const node of nodesHere) {
       // Determine required skill from node type
       const requiredSkill = node.nodeType === "ORE_VEIN" ? "Mining" : "Woodcutting"
-      const hasSkill = (state.player.skills[requiredSkill]?.level ?? 0) > 0
+      const skillLevel = state.player.skills[requiredSkill]?.level ?? 0
+      const hasSkill = skillLevel > 0
       const isAppraised = state.player.appraisedNodeIds.includes(node.nodeId)
+
+      // Can only see materials up to current level + 2
+      const maxVisibleLevel = skillLevel + 2
+      const visibleMaterials = node.materials.filter((m) => m.requiredLevel <= maxVisibleLevel)
 
       if (!hasSkill) {
         // No skill - just show node type
         const nodeTypeName = node.nodeType === "ORE_VEIN" ? "Mining node" : "Woodcutting node"
         lines.push(`  ${node.nodeId}: ${nodeTypeName}`)
+      } else if (visibleMaterials.length === 0) {
+        // Has skill but no visible materials (all too high level)
+        const nodeTypeName = node.nodeType === "ORE_VEIN" ? "Mining node" : "Woodcutting node"
+        lines.push(`  ${node.nodeId}: ${nodeTypeName}`)
       } else if (!isAppraised) {
         // Has skill but not appraised - show material names only
-        const mats = node.materials.map((m) => m.materialId).join(", ")
+        const mats = visibleMaterials.map((m) => m.materialId).join(", ")
         lines.push(`  ${node.nodeId}(${node.nodeType}): ${mats}`)
       } else {
         // Appraised - show full details with counts
-        const mats = node.materials
+        const mats = visibleMaterials
           .map((m) => {
             const req = m.requiredLevel > 0 ? `[${m.requiresSkill}L${m.requiredLevel}]` : ""
             return `${m.materialId}:${m.remainingUnits}/${m.maxUnitsInitial}${req}`

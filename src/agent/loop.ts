@@ -414,7 +414,7 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
       }
 
       // Format result - use concise summary for history, full for debugging
-      const resultText = formatActionLog(log)
+      const resultText = formatActionLog(log, state)
       const summaryText = summarizeAction(log)
       conversationHistory.push(`RESULT:\n${resultText}`)
 
