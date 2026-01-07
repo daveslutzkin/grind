@@ -54,7 +54,7 @@ describe("Formatters", () => {
       const formatted = formatWorldState(state)
 
       expect(formatted).toContain("Location: TOWN")
-      expect(formatted).toContain("Ticks remaining:")
+      expect(formatted).toContain("ticks left")
       expect(formatted).toContain("Inventory:")
     })
 
@@ -70,14 +70,14 @@ describe("Formatters", () => {
       state.player.inventory = [{ itemId: "iron_ore", quantity: 5 }]
       const formatted = formatWorldState(state)
 
-      expect(formatted).toContain("iron_ore: 5")
+      expect(formatted).toContain("5 iron_ore")
     })
 
     it("should show available areas", () => {
       const state = createWorld("ore-test")
       const formatted = formatWorldState(state)
 
-      expect(formatted).toContain("Available areas:")
+      expect(formatted).toContain("Travel:")
     })
 
     it("should show nearby resource nodes at current location", () => {
@@ -89,7 +89,7 @@ describe("Formatters", () => {
       discoverAllLocations(state, areaId) // Must discover locations to see nodes
       const formatted = formatWorldState(state)
 
-      expect(formatted).toContain("Resource nodes here:")
+      expect(formatted).toContain("Nodes:")
     })
   })
 
@@ -117,9 +117,9 @@ describe("Formatters", () => {
       })
       const formatted = formatActionLog(log)
 
-      expect(formatted).toContain("SUCCESS")
+      expect(formatted).toContain("✓")
       expect(formatted).toContain("Gather")
-      expect(formatted).toContain("Time used:")
+      expect(formatted).toMatch(/\(\d+t\)/)
     })
 
     it("should format failed action log with failure reason", () => {
@@ -144,7 +144,7 @@ describe("Formatters", () => {
 
       const formatted = formatActionLog(log)
 
-      expect(formatted).toContain("FAILED")
+      expect(formatted).toContain("✗")
     })
 
     it("should include XP gain information when present", () => {
@@ -173,7 +173,7 @@ describe("Formatters", () => {
       const formatted = formatActionLog(log)
 
       if (log.skillGained) {
-        expect(formatted).toContain("XP gained:")
+        expect(formatted).toContain("XP")
       }
     })
 
@@ -229,7 +229,7 @@ describe("Formatters", () => {
       const formatted = formatActionLog(log)
 
       if (log.extraction && log.extraction.extracted.length > 0) {
-        expect(formatted).toContain("Items gained:")
+        expect(formatted).toContain("Gained:")
       }
     })
   })

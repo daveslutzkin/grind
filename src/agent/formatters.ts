@@ -3,275 +3,217 @@ import { getCurrentAreaId } from "../types.js"
 import { getUnlockedModes, getNextModeUnlock } from "../actionChecks.js"
 
 /**
- * Format WorldState as readable text for LLM consumption
+ * Format WorldState as concise text for LLM consumption
  */
 export function formatWorldState(state: WorldState): string {
   const lines: string[] = []
   const currentArea = getCurrentAreaId(state)
 
-  // Current status
-  lines.push("=== CURRENT STATE ===")
-  lines.push(`Location: ${currentArea}`)
-  lines.push(
-    `Ticks remaining: ${state.time.sessionRemainingTicks} (used: ${state.time.currentTick})`
-  )
+  // Location + ticks on one line
+  lines.push(`Location: ${currentArea} (${state.time.sessionRemainingTicks} ticks left)`)
 
-  // Inventory
-  lines.push("")
-  lines.push("Inventory:")
+  // Inventory - compact
   if (state.player.inventory.length === 0) {
-    lines.push("  (empty)")
+    lines.push(`Inventory: empty (0/${state.player.inventoryCapacity})`)
   } else {
-    for (const item of state.player.inventory) {
-      lines.push(`  ${item.itemId}: ${item.quantity}`)
-    }
+    const items = state.player.inventory.map((i) => `${i.quantity} ${i.itemId}`).join(", ")
+    lines.push(
+      `Inventory: ${items} (${state.player.inventory.length}/${state.player.inventoryCapacity})`
+    )
   }
-  lines.push(`  Capacity: ${state.player.inventory.length}/${state.player.inventoryCapacity} slots`)
 
-  // Storage (if any)
+  // Storage - compact, only if non-empty
   if (state.player.storage.length > 0) {
-    lines.push("")
-    lines.push("Storage (at TOWN):")
-    for (const item of state.player.storage) {
-      lines.push(`  ${item.itemId}: ${item.quantity}`)
-    }
+    const items = state.player.storage.map((i) => `${i.quantity} ${i.itemId}`).join(", ")
+    lines.push(`Storage: ${items}`)
   }
 
-  // Skills
-  lines.push("")
-  lines.push("Skills:")
-  for (const [skillId, skillState] of Object.entries(state.player.skills)) {
-    if (skillState.level > 0) {
-      lines.push(`  ${skillId}: Level ${skillState.level} (${skillState.xp} XP toward next)`)
-      // Show unlocked gather modes for gathering skills
-      if (skillId === "Mining" || skillId === "Woodcutting") {
-        const modes = getUnlockedModes(skillState.level)
-        const nextUnlock = getNextModeUnlock(skillState.level)
-        const modesStr = modes.join(", ")
-        const nextStr = nextUnlock ? ` (next: ${nextUnlock.mode} at L${nextUnlock.level})` : ""
-        lines.push(`    Gather modes: ${modesStr}${nextStr}`)
+  // Skills - only show enrolled skills
+  const enrolledSkills = Object.entries(state.player.skills)
+    .filter(([, s]) => s.level > 0)
+    .map(([id, s]) => {
+      let skillStr = `${id} L${s.level}`
+      // Add gather modes for gathering skills
+      if (id === "Mining" || id === "Woodcutting") {
+        const modes = getUnlockedModes(s.level)
+        const nextUnlock = getNextModeUnlock(s.level)
+        const modesStr = modes.join("/")
+        skillStr += ` [${modesStr}]`
+        if (nextUnlock) {
+          skillStr += ` (${nextUnlock.mode}@L${nextUnlock.level})`
+        }
       }
-    } else {
-      lines.push(`  ${skillId}: Not enrolled`)
-    }
-  }
+      return skillStr
+    })
+  lines.push(`Skills: ${enrolledSkills.length > 0 ? enrolledSkills.join(", ") : "none"}`)
 
-  // Active contracts
+  // Active contracts - compact
   if (state.player.activeContracts.length > 0) {
-    lines.push("")
-    lines.push("Active contracts:")
-    for (const contractId of state.player.activeContracts) {
-      const contract = state.world.contracts.find((c) => c.id === contractId)
-      if (contract) {
-        lines.push(`  ${contractId}:`)
-        lines.push(
-          `    Requires: ${contract.requirements.map((r) => `${r.quantity}x ${r.itemId}`).join(", ")}`
-        )
-        lines.push(
-          `    Rewards: ${contract.rewards.map((r) => `${r.quantity}x ${r.itemId}`).join(", ")}`
-        )
-      }
-    }
+    const contracts = state.player.activeContracts
+      .map((id) => {
+        const c = state.world.contracts.find((x) => x.id === id)
+        if (!c) return id
+        const reqs = c.requirements.map((r) => `${r.quantity} ${r.itemId}`).join(", ")
+        return `${id} (need ${reqs})`
+      })
+      .join("; ")
+    lines.push(`Active: ${contracts}`)
   }
 
-  // Available areas via exploration connections
-  lines.push("")
-  lines.push("Available areas:")
+  // Travel - available connections
   const knownConnections = state.exploration.playerState.knownConnectionIds
-  const outgoingConnections = knownConnections
+  const outgoing = knownConnections
     .filter((connId) => connId.startsWith(`${currentArea}->`))
     .map((connId) => {
-      const destArea = connId.split("->")[1]
-      const connection = state.exploration.connections.find(
-        (c) => c.fromAreaId === currentArea && c.toAreaId === destArea
+      const dest = connId.split("->")[1]
+      const conn = state.exploration.connections.find(
+        (c) => c.fromAreaId === currentArea && c.toAreaId === dest
       )
-      const travelTime = connection?.travelTimeMultiplier ?? 1
-      return { dest: destArea, cost: travelTime }
+      return `${dest} (${conn?.travelTimeMultiplier ?? 1}t)`
     })
-
-  if (outgoingConnections.length === 0) {
-    lines.push("  (no known connections)")
+  if (outgoing.length > 0) {
+    lines.push(`Travel: ${outgoing.join(", ")}`)
   } else {
-    for (const { dest, cost } of outgoingConnections) {
-      lines.push(`  ${dest} (${cost} ticks)`)
-    }
+    lines.push("Travel: none known")
   }
 
-  // All known areas for reference
-  lines.push("")
-  lines.push(`Known areas: ${state.exploration.playerState.knownAreaIds.join(", ")}`)
-
-  // Resource nodes at current location (only show if location is discovered)
+  // Resource nodes at current location (discovered only)
   const knownLocationIds = state.exploration.playerState.knownLocationIds
   const nodesHere = state.world.nodes?.filter((n) => {
     if (n.areaId !== currentArea || n.depleted) return false
-    // Extract node index and check if corresponding location is discovered
-    const nodeIndexMatch = n.nodeId.match(/-node-(\d+)$/)
-    if (!nodeIndexMatch) return false
-    const nodeIndex = nodeIndexMatch[1]
-    const locationId = `${n.areaId}-loc-${nodeIndex}`
+    const match = n.nodeId.match(/-node-(\d+)$/)
+    if (!match) return false
+    const locationId = `${n.areaId}-loc-${match[1]}`
     return knownLocationIds.includes(locationId)
   })
   if (nodesHere && nodesHere.length > 0) {
     lines.push("")
-    lines.push("Resource nodes here:")
+    lines.push("Nodes:")
     for (const node of nodesHere) {
-      lines.push(`  ${node.nodeId} (${node.nodeType}):`)
-      for (const mat of node.materials) {
-        const levelReq =
-          mat.requiredLevel > 0 ? ` [requires ${mat.requiresSkill} L${mat.requiredLevel}]` : ""
-        lines.push(
-          `    - ${mat.materialId}: ${mat.remainingUnits}/${mat.maxUnitsInitial} units${levelReq}`
-        )
-      }
+      const mats = node.materials
+        .map((m) => {
+          const req = m.requiredLevel > 0 ? ` [${m.requiresSkill} L${m.requiredLevel}]` : ""
+          return `${m.remainingUnits}/${m.maxUnitsInitial} ${m.materialId}${req}`
+        })
+        .join(", ")
+      lines.push(`  ${node.nodeId}: ${mats}`)
     }
-  } else if (currentArea !== "TOWN") {
-    // Don't show anything - nodes are hidden until locations are discovered via Explore
   }
 
   // Enemies at current location
-  const enemiesHere = state.world.enemies.filter((e) => e.areaId === currentArea)
-  if (enemiesHere.length > 0) {
-    lines.push("")
-    lines.push("Enemies here:")
-    for (const enemy of enemiesHere) {
-      lines.push(`  ${enemy.id}: requires Combat L${enemy.requiredSkillLevel}`)
-    }
+  const enemies = state.world.enemies.filter((e) => e.areaId === currentArea)
+  if (enemies.length > 0) {
+    const enemyStr = enemies.map((e) => `${e.id} (Combat L${e.requiredSkillLevel})`).join(", ")
+    lines.push(`Enemies: ${enemyStr}`)
   }
 
-  // Available recipes (if at crafting location)
-  const recipesHere = state.world.recipes.filter((r) => r.requiredAreaId === currentArea)
-  if (recipesHere.length > 0) {
-    lines.push("")
-    lines.push("Recipes available here:")
-    for (const recipe of recipesHere) {
-      const inputs = recipe.inputs.map((i) => `${i.quantity}x ${i.itemId}`).join(" + ")
-      lines.push(`  ${recipe.id}: ${inputs} -> ${recipe.output.quantity}x ${recipe.output.itemId}`)
-    }
+  // Recipes - compact
+  const recipes = state.world.recipes.filter((r) => r.requiredAreaId === currentArea)
+  if (recipes.length > 0) {
+    const recipeStr = recipes
+      .map((r) => {
+        const inputs = r.inputs.map((i) => `${i.quantity} ${i.itemId}`).join("+")
+        const id = r.id.replace(/-recipe$/, "")
+        return `${id} (${inputs})`
+      })
+      .join(", ")
+    lines.push(`Recipes: ${recipeStr}`)
   }
 
-  // Available contracts (if at guild location)
-  const contractsHere = state.world.contracts.filter(
+  // Contracts - compact
+  const contracts = state.world.contracts.filter(
     (c) => c.guildAreaId === currentArea && !state.player.activeContracts.includes(c.id)
   )
-  if (contractsHere.length > 0) {
-    lines.push("")
-    lines.push("Contracts available here:")
-    for (const contract of contractsHere) {
-      lines.push(`  ${contract.id}:`)
-      lines.push(
-        `    Requires: ${contract.requirements.map((r) => `${r.quantity}x ${r.itemId}`).join(", ")}`
-      )
-      lines.push(
-        `    Rewards: ${contract.rewards.map((r) => `${r.quantity}x ${r.itemId}`).join(", ")}, +${contract.reputationReward} rep`
-      )
-    }
+  if (contracts.length > 0) {
+    const contractStr = contracts
+      .map((c) => {
+        const reqs = c.requirements.map((r) => `${r.quantity} ${r.itemId}`).join("+")
+        const rewards = c.rewards.map((r) => `${r.quantity} ${r.itemId}`).join("+")
+        return `${c.id} (${reqs} → ${rewards}, +${c.reputationReward} rep)`
+      })
+      .join("; ")
+    lines.push(`Contracts: ${contractStr}`)
   }
 
   return lines.join("\n")
 }
 
 /**
- * Format ActionLog as readable text for LLM consumption
+ * Format ActionLog as concise text for LLM consumption
  */
 export function formatActionLog(log: ActionLog): string {
   const lines: string[] = []
 
-  // Header with success/failure
-  const status = log.success ? "SUCCESS" : "FAILED"
-  lines.push(`=== ACTION RESULT: ${status} ===`)
-
-  // Action type and parameters
-  lines.push(`Action: ${log.actionType}`)
+  // One-line summary
+  const icon = log.success ? "✓" : "✗"
   const params = Object.entries(log.parameters)
-    .map(([k, v]) => `${k}=${v}`)
-    .join(", ")
-  if (params) {
-    lines.push(`Parameters: ${params}`)
-  }
+    .map(([, v]) => v)
+    .join(" ")
+  let summary = `${icon} ${log.actionType}`
+  if (params) summary += ` ${params}`
+  summary += ` (${log.timeConsumed}t)`
 
-  // Time consumed
-  lines.push(`Time used: ${log.timeConsumed} ticks (at tick ${log.tickBefore})`)
-
-  // Failure reason
   if (!log.success && log.failureType) {
-    lines.push(`Failure reason: ${log.failureType}`)
+    summary += `: ${log.failureType}`
+  } else if (log.stateDeltaSummary) {
+    summary += `: ${log.stateDeltaSummary}`
   }
 
-  // State delta
-  if (log.stateDeltaSummary) {
-    lines.push(`Changes: ${log.stateDeltaSummary}`)
-  }
+  lines.push(summary)
 
-  // Appraisal results (from APPRAISE mode)
+  // Appraisal results (important detail to show)
   if (log.extraction?.appraisal) {
-    const appraisal = log.extraction.appraisal
-    lines.push("")
-    lines.push(`Node appraisal - ${appraisal.nodeId} (${appraisal.nodeType}):`)
-    for (const mat of appraisal.materials) {
-      const pct = Math.round((mat.remaining / mat.max) * 100)
-      const levelReq =
-        mat.requiredLevel > 0 ? ` [requires ${mat.requiresSkill} L${mat.requiredLevel}]` : ""
-      lines.push(
-        `  ${mat.materialId}: ${mat.remaining}/${mat.max} units (${pct}%) tier ${mat.tier}${levelReq}`
-      )
-    }
+    const a = log.extraction.appraisal
+    const mats = a.materials
+      .map((m) => {
+        const req = m.requiredLevel > 0 ? ` [${m.requiresSkill} L${m.requiredLevel}]` : ""
+        return `${m.remaining}/${m.max} ${m.materialId}${req}`
+      })
+      .join(", ")
+    lines.push(`  ${a.nodeId}: ${mats}`)
   }
 
-  // Items gained (from extraction)
+  // Items gained
   if (log.extraction && log.extraction.extracted.length > 0) {
-    lines.push("")
-    lines.push("Items gained:")
-    for (const item of log.extraction.extracted) {
-      lines.push(`  +${item.quantity}x ${item.itemId}`)
-    }
+    const items = log.extraction.extracted.map((i) => `+${i.quantity} ${i.itemId}`).join(", ")
+    let itemLine = `  Gained: ${items}`
     if (log.extraction.focusWaste > 0) {
-      lines.push(`  (${log.extraction.focusWaste} units wasted from inefficiency)`)
+      itemLine += ` (${log.extraction.focusWaste} wasted)`
     }
+    lines.push(itemLine)
+
     if (Object.keys(log.extraction.collateralDamage).length > 0) {
-      lines.push("  Collateral damage to other materials:")
-      for (const [matId, damage] of Object.entries(log.extraction.collateralDamage)) {
-        lines.push(`    ${matId}: -${damage} units`)
-      }
+      const dmg = Object.entries(log.extraction.collateralDamage)
+        .map(([m, d]) => `-${d} ${m}`)
+        .join(", ")
+      lines.push(`  Collateral: ${dmg}`)
     }
   }
 
-  // XP gained
+  // XP gained (inline with level ups if any)
   if (log.skillGained) {
-    lines.push("")
-    lines.push(`XP gained: +${log.skillGained.amount} ${log.skillGained.skill}`)
-  }
-
-  // Level ups
-  if (log.levelUps && log.levelUps.length > 0) {
-    lines.push("")
-    lines.push("LEVEL UP!")
-    for (const levelUp of log.levelUps) {
-      lines.push(`  ${levelUp.skill}: ${levelUp.fromLevel} -> ${levelUp.toLevel}`)
+    let xpLine = `  +${log.skillGained.amount} ${log.skillGained.skill} XP`
+    if (log.levelUps && log.levelUps.length > 0) {
+      const lvls = log.levelUps.map((l) => `${l.skill} ${l.fromLevel}→${l.toLevel}`).join(", ")
+      xpLine += ` [LEVEL UP: ${lvls}]`
     }
+    lines.push(xpLine)
   }
 
   // Contracts completed
   if (log.contractsCompleted && log.contractsCompleted.length > 0) {
-    lines.push("")
-    lines.push("CONTRACT COMPLETED!")
     for (const cc of log.contractsCompleted) {
-      lines.push(`  ${cc.contractId}`)
-      lines.push(
-        `    Rewards: ${cc.rewardsGranted.map((r) => `${r.quantity}x ${r.itemId}`).join(", ")}`
-      )
-      lines.push(`    Reputation: +${cc.reputationGained}`)
+      const rewards = cc.rewardsGranted.map((r) => `${r.quantity} ${r.itemId}`).join(", ")
+      lines.push(`  CONTRACT DONE: ${cc.contractId} → ${rewards}, +${cc.reputationGained} rep`)
     }
   }
 
-  // RNG rolls (for learning about probabilities)
+  // RNG rolls (compact)
   if (log.rngRolls.length > 0) {
-    lines.push("")
-    lines.push("RNG:")
-    for (const roll of log.rngRolls) {
-      const outcome = roll.result ? "success" : "fail"
-      lines.push(`  ${roll.label}: ${Math.round(roll.probability * 100)}% chance -> ${outcome}`)
-    }
+    const rolls = log.rngRolls
+      .map((r) => `${r.label} ${Math.round(r.probability * 100)}%:${r.result ? "✓" : "✗"}`)
+      .join(", ")
+    lines.push(`  RNG: ${rolls}`)
   }
 
   return lines.join("\n")

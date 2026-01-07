@@ -79,7 +79,7 @@ describe("Location Discovery", () => {
 
       // Format state should NOT show resource nodes
       const formatted = formatWorldState(state)
-      expect(formatted).not.toContain("Resource nodes here:")
+      expect(formatted).not.toContain("Nodes:")
     })
 
     it("should show nodes AFTER their location is discovered", () => {
@@ -95,7 +95,7 @@ describe("Location Discovery", () => {
 
       // Now format state SHOULD show resource nodes
       const formatted = formatWorldState(state)
-      expect(formatted).toContain("Resource nodes here:")
+      expect(formatted).toContain("Nodes:")
     })
   })
 
