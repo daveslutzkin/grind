@@ -2,7 +2,36 @@ import { describe, it, expect } from "@jest/globals"
 import { formatWorldState, formatActionLog } from "./formatters.js"
 import { createWorld } from "../world.js"
 import { executeAction } from "../engine.js"
-import type { GatherMode } from "../types.js"
+import type { GatherMode, WorldState, AreaID } from "../types.js"
+import { NodeType } from "../types.js"
+
+/**
+ * Test helpers for procedural area IDs
+ */
+
+/** Get a distance-1 area that has ore nodes */
+function getOreAreaId(state: WorldState): AreaID {
+  for (const area of state.exploration.areas.values()) {
+    if (area.distance === 1) {
+      const hasOre = state.world.nodes?.some(
+        (n) => n.areaId === area.id && n.nodeType === NodeType.ORE_VEIN
+      )
+      if (hasOre) return area.id
+    }
+  }
+  throw new Error("No ore area found")
+}
+
+/** Make an area and its connection from TOWN known */
+function makeAreaKnown(state: WorldState, areaId: AreaID): void {
+  if (!state.exploration.playerState.knownAreaIds.includes(areaId)) {
+    state.exploration.playerState.knownAreaIds.push(areaId)
+  }
+  const connectionId = `TOWN->${areaId}`
+  if (!state.exploration.playerState.knownConnectionIds.includes(connectionId)) {
+    state.exploration.playerState.knownConnectionIds.push(connectionId)
+  }
+}
 
 describe("Formatters", () => {
   describe("formatWorldState", () => {
@@ -39,11 +68,10 @@ describe("Formatters", () => {
 
     it("should show nearby resource nodes at current location", () => {
       const state = createWorld("test-seed")
-      // Make OUTSKIRTS_MINE known
-      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
-      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
+      const areaId = getOreAreaId(state)
+      makeAreaKnown(state, areaId)
       // Move to a location with nodes
-      executeAction(state, { type: "Move", destination: "OUTSKIRTS_MINE" })
+      executeAction(state, { type: "Move", destination: areaId })
       const formatted = formatWorldState(state)
 
       expect(formatted).toContain("Resource nodes here:")
@@ -55,12 +83,11 @@ describe("Formatters", () => {
       const state = createWorld("test-seed")
       // Enrol in Mining first
       executeAction(state, { type: "Enrol", skill: "Mining" })
-      // Make OUTSKIRTS_MINE known
-      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
-      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
+      const areaId = getOreAreaId(state)
+      makeAreaKnown(state, areaId)
       const log = executeAction(state, {
         type: "Move",
-        destination: "OUTSKIRTS_MINE",
+        destination: areaId,
       })
       const formatted = formatActionLog(log)
 
@@ -71,14 +98,13 @@ describe("Formatters", () => {
 
     it("should format failed action log with failure reason", () => {
       const state = createWorld("test-seed")
-      // Make OUTSKIRTS_MINE known
-      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
-      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
+      const areaId = getOreAreaId(state)
+      makeAreaKnown(state, areaId)
       // Try to gather without enrolling - should fail
-      executeAction(state, { type: "Move", destination: "OUTSKIRTS_MINE" })
+      executeAction(state, { type: "Move", destination: areaId })
 
       // Find a node
-      const node = state.world.nodes?.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)
+      const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
       if (!node) throw new Error("No node found for test")
 
       const log = executeAction(state, {
@@ -96,12 +122,11 @@ describe("Formatters", () => {
     it("should include XP gain information when present", () => {
       const state = createWorld("test-seed")
       executeAction(state, { type: "Enrol", skill: "Mining" })
-      // Make OUTSKIRTS_MINE known
-      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
-      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
-      executeAction(state, { type: "Move", destination: "OUTSKIRTS_MINE" })
+      const areaId = getOreAreaId(state)
+      makeAreaKnown(state, areaId)
+      executeAction(state, { type: "Move", destination: areaId })
 
-      const node = state.world.nodes?.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)
+      const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
       if (!node) throw new Error("No node found for test")
 
       // Find a material we can actually gather (level 1)
@@ -125,12 +150,11 @@ describe("Formatters", () => {
     it("should include RNG roll outcomes when present", () => {
       const state = createWorld("test-seed")
       executeAction(state, { type: "Enrol", skill: "Mining" })
-      // Make OUTSKIRTS_MINE known
-      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
-      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
-      executeAction(state, { type: "Move", destination: "OUTSKIRTS_MINE" })
+      const areaId = getOreAreaId(state)
+      makeAreaKnown(state, areaId)
+      executeAction(state, { type: "Move", destination: areaId })
 
-      const node = state.world.nodes?.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)
+      const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
       if (!node) throw new Error("No node found for test")
 
       const material = node.materials.find((m) => m.requiredLevel <= 1)
@@ -153,12 +177,11 @@ describe("Formatters", () => {
     it("should include items gained/lost", () => {
       const state = createWorld("test-seed")
       executeAction(state, { type: "Enrol", skill: "Mining" })
-      // Make OUTSKIRTS_MINE known
-      state.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
-      state.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
-      executeAction(state, { type: "Move", destination: "OUTSKIRTS_MINE" })
+      const areaId = getOreAreaId(state)
+      makeAreaKnown(state, areaId)
+      executeAction(state, { type: "Move", destination: areaId })
 
-      const node = state.world.nodes?.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)
+      const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
       if (!node) throw new Error("No node found for test")
 
       const material = node.materials.find((m) => m.requiredLevel <= 1)

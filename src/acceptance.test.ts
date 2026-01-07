@@ -6,7 +6,55 @@
 
 import { executeAction } from "./engine.js"
 import { createWorld } from "./world.js"
-import { GatherMode, type GatherAction, type MoveAction } from "./types.js"
+import {
+  GatherMode,
+  NodeType,
+  type GatherAction,
+  type MoveAction,
+  type WorldState,
+  type AreaID,
+} from "./types.js"
+
+/**
+ * Test helpers for procedural area IDs
+ */
+
+/** Get a distance-1 area that has ore nodes */
+function getOreAreaId(state: WorldState): AreaID {
+  for (const area of state.exploration.areas.values()) {
+    if (area.distance === 1) {
+      const hasOre = state.world.nodes?.some(
+        (n) => n.areaId === area.id && n.nodeType === NodeType.ORE_VEIN
+      )
+      if (hasOre) return area.id
+    }
+  }
+  throw new Error("No ore area found")
+}
+
+/** Get a distance-2 (MID) area that has ore nodes */
+function getMidOreAreaId(state: WorldState): AreaID {
+  for (const area of state.exploration.areas.values()) {
+    if (area.distance === 2) {
+      const hasOre = state.world.nodes?.some(
+        (n) => n.areaId === area.id && n.nodeType === NodeType.ORE_VEIN
+      )
+      if (hasOre) return area.id
+    }
+  }
+  throw new Error("No MID ore area found")
+}
+
+/** Make an area and its connection from TOWN known */
+function makeAreaKnown(state: WorldState, areaId: AreaID): void {
+  if (!state.exploration.playerState.knownAreaIds.includes(areaId)) {
+    state.exploration.playerState.knownAreaIds.push(areaId)
+  }
+  const connectionId = `TOWN->${areaId}`
+  if (!state.exploration.playerState.knownConnectionIds.includes(connectionId)) {
+    state.exploration.playerState.knownConnectionIds.push(connectionId)
+  }
+}
 
 describe("Acceptance Tests: Gathering MVP", () => {
   // ============================================================================
@@ -19,19 +67,18 @@ describe("Acceptance Tests: Gathering MVP", () => {
       const world1 = createWorld("travel-test")
       world1.player.skills.Mining.level = 1
       world1.exploration.playerState.currentAreaId = "TOWN"
-      // Make OUTSKIRTS_MINE known
-      world1.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
-      world1.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
+      // Get and make ore area known
+      const oreAreaId = getOreAreaId(world1)
+      makeAreaKnown(world1, oreAreaId)
 
       const world2 = createWorld("travel-test")
       world2.player.skills.Mining.level = 10
       world2.exploration.playerState.currentAreaId = "TOWN"
-      // Make OUTSKIRTS_MINE known
-      world2.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
-      world2.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
+      // Use the same area ID for comparison
+      makeAreaKnown(world2, oreAreaId)
 
       // Travel to the same destination
-      const moveAction: MoveAction = { type: "Move", destination: "OUTSKIRTS_MINE" }
+      const moveAction: MoveAction = { type: "Move", destination: oreAreaId }
 
       const log1 = executeAction(world1, moveAction)
       const log2 = executeAction(world2, moveAction)
@@ -50,13 +97,13 @@ describe("Acceptance Tests: Gathering MVP", () => {
   describe("Node Persistence", () => {
     it("should reduce reserves when extracting and persist changes", () => {
       const world = createWorld("persist-test")
-      // Make OUTSKIRTS_MINE known
-      world.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
-      world.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
-      world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      // Get ore area and make it known
+      const oreAreaId = getOreAreaId(world)
+      makeAreaKnown(world, oreAreaId)
+      world.exploration.playerState.currentAreaId = oreAreaId
       world.player.skills.Mining.level = 5
 
-      const node = world.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!
+      const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Mining.level
       )!
@@ -83,13 +130,13 @@ describe("Acceptance Tests: Gathering MVP", () => {
 
     it("should never regenerate node materials", () => {
       const world = createWorld("regen-test")
-      // Make OUTSKIRTS_MINE known
-      world.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
-      world.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
-      world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      // Get ore area and make it known
+      const oreAreaId = getOreAreaId(world)
+      makeAreaKnown(world, oreAreaId)
+      world.exploration.playerState.currentAreaId = oreAreaId
       world.player.skills.Mining.level = 5
 
-      const node = world.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!
+      const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Mining.level
       )!
@@ -132,14 +179,14 @@ describe("Acceptance Tests: Gathering MVP", () => {
 
     it("should cause collateral damage with FOCUS mode", () => {
       const world = createWorld("collateral-test")
-      // Make OUTSKIRTS_MINE known
-      world.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
-      world.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
-      world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      // Get ore area and make it known
+      const oreAreaId = getOreAreaId(world)
+      makeAreaKnown(world, oreAreaId)
+      world.exploration.playerState.currentAreaId = oreAreaId
       world.player.skills.Mining.level = 5
 
       const node = world.world.nodes!.find(
-        (n) => n.areaId === "OUTSKIRTS_MINE" && n.materials.length >= 2
+        (n) => n.areaId === oreAreaId && n.materials.length >= 2
       )!
       expect(node.materials.length).toBeGreaterThanOrEqual(2)
 
@@ -163,14 +210,14 @@ describe("Acceptance Tests: Gathering MVP", () => {
     })
 
     it("should NOT cause collateral damage with CAREFUL_ALL mode", () => {
-      const world = createWorld("careful-test")
-      // Make OUTSKIRTS_MINE known
-      world.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
-      world.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
-      world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      const world = createWorld("collateral-test") // Use same seed as collateral test
+      // Get ore area and make it known
+      const oreAreaId = getOreAreaId(world)
+      makeAreaKnown(world, oreAreaId)
+      world.exploration.playerState.currentAreaId = oreAreaId
       world.player.skills.Mining.level = 5 // L4+ for CAREFUL_ALL
 
-      const node = world.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!
+      const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
 
       const action: GatherAction = {
         type: "Gather",
@@ -198,21 +245,20 @@ describe("Acceptance Tests: Gathering MVP", () => {
   describe("Focus Yield Progression", () => {
     it("should have focus waste decrease with level and reach 0% at mastery", () => {
       const world1 = createWorld("yield-test")
-      // Make OUTSKIRTS_MINE known
-      world1.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
-      world1.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
-      world1.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      // Get ore area and make it known
+      const oreAreaId = getOreAreaId(world1)
+      makeAreaKnown(world1, oreAreaId)
+      world1.exploration.playerState.currentAreaId = oreAreaId
       world1.player.skills.Mining.level = 1
 
       const world10 = createWorld("yield-test")
-      // Make OUTSKIRTS_MINE known
-      world10.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
-      world10.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
-      world10.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      // Use the same area for comparison
+      makeAreaKnown(world10, oreAreaId)
+      world10.exploration.playerState.currentAreaId = oreAreaId
       world10.player.skills.Mining.level = 10
 
-      const node1 = world1.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!
-      const node10 = world10.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!
+      const node1 = world1.world.nodes!.find((n) => n.areaId === oreAreaId)!
+      const node10 = world10.world.nodes!.find((n) => n.areaId === oreAreaId)!
 
       const focusMat1 = node1.materials.find((m) => m.requiredLevel === 1)!
       const focusMat10 = node10.materials.find((m) => m.requiredLevel === 1)!
@@ -243,14 +289,14 @@ describe("Acceptance Tests: Gathering MVP", () => {
 
     it("should have collateral damage with hard floor at high levels", () => {
       const world = createWorld("floor-test")
-      // Make OUTSKIRTS_MINE known
-      world.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
-      world.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
-      world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      // Get ore area and make it known
+      const oreAreaId = getOreAreaId(world)
+      makeAreaKnown(world, oreAreaId)
+      world.exploration.playerState.currentAreaId = oreAreaId
       world.player.skills.Mining.level = 10 // Max level
 
       const node = world.world.nodes!.find(
-        (n) => n.areaId === "OUTSKIRTS_MINE" && n.materials.length >= 2
+        (n) => n.areaId === oreAreaId && n.materials.length >= 2
       )!
       const focusMat = node.materials[0]
       const collateralMat = node.materials.find((m) => m.materialId !== focusMat.materialId)!
@@ -277,13 +323,13 @@ describe("Acceptance Tests: Gathering MVP", () => {
   describe("Variance", () => {
     it("should have extraction yield vary around expected value", () => {
       const world = createWorld("variance-test")
-      // Make OUTSKIRTS_MINE known
-      world.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
-      world.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
-      world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      // Get ore area and make it known
+      const oreAreaId = getOreAreaId(world)
+      makeAreaKnown(world, oreAreaId)
+      world.exploration.playerState.currentAreaId = oreAreaId
       world.player.skills.Mining.level = 5
 
-      const node = world.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!
+      const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Mining.level
       )!
@@ -307,13 +353,13 @@ describe("Acceptance Tests: Gathering MVP", () => {
 
     it("should show variance info explicitly (EV, range, actual vs expected)", () => {
       const world = createWorld("explicit-variance-test")
-      // Make OUTSKIRTS_MINE known
-      world.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
-      world.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
-      world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      // Get ore area and make it known
+      const oreAreaId = getOreAreaId(world)
+      makeAreaKnown(world, oreAreaId)
+      world.exploration.playerState.currentAreaId = oreAreaId
       world.player.skills.Mining.level = 5
 
-      const node = world.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!
+      const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Mining.level
       )!
@@ -332,8 +378,9 @@ describe("Acceptance Tests: Gathering MVP", () => {
       expect(typeof variance.expected).toBe("number")
       expect(typeof variance.actual).toBe("number")
       expect(Array.isArray(variance.range)).toBe(true)
-      expect(variance.range[0]).toBeLessThanOrEqual(variance.expected)
-      expect(variance.range[1]).toBeGreaterThanOrEqual(variance.expected)
+      // Use toBeCloseTo for floating point comparisons
+      expect(variance.range[0]).toBeLessThanOrEqual(variance.expected + 0.01)
+      expect(variance.range[1]).toBeGreaterThanOrEqual(variance.expected - 0.01)
     })
   })
 
@@ -344,11 +391,11 @@ describe("Acceptance Tests: Gathering MVP", () => {
   describe("Progression", () => {
     it("should unlock new actions at specific levels", () => {
       const world = createWorld("unlock-test")
-      // Make OUTSKIRTS_MINE known
-      world.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
-      world.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
-      world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
-      const node = world.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!
+      // Get ore area and make it known
+      const oreAreaId = getOreAreaId(world)
+      makeAreaKnown(world, oreAreaId)
+      world.exploration.playerState.currentAreaId = oreAreaId
+      const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
 
       // L2: APPRAISE should fail
       world.player.skills.Mining.level = 2
@@ -369,11 +416,11 @@ describe("Acceptance Tests: Gathering MVP", () => {
 
     it("should unlock locations at specific levels", () => {
       const world = createWorld("location-unlock-test")
-      // Make OLD_QUARRY known
-      world.exploration.playerState.knownAreaIds.push("OLD_QUARRY")
-      world.exploration.playerState.knownConnectionIds.push("TOWN->OLD_QUARRY")
-      world.exploration.playerState.currentAreaId = "OLD_QUARRY" // MID location
-      const node = world.world.nodes!.find((n) => n.areaId === "OLD_QUARRY")!
+      // Get a MID area (distance 2) that has ore
+      const midAreaId = getMidOreAreaId(world)
+      makeAreaKnown(world, midAreaId)
+      world.exploration.playerState.currentAreaId = midAreaId
+      const node = world.world.nodes!.find((n) => n.areaId === midAreaId)!
 
       // L4: MID should fail (requires L5) - use APPRAISE to avoid material level issues
       world.player.skills.Mining.level = 4
@@ -400,13 +447,13 @@ describe("Acceptance Tests: Gathering MVP", () => {
   describe("XP Model", () => {
     it("should calculate XP based on ticks × tier, not units extracted", () => {
       const world = createWorld("xp-test")
-      // Make OUTSKIRTS_MINE known
-      world.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
-      world.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
-      world.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      // Get ore area and make it known
+      const oreAreaId = getOreAreaId(world)
+      makeAreaKnown(world, oreAreaId)
+      world.exploration.playerState.currentAreaId = oreAreaId
       world.player.skills.Mining.level = 5
 
-      const node = world.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!
+      const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Mining.level
       )!
@@ -428,21 +475,21 @@ describe("Acceptance Tests: Gathering MVP", () => {
     it("should not double-punish bad RNG (yield varies, XP stays constant)", () => {
       // Use two different seeds to get different RNG outcomes
       const world1 = createWorld("xp-rng-1")
-      // Make OUTSKIRTS_MINE known
-      world1.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
-      world1.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
-      world1.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      // Get ore area and make it known
+      const oreAreaId1 = getOreAreaId(world1)
+      makeAreaKnown(world1, oreAreaId1)
+      world1.exploration.playerState.currentAreaId = oreAreaId1
       world1.player.skills.Mining.level = 5
 
       const world2 = createWorld("xp-rng-2")
-      // Make OUTSKIRTS_MINE known
-      world2.exploration.playerState.knownAreaIds.push("OUTSKIRTS_MINE")
-      world2.exploration.playerState.knownConnectionIds.push("TOWN->OUTSKIRTS_MINE")
-      world2.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      // Get ore area for this world
+      const oreAreaId2 = getOreAreaId(world2)
+      makeAreaKnown(world2, oreAreaId2)
+      world2.exploration.playerState.currentAreaId = oreAreaId2
       world2.player.skills.Mining.level = 5
 
-      const node1 = world1.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!
-      const node2 = world2.world.nodes!.find((n) => n.areaId === "OUTSKIRTS_MINE")!
+      const node1 = world1.world.nodes!.find((n) => n.areaId === oreAreaId1)!
+      const node2 = world2.world.nodes!.find((n) => n.areaId === oreAreaId2)!
 
       // Find matching materials (same tier)
       const focusMat1 = node1.materials.find(

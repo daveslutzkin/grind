@@ -1,13 +1,50 @@
 import { evaluateAction, evaluatePlan } from "./evaluate.js"
 import { createWorld } from "./world.js"
-import type { Action } from "./types.js"
-import { GatherMode } from "./types.js"
+import type { Action, WorldState, AreaID } from "./types.js"
+import { GatherMode, NodeType } from "./types.js"
+
+/**
+ * Test helpers for procedural area IDs
+ */
+
+/** Get a distance-1 area ID (first one) */
+function getDistance1AreaId(state: WorldState): AreaID {
+  for (const area of state.exploration.areas.values()) {
+    if (area.distance === 1) return area.id
+  }
+  throw new Error("No distance-1 area found")
+}
+
+/** Get a distance-1 area that has ore nodes */
+function getOreAreaId(state: WorldState): AreaID {
+  for (const area of state.exploration.areas.values()) {
+    if (area.distance === 1) {
+      const hasOre = state.world.nodes?.some(
+        (n) => n.areaId === area.id && n.nodeType === NodeType.ORE_VEIN
+      )
+      if (hasOre) return area.id
+    }
+  }
+  throw new Error("No ore area found")
+}
+
+/** Make an area and its connection from TOWN known */
+function makeAreaKnown(state: WorldState, areaId: AreaID): void {
+  if (!state.exploration.playerState.knownAreaIds.includes(areaId)) {
+    state.exploration.playerState.knownAreaIds.push(areaId)
+  }
+  const connectionId = `TOWN->${areaId}`
+  if (!state.exploration.playerState.knownConnectionIds.includes(connectionId)) {
+    state.exploration.playerState.knownConnectionIds.push(connectionId)
+  }
+}
 
 describe("Evaluation APIs", () => {
   describe("evaluateAction", () => {
     it("should evaluate Move action", () => {
       const state = createWorld("test-seed")
-      const action: Action = { type: "Move", destination: "OUTSKIRTS_MINE" }
+      const areaId = getDistance1AreaId(state)
+      const action: Action = { type: "Move", destination: areaId }
 
       const result = evaluateAction(state, action)
 
@@ -29,9 +66,10 @@ describe("Evaluation APIs", () => {
 
     it("should evaluate Gather action", () => {
       const state = createWorld("test-seed")
-      state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      const areaId = getOreAreaId(state)
+      state.exploration.playerState.currentAreaId = areaId
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
-      const node = state.world.nodes.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)!
+      const node = state.world.nodes!.find((n) => n.areaId === areaId && !n.depleted)!
       const focusMat = node.materials.find((m) => m.requiredLevel === 1)!
       const action: Action = {
         type: "Gather",
@@ -49,10 +87,22 @@ describe("Evaluation APIs", () => {
 
     it("should evaluate Fight action", () => {
       const state = createWorld("test-seed")
-      state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      const areaId = getDistance1AreaId(state)
+      state.exploration.playerState.currentAreaId = areaId
       state.player.skills.Combat = { level: 1, xp: 0 } // Need level 1 to fight
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
       state.player.equippedWeapon = "CRUDE_WEAPON"
+      // Add an enemy at this location
+      state.world.enemies = state.world.enemies || []
+      state.world.enemies.push({
+        id: "cave-rat",
+        areaId: areaId,
+        fightTime: 3,
+        successProbability: 0.7,
+        requiredSkillLevel: 1,
+        lootTable: [{ itemId: "COPPER_ORE", quantity: 1, weight: 1 }],
+        failureAreaId: "TOWN",
+      })
       const action: Action = { type: "Fight", enemyId: "cave-rat" }
 
       const result = evaluateAction(state, action)
@@ -101,8 +151,9 @@ describe("Evaluation APIs", () => {
 
     it("should return 0 probability for invalid action", () => {
       const state = createWorld("test-seed")
+      const areaId = getOreAreaId(state)
       // Try to gather without being at the node location
-      const node = state.world.nodes.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)!
+      const node = state.world.nodes!.find((n) => n.areaId === areaId && !n.depleted)!
       const focusMat = node.materials[0]
       const action: Action = {
         type: "Gather",
@@ -113,14 +164,15 @@ describe("Evaluation APIs", () => {
 
       const result = evaluateAction(state, action)
 
-      expect(result.successProbability).toBe(0) // Should fail - player is at TOWN, not OUTSKIRTS_MINE
+      expect(result.successProbability).toBe(0) // Should fail - player is at TOWN, not ore area
     })
 
     it("should return 0 probability for Gather with insufficient skill level", () => {
       const state = createWorld("test-seed")
-      state.exploration.playerState.currentAreaId = "OUTSKIRTS_MINE"
+      const areaId = getOreAreaId(state)
+      state.exploration.playerState.currentAreaId = areaId
       // Skills start at 0, so action should fail
-      const node = state.world.nodes.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)!
+      const node = state.world.nodes!.find((n) => n.areaId === areaId && !n.depleted)!
       const focusMat = node.materials[0]
       const action: Action = {
         type: "Gather",
@@ -136,8 +188,9 @@ describe("Evaluation APIs", () => {
 
     it("should not mutate state", () => {
       const state = createWorld("test-seed")
+      const areaId = getDistance1AreaId(state)
       const stateBefore = JSON.stringify(state)
-      const action: Action = { type: "Move", destination: "OUTSKIRTS_MINE" }
+      const action: Action = { type: "Move", destination: areaId }
 
       evaluateAction(state, action)
 
@@ -158,11 +211,13 @@ describe("Evaluation APIs", () => {
 
     it("should evaluate simple plan", () => {
       const state = createWorld("test-seed")
+      const areaId = getOreAreaId(state)
+      makeAreaKnown(state, areaId)
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
-      const node = state.world.nodes.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)!
+      const node = state.world.nodes!.find((n) => n.areaId === areaId && !n.depleted)!
       const focusMat = node.materials.find((m) => m.requiredLevel === 1)!
       const actions: Action[] = [
-        { type: "Move", destination: "OUTSKIRTS_MINE" },
+        { type: "Move", destination: areaId },
         {
           type: "Gather",
           nodeId: node.nodeId,
@@ -173,14 +228,15 @@ describe("Evaluation APIs", () => {
 
       const result = evaluatePlan(state, actions)
 
-      expect(result.expectedTime).toBe(5) // 0 (Move time in exploration) + 5 (FOCUS gather)
+      expect(result.expectedTime).toBe(5) // 0 (Move time in evaluation) + 5 (FOCUS gather)
       expect(result.expectedXP).toBe(1) // 0 (no XP for Move) + 1 (gather XP)
       expect(result.violations).toHaveLength(0)
     })
 
     it("should detect violations in plan", () => {
       const state = createWorld("test-seed")
-      const node = state.world.nodes.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)!
+      const areaId = getOreAreaId(state)
+      const node = state.world.nodes!.find((n) => n.areaId === areaId && !n.depleted)!
       const focusMat = node.materials[0]
       const actions: Action[] = [
         {
@@ -188,7 +244,7 @@ describe("Evaluation APIs", () => {
           nodeId: node.nodeId,
           mode: GatherMode.FOCUS,
           focusMaterialId: focusMat.materialId,
-        }, // Invalid - not at OUTSKIRTS_MINE
+        }, // Invalid - not at ore area
       ]
 
       const result = evaluatePlan(state, actions)
@@ -200,12 +256,14 @@ describe("Evaluation APIs", () => {
 
     it("should not mutate state", () => {
       const state = createWorld("test-seed")
+      const areaId = getOreAreaId(state)
+      makeAreaKnown(state, areaId)
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
-      const node = state.world.nodes.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)!
+      const node = state.world.nodes!.find((n) => n.areaId === areaId && !n.depleted)!
       const focusMat = node.materials.find((m) => m.requiredLevel === 1)!
       const stateBefore = JSON.stringify(state)
       const actions: Action[] = [
-        { type: "Move", destination: "OUTSKIRTS_MINE" },
+        { type: "Move", destination: areaId },
         {
           type: "Gather",
           nodeId: node.nodeId,
@@ -221,12 +279,14 @@ describe("Evaluation APIs", () => {
 
     it("should detect session time exceeded", () => {
       const state = createWorld("test-seed")
+      const areaId = getOreAreaId(state)
+      makeAreaKnown(state, areaId)
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       state.time.sessionRemainingTicks = 3 // Only 3 ticks remaining
-      const node = state.world.nodes.find((n) => n.areaId === "OUTSKIRTS_MINE" && !n.depleted)!
+      const node = state.world.nodes!.find((n) => n.areaId === areaId && !n.depleted)!
       const focusMat = node.materials.find((m) => m.requiredLevel === 1)!
       const actions: Action[] = [
-        { type: "Move", destination: "OUTSKIRTS_MINE" }, // 0 ticks in evaluation
+        { type: "Move", destination: areaId }, // 0 ticks in evaluation
         {
           type: "Gather",
           nodeId: node.nodeId,

@@ -2,7 +2,7 @@
  * Tests for World Factory
  *
  * Tests for world creation with:
- * - 7 areas with distance bands
+ * - Procedural areas with Fibonacci counts per distance
  * - Material definitions with tiers
  * - Node generation with multi-material reserves
  */
@@ -58,14 +58,14 @@ describe("World Factory", () => {
       expect(world.player.skills.Exploration.level).toBe(0)
     })
 
-    it("should have 7 areas in exploration system", () => {
+    it("should have 27 areas in exploration system (Fibonacci counts)", () => {
       const world = createWorld("test-seed")
 
-      // Areas are now in the exploration system
-      expect(world.exploration.areas.size).toBe(7)
+      // 1 TOWN + 5 distance-1 + 8 distance-2 + 13 distance-3 = 27 areas
+      expect(world.exploration.areas.size).toBe(27)
     })
 
-    it("should generate nodes for each gathering location", () => {
+    it("should generate nodes for each gathering area", () => {
       const world = createWorld("test-seed")
 
       // Should have nodes (stored in world.world.nodes)
@@ -93,47 +93,53 @@ describe("World Factory", () => {
       })
     })
 
-    it("should generate ore nodes in mining areas", () => {
+    it("should generate nodes with procedural area IDs", () => {
       const world = createWorld("test-seed")
 
-      const miningAreaIds = ["OUTSKIRTS_MINE", "OLD_QUARRY", "ABANDONED_SHAFT"]
+      // All nodes should be in areas with procedural IDs (area-d{distance}-i{index})
+      world.world.nodes!.forEach((node: Node) => {
+        expect(node.areaId).toMatch(/^area-d\d+-i\d+$/)
+      })
+    })
+
+    it("should generate both ore and tree nodes", () => {
+      const world = createWorld("test-seed")
 
       const oreNodes = world.world.nodes!.filter((n: Node) => n.nodeType === NodeType.ORE_VEIN)
-
-      oreNodes.forEach((node: Node) => {
-        expect(miningAreaIds).toContain(node.areaId)
-      })
-    })
-
-    it("should generate tree nodes in woodcutting areas", () => {
-      const world = createWorld("test-seed")
-
-      const woodAreaIds = ["COPSE", "DEEP_FOREST", "ANCIENT_GROVE"]
-
       const treeNodes = world.world.nodes!.filter((n: Node) => n.nodeType === NodeType.TREE_STAND)
 
-      treeNodes.forEach((node: Node) => {
-        expect(woodAreaIds).toContain(node.areaId)
-      })
+      // Should have some of each type
+      expect(oreNodes.length).toBeGreaterThan(0)
+      expect(treeNodes.length).toBeGreaterThan(0)
     })
 
-    it("should not generate FAR-only materials in NEAR areas", () => {
+    it("should not generate FAR-only materials in NEAR areas (distance 1)", () => {
       const world = createWorld("test-seed")
-
-      const nearAreaIds = ["OUTSKIRTS_MINE", "COPSE"]
 
       // Find materials that require L9+ (FAR-only)
       const farOnlyMaterials = Object.entries(MATERIALS)
         .filter(([_, m]) => m.requiredLevel >= 9)
         .map(([id]) => id)
 
-      const nearNodes = world.world.nodes!.filter((n: Node) => nearAreaIds.includes(n.areaId))
+      // Get all distance-1 areas
+      const distance1AreaIds = Array.from(world.exploration.areas.values())
+        .filter((area) => area.distance === 1)
+        .map((area) => area.id)
+
+      const nearNodes = world.world.nodes!.filter((n: Node) => distance1AreaIds.includes(n.areaId))
 
       nearNodes.forEach((node: Node) => {
         node.materials.forEach((mat) => {
           expect(farOnlyMaterials).not.toContain(mat.materialId)
         })
       })
+    })
+
+    it("should only know TOWN at start", () => {
+      const world = createWorld("test-seed")
+
+      expect(world.exploration.playerState.knownAreaIds).toEqual(["TOWN"])
+      expect(world.exploration.playerState.knownConnectionIds).toEqual([])
     })
   })
 })
