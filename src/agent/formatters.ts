@@ -21,7 +21,7 @@ export function formatWorldState(state: WorldState): string {
         state.exploration.playerState.knownLocationIds.includes(loc.id)
       ).length
       if (knownLocs < totalLocs) {
-        lines.push(`Explored: ${knownLocs}/${totalLocs} locations`)
+        lines.push(`Explored: ${knownLocs} location${knownLocs !== 1 ? "s" : ""} found (more remain)`)
       } else {
         lines.push(`Explored: fully (${totalLocs} locations)`)
       }
