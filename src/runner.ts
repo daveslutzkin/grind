@@ -4,7 +4,7 @@
  */
 
 import type { Action, ActionLog, WorldState, SkillID, SkillState } from "./types.js"
-import { getTotalXP, getCurrentAreaId } from "./types.js"
+import { getTotalXP, getCurrentAreaId, GatherMode } from "./types.js"
 
 // ============================================================================
 // Types
@@ -51,7 +51,7 @@ export interface ParseContext {
 
 /**
  * Parse a command string into an Action.
- * Supports: move, gather, fight, craft, store, drop, accept, enrol/enroll
+ * Supports: move, gather (with modes), fight, craft, store, drop, accept, enrol/enroll, explore, survey
  */
 export function parseAction(input: string, context: ParseContext = {}): Action | null {
   const parts = input.trim().toLowerCase().split(/\s+/)
@@ -59,7 +59,7 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
 
   switch (cmd) {
     case "move": {
-      const dest = parts[1]?.toUpperCase()
+      const dest = parts[1]
       if (!dest) {
         if (context.logErrors) {
           const areas = context.knownAreaIds?.join(", ") || "?"
@@ -67,10 +67,11 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         }
         return null
       }
-      // If we have known areas, try to match partial names
+      // If we have known areas, try to match (case-insensitive)
       if (context.knownAreaIds) {
         const matchedArea = context.knownAreaIds.find(
-          (a) => a.toUpperCase() === dest || a.toUpperCase().startsWith(dest)
+          (a) =>
+            a.toLowerCase() === dest.toLowerCase() || a.toLowerCase().startsWith(dest.toLowerCase())
         )
         if (!matchedArea) {
           if (context.logErrors) {
@@ -80,16 +81,56 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         }
         return { type: "ExplorationTravel", destinationAreaId: matchedArea }
       }
+      // No area list - pass through as-is (preserve case)
       return { type: "ExplorationTravel", destinationAreaId: dest }
     }
 
     case "gather": {
       const nodeId = parts[1]
       if (!nodeId) {
-        if (context.logErrors) console.log("Usage: gather <node-id>")
+        if (context.logErrors) {
+          console.log("Usage: gather <node-id> [mode] [material]")
+          console.log("  Modes: focus <material>, careful, appraise")
+        }
         return null
       }
+
+      // Check for gather mode
+      const modeName = parts[2]?.toLowerCase()
+      if (modeName) {
+        if (modeName === "focus") {
+          const focusMaterial = parts[3]?.toUpperCase()
+          if (!focusMaterial) {
+            if (context.logErrors) {
+              console.log("FOCUS mode requires a material: gather <node> focus <material>")
+            }
+            return null
+          }
+          return { type: "Gather", nodeId, mode: GatherMode.FOCUS, focusMaterialId: focusMaterial }
+        } else if (modeName === "careful") {
+          return { type: "Gather", nodeId, mode: GatherMode.CAREFUL_ALL }
+        } else if (modeName === "appraise") {
+          return { type: "Gather", nodeId, mode: GatherMode.APPRAISE }
+        } else {
+          if (context.logErrors) {
+            console.log("Invalid gather mode. Use: focus, careful, or appraise")
+          }
+          return null
+        }
+      }
+
+      // Basic gather (no mode - legacy behavior)
       return { type: "Gather", nodeId }
+    }
+
+    case "explore": {
+      // Discover locations (nodes) in the current area
+      return { type: "Explore" }
+    }
+
+    case "survey": {
+      // Discover new areas (connections)
+      return { type: "Survey" }
     }
 
     case "fight": {
@@ -327,8 +368,13 @@ export function printHelp(state: WorldState): void {
   console.log("│ AVAILABLE ACTIONS                                           │")
   console.log("├─────────────────────────────────────────────────────────────┤")
   console.log("│ enrol <skill>       - Enrol in guild (Exploration first!)   │")
+  console.log("│ survey              - Discover new areas (connections)      │")
   console.log("│ move <area>         - Travel to a known area                │")
-  console.log("│ gather <node>       - Gather from a node at current area    │")
+  console.log("│ explore             - Discover nodes in current area        │")
+  console.log("│ gather <node>       - Gather from a node (basic mode)       │")
+  console.log("│   gather <n> focus <mat>   - Focus on one material          │")
+  console.log("│   gather <n> careful       - Carefully extract all          │")
+  console.log("│   gather <n> appraise      - Inspect node contents          │")
   console.log("│ fight <enemy>       - Fight an enemy at current area        │")
   console.log("│ craft <recipe>      - Craft with a recipe at TOWN           │")
   console.log("│ store <item> <qty>  - Store items at TOWN                   │")

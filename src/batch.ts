@@ -38,7 +38,9 @@ function main(): void {
       console.log("  ⏰ Session time exhausted!")
       break
     }
-    const action = parseAction(cmd)
+    const action = parseAction(cmd, {
+      knownAreaIds: session.state.exploration.playerState.knownAreaIds,
+    })
     if (!action) {
       console.log(`  ⚠ Invalid command: ${cmd}`)
       continue
