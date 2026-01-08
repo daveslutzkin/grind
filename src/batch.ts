@@ -6,8 +6,8 @@ import { createWorld } from "./world.js"
 import { executeAction } from "./engine.js"
 import {
   parseAction,
-  printState,
-  printLog,
+  formatWorldState,
+  formatActionLog,
   printSummary,
   createSession,
   executeAndRecord,
@@ -30,23 +30,23 @@ function main(): void {
 
   const session = createSession({ seed, createWorld })
 
-  printState(session.state)
+  console.log(formatWorldState(session.state))
   console.log("")
 
   for (const cmd of commands) {
     if (session.state.time.sessionRemainingTicks <= 0) {
-      console.log("  ⏰ Session time exhausted!")
+      console.log("⏰ Session time exhausted!")
       break
     }
     const action = parseAction(cmd, {
       knownAreaIds: session.state.exploration.playerState.knownAreaIds,
     })
     if (!action) {
-      console.log(`  ⚠ Invalid command: ${cmd}`)
+      console.log(`⚠ Invalid command: ${cmd}`)
       continue
     }
     const log = executeAndRecord(session, action, executeAction)
-    printLog(log, { boxed: false })
+    console.log(formatActionLog(log, session.state))
   }
 
   printSummary(session.state, session.stats)

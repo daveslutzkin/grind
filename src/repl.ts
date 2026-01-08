@@ -8,10 +8,9 @@ import { executeAction } from "./engine.js"
 import { evaluateAction } from "./evaluate.js"
 import {
   parseAction,
-  printState,
-  printLog,
+  formatWorldState,
+  formatActionLog,
   printHelp,
-  printWorld,
   printSummary,
   createSession,
   executeAndRecord,
@@ -38,7 +37,7 @@ async function main(): Promise<void> {
 
   const session = createSession({ seed, createWorld })
 
-  printState(session.state)
+  console.log(formatWorldState(session.state))
   printHelp(session.state)
 
   let showSummary = true
@@ -62,12 +61,13 @@ async function main(): Promise<void> {
     }
 
     if (trimmed === "state" || trimmed === "s") {
-      printState(session.state)
+      console.log(formatWorldState(session.state))
       continue
     }
 
     if (trimmed === "world" || trimmed === "w") {
-      printWorld(session.state)
+      // Show full world state (same as state now)
+      console.log(formatWorldState(session.state))
       continue
     }
 
@@ -91,8 +91,8 @@ async function main(): Promise<void> {
     }
 
     const log = executeAndRecord(session, action, executeAction)
-    printLog(log, { boxed: true })
-    printState(session.state)
+    console.log(formatActionLog(log, session.state))
+    console.log(formatWorldState(session.state))
   }
 
   if (showSummary) {

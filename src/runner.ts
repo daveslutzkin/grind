@@ -6,6 +6,9 @@
 import type { Action, ActionLog, WorldState, SkillID, SkillState } from "./types.js"
 import { getTotalXP, getCurrentAreaId, GatherMode } from "./types.js"
 
+// Re-export agent formatters for unified display
+export { formatWorldState, formatActionLog } from "./agent/formatters.js"
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -21,11 +24,6 @@ export interface RngStream {
   trials: number
   probability: number
   successes: number
-}
-
-export interface DisplayOptions {
-  boxed?: boolean // Use box borders around output
-  width?: number // Display width (default 120)
 }
 
 // ============================================================================
@@ -208,156 +206,8 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
 // Display Formatting
 // ============================================================================
 
-const DEFAULT_WIDTH = 120
-
-function makePad(width: number): (s: string) => string {
-  return (s: string) => s.padEnd(width - 2) + "│"
-}
-
 function makePadInner(width: number): (s: string) => string {
   return (s: string) => "│ " + s.padEnd(width - 4) + " │"
-}
-
-/**
- * Format the loot section for Fight actions
- */
-export function formatLootSection(log: ActionLog): string {
-  if (log.actionType !== "Fight" || !log.success) return ""
-
-  const lootRolls = log.rngRolls.filter((r) => r.label.startsWith("loot:"))
-  if (lootRolls.length === 0) return ""
-
-  const lootParts = lootRolls.map((roll) => {
-    const itemName = roll.label.replace("loot:", "").replace("IRON_", "").replace("_", " ")
-    const shortName = itemName === "ORE" ? "ORE" : itemName.split(" ")[0]
-    const pct = (roll.probability * 100).toFixed(0)
-    const label = `${shortName}(${pct}%)`
-    return roll.result ? `[${label}]` : label
-  })
-
-  return `🎁 ${lootParts.join(" ")}`
-}
-
-/**
- * Print current world state
- */
-export function printState(state: WorldState, options: DisplayOptions = {}): void {
-  const W = options.width || DEFAULT_WIDTH
-  const line = "─".repeat(W - 2)
-  const pad = makePad(W)
-
-  const invStr =
-    state.player.inventory.length === 0
-      ? "(empty)"
-      : state.player.inventory.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")
-  const storStr =
-    state.player.storage.length === 0
-      ? "(empty)"
-      : state.player.storage.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")
-  const skills = `Mining:${state.player.skills.Mining.level} Woodcut:${state.player.skills.Woodcutting.level} Combat:${state.player.skills.Combat.level} Smith:${state.player.skills.Smithing.level}`
-  const contracts = state.player.activeContracts.join(", ") || "(none)"
-
-  console.log(`\n┌${line}┐`)
-  console.log(
-    `│${pad(` 📍 ${getCurrentAreaId(state)}  │  ⏱ ${state.time.sessionRemainingTicks} ticks left  │  ⭐ Rep: ${state.player.guildReputation}  │  📜 Contracts: ${contracts}`)}`
-  )
-  console.log(`├${line}┤`)
-  console.log(
-    `│${pad(` 🎒 Inventory [${state.player.inventory.length}/${state.player.inventoryCapacity}]: ${invStr}`)}`
-  )
-  console.log(`│${pad(` 📦 Storage: ${storStr}`)}`)
-  console.log(`│${pad(` 📊 Skills: ${skills}`)}`)
-  console.log(`└${line}┘`)
-}
-
-/**
- * Print an action log
- */
-export function printLog(log: ActionLog, options: DisplayOptions = {}): void {
-  const boxed = options.boxed ?? false
-  const W = options.width || DEFAULT_WIDTH
-  const line = "─".repeat(W - 2)
-  const pad = makePad(W)
-
-  const status = log.success ? "✓" : "✗"
-
-  // For Fight actions, separate main fight roll from loot rolls
-  let rngStr = ""
-  if (log.rngRolls.length > 0) {
-    const mainRolls = log.rngRolls.filter((r) => !r.label.startsWith("loot:"))
-    if (mainRolls.length > 0) {
-      rngStr = mainRolls
-        .map((r) => `${(r.probability * 100).toFixed(0)}%→${r.result ? "hit" : "miss"}`)
-        .join(" ")
-    }
-  }
-
-  const skillStr = log.skillGained ? `+1 ${log.skillGained.skill}` : ""
-  const lootStr = formatLootSection(log)
-
-  const parts = [
-    `${status} ${log.actionType}: ${log.stateDeltaSummary}`,
-    `⏱ ${log.timeConsumed}t`,
-    rngStr ? `🎲 ${rngStr}` : "",
-    skillStr ? `📈 ${skillStr}` : "",
-    lootStr,
-    log.failureType ? `❌ ${log.failureType}` : "",
-  ].filter(Boolean)
-
-  if (boxed) {
-    console.log(`\n┌${line}┐`)
-    console.log(`│${pad(` ${parts.join("  │  ")}`)}`)
-
-    if (log.levelUps) {
-      for (const lu of log.levelUps) {
-        console.log(`├${line}┤`)
-        console.log(`│${pad(` 📈 LEVEL UP: ${lu.skill} ${lu.fromLevel} → ${lu.toLevel}`)}`)
-      }
-    }
-
-    if (log.contractsCompleted) {
-      for (const c of log.contractsCompleted) {
-        console.log(`├${line}┤`)
-        const consumed = c.itemsConsumed.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")
-        const granted = c.rewardsGranted.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")
-        const xpStr = c.xpGained ? `  │  📈 +${c.xpGained.amount} ${c.xpGained.skill}` : ""
-        console.log(
-          `│${pad(` 🏆 CONTRACT COMPLETE: ${c.contractId}  │  Consumed: ${consumed}  │  Granted: ${granted}  │  +${c.reputationGained} rep${xpStr}`)}`
-        )
-        if (c.levelUps) {
-          for (const lu of c.levelUps) {
-            console.log(`│${pad(`   📈 LEVEL UP: ${lu.skill} ${lu.fromLevel} → ${lu.toLevel}`)}`)
-          }
-        }
-      }
-    }
-    console.log(`└${line}┘`)
-  } else {
-    // Compact format (no borders)
-    console.log(`  ${parts.join("  │  ")}`)
-
-    if (log.levelUps) {
-      for (const lu of log.levelUps) {
-        console.log(`    📈 LEVEL UP: ${lu.skill} ${lu.fromLevel} → ${lu.toLevel}`)
-      }
-    }
-
-    if (log.contractsCompleted) {
-      for (const c of log.contractsCompleted) {
-        const consumed = c.itemsConsumed.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")
-        const granted = c.rewardsGranted.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")
-        const xpStr = c.xpGained ? `  │  📈 +${c.xpGained.amount} ${c.xpGained.skill}` : ""
-        console.log(
-          `    🏆 CONTRACT COMPLETE: ${c.contractId}  │  Consumed: ${consumed}  │  Granted: ${granted}  │  +${c.reputationGained} rep${xpStr}`
-        )
-        if (c.levelUps) {
-          for (const lu of c.levelUps) {
-            console.log(`      📈 LEVEL UP: ${lu.skill} ${lu.fromLevel} → ${lu.toLevel}`)
-          }
-        }
-      }
-    }
-  }
 }
 
 /**
@@ -401,75 +251,6 @@ export function printHelp(state: WorldState): void {
   if (recipes.length > 0) console.log(`  Recipes: ${recipes.map((r) => r.id).join(", ")}`)
   if (contracts.length > 0) console.log(`  Contracts: ${contracts.map((c) => c.id).join(", ")}`)
   if (currentAreaId === state.world.storageAreaId) console.log(`  Storage available`)
-}
-
-/**
- * Print world data (nodes, enemies, recipes, contracts)
- */
-export function printWorld(state: WorldState): void {
-  const knownAreas = state.exploration.playerState.knownAreaIds
-  console.log("\n┌─────────────────────────────────────────────────────────────┐")
-  console.log("│ WORLD DATA                                                  │")
-  console.log("├─────────────────────────────────────────────────────────────┤")
-  console.log(`│ Known areas: ${knownAreas.join(", ")}`.padEnd(62) + "│")
-  console.log(`│ Total areas in world: ${state.exploration.areas.size}`.padEnd(62) + "│")
-  console.log("├─────────────────────────────────────────────────────────────┤")
-  console.log("│ NODES AT KNOWN AREAS                                        │")
-  for (const areaId of knownAreas) {
-    const areaNodes = state.world.nodes.filter((n) => n.areaId === areaId)
-    if (areaNodes.length > 0) {
-      console.log(`│   ${areaId}:`.padEnd(62) + "│")
-      for (const node of areaNodes) {
-        console.log(`│     ${node.nodeId} (${node.nodeType})`.padEnd(62) + "│")
-        console.log(
-          `│       → ${node.materials.map((m) => m.materialId).join(", ")}`.padEnd(62) + "│"
-        )
-      }
-    }
-  }
-  console.log("├─────────────────────────────────────────────────────────────┤")
-  console.log("│ ENEMIES AT KNOWN AREAS                                      │")
-  const knownEnemies = state.world.enemies.filter((e) => knownAreas.includes(e.areaId))
-  if (knownEnemies.length === 0) {
-    console.log("│   (no enemies discovered yet)".padEnd(62) + "│")
-  }
-  for (const enemy of knownEnemies) {
-    console.log(`│   ${enemy.id} @ ${enemy.areaId}`.padEnd(62) + "│")
-    const lootStr = enemy.lootTable
-      .map((l) => `${l.quantity}x ${l.itemId}(${l.weight}%)`)
-      .join(", ")
-    console.log(
-      `│     → ${enemy.fightTime} ticks, ${(enemy.successProbability * 100).toFixed(0)}% success, loot: ${lootStr}`.padEnd(
-        62
-      ) + "│"
-    )
-  }
-  console.log("├─────────────────────────────────────────────────────────────┤")
-  console.log("│ RECIPES                                                     │")
-  for (const recipe of state.world.recipes) {
-    console.log(`│   ${recipe.id} @ ${recipe.requiredAreaId}`.padEnd(62) + "│")
-    console.log(
-      `│     → ${recipe.inputs.map((i) => `${i.quantity}x ${i.itemId}`).join(" + ")} = ${recipe.output.quantity}x ${recipe.output.itemId}`.padEnd(
-        62
-      ) + "│"
-    )
-  }
-  console.log("├─────────────────────────────────────────────────────────────┤")
-  console.log("│ CONTRACTS                                                   │")
-  for (const contract of state.world.contracts) {
-    console.log(`│   ${contract.id} @ ${contract.guildAreaId}`.padEnd(62) + "│")
-    console.log(
-      `│     Requires: ${contract.requirements.map((r) => `${r.quantity}x ${r.itemId}`).join(", ")}`.padEnd(
-        62
-      ) + "│"
-    )
-    console.log(
-      `│     Rewards: ${contract.rewards.map((r) => `${r.quantity}x ${r.itemId}`).join(", ")} + ${contract.reputationReward} rep`.padEnd(
-        62
-      ) + "│"
-    )
-  }
-  console.log("└─────────────────────────────────────────────────────────────┘")
 }
 
 // ============================================================================
