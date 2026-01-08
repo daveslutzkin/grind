@@ -85,40 +85,35 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
 
     case "gather": {
       const nodeId = parts[1]
-      if (!nodeId) {
+      const modeName = parts[2]?.toLowerCase()
+
+      if (!nodeId || !modeName) {
         if (context.logErrors) {
-          console.log("Usage: gather <node-id> [mode] [material]")
+          console.log("Usage: gather <node> <mode> [material]")
           console.log("  Modes: focus <material>, careful, appraise")
         }
         return null
       }
 
-      // Check for gather mode
-      const modeName = parts[2]?.toLowerCase()
-      if (modeName) {
-        if (modeName === "focus") {
-          const focusMaterial = parts[3]?.toUpperCase()
-          if (!focusMaterial) {
-            if (context.logErrors) {
-              console.log("FOCUS mode requires a material: gather <node> focus <material>")
-            }
-            return null
-          }
-          return { type: "Gather", nodeId, mode: GatherMode.FOCUS, focusMaterialId: focusMaterial }
-        } else if (modeName === "careful") {
-          return { type: "Gather", nodeId, mode: GatherMode.CAREFUL_ALL }
-        } else if (modeName === "appraise") {
-          return { type: "Gather", nodeId, mode: GatherMode.APPRAISE }
-        } else {
+      if (modeName === "focus") {
+        const focusMaterial = parts[3]?.toUpperCase()
+        if (!focusMaterial) {
           if (context.logErrors) {
-            console.log("Invalid gather mode. Use: focus, careful, or appraise")
+            console.log("FOCUS mode requires a material: gather <node> focus <material>")
           }
           return null
         }
+        return { type: "Gather", nodeId, mode: GatherMode.FOCUS, focusMaterialId: focusMaterial }
+      } else if (modeName === "careful") {
+        return { type: "Gather", nodeId, mode: GatherMode.CAREFUL_ALL }
+      } else if (modeName === "appraise") {
+        return { type: "Gather", nodeId, mode: GatherMode.APPRAISE }
+      } else {
+        if (context.logErrors) {
+          console.log("Invalid gather mode. Use: focus, careful, or appraise")
+        }
+        return null
       }
-
-      // Basic gather (no mode - legacy behavior)
-      return { type: "Gather", nodeId }
     }
 
     case "explore": {
@@ -221,10 +216,9 @@ export function printHelp(state: WorldState): void {
   console.log("│ survey              - Discover new areas (connections)      │")
   console.log("│ move <area>         - Travel to a known area                │")
   console.log("│ explore             - Discover nodes in current area        │")
-  console.log("│ gather <node>       - Gather from a node (basic mode)       │")
-  console.log("│   gather <n> focus <mat>   - Focus on one material          │")
-  console.log("│   gather <n> careful       - Carefully extract all          │")
-  console.log("│   gather <n> appraise      - Inspect node contents          │")
+  console.log("│ gather <node> focus <mat>  - Focus on one material           │")
+  console.log("│ gather <node> careful      - Carefully extract all          │")
+  console.log("│ gather <node> appraise     - Inspect node contents          │")
   console.log("│ fight <enemy>       - Fight an enemy at current area        │")
   console.log("│ craft <recipe>      - Craft with a recipe at TOWN           │")
   console.log("│ store <item> <qty>  - Store items at TOWN                   │")
