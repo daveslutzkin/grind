@@ -1,6 +1,6 @@
-# TODO: Bugs and Improvements from Adaptive Test Run
+# TODO: Bugs and Improvements from Adaptive Test Runs
 
-Based on a 24-action adaptive agent test run and comparison with design docs.
+Based on adaptive agent test runs (24-action with seed42, 30-action with seed4/test99) and comparison with design docs.
 
 ---
 
@@ -76,9 +76,57 @@ Gathering: Ore vein
 
 ---
 
+## New Items (from 30-action test run)
+
+### 7. Add mine/chop to batch runner
+**Status:** Pending
+**Description:** `mine` and `chop` commands were added to agent parser but not to batch runner's `parseCommand` in `runner.ts`. Forces users to use verbose `gather area-d1-i0-node-0 focus COPPER_ORE` syntax.
+
+### 8. Fix misleading LOCATION_NOT_DISCOVERED error
+**Status:** Pending
+**Description:** `move TOWN-explorers-guild` fails with "LOCATION_NOT_DISCOVERED" but `move explorers guild` works. The error implies the location isn't discovered when really the parser just doesn't recognize the format.
+
+### 9. Material ✓ should respect location tier
+**Status:** Pending
+**Description:** D2 node shows "COPPER_ORE ✓" but gathering fails with INSUFFICIENT_SKILL because d2 requires Mining L5. The checkmark implies gatherable but doesn't account for location access requirements.
+
+### 10. Require move to node location before gathering
+**Status:** Pending
+**Description:** Currently can gather from hub (Clearing) without moving to the node's specific location. Should require `move area-d1-i0-loc-0` before gathering from that node.
+
+### 11. Improve "Discovered node" message
+**Status:** Pending
+**Description:** When discovering a MOB_CAMP, message says "Discovered node" which is vague. Should say "Discovered mob camp", "Discovered ore vein", or "Discovered tree stand".
+
+### 12. Show required skill for other gathering nodes
+**Status:** Pending
+**Description:** Tree stand shows "Gathering: Tree stand" with no materials when player lacks Woodcutting skill. Should indicate what skill is needed.
+
+### 13. Reformat location/world state display
+**Status:** Pending
+**Description:** Current display is messy. Reformat to:
+```
+area-d1-i2
+- Ore Vein - Stone ✓, Copper Ore ✓, Tin Ore (L2)
+
+Connections: area-d2-i2 (10t), area-d1-i0 (30t), Town (40t)
+```
+Changes:
+- Title: just area name at hub, "Ore Vein (area-d1-i2)" at a location
+- Status: only "unexplored" or "partly explored", never "FULLY EXPLORED!"
+- Materials: human readable names ("Copper Ore" not "COPPER_ORE"), sorted by unlock level
+- Connections: sorted by travel time (shortest first)
+
+### 14. Fractional distances for varied travel times
+**Status:** Pending
+**Description:** Currently all travel times are round multiples of 10 (10t, 20t, 30t, 40t). Distances should be fractional so travel times are more varied (13t, 27t, etc).
+
+---
+
 ## Notes
 
-- Items 1-6 are implementation fixes (bugs or missing features)
+- Items 1-6 are implementation fixes (bugs or missing features) - DONE
+- Items 7-14 are from second test run
 - Design work items moved to NEXT.md
 - RNG transparency is already well-implemented per design docs
 - Session summary display is good
