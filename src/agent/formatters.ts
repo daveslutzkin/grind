@@ -35,7 +35,9 @@ function formatMaterialName(materialId: string): string {
 }
 
 /**
- * Get display name for an area - uses LLM-generated name if available, otherwise falls back to generic
+ * Get display name for an area from WorldState.
+ * Wrapper around getAreaDisplayName from exploration.ts that looks up the area automatically.
+ * Uses LLM-generated name if available, otherwise falls back to distance-based generic names.
  */
 function getAreaDisplayName(state: WorldState, areaId: string): string {
   const area = state.exploration?.areas.get(areaId)

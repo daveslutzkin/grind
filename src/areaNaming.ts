@@ -19,31 +19,17 @@ const FALLBACK_NAME = "Unnamed Wilds"
  * what locations it contains, and the names of neighboring areas.
  */
 export function buildAreaNamingPrompt(area: Area, neighborNames: string[]): string {
-  const parts: string[] = []
+  // Build distance description
+  const distanceDesc =
+    area.distance === 1
+      ? "Being close to town, this area feels relatively safe and settled, though still wild."
+      : area.distance === 2
+        ? "This area is moderately remote, a frontier zone between civilization and wilderness."
+        : area.distance >= 3
+          ? "This is a remote and dangerous frontier area, far from civilization and full of unknown perils."
+          : ""
 
-  // Introduction
-  parts.push("Generate a short, evocative place name for a wilderness area in a fantasy world.")
-  parts.push("")
-
-  // Distance and safety context
-  parts.push(`This area is at distance ${area.distance} from town.`)
-
-  if (area.distance === 1) {
-    parts.push(
-      "Being close to town, this area feels relatively safe and settled, though still wild."
-    )
-  } else if (area.distance === 2) {
-    parts.push(
-      "This area is moderately remote, a frontier zone between civilization and wilderness."
-    )
-  } else if (area.distance >= 3) {
-    parts.push(
-      "This is a remote and dangerous frontier area, far from civilization and full of unknown perils."
-    )
-  }
-  parts.push("")
-
-  // Location information
+  // Count location types
   const miningNodes = area.locations.filter(
     (loc) =>
       loc.type === ExplorationLocationType.GATHERING_NODE && loc.gatheringSkillType === "Mining"
@@ -55,53 +41,51 @@ export function buildAreaNamingPrompt(area: Area, neighborNames: string[]): stri
   )
   const mobCamps = area.locations.filter((loc) => loc.type === ExplorationLocationType.MOB_CAMP)
 
+  // Build features section
+  let featuresSection: string
   if (area.locations.length > 0) {
-    parts.push("Notable features in this area:")
+    const features: string[] = []
     if (miningNodes.length > 0) {
-      parts.push(`- ${miningNodes.length} ore/mineral deposit(s) suitable for mining`)
+      features.push(`- ${miningNodes.length} ore/mineral deposit(s) suitable for mining`)
     }
     if (woodcuttingNodes.length > 0) {
-      parts.push(
+      features.push(
         `- ${woodcuttingNodes.length} forest/tree stand(s) suitable for woodcutting/lumber`
       )
     }
     if (mobCamps.length > 0) {
-      parts.push(`- ${mobCamps.length} hostile creature camp(s) with monsters`)
+      features.push(`- ${mobCamps.length} hostile creature camp(s) with monsters`)
     }
-    parts.push("")
+    featuresSection = `Notable features in this area:\n${features.join("\n")}`
   } else {
-    parts.push("This area has no notable features - it's a quiet, unremarkable stretch of land.")
-    parts.push("")
+    featuresSection =
+      "This area has no notable features - it's a quiet, unremarkable stretch of land."
   }
 
-  // Neighbor context
-  if (neighborNames.length > 0) {
-    parts.push("Neighboring areas are named:")
-    for (const name of neighborNames) {
-      parts.push(`- ${name}`)
-    }
-    parts.push("")
-    parts.push(
-      "The name should feel thematically consistent with these neighbors, but not repetitive."
-    )
-    parts.push("")
-  }
+  // Build neighbor section
+  const neighborSection =
+    neighborNames.length > 0
+      ? `Neighboring areas are named:\n${neighborNames.map((n) => `- ${n}`).join("\n")}
 
-  // Instructions
-  parts.push("Requirements:")
-  parts.push("- Generate a short 1-3 word name (occasionally slightly longer if it sounds good)")
-  parts.push(
-    "- Use evocative place-style names like 'Thornwood', 'The Scarred Basin', 'Misthollow', 'Alder's Rest'"
-  )
-  parts.push(
-    "- The name can be inspired by the features but doesn't have to directly reference them"
-  )
-  parts.push("- Don't make every mining area 'Something Ore' or 'Iron Something'")
-  parts.push("- Be creative and varied")
-  parts.push("")
-  parts.push("Respond with ONLY the area name, nothing else.")
+The name should feel thematically consistent with these neighbors, but not repetitive.`
+      : ""
 
-  return parts.join("\n")
+  return `Generate a short, evocative place name for a wilderness area in a fantasy world.
+
+This area is at distance ${area.distance} from town.
+${distanceDesc}
+
+${featuresSection}
+
+${neighborSection}
+Requirements:
+- Generate a short 1-3 word name (occasionally slightly longer if it sounds good)
+- Use evocative place-style names like 'Thornwood', 'The Scarred Basin', 'Misthollow', 'Alder's Rest'
+- The name can be inspired by the features but doesn't have to directly reference them
+- Don't make every mining area 'Something Ore' or 'Iron Something'
+- Be creative and varied
+
+Respond with ONLY the area name, nothing else.`.trim()
 }
 
 /**

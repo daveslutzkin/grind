@@ -35,6 +35,9 @@ export const BASE_TRAVEL_TIME = 10
  * Get a friendly display name for an area.
  * Uses the LLM-generated name if available, otherwise falls back to a generic
  * description based on distance from town.
+ *
+ * This is the base implementation. For use with WorldState, see the wrapper
+ * in agent/formatters.ts which looks up the area from state automatically.
  */
 export function getAreaDisplayName(areaId: AreaID, area?: Area): string {
   if (areaId === "TOWN") return "Town"
@@ -258,6 +261,7 @@ function updateLuckTracking(
 export function generateTown(): Area {
   return {
     id: "TOWN",
+    name: "Town",
     distance: 0,
     generated: true,
     locations: [], // Town locations are handled elsewhere

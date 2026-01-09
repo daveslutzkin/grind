@@ -475,6 +475,7 @@ describe("Area Naming", () => {
             "TOWN",
             {
               id: "TOWN",
+              name: "Town",
               distance: 0,
               generated: true,
               locations: [],
@@ -540,6 +541,7 @@ describe("Area Naming", () => {
             "TOWN",
             {
               id: "TOWN",
+              name: "Town",
               distance: 0,
               generated: true,
               locations: [],
