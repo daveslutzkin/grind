@@ -5,6 +5,7 @@ import { getLocationDisplayName } from "../world.js"
 import {
   getPlayerNodeView,
   getNodeTypeName,
+  getSkillForNodeType,
   isMaterialVisible,
   getMaxVisibleMaterialLevel,
 } from "../visibility.js"
@@ -179,11 +180,33 @@ export function formatWorldState(state: WorldState): string {
       })
 
       if (nodesHere && nodesHere.length > 0) {
-        const nodeNames = nodesHere.map((node) => {
+        for (const node of nodesHere) {
           const view = getPlayerNodeView(node, state)
-          return getNodeTypeName(view.nodeType)
-        })
-        lines.push(`Gathering: ${nodeNames.join(", ")}`)
+          const nodeName = getNodeTypeName(view.nodeType)
+
+          if (view.visibilityTier === "none") {
+            // No skill - just show node type
+            lines.push(`Gathering: ${nodeName}`)
+          } else {
+            // Has skill - show materials with requirements
+            lines.push(`Gathering: ${nodeName}`)
+            const skillLevel = state.player.skills[getSkillForNodeType(view.nodeType)]?.level ?? 0
+            const matStrings = view.visibleMaterials.map((m) => {
+              const canGather = m.requiredLevel <= skillLevel
+              const suffix = canGather ? " ✓" : ` (L${m.requiredLevel})`
+              if (view.visibilityTier === "full") {
+                // Appraised - show quantities
+                return `${m.remainingUnits}/${m.maxUnitsInitial} ${m.materialId}${suffix}`
+              } else {
+                // Not appraised - just material name
+                return `${m.materialId}${suffix}`
+              }
+            })
+            if (matStrings.length > 0) {
+              lines.push(`  ${matStrings.join(", ")}`)
+            }
+          }
+        }
       } else {
         lines.push("Gathering: none visible")
       }

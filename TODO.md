@@ -52,7 +52,7 @@ No node IDs needed in display. Just show types: `Gathering: Ore vein, Tree stand
 **Decision:** Single source of truth (option C). Remove `generateAreaLocations` from exploration.ts. Use `generateNodesForArea` from world.ts for all area content generation (gathering nodes+locations together, plus mob camps which don't need nodes). Call it lazily from `ensureAreaGenerated`.
 
 ### 6. Show Materials with Skill Requirements (merged with old item 7)
-**Status:** Not started
+**Status:** Done
 **Description:** Currently only shows "Ore vein". Should show materials when you have the skill, with indication of what you can gather.
 
 **Decision:** When displaying a node (and player has the skill):
