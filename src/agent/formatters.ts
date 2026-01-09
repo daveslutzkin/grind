@@ -1,6 +1,7 @@
 import type { WorldState, ActionLog } from "../types.js"
 import { getCurrentAreaId, getCurrentLocationId, ExplorationLocationType } from "../types.js"
 import { getUnlockedModes, getNextModeUnlock, getCurrentLocation } from "../actionChecks.js"
+import { getLocationDisplayName } from "../world.js"
 import {
   getPlayerNodeView,
   getNodeTypeName,
@@ -104,7 +105,7 @@ export function formatWorldState(state: WorldState): string {
 
   // Location + ticks on one line
   // Show location within area: "TOWN > Smithing Guild" or "TOWN > Town Square"
-  const locationName = currentLocationId ?? (currentArea === "TOWN" ? "Town Square" : "Clearing")
+  const locationName = getLocationDisplayName(currentLocationId, currentArea)
   lines.push(
     `Location: ${currentArea} > ${locationName} (${state.time.sessionRemainingTicks} ticks left)`
   )
@@ -116,9 +117,18 @@ export function formatWorldState(state: WorldState): string {
     if (area && area.locations.length > 0) {
       const knownLocs = area.locations.filter((loc) => knownLocationIds.includes(loc.id))
       if (knownLocs.length > 0) {
-        const locNames = knownLocs.map((loc) => loc.id).join(", ")
+        const locNames = knownLocs.map((loc) => getLocationDisplayName(loc.id)).join(", ")
         lines.push(`Locations: ${locNames}`)
       }
+    }
+  }
+
+  // Show enrol hint at guild halls
+  if (isAtGuildHall && currentLocation?.guildType) {
+    const skill = currentLocation.guildType
+    const playerSkill = state.player.skills[skill]
+    if (!playerSkill || playerSkill.level === 0) {
+      lines.push(`Can enrol in: ${skill}`)
     }
   }
 
