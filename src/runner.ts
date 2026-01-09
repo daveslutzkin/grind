@@ -412,7 +412,7 @@ export function computeLuckString(streams: RngStream[]): string {
   }
 
   const position =
-    zLuck >= 0 ? `Top ${(100 - percentile).toFixed(0)}%` : `Bottom ${percentile.toFixed(0)}%`
+    zLuck >= 0 ? `Top ${Math.ceil(100 - percentile)}%` : `Bottom ${Math.ceil(percentile)}%`
   const sigmaStr = zLuck >= 0 ? `+${zLuck.toFixed(2)}σ` : `${zLuck.toFixed(2)}σ`
 
   return `${position} (${label}) — ${validStreams.length} streams (${sigmaStr})`
