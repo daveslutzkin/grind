@@ -32,9 +32,11 @@ No node IDs needed in display. Just show types: `Gathering: Ore vein, Tree stand
 
 ## Medium Fixes
 
-### 4. Survey-Needed Indicator in Travel
+### 4. Allow Direct Travel to Unknown Areas
 **Status:** Not started
-**Description:** After exploring, connected areas appear in Travel list with costs but can't be traveled to until Surveyed. Confusing UX - should either not show unsurveyed areas, or mark them "(needs survey)".
+**Description:** Currently get AREA_NOT_KNOWN when trying to travel via a known connection to an unknown area. This is a bug.
+
+**Decision:** Direct travel through a known connection should work even if destination is unknown (you discover the area on arrival). Auto-pathing (multi-hop) still requires all areas on path to be known. Display can show unknown destinations as: `area-d2-i7 (20t, unexplored)`
 
 ### 5. Node Discovery Persistence
 **Status:** Not started
