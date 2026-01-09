@@ -1280,16 +1280,38 @@ export function executeExplorationTravel(
     return createFailureLog(state, "ExplorationTravel", "ALREADY_IN_AREA")
   }
 
-  if (!exploration.playerState.knownAreaIds.includes(destinationAreaId)) {
-    return createFailureLog(state, "ExplorationTravel", "AREA_NOT_KNOWN")
-  }
-
   if (state.time.sessionRemainingTicks <= 0) {
     return createFailureLog(state, "ExplorationTravel", "SESSION_ENDED")
   }
 
-  // Find path to destination
-  const pathResult = findPath(state, exploration.playerState.currentAreaId, destinationAreaId)
+  const currentAreaId = exploration.playerState.currentAreaId
+  const knownConnectionIds = new Set(exploration.playerState.knownConnectionIds)
+  const destinationIsKnown = exploration.playerState.knownAreaIds.includes(destinationAreaId)
+
+  // Check for direct known connection from current area to destination
+  const directConnection = exploration.connections.find(
+    (conn) =>
+      isConnectionKnown(knownConnectionIds, conn.fromAreaId, conn.toAreaId) &&
+      ((conn.fromAreaId === currentAreaId && conn.toAreaId === destinationAreaId) ||
+        (conn.toAreaId === currentAreaId && conn.fromAreaId === destinationAreaId))
+  )
+
+  // Determine path to destination
+  let pathResult: { path: AreaID[]; connections: AreaConnection[] } | null
+
+  if (directConnection) {
+    // Direct travel via known connection - allowed even if destination is unknown
+    pathResult = {
+      path: [currentAreaId, destinationAreaId],
+      connections: [directConnection],
+    }
+  } else {
+    // Multi-hop path required - destination must be known
+    if (!destinationIsKnown) {
+      return createFailureLog(state, "ExplorationTravel", "AREA_NOT_KNOWN")
+    }
+    pathResult = findPath(state, currentAreaId, destinationAreaId)
+  }
 
   if (!pathResult) {
     return createFailureLog(state, "ExplorationTravel", "NO_PATH_TO_DESTINATION")
@@ -1319,11 +1341,21 @@ export function executeExplorationTravel(
   exploration.playerState.currentAreaId = destinationAreaId
   exploration.playerState.currentLocationId = null // Arrive at hub (clearing)
 
+  // Discover the area if it was unknown (direct travel to unknown area)
+  const discoveredOnArrival = !destinationIsKnown
+  if (discoveredOnArrival) {
+    exploration.playerState.knownAreaIds.push(destinationAreaId)
+  }
+
   // Ensure destination area is fully generated (content + connections)
   const destArea = exploration.areas.get(destinationAreaId)!
   ensureAreaFullyGenerated(state.rng, exploration, destArea)
 
   // TODO: Scavenge rolls for gathering drops (future implementation)
+
+  const summary = discoveredOnArrival
+    ? `Traveled to ${destinationAreaId} (discovered)`
+    : `Traveled to ${destinationAreaId}`
 
   return {
     tickBefore,
@@ -1332,6 +1364,6 @@ export function executeExplorationTravel(
     success: true,
     timeConsumed: travelTime,
     rngRolls: [],
-    stateDeltaSummary: `Traveled to ${destinationAreaId}`,
+    stateDeltaSummary: summary,
   }
 }

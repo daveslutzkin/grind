@@ -33,10 +33,12 @@ No node IDs needed in display. Just show types: `Gathering: Ore vein, Tree stand
 ## Medium Fixes
 
 ### 4. Allow Direct Travel to Unknown Areas
-**Status:** Not started
+**Status:** ✅ Complete
 **Description:** Currently get AREA_NOT_KNOWN when trying to travel via a known connection to an unknown area. This is a bug.
 
 **Decision:** Direct travel through a known connection should work even if destination is unknown (you discover the area on arrival). Auto-pathing (multi-hop) still requires all areas on path to be known. Display can show unknown destinations as: `area-d2-i7 (20t, unexplored)`
+
+**Implementation:** Modified `executeExplorationTravel` in `src/exploration.ts` to check for direct known connections first. If a direct connection exists, travel is allowed even to unknown areas. The area is discovered on arrival and added to `knownAreaIds`. Multi-hop paths still require all destinations to be known.
 
 ### 5. Location/Node Sync Bug (CONFIRMED)
 **Status:** Not started
