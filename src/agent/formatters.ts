@@ -2,6 +2,7 @@ import type { WorldState, ActionLog } from "../types.js"
 import { getCurrentAreaId, getCurrentLocationId, ExplorationLocationType } from "../types.js"
 import { getUnlockedModes, getNextModeUnlock, getCurrentLocation } from "../actionChecks.js"
 import { getLocationDisplayName } from "../world.js"
+import { BASE_TRAVEL_TIME } from "../exploration.js"
 import {
   getPlayerNodeView,
   getNodeTypeName,
@@ -214,7 +215,8 @@ export function formatWorldState(state: WorldState): string {
     }
 
     if (dest && !destinations.has(dest)) {
-      destinations.set(dest, conn?.travelTimeMultiplier ?? 1)
+      const actualTravelTime = BASE_TRAVEL_TIME * (conn?.travelTimeMultiplier ?? 1)
+      destinations.set(dest, actualTravelTime)
     }
   }
 
