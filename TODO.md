@@ -101,7 +101,7 @@ Gathering: Ore vein
 **Decision:** Accept both node type and display name: `move ore vein`, `move mining`, `move Ore Vein` all work to move to that location in the current area. No need to expose internal location IDs.
 
 ### 11. Improve "Discovered node" message
-**Status:** Pending
+**Status:** Done
 **Description:** When discovering a MOB_CAMP, message says "Discovered node" which is vague.
 
 **Decision:** Say "Discovered enemy camp" for MOB_CAMP (already says "ore vein" and "tree stand" for gathering locations).

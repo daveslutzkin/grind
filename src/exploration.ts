@@ -1119,6 +1119,8 @@ export function executeExplore(state: WorldState, _action: ExploreAction): Actio
     const location = currentArea.locations.find((loc) => loc.id === discoveredLocationId)
     if (location?.gatheringSkillType) {
       discovered = location.gatheringSkillType === "Mining" ? "ore vein" : "tree stand"
+    } else if (location?.type === ExplorationLocationType.MOB_CAMP) {
+      discovered = "enemy camp"
     } else {
       discovered = "node"
     }
