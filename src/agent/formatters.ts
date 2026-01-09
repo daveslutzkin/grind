@@ -128,12 +128,20 @@ export function formatWorldState(state: WorldState): string {
       }
     }
   } else {
-    // Wilderness: show area name and FULLY EXPLORED indicator
-    // Check if fully explored (all locations + all known connections discovered)
-    let fullyExplored = false
-    if (area) {
+    // Wilderness: show area name with status suffix
+    const areaName = area?.name ?? "Unknown"
+    const knownLocs = area
+      ? area.locations.filter((loc) => knownLocationIds.includes(loc.id)).length
+      : 0
+
+    // Determine status suffix for Location line
+    let statusSuffix = ""
+    if (knownLocs === 0) {
+      // Nothing discovered yet
+      statusSuffix = " — unexplored"
+    } else if (area) {
+      // Check if fully explored (all locations + all known connections discovered)
       const totalLocs = area.locations.length
-      const knownLocs = area.locations.filter((loc) => knownLocationIds.includes(loc.id)).length
       const knownConnectionIds = new Set(state.exploration.playerState.knownConnectionIds)
       const knownAreaIds = new Set(state.exploration.playerState.knownAreaIds)
       const remainingKnownConnections = state.exploration.connections.filter((conn) => {
@@ -144,37 +152,32 @@ export function formatWorldState(state: WorldState): string {
         const targetId = isFromCurrent ? conn.toAreaId : conn.fromAreaId
         return !knownConnectionIds.has(connId) && knownAreaIds.has(targetId)
       })
-      fullyExplored = knownLocs >= totalLocs && remainingKnownConnections.length === 0
+      const fullyExplored = knownLocs >= totalLocs && remainingKnownConnections.length === 0
+      if (fullyExplored) {
+        statusSuffix = " — FULLY EXPLORED!"
+      }
     }
 
-    const areaName = area?.name ?? "Unknown"
-    const exploredSuffix = fullyExplored ? " — FULLY EXPLORED!" : ""
-    lines.push(`Location: ${areaName} in ${currentArea}${exploredSuffix}`)
+    lines.push(`Location: ${areaName} in ${currentArea}${statusSuffix}`)
 
-    // Gathering nodes (horizontal display)
-    const nodesHere = state.world.nodes?.filter((n) => {
-      if (n.areaId !== currentArea || n.depleted) return false
-      const match = n.nodeId.match(/-node-(\d+)$/)
-      if (!match) return false
-      const locationId = `${n.areaId}-loc-${match[1]}`
-      return knownLocationIds.includes(locationId)
-    })
+    // Only show Gathering line if we've discovered at least one location
+    if (knownLocs > 0) {
+      const nodesHere = state.world.nodes?.filter((n) => {
+        if (n.areaId !== currentArea || n.depleted) return false
+        const match = n.nodeId.match(/-node-(\d+)$/)
+        if (!match) return false
+        const locationId = `${n.areaId}-loc-${match[1]}`
+        return knownLocationIds.includes(locationId)
+      })
 
-    if (area) {
-      const knownLocs = area.locations.filter((loc) => knownLocationIds.includes(loc.id)).length
-
-      if (knownLocs > 0) {
-        if (nodesHere && nodesHere.length > 0) {
-          const nodeNames = nodesHere.map((node) => {
-            const view = getPlayerNodeView(node, state)
-            return getNodeTypeName(view.nodeType)
-          })
-          lines.push(`Gathering: ${nodeNames.join(", ")}`)
-        } else {
-          lines.push("Gathering: none visible")
-        }
+      if (nodesHere && nodesHere.length > 0) {
+        const nodeNames = nodesHere.map((node) => {
+          const view = getPlayerNodeView(node, state)
+          return getNodeTypeName(view.nodeType)
+        })
+        lines.push(`Gathering: ${nodeNames.join(", ")}`)
       } else {
-        lines.push("Gathering: unexplored (use 'explore' to discover)")
+        lines.push("Gathering: none visible")
       }
     }
   }
