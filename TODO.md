@@ -84,7 +84,9 @@ Gathering: Ore vein
 
 ### 8. Fix misleading LOCATION_NOT_DISCOVERED error
 **Status:** Pending
-**Description:** `move TOWN-explorers-guild` fails with "LOCATION_NOT_DISCOVERED" but `move explorers guild` works. The error implies the location isn't discovered when really the parser just doesn't recognize the format.
+**Description:** When the parser can't match a location name, it returns an action that fails with "LOCATION_NOT_DISCOVERED". This implies the location exists but isn't discovered, when really the parser just didn't recognize the input.
+
+**Decision:** Improve error message to "Unknown location: X" rather than implying it exists but isn't discovered.
 
 ### 9. Material ✓ should respect location tier
 **Status:** Pending
