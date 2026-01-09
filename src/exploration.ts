@@ -31,6 +31,23 @@ import { generateNodesForArea } from "./world.js"
 export const BASE_TRAVEL_TIME = 10
 
 /**
+ * Get a friendly display name for an area based on its ID.
+ * Avoids exposing internal IDs like "area-d1-i0" to users.
+ */
+export function getAreaDisplayName(areaId: AreaID): string {
+  if (areaId === "TOWN") return "Town"
+  // Parse area ID format: area-d{distance}-i{index}
+  const match = areaId.match(/^area-d(\d+)-i\d+$/)
+  if (match) {
+    const distance = parseInt(match[1], 10)
+    if (distance === 1) return "a nearby area"
+    if (distance === 2) return "a distant area"
+    return "a remote area"
+  }
+  return "an area"
+}
+
+/**
  * Probability multiplier for discovering connections to unknown areas
  * during Explore action (relative to known area connections)
  */
@@ -858,7 +875,7 @@ export function executeSurvey(state: WorldState, _action: SurveyAction): ActionL
     skillGained: { skill: "Exploration", amount: xpGained },
     levelUps,
     rngRolls: rolls,
-    stateDeltaSummary: `Discovered area ${discoveredAreaId}`,
+    stateDeltaSummary: `Discovered ${getAreaDisplayName(discoveredAreaId!)}`,
     explorationLog: {
       discoveredAreaId,
       discoveredConnectionId,
@@ -1123,9 +1140,9 @@ export function executeExplore(state: WorldState, _action: ExploreAction): Actio
       discovered = "node"
     }
   } else if (connectionToUnknownArea) {
-    discovered = `connection to unknown area (${discoveredConnectionId})`
+    discovered = "connection to unknown area"
   } else {
-    discovered = `connection ${discoveredConnectionId}`
+    discovered = "new connection"
   }
 
   return {
@@ -1293,8 +1310,8 @@ export function executeExplorationTravel(
   // TODO: Scavenge rolls for gathering drops (future implementation)
 
   const summary = discoveredOnArrival
-    ? `Traveled to ${destinationAreaId} (discovered)`
-    : `Traveled to ${destinationAreaId}`
+    ? `Traveled to ${getAreaDisplayName(destinationAreaId)} (discovered)`
+    : `Traveled to ${getAreaDisplayName(destinationAreaId)}`
 
   return {
     tickBefore,
