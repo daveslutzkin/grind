@@ -107,14 +107,25 @@ export function formatWorldState(state: WorldState): string {
   const knownLocationIds = state.exploration.playerState.knownLocationIds
 
   if (currentArea === "TOWN") {
-    // TOWN: show current location name and available locations
+    // TOWN: show current location name and available locations by type
     const locationName = getLocationDisplayName(currentLocationId, currentArea)
     lines.push(`Location: ${locationName} in TOWN`)
 
-    // Show available TOWN locations
+    // Group TOWN locations by type
     if (area && area.locations.length > 0) {
-      const locNames = area.locations.map((loc) => getLocationDisplayName(loc.id)).join(", ")
-      lines.push(`Locations: ${locNames}`)
+      const guilds = area.locations.filter((loc) => loc.type === ExplorationLocationType.GUILD_HALL)
+      const services = area.locations.filter(
+        (loc) => loc.type !== ExplorationLocationType.GUILD_HALL
+      )
+
+      if (guilds.length > 0) {
+        const guildNames = guilds.map((loc) => getLocationDisplayName(loc.id)).join(", ")
+        lines.push(`Guilds: ${guildNames}`)
+      }
+      if (services.length > 0) {
+        const serviceNames = services.map((loc) => getLocationDisplayName(loc.id)).join(", ")
+        lines.push(`Services: ${serviceNames}`)
+      }
     }
   } else {
     // Wilderness: show area name and FULLY EXPLORED indicator
