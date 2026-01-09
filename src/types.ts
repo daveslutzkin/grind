@@ -439,6 +439,7 @@ export type FailureType =
   | "NOT_IN_EXPLORATION_GUILD"
   | "NO_CONNECTIONS"
   | "LOCATION_NOT_DISCOVERED"
+  | "UNKNOWN_LOCATION"
   // Location-based action failure types
   | "ALREADY_AT_LOCATION"
   | "NOT_AT_HUB"

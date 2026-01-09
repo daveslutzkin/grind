@@ -602,7 +602,7 @@ export function checkTravelToLocationAction(
   if (!location) {
     return {
       valid: false,
-      failureType: "LOCATION_NOT_DISCOVERED",
+      failureType: "UNKNOWN_LOCATION",
       timeCost: 0,
       successProbability: 0,
     }
