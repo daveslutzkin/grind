@@ -96,6 +96,101 @@ describe("Formatters", () => {
 
       expect(formatted).toContain("Gathering:")
     })
+
+    describe("wilderness exploration status", () => {
+      it("should show 'unexplored' when nothing discovered in area", () => {
+        const state = createWorld("explore-status-1")
+        const areaId = getOreAreaId(state)
+        makeAreaKnown(state, areaId)
+        state.exploration.playerState.currentAreaId = areaId
+        // No locations or connections from this area discovered
+        const formatted = formatWorldState(state)
+
+        expect(formatted).toContain("unexplored")
+        expect(formatted).not.toContain("FULLY EXPLORED")
+        expect(formatted).not.toContain("Gathering:")
+      })
+
+      it("should NOT show 'unexplored' when connection discovered but no locations", () => {
+        const state = createWorld("explore-status-2")
+        const areaId = getOreAreaId(state)
+        makeAreaKnown(state, areaId)
+        state.exploration.playerState.currentAreaId = areaId
+
+        // Add a connection FROM this area and mark it as discovered
+        // (connections are generated lazily, so we add one manually)
+        const targetAreaId = "discovered-target-area"
+        state.exploration.connections.push({
+          fromAreaId: areaId,
+          toAreaId: targetAreaId,
+          travelTimeMultiplier: 2,
+        })
+        const connId = `${areaId}->${targetAreaId}`
+        state.exploration.playerState.knownConnectionIds.push(connId)
+        state.exploration.playerState.knownAreaIds.push(targetAreaId)
+
+        const formatted = formatWorldState(state)
+
+        expect(formatted).not.toContain("unexplored")
+        expect(formatted).not.toContain("FULLY EXPLORED")
+      })
+
+      it("should NOT show 'FULLY EXPLORED' when locations done but connections remain", () => {
+        const state = createWorld("explore-status-3")
+        const areaId = getOreAreaId(state)
+        makeAreaKnown(state, areaId)
+        state.exploration.playerState.currentAreaId = areaId
+
+        // Discover all locations
+        discoverAllLocations(state, areaId)
+
+        // Add an undiscovered connection from this area to ensure it's not "fully explored"
+        // (connections may not be generated until explore is called)
+        const fakeTargetAreaId = "fake-undiscovered-area"
+        state.exploration.connections.push({
+          fromAreaId: areaId,
+          toAreaId: fakeTargetAreaId,
+          travelTimeMultiplier: 2,
+        })
+
+        const formatted = formatWorldState(state)
+
+        expect(formatted).not.toContain("unexplored")
+        expect(formatted).not.toContain("FULLY EXPLORED")
+        expect(formatted).toContain("Gathering:")
+      })
+
+      it("should show 'FULLY EXPLORED' when all locations AND connections discovered", () => {
+        const state = createWorld("explore-status-4")
+        const areaId = getOreAreaId(state)
+        makeAreaKnown(state, areaId)
+        state.exploration.playerState.currentAreaId = areaId
+
+        // Discover all locations
+        discoverAllLocations(state, areaId)
+
+        // Discover ALL connections from this area
+        const connectionsFromArea = state.exploration.connections.filter(
+          (c) => c.fromAreaId === areaId || c.toAreaId === areaId
+        )
+        for (const conn of connectionsFromArea) {
+          const connId = `${conn.fromAreaId}->${conn.toAreaId}`
+          if (!state.exploration.playerState.knownConnectionIds.includes(connId)) {
+            state.exploration.playerState.knownConnectionIds.push(connId)
+          }
+          // Also make target areas known
+          const targetId = conn.fromAreaId === areaId ? conn.toAreaId : conn.fromAreaId
+          if (!state.exploration.playerState.knownAreaIds.includes(targetId)) {
+            state.exploration.playerState.knownAreaIds.push(targetId)
+          }
+        }
+
+        const formatted = formatWorldState(state)
+
+        expect(formatted).toContain("FULLY EXPLORED")
+        expect(formatted).not.toContain("unexplored")
+      })
+    })
   })
 
   describe("formatActionLog", () => {
