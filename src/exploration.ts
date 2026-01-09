@@ -1053,6 +1053,7 @@ export async function executeExplore(
   let discoveredLocationId: string | undefined
   let discoveredConnectionId: string | undefined
   let connectionToUnknownArea = false
+  let discoveredUnknownAreaId: string | undefined
   let succeeded = false
   let accumulatedTicks = 0
 
@@ -1092,6 +1093,18 @@ export async function executeExplore(
         exploration.playerState.knownConnectionIds.push(picked.id)
         discoveredConnectionId = picked.id
         connectionToUnknownArea = picked.type === "unknownConnection"
+
+        // If we discovered a connection to an unknown area, generate its name
+        if (connectionToUnknownArea) {
+          // Parse connection ID to find the target area (format: "areaId1->areaId2")
+          const [areaId1, areaId2] = picked.id.split("->")
+          const targetAreaId = areaId1 === currentArea.id ? areaId2 : areaId1
+          discoveredUnknownAreaId = targetAreaId
+          const targetArea = exploration.areas.get(targetAreaId)
+          if (targetArea) {
+            await ensureAreaFullyGenerated(state.rng, exploration, targetArea)
+          }
+        }
       }
 
       // Record the roll for display (show max threshold as the "chance")
@@ -1163,8 +1176,10 @@ export async function executeExplore(
     } else {
       discovered = "node"
     }
-  } else if (connectionToUnknownArea) {
-    discovered = "connection to unknown area"
+  } else if (connectionToUnknownArea && discoveredUnknownAreaId) {
+    const targetArea = exploration.areas.get(discoveredUnknownAreaId)
+    const areaName = getAreaDisplayName(discoveredUnknownAreaId, targetArea)
+    discovered = `connection to ${areaName}`
   } else {
     discovered = "new connection"
   }
