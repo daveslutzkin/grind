@@ -6,6 +6,13 @@ import type {
   PlanViolation,
 } from "./types.js"
 import { checkAction } from "./actionChecks.js"
+import {
+  consumeTime,
+  addToInventory,
+  removeFromInventory,
+  addToStorage,
+  checkAndCompleteContracts,
+} from "./stateHelpers.js"
 
 function deepClone<T>(obj: T): T {
   // Handle Map specially
@@ -22,110 +29,6 @@ function deepClone<T>(obj: T): T {
     cloned.exploration.areas = areasMap
   }
   return cloned
-}
-
-/**
- * Check if contract rewards will fit in inventory after consuming requirements.
- * Returns true if rewards will fit, false otherwise.
- */
-function canFitContractRewards(
-  state: WorldState,
-  requirements: { itemId: string; quantity: number }[],
-  rewards: { itemId: string; quantity: number }[]
-): boolean {
-  // Simulate inventory state after consuming requirements
-  const simulatedInventory = new Map<string, number>()
-  for (const item of state.player.inventory) {
-    simulatedInventory.set(item.itemId, item.quantity)
-  }
-
-  // Simulate consuming requirements from inventory
-  for (const req of requirements) {
-    const current = simulatedInventory.get(req.itemId) ?? 0
-    const toConsume = Math.min(current, req.quantity)
-    if (toConsume >= current) {
-      simulatedInventory.delete(req.itemId)
-    } else {
-      simulatedInventory.set(req.itemId, current - toConsume)
-    }
-  }
-
-  // Simulate adding rewards
-  for (const reward of rewards) {
-    const current = simulatedInventory.get(reward.itemId) ?? 0
-    simulatedInventory.set(reward.itemId, current + reward.quantity)
-  }
-
-  return simulatedInventory.size <= state.player.inventoryCapacity
-}
-
-/**
- * Simulate contract completion (matches engine checkContractCompletion)
- */
-function simulateContractCompletion(state: WorldState): void {
-  for (const contractId of [...state.player.activeContracts]) {
-    const contract = state.world.contracts.find((c) => c.id === contractId)
-    if (!contract) continue
-
-    // Check if all requirements are met (in inventory or storage)
-    const allRequirementsMet = contract.requirements.every((req) => {
-      const inInventory = state.player.inventory.find((i) => i.itemId === req.itemId)
-      const inStorage = state.player.storage.find((i) => i.itemId === req.itemId)
-      const totalQuantity = (inInventory?.quantity ?? 0) + (inStorage?.quantity ?? 0)
-      return totalQuantity >= req.quantity
-    })
-
-    // Check if rewards will fit in inventory (respecting slot capacity)
-    const rewardsWillFit = canFitContractRewards(state, contract.requirements, contract.rewards)
-
-    if (allRequirementsMet && rewardsWillFit) {
-      // Consume required items (from inventory first, then storage)
-      for (const req of contract.requirements) {
-        let remaining = req.quantity
-
-        // Take from inventory first
-        const invItem = state.player.inventory.find((i) => i.itemId === req.itemId)
-        if (invItem) {
-          const takeFromInv = Math.min(invItem.quantity, remaining)
-          invItem.quantity -= takeFromInv
-          remaining -= takeFromInv
-          if (invItem.quantity <= 0) {
-            const index = state.player.inventory.indexOf(invItem)
-            state.player.inventory.splice(index, 1)
-          }
-        }
-
-        // Take remainder from storage
-        if (remaining > 0) {
-          const storageItem = state.player.storage.find((i) => i.itemId === req.itemId)
-          if (storageItem) {
-            storageItem.quantity -= remaining
-            if (storageItem.quantity <= 0) {
-              const index = state.player.storage.indexOf(storageItem)
-              state.player.storage.splice(index, 1)
-            }
-          }
-        }
-      }
-
-      // Grant contract rewards (items go to inventory)
-      for (const reward of contract.rewards) {
-        const existing = state.player.inventory.find((i) => i.itemId === reward.itemId)
-        if (existing) {
-          existing.quantity += reward.quantity
-        } else {
-          state.player.inventory.push({ itemId: reward.itemId, quantity: reward.quantity })
-        }
-      }
-
-      // Award reputation
-      state.player.guildReputation += contract.reputationReward
-
-      // Remove from active contracts
-      const index = state.player.activeContracts.indexOf(contractId)
-      state.player.activeContracts.splice(index, 1)
-    }
-  }
 }
 
 /**
@@ -172,7 +75,8 @@ export function evaluateAction(state: WorldState, action: Action): ActionEvaluat
 
 /**
  * Simulate applying an action to state (for plan evaluation)
- * Uses shared precondition checks to ensure consistency with execution
+ * Uses shared precondition checks to ensure consistency with execution.
+ * Uses shared helpers from stateHelpers.ts to ensure consistency with the engine.
  */
 function simulateAction(state: WorldState, action: Action): string | null {
   const check = checkAction(state, action)
@@ -187,8 +91,7 @@ function simulateAction(state: WorldState, action: Action): string | null {
   }
 
   // Apply the action effects (optimistically assuming success for RNG-based actions)
-  state.time.currentTick += check.timeCost
-  state.time.sessionRemainingTicks -= check.timeCost
+  consumeTime(state, check.timeCost)
 
   switch (action.type) {
     case "Move":
@@ -219,12 +122,7 @@ function simulateAction(state: WorldState, action: Action): string | null {
         const bestLoot = enemy.lootTable.reduce((best, entry) =>
           entry.weight > best.weight ? entry : best
         )
-        const existing = state.player.inventory.find((i) => i.itemId === bestLoot.itemId)
-        if (existing) {
-          existing.quantity += bestLoot.quantity
-        } else {
-          state.player.inventory.push({ itemId: bestLoot.itemId, quantity: bestLoot.quantity })
-        }
+        addToInventory(state, bestLoot.itemId, bestLoot.quantity)
         state.player.skills.Combat.xp += 1
       }
       break
@@ -234,45 +132,19 @@ function simulateAction(state: WorldState, action: Action): string | null {
       if (recipe) {
         // Remove inputs
         for (const input of recipe.inputs) {
-          const item = state.player.inventory.find((i) => i.itemId === input.itemId)
-          if (item) {
-            item.quantity -= input.quantity
-            if (item.quantity <= 0) {
-              const index = state.player.inventory.indexOf(item)
-              state.player.inventory.splice(index, 1)
-            }
-          }
+          removeFromInventory(state, input.itemId, input.quantity)
         }
         // Add output
-        const existing = state.player.inventory.find((i) => i.itemId === recipe.output.itemId)
-        if (existing) {
-          existing.quantity += recipe.output.quantity
-        } else {
-          state.player.inventory.push({
-            itemId: recipe.output.itemId,
-            quantity: recipe.output.quantity,
-          })
-        }
-        state.player.skills.Smithing.xp += 1
+        addToInventory(state, recipe.output.itemId, recipe.output.quantity)
+        // Grant XP to the correct skill (matches engine fix)
+        state.player.skills[recipe.guildType].xp += 1
       }
       break
     }
     case "Store": {
-      const invItem = state.player.inventory.find((i) => i.itemId === action.itemId)
-      if (invItem) {
-        invItem.quantity -= action.quantity
-        if (invItem.quantity <= 0) {
-          const index = state.player.inventory.indexOf(invItem)
-          state.player.inventory.splice(index, 1)
-        }
-        const storageItem = state.player.storage.find((i) => i.itemId === action.itemId)
-        if (storageItem) {
-          storageItem.quantity += action.quantity
-        } else {
-          state.player.storage.push({ itemId: action.itemId, quantity: action.quantity })
-        }
-        // Store is a free action - no XP
-      }
+      removeFromInventory(state, action.itemId, action.quantity)
+      addToStorage(state, action.itemId, action.quantity)
+      // Store is a free action - no XP
       break
     }
     case "Enrol": {
@@ -281,14 +153,7 @@ function simulateAction(state: WorldState, action: Action): string | null {
       break
     }
     case "Drop": {
-      const item = state.player.inventory.find((i) => i.itemId === action.itemId)
-      if (item) {
-        item.quantity -= action.quantity
-        if (item.quantity <= 0) {
-          const index = state.player.inventory.indexOf(item)
-          state.player.inventory.splice(index, 1)
-        }
-      }
+      removeFromInventory(state, action.itemId, action.quantity)
       // No skill gain for Drop
       break
     }
@@ -300,7 +165,8 @@ function simulateAction(state: WorldState, action: Action): string | null {
   }
 
   // Check for contract completion (after every successful action)
-  simulateContractCompletion(state)
+  // Uses shared helper which includes kill requirements check
+  checkAndCompleteContracts(state)
 
   return null
 }
