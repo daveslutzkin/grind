@@ -11,6 +11,7 @@ import {
   executeSurvey,
   executeExplore,
   executeExplorationTravel,
+  executeFarTravel,
   grantExplorationGuildBenefits,
 } from "./exploration.js"
 import type {
@@ -19,6 +20,7 @@ import type {
   SurveyAction,
   ExploreAction,
   ExplorationTravelAction,
+  FarTravelAction,
 } from "./types.js"
 import { createRng } from "./rng.js"
 import { createWorld } from "./world.js"
@@ -740,6 +742,201 @@ describe("ExplorationTravel Action", () => {
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("NO_PATH_TO_DESTINATION")
     })
+  })
+})
+
+describe("FarTravel Action", () => {
+  describe("preconditions", () => {
+    it("should fail if destination area is not known", async () => {
+      const state = createExplorationWorld("fartravel-unknown")
+      // area-d1-i0 is not known
+      const action: FarTravelAction = {
+        type: "FarTravel",
+        destinationAreaId: "area-d1-i0",
+      }
+
+      const log = await executeFarTravel(state, action)
+
+      expect(log.success).toBe(false)
+      expect(log.failureType).toBe("AREA_NOT_KNOWN")
+    })
+
+    it("should fail if no path exists to destination", async () => {
+      const state = createExplorationWorld("fartravel-no-path")
+      // Know an area but don't know any connections to it
+      state.exploration!.playerState.knownAreaIds.push("area-d1-i0")
+      const action: FarTravelAction = {
+        type: "FarTravel",
+        destinationAreaId: "area-d1-i0",
+      }
+
+      const log = await executeFarTravel(state, action)
+
+      expect(log.success).toBe(false)
+      expect(log.failureType).toBe("NO_PATH_TO_DESTINATION")
+    })
+
+    it("should fail if already in destination area", async () => {
+      const state = createExplorationWorld("fartravel-same")
+      const action: FarTravelAction = {
+        type: "FarTravel",
+        destinationAreaId: "TOWN",
+      }
+
+      const log = await executeFarTravel(state, action)
+
+      expect(log.success).toBe(false)
+      expect(log.failureType).toBe("ALREADY_IN_AREA")
+    })
+  })
+
+  describe("successful far travel", () => {
+    it("should support multi-hop pathfinding", async () => {
+      const state = createExplorationWorld("fartravel-multihop")
+      // Set up: Know area-d1-i0 and area-d1-i1, and connections
+      const area0 = "area-d1-i0"
+      const area1 = "area-d1-i1"
+      state.exploration!.playerState.knownAreaIds.push(area0, area1)
+      state.exploration!.playerState.knownConnectionIds.push(`TOWN->${area0}`, `${area0}->${area1}`)
+      // Add a connection between area0 and area1 if it doesn't exist
+      const existingConn = state.exploration!.connections.find(
+        (c) =>
+          (c.fromAreaId === area0 && c.toAreaId === area1) ||
+          (c.fromAreaId === area1 && c.toAreaId === area0)
+      )
+      if (!existingConn) {
+        state.exploration!.connections.push({
+          fromAreaId: area0,
+          toAreaId: area1,
+          travelTimeMultiplier: 2,
+        })
+      }
+
+      // Far travel from TOWN to area1 (requires going through area0)
+      const action: FarTravelAction = {
+        type: "FarTravel",
+        destinationAreaId: area1,
+      }
+
+      const log = await executeFarTravel(state, action)
+
+      // Multi-hop travel IS allowed with FarTravel
+      expect(log.success).toBe(true)
+      expect(state.exploration!.playerState.currentAreaId).toBe(area1)
+      // Should take at least 2 hops worth of time
+      expect(log.timeConsumed).toBeGreaterThanOrEqual(20)
+    })
+
+    it("should allow direct travel to adjacent known areas", async () => {
+      const state = createExplorationWorld("fartravel-direct")
+      // Know an area and its connection from town
+      const destAreaId = "area-d1-i0"
+      state.exploration!.playerState.knownAreaIds.push(destAreaId)
+      state.exploration!.playerState.knownConnectionIds.push(`TOWN->${destAreaId}`)
+      const action: FarTravelAction = {
+        type: "FarTravel",
+        destinationAreaId: destAreaId,
+      }
+
+      const log = await executeFarTravel(state, action)
+
+      expect(log.success).toBe(true)
+      expect(state.exploration!.playerState.currentAreaId).toBe(destAreaId)
+      expect(log.stateDeltaSummary).toContain("Far traveled")
+      expect(log.stateDeltaSummary).toContain("1 hop")
+    })
+  })
+})
+
+describe("ExplorationTravel vs FarTravel - Regression Tests", () => {
+  it("ExplorationTravel should NOT allow multi-hop travel (bug fix regression)", async () => {
+    const state = createExplorationWorld("regression-no-multihop")
+    // Set up a scenario where multi-hop was previously allowed
+    // User at TOWN, knows area0 connected to TOWN, knows area1 connected to area0
+    // Should NOT be able to use ExplorationTravel to go directly from TOWN to area1
+    const area0 = "area-d1-i0"
+    const area1 = "area-d1-i1"
+    state.exploration!.playerState.knownAreaIds.push(area0, area1)
+    state.exploration!.playerState.knownConnectionIds.push(`TOWN->${area0}`, `${area0}->${area1}`)
+    // Ensure connection exists
+    if (
+      !state.exploration!.connections.find(
+        (c) =>
+          (c.fromAreaId === area0 && c.toAreaId === area1) ||
+          (c.fromAreaId === area1 && c.toAreaId === area0)
+      )
+    ) {
+      state.exploration!.connections.push({
+        fromAreaId: area0,
+        toAreaId: area1,
+        travelTimeMultiplier: 2,
+      })
+    }
+
+    // Try to use ExplorationTravel (the regular move command)
+    const action: ExplorationTravelAction = {
+      type: "ExplorationTravel",
+      destinationAreaId: area1, // Not directly connected to TOWN
+    }
+
+    const log = await executeExplorationTravel(state, action)
+
+    // This should FAIL - ExplorationTravel only allows direct connections
+    expect(log.success).toBe(false)
+    expect(log.failureType).toBe("NO_PATH_TO_DESTINATION")
+  })
+
+  it("FarTravel SHOULD allow multi-hop travel to same destination", async () => {
+    const state = createExplorationWorld("regression-fartravel-works")
+    // Same setup as above
+    const area0 = "area-d1-i0"
+    const area1 = "area-d1-i1"
+    state.exploration!.playerState.knownAreaIds.push(area0, area1)
+    state.exploration!.playerState.knownConnectionIds.push(`TOWN->${area0}`, `${area0}->${area1}`)
+    if (
+      !state.exploration!.connections.find(
+        (c) =>
+          (c.fromAreaId === area0 && c.toAreaId === area1) ||
+          (c.fromAreaId === area1 && c.toAreaId === area0)
+      )
+    ) {
+      state.exploration!.connections.push({
+        fromAreaId: area0,
+        toAreaId: area1,
+        travelTimeMultiplier: 2,
+      })
+    }
+
+    // Use FarTravel instead
+    const action: FarTravelAction = {
+      type: "FarTravel",
+      destinationAreaId: area1,
+    }
+
+    const log = await executeFarTravel(state, action)
+
+    // This SHOULD succeed - FarTravel allows multi-hop
+    expect(log.success).toBe(true)
+    expect(state.exploration!.playerState.currentAreaId).toBe(area1)
+  })
+
+  it("ExplorationTravel should still allow direct connections", async () => {
+    const state = createExplorationWorld("regression-direct-still-works")
+    // User at TOWN, knows area0 connected to TOWN
+    const area0 = "area-d1-i0"
+    state.exploration!.playerState.knownAreaIds.push(area0)
+    state.exploration!.playerState.knownConnectionIds.push(`TOWN->${area0}`)
+
+    const action: ExplorationTravelAction = {
+      type: "ExplorationTravel",
+      destinationAreaId: area0,
+    }
+
+    const log = await executeExplorationTravel(state, action)
+
+    // Direct travel should still work
+    expect(log.success).toBe(true)
+    expect(state.exploration!.playerState.currentAreaId).toBe(area0)
   })
 })
 

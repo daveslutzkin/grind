@@ -13,6 +13,7 @@ import type {
   SurveyAction,
   ExploreAction,
   ExplorationTravelAction,
+  FarTravelAction,
   ActionLog,
   RngRoll,
   ExplorationLuckInfo,
@@ -608,7 +609,7 @@ export async function grantExplorationGuildBenefits(state: WorldState): Promise<
  */
 function createFailureLog(
   state: WorldState,
-  actionType: "Survey" | "Explore" | "ExplorationTravel",
+  actionType: "Survey" | "Explore" | "ExplorationTravel" | "FarTravel",
   failureType: string
 ): ActionLog {
   return {
@@ -1194,8 +1195,95 @@ export async function executeExplore(
 // ============================================================================
 
 /**
+ * Find shortest path between two areas using known connections.
+ * Uses BFS for shortest path by hop count, then calculates total travel time.
+ */
+export function findPath(
+  state: WorldState,
+  fromAreaId: AreaID,
+  toAreaId: AreaID
+): { path: AreaID[]; connections: AreaConnection[]; totalTime: number } | null {
+  const exploration = state.exploration!
+  const knownConnectionIds = new Set(exploration.playerState.knownConnectionIds)
+
+  // BFS for shortest path
+  const queue: { areaId: AreaID; path: AreaID[]; connections: AreaConnection[] }[] = [
+    { areaId: fromAreaId, path: [fromAreaId], connections: [] },
+  ]
+  const visited = new Set<AreaID>([fromAreaId])
+
+  while (queue.length > 0) {
+    const current = queue.shift()!
+
+    if (current.areaId === toAreaId) {
+      // Calculate total travel time
+      let totalTime = 0
+      for (const conn of current.connections) {
+        totalTime += BASE_TRAVEL_TIME * conn.travelTimeMultiplier
+      }
+      return { path: current.path, connections: current.connections, totalTime }
+    }
+
+    // Find all known connections from current area
+    for (const conn of exploration.connections) {
+      if (!isConnectionKnown(knownConnectionIds, conn.fromAreaId, conn.toAreaId)) {
+        continue
+      }
+
+      let nextAreaId: AreaID | null = null
+      if (conn.fromAreaId === current.areaId && !visited.has(conn.toAreaId)) {
+        nextAreaId = conn.toAreaId
+      } else if (conn.toAreaId === current.areaId && !visited.has(conn.fromAreaId)) {
+        nextAreaId = conn.fromAreaId
+      }
+
+      if (nextAreaId) {
+        visited.add(nextAreaId)
+        queue.push({
+          areaId: nextAreaId,
+          path: [...current.path, nextAreaId],
+          connections: [...current.connections, conn],
+        })
+      }
+    }
+  }
+
+  return null
+}
+
+/**
+ * Get all known areas reachable from current location with their travel times.
+ * Used for "far travel" mode to show available destinations.
+ */
+export function getReachableAreas(
+  state: WorldState
+): Array<{ areaId: AreaID; travelTime: number; hops: number }> {
+  const exploration = state.exploration!
+  const currentAreaId = exploration.playerState.currentAreaId
+  const results: Array<{ areaId: AreaID; travelTime: number; hops: number }> = []
+
+  for (const areaId of exploration.playerState.knownAreaIds) {
+    if (areaId === currentAreaId) continue
+
+    const pathResult = findPath(state, currentAreaId, areaId)
+    if (pathResult) {
+      results.push({
+        areaId,
+        travelTime: pathResult.totalTime,
+        hops: pathResult.path.length - 1,
+      })
+    }
+  }
+
+  // Sort by travel time
+  results.sort((a, b) => a.travelTime - b.travelTime)
+  return results
+}
+
+/**
  * Execute ExplorationTravel action - move between areas
  * Only allows travel to directly connected areas with known connections.
+ * For multi-hop travel, use executeFarTravel instead.
  */
 export async function executeExplorationTravel(
   state: WorldState,
@@ -1282,6 +1370,83 @@ export async function executeExplorationTravel(
   return {
     tickBefore,
     actionType: "ExplorationTravel",
+    parameters: { destinationAreaId, scavenge },
+    success: true,
+    timeConsumed: travelTime,
+    rngRolls: [],
+    stateDeltaSummary: summary,
+  }
+}
+
+/**
+ * Execute FarTravel action - multi-hop travel to any known reachable area.
+ * Uses shortest path routing through known connections.
+ */
+export async function executeFarTravel(
+  state: WorldState,
+  action: FarTravelAction
+): Promise<ActionLog> {
+  const tickBefore = state.time.currentTick
+  const exploration = state.exploration!
+  const { destinationAreaId, scavenge } = action
+
+  // Check preconditions
+  if (exploration.playerState.currentAreaId === destinationAreaId) {
+    return createFailureLog(state, "FarTravel", "ALREADY_IN_AREA")
+  }
+
+  if (state.time.sessionRemainingTicks <= 0) {
+    return createFailureLog(state, "FarTravel", "SESSION_ENDED")
+  }
+
+  const currentAreaId = exploration.playerState.currentAreaId
+
+  // Destination must be known for far travel
+  if (!exploration.playerState.knownAreaIds.includes(destinationAreaId)) {
+    return createFailureLog(state, "FarTravel", "AREA_NOT_KNOWN")
+  }
+
+  // Find shortest path to destination
+  const pathResult = findPath(state, currentAreaId, destinationAreaId)
+
+  if (!pathResult) {
+    return createFailureLog(state, "FarTravel", "NO_PATH_TO_DESTINATION")
+  }
+
+  // Calculate travel time
+  let travelTime = pathResult.totalTime
+
+  // Double time if scavenging
+  if (scavenge) {
+    travelTime *= 2
+  }
+
+  // Check if enough time
+  if (state.time.sessionRemainingTicks < travelTime) {
+    return {
+      ...createFailureLog(state, "FarTravel", "SESSION_ENDED"),
+      timeConsumed: 0,
+    }
+  }
+
+  // Consume time and move
+  consumeTime(state, travelTime)
+  exploration.playerState.currentAreaId = destinationAreaId
+  exploration.playerState.currentLocationId = null // Arrive at hub (clearing)
+
+  // Ensure destination area is fully generated (content + connections + name)
+  const destArea = exploration.areas.get(destinationAreaId)!
+  await ensureAreaFullyGenerated(state.rng, exploration, destArea)
+
+  // TODO: Scavenge rolls for gathering drops (future implementation)
+
+  const areaDisplayName = getAreaDisplayName(destinationAreaId, destArea)
+  const hops = pathResult.path.length - 1
+  const summary = `Far traveled to ${areaDisplayName} (${hops} hop${hops !== 1 ? "s" : ""})`
+
+  return {
+    tickBefore,
+    actionType: "FarTravel",
     parameters: { destinationAreaId, scavenge },
     success: true,
     timeConsumed: travelTime,
