@@ -538,6 +538,82 @@ describe("Formatters", () => {
       expect(formatted).toContain("✗")
     })
 
+    it("should show user-friendly error message without action type", async () => {
+      const state = createWorld("error-msg-test")
+
+      // Try to travel to unknown location - should fail with UNKNOWN_LOCATION
+      const log = await executeAction(state, {
+        type: "TravelToLocation",
+        locationId: "nonexistent-location",
+      })
+
+      const formatted = formatActionLog(log)
+
+      // Should show user-friendly message
+      expect(formatted).toContain("✗ Unknown location!")
+      // Should NOT show action type or failure code
+      expect(formatted).not.toContain("TravelToLocation")
+      expect(formatted).not.toContain("UNKNOWN_LOCATION")
+    })
+
+    it("should show 'Inventory full!' error message", async () => {
+      const state = createWorld("inventory-test")
+      state.player.skills.Combat = { level: 1, xp: 0 }
+      state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
+      state.player.equippedWeapon = "CRUDE_WEAPON"
+
+      // Setup a combat area with enemy
+      const areaId = getOreAreaId(state)
+      makeAreaKnown(state, areaId)
+      state.exploration.playerState.currentAreaId = areaId
+      state.world.enemies.push({
+        id: "test-enemy",
+        areaId,
+        fightTime: 3,
+        successProbability: 1,
+        requiredSkillLevel: 1,
+        lootTable: [{ itemId: "TEST_LOOT", quantity: 1, weight: 1 }],
+        failureAreaId: "TOWN",
+      })
+
+      // Fill inventory to exactly 20 slots (max capacity)
+      // Add 19 more items to reach capacity (already have 1 weapon)
+      for (let i = 0; i < 19; i++) {
+        state.player.inventory.push({ itemId: `filler_${i}`, quantity: 1 })
+      }
+
+      const log = await executeAction(state, {
+        type: "Fight",
+        enemyId: "test-enemy",
+      })
+
+      const formatted = formatActionLog(log)
+
+      // Should show user-friendly message
+      expect(formatted).toContain("✗ Inventory full!")
+      // Should NOT show action type or failure code
+      expect(formatted).not.toContain("Fight:")
+      expect(formatted).not.toContain("INVENTORY_FULL")
+    })
+
+    it("should show 'Already in that area!' error message", async () => {
+      const state = createWorld("area-test")
+
+      // Try to travel to current area (already in TOWN)
+      const log = await executeAction(state, {
+        type: "ExplorationTravel",
+        destinationAreaId: "TOWN",
+      })
+
+      const formatted = formatActionLog(log)
+
+      // Should show user-friendly message
+      expect(formatted).toContain("✗ Already in that area!")
+      // Should NOT show action type or failure code
+      expect(formatted).not.toContain("ExplorationTravel")
+      expect(formatted).not.toContain("ALREADY_IN_AREA")
+    })
+
     it("should include XP gain information when present", async () => {
       const state = createWorld("ore-test")
       await executeAction(state, { type: "Enrol", skill: "Mining" })
