@@ -49,12 +49,7 @@ No node IDs needed in display. Just show types: `Gathering: Ore vein, Tree stand
 - Calls `generateAreaLocations` with DIFFERENT RNG label `loc_mining_{area}`
 - Different labels = different rolls = locations created without nodes
 
-**Fix Options:**
-A) Use same RNG labels in both places (ensures consistency)
-B) Generate nodes lazily alongside locations in `ensureAreaGenerated`
-C) Only generate locations when nodes are also generated
-
-**Question for discussion:** Which approach?
+**Decision:** Single source of truth (option C). Remove `generateAreaLocations` from exploration.ts. Use `generateNodesForArea` from world.ts for all area content generation (gathering nodes+locations together, plus mob camps which don't need nodes). Call it lazily from `ensureAreaGenerated`.
 
 ### 6. Node Visibility Tiers (Design Doc Gap)
 **Status:** Not started
