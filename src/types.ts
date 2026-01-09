@@ -444,6 +444,7 @@ export type FailureType =
   | "ALREADY_AT_LOCATION"
   | "NOT_AT_HUB"
   | "ALREADY_AT_HUB"
+  | "NOT_AT_NODE_LOCATION"
   | "WRONG_GUILD_TYPE"
   | "GUILD_LEVEL_TOO_LOW"
 

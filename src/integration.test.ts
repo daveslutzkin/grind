@@ -57,6 +57,15 @@ function discoverAllLocations(state: WorldState, areaId: AreaID): void {
   }
 }
 
+/** Get the location ID for a node */
+function getNodeLocationId(nodeId: string, areaId: string): string {
+  const nodeIndexMatch = nodeId.match(/-node-(\d+)$/)
+  if (nodeIndexMatch) {
+    return `${areaId}-loc-${nodeIndexMatch[1]}`
+  }
+  return ""
+}
+
 describe("Integration: Full Session Flow", () => {
   it("should run a complete session with various actions", () => {
     const state = createWorld("integration-test-seed")
@@ -202,10 +211,12 @@ describe("Integration: Full Session Flow", () => {
     // Get a node from the area
     const mineNode = state.world.nodes.find((n) => n.areaId === oreAreaId)!
     const material = mineNode.materials[0]
+    const nodeLocationId = getNodeLocationId(mineNode.nodeId, oreAreaId)
 
-    // Valid plan: move to ore area, gather, move back
+    // Valid plan: move to ore area, travel to node location, gather, gather, leave, move back
     const validPlan: Action[] = [
       { type: "Move", destination: oreAreaId },
+      { type: "TravelToLocation", locationId: nodeLocationId },
       {
         type: "Gather",
         nodeId: mineNode.nodeId,
@@ -218,13 +229,14 @@ describe("Integration: Full Session Flow", () => {
         mode: GatherMode.FOCUS,
         focusMaterialId: material.materialId,
       },
+      { type: "Leave" },
       { type: "Move", destination: "TOWN" },
     ]
 
     const validResult = evaluatePlan(state, validPlan)
     expect(validResult.violations).toHaveLength(0)
-    // Move (0) + Gather FOCUS (5) + Gather FOCUS (5) + Move (0) = 10
-    expect(validResult.expectedTime).toBe(10)
+    // Move (0) + TravelToLocation (1) + Gather FOCUS (5) + Gather FOCUS (5) + Leave (1) + Move (0) = 12
+    expect(validResult.expectedTime).toBe(12)
 
     // Invalid plan: try to gather at wrong location
     const invalidPlan: Action[] = [
@@ -289,6 +301,7 @@ describe("Integration: Full Session Flow", () => {
       (n) => n.areaId === oreAreaId && n.nodeType === NodeType.ORE_VEIN
     )!
     const material = mineNode.materials[0]
+    const nodeLocationId = getNodeLocationId(mineNode.nodeId, oreAreaId)
 
     // Set skill levels based on material requirements (need enough to gather)
     const requiredMiningLevel = MATERIALS[material.materialId]?.requiredLevel ?? 1
@@ -309,9 +322,10 @@ describe("Integration: Full Session Flow", () => {
       failureAreaId: "TOWN",
     })
 
-    // Strategy 1: Pure gathering
+    // Strategy 1: Pure gathering (move to area, travel to node, gather 4 times)
     const gatherStrategy: Action[] = [
       { type: "Move", destination: oreAreaId },
+      { type: "TravelToLocation", locationId: nodeLocationId },
       {
         type: "Gather",
         nodeId: mineNode.nodeId,
@@ -350,10 +364,10 @@ describe("Integration: Full Session Flow", () => {
     const fightEval = evaluatePlan(state, fightStrategy)
 
     // We can compare strategies
-    // Gathering: Move (0) + 4 * Gather FOCUS (5) = 20 ticks, expected XP = 0 (Move) + 4*1 = 4
+    // Gathering: Move (0) + TravelToLocation (1) + 4 * Gather FOCUS (5) = 21 ticks, expected XP = 0 + 0 + 4*1 = 4
     // Fighting: Move (0) + 3 * Fight (3) = 9 ticks, expected XP = 0 (Move) + 3*0.7 = 2.1
 
-    expect(gatherEval.expectedTime).toBe(20)
+    expect(gatherEval.expectedTime).toBe(21)
     expect(gatherEval.expectedXP).toBeCloseTo(4)
 
     expect(fightEval.expectedTime).toBe(9)

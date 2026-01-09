@@ -19,8 +19,20 @@ function deepClone<T>(obj: T): T {
   if (obj instanceof Map) {
     return new Map(obj) as unknown as T
   }
+  // Convert Map to object before stringify, then restore after
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const objWithMap = obj as any
+  let areasArray: [string, unknown][] = []
+  if (objWithMap?.exploration?.areas instanceof Map) {
+    areasArray = Array.from(objWithMap.exploration.areas.entries())
+    objWithMap.exploration.areas = Object.fromEntries(areasArray)
+  }
   const cloned = JSON.parse(JSON.stringify(obj))
-  // Restore Map from object
+  // Restore the original object's Map
+  if (areasArray.length > 0) {
+    objWithMap.exploration.areas = new Map(areasArray)
+  }
+  // Restore Map in cloned object
   if (cloned.exploration?.areas && !(cloned.exploration.areas instanceof Map)) {
     const areasMap = new Map()
     for (const [key, value] of Object.entries(cloned.exploration.areas)) {
@@ -52,6 +64,8 @@ export function evaluateAction(state: WorldState, action: Action): ActionEvaluat
     case "Enrol":
     case "Survey":
     case "Explore":
+    case "TravelToLocation":
+    case "Leave":
       // These actions grant no XP (or XP is handled separately)
       expectedXP = 0
       break
@@ -161,6 +175,14 @@ function simulateAction(state: WorldState, action: Action): string | null {
     case "Explore":
       // These exploration actions are handled by the exploration system
       // For simulation, we just consume time (which was already done above)
+      break
+    case "TravelToLocation":
+      // Move within an area to a specific location
+      state.exploration.playerState.currentLocationId = action.locationId
+      break
+    case "Leave":
+      // Return to the area hub
+      state.exploration.playerState.currentLocationId = null
       break
   }
 

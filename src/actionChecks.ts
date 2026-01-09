@@ -302,6 +302,7 @@ function checkMultiMaterialGatherAction(
   }
 
   // Check if node's location has been discovered via Explore
+  // AND that player is currently at that location
   const nodeIndexMatch = node.nodeId.match(/-node-(\d+)$/)
   if (nodeIndexMatch) {
     const nodeIndex = nodeIndexMatch[1]
@@ -311,6 +312,16 @@ function checkMultiMaterialGatherAction(
       return {
         valid: false,
         failureType: "LOCATION_NOT_DISCOVERED",
+        timeCost: 0,
+        successProbability: 0,
+      }
+    }
+    // Player must be at the node's location to gather
+    const currentLocationId = getCurrentLocationId(state)
+    if (currentLocationId !== locationId) {
+      return {
+        valid: false,
+        failureType: "NOT_AT_NODE_LOCATION",
         timeCost: 0,
         successProbability: 0,
       }
@@ -673,7 +684,7 @@ export function checkAction(state: WorldState, action: Action): ActionCheckResul
       return checkTravelToLocationAction(state, action)
     case "Leave":
       return checkLeaveAction(state, action)
-    // Movement and exploration actions have their own validation in exploration.ts
+    // Movement and exploration actions have their own validation in exploration.ts/engine.ts
     case "Move":
     case "Survey":
     case "Explore":

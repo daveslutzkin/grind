@@ -3,7 +3,14 @@
  * Contains common types, command parsing, display formatting, and statistics
  */
 
-import type { Action, ActionLog, WorldState, SkillID, SkillState } from "./types.js"
+import type {
+  Action,
+  ActionLog,
+  WorldState,
+  SkillID,
+  SkillState,
+  ExplorationLocation,
+} from "./types.js"
 import {
   getTotalXP,
   getCurrentAreaId,
@@ -54,6 +61,8 @@ export interface ParseContext {
   currentLocationId?: string | null
   /** Whether to log parse errors to console */
   logErrors?: boolean
+  /** Full world state for context-aware command resolution (optional) */
+  state?: WorldState
 }
 
 /**
@@ -256,7 +265,34 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         return null
       }
 
-      // First, try to match against location display names (case-insensitive, partial match)
+      // First, check for gathering node types (move ore vein, move mining, etc.)
+      // Resolve to the actual location in the current area
+      const oreVeinAliases = ["ore vein", "ore", "mining", "mine"]
+      const treeStandAliases = ["tree stand", "tree", "woodcutting", "chop"]
+      if (oreVeinAliases.includes(inputName) || treeStandAliases.includes(inputName)) {
+        const skillType = oreVeinAliases.includes(inputName) ? "Mining" : "Woodcutting"
+        const currentAreaId = context.state?.exploration.playerState.currentAreaId
+        const area = context.state?.exploration.areas.get(currentAreaId ?? "")
+        const knownLocationIds = new Set(
+          context.state?.exploration.playerState.knownLocationIds ?? []
+        )
+        const matchingLocation = area?.locations.find(
+          (loc: ExplorationLocation) =>
+            loc.type === ExplorationLocationType.GATHERING_NODE &&
+            loc.gatheringSkillType === skillType &&
+            knownLocationIds.has(loc.id)
+        )
+        if (matchingLocation) {
+          return { type: "TravelToLocation", locationId: matchingLocation.id }
+        }
+        // No matching location found - let it fail at execution time with proper error
+        if (context.logErrors) {
+          console.log(`No discovered ${skillType.toLowerCase()} location in current area`)
+        }
+        return null
+      }
+
+      // Next, try to match against location display names (case-insensitive, partial match)
       const matchedLocation = Object.entries(LOCATION_DISPLAY_NAMES).find(([, displayName]) =>
         displayName.toLowerCase().includes(inputName)
       )
@@ -784,6 +820,7 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
     const action = parseAction(cmd, {
       knownAreaIds: Array.from(reachableAreas),
       currentLocationId: session.state.exploration.playerState.currentLocationId,
+      state: session.state,
     })
 
     if (!action) {
