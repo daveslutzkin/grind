@@ -241,8 +241,12 @@ function makePadInner(width: number): (s: string) => string {
 
 /**
  * Print help with available actions and current location info
+ * @param state - Current world state
+ * @param options.showHints - Whether to show contextual hints (default: true)
  */
-export function printHelp(state: WorldState): void {
+export function printHelp(state: WorldState, options?: { showHints?: boolean }): void {
+  const showHints = options?.showHints ?? true
+
   console.log("\n┌─────────────────────────────────────────────────────────────┐")
   console.log("│ AVAILABLE ACTIONS                                           │")
   console.log("├─────────────────────────────────────────────────────────────┤")
@@ -267,6 +271,8 @@ export function printHelp(state: WorldState): void {
   console.log("│ end                 - End session and show summary          │")
   console.log("│ quit                - Exit without summary                  │")
   console.log("└─────────────────────────────────────────────────────────────┘")
+
+  if (!showHints) return
 
   // Show what's available at current location (context-sensitive hints)
   const currentAreaId = getCurrentAreaId(state)

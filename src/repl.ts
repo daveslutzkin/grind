@@ -41,8 +41,8 @@ async function main(): Promise<void> {
     },
 
     onSessionStart: (state) => {
+      printHelp(state, { showHints: false })
       console.log(formatWorldState(state))
-      printHelp(state)
     },
 
     onActionComplete: (log, state) => {
