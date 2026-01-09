@@ -19,6 +19,7 @@ import {
   ExplorationLocationType,
 } from "./types.js"
 import { LOCATION_DISPLAY_NAMES, getSkillForGuildLocation } from "./world.js"
+import { getReachableAreas, getAreaDisplayName } from "./exploration.js"
 
 // Re-export agent formatters for unified display
 export { formatWorldState, formatActionLog } from "./agent/formatters.js"
@@ -181,6 +182,66 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
     case "survey": {
       // Discover new areas (connections)
       return { type: "Survey" }
+    }
+
+    case "fartravel":
+    case "far": {
+      // Far travel - multi-hop travel to any known reachable area
+      const inputName = parts.slice(1).join(" ").toLowerCase()
+      if (!inputName) {
+        // No destination - this will be handled as a meta command to show the list
+        return null
+      }
+
+      // Match against known area names (case-insensitive, prefix match)
+      if (context.state?.exploration) {
+        const knownAreaIds = context.state.exploration.playerState.knownAreaIds
+        const inputWithDashes = inputName.replace(/\s+/g, "-")
+
+        // Collect all matching areas
+        const exactMatches: string[] = []
+        const prefixMatches: string[] = []
+
+        for (const areaId of knownAreaIds) {
+          const area = context.state.exploration.areas.get(areaId)
+          if (area?.name) {
+            const areaNameLower = area.name.toLowerCase()
+            if (areaNameLower === inputName) {
+              exactMatches.push(areaId)
+            } else if (areaNameLower.startsWith(inputName)) {
+              prefixMatches.push(areaId)
+            }
+          }
+          // Also check raw area IDs
+          if (areaId.toLowerCase() === inputName || areaId.toLowerCase() === inputWithDashes) {
+            if (!exactMatches.includes(areaId)) exactMatches.push(areaId)
+          } else if (
+            areaId.toLowerCase().startsWith(inputName) ||
+            areaId.toLowerCase().startsWith(inputWithDashes)
+          ) {
+            if (!prefixMatches.includes(areaId)) prefixMatches.push(areaId)
+          }
+        }
+
+        // Prefer exact matches, then unique prefix matches
+        if (exactMatches.length === 1) {
+          return { type: "FarTravel", destinationAreaId: exactMatches[0] }
+        }
+        if (exactMatches.length === 0 && prefixMatches.length === 1) {
+          return { type: "FarTravel", destinationAreaId: prefixMatches[0] }
+        }
+        if (exactMatches.length > 1 || prefixMatches.length > 1) {
+          if (context.logErrors) {
+            console.log("Ambiguous destination - be more specific")
+          }
+          return null
+        }
+      }
+
+      if (context.logErrors) {
+        console.log("Unknown destination. Use 'fartravel' to see all reachable areas.")
+      }
+      return null
     }
 
     case "fight": {
@@ -387,7 +448,8 @@ export function printHelp(state: WorldState, options?: { showHints?: boolean }):
   console.log("├─────────────────────────────────────────────────────────────┤")
   console.log("│ enrol <skill>       - Enrol in guild (Exploration first!)   │")
   console.log("│ survey              - Discover new areas (connections)      │")
-  console.log("│ goto <dest>         - Travel to location or area            │")
+  console.log("│ goto <dest>         - Travel to directly connected area     │")
+  console.log("│ fartravel [dest]    - Multi-hop travel to any known area    │")
   console.log("│ leave               - Leave location, return to hub         │")
   console.log("│ explore             - Discover nodes in current area        │")
   console.log("│ gather <node> focus <mat>  - Focus on one material          │")
@@ -838,6 +900,29 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
       if (result === "quit") {
         showSummary = false
         break
+      }
+      continue
+    }
+
+    // Handle fartravel with no args - show list of reachable areas
+    if (trimmedCmd === "fartravel" || trimmedCmd === "far") {
+      const reachable = getReachableAreas(session.state)
+      if (reachable.length === 0) {
+        console.log("\nNo reachable areas from current location.")
+      } else {
+        console.log("\n┌─────────────────────────────────────────────────────────────┐")
+        console.log("│ FAR TRAVEL - Reachable Areas                                │")
+        console.log("├─────────────────────────────────────────────────────────────┤")
+        for (const { areaId, travelTime, hops } of reachable) {
+          const area = session.state.exploration.areas.get(areaId)
+          const displayName = getAreaDisplayName(areaId, area)
+          const hopStr = hops === 1 ? "1 hop" : `${hops} hops`
+          console.log(
+            `│ ${displayName.padEnd(35)} ${String(travelTime).padStart(4)}t (${hopStr.padStart(7)}) │`
+          )
+        }
+        console.log("└─────────────────────────────────────────────────────────────┘")
+        console.log("\nUsage: fartravel <area name>")
       }
       continue
     }

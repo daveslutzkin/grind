@@ -29,6 +29,7 @@ import {
   executeSurvey,
   executeExplore,
   executeExplorationTravel,
+  executeFarTravel,
   grantExplorationGuildBenefits,
   getAreaDisplayName,
 } from "./exploration.js"
@@ -144,6 +145,8 @@ export async function executeAction(state: WorldState, action: Action): Promise<
       return executeExplore(state, action)
     case "ExplorationTravel":
       return executeExplorationTravel(state, action)
+    case "FarTravel":
+      return executeFarTravel(state, action)
     case "TravelToLocation":
       return executeTravelToLocation(state, action)
     case "Leave":

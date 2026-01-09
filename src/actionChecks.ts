@@ -689,6 +689,7 @@ export function checkAction(state: WorldState, action: Action): ActionCheckResul
     case "Survey":
     case "Explore":
     case "ExplorationTravel":
+    case "FarTravel":
       return { valid: true, timeCost: 0, successProbability: 1 }
   }
 }

@@ -279,6 +279,7 @@ export type ActionType =
   | "Survey"
   | "Explore"
   | "ExplorationTravel"
+  | "FarTravel" // Multi-hop travel to any known reachable area
   | "TravelToLocation"
   | "Leave"
 
@@ -376,6 +377,16 @@ export interface ExplorationTravelAction {
 }
 
 /**
+ * Far travel action - multi-hop travel to any known reachable area
+ * Uses shortest path routing through known connections
+ */
+export interface FarTravelAction {
+  type: "FarTravel"
+  destinationAreaId: AreaID
+  scavenge?: boolean // If true, 2x travel time but chance to find resources
+}
+
+/**
  * Travel to a location within the current area
  */
 export interface TravelToLocationAction {
@@ -406,6 +417,7 @@ export type Action =
   | SurveyAction
   | ExploreAction
   | ExplorationTravelAction
+  | FarTravelAction
   | TravelToLocationAction
   | LeaveAction
 
