@@ -92,6 +92,8 @@ Gathering: Ore vein
 **Status:** Pending
 **Description:** D2 node shows "COPPER_ORE ✓" but gathering fails with INSUFFICIENT_SKILL because d2 requires Mining L5. The checkmark implies gatherable but doesn't account for location access requirements.
 
+**Decision:** Show node as locked without listing materials: `Ore Vein 🔒 (Mining L5)`. Don't tease with specific materials you can't access yet.
+
 ### 10. Require move to node location before gathering
 **Status:** Pending
 **Description:** Currently can gather from hub (Clearing) without moving to the node's specific location. Should require `move area-d1-i0-loc-0` before gathering from that node.
