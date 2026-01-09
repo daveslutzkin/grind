@@ -8,7 +8,9 @@ Based on a 24-action adaptive agent test run and comparison with design docs.
 
 ### 1. "Top 0%" Luck Display
 **Status:** Not started
-**Description:** When luck is extremely good, display shows "Top 0%" which is mathematically awkward. Should show "Top <1%" or similar.
+**Description:** When luck is extremely good, display shows "Top 0%" which is mathematically awkward.
+
+**Decision:** Floor to "Top 1%" for anything under 1%, with description "exceptionally lucky" (instead of "very lucky"). The percentile stays as a percentile, the description upgrades for extreme cases.
 
 ### 2. Node ID Display in Gathering Output
 **Status:** Not started
