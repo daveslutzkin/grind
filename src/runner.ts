@@ -697,8 +697,17 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
     }
 
     // Parse the action
+    // Include both visited areas and reachable areas (via known connections)
+    const currentArea = session.state.exploration.playerState.currentAreaId
+    const reachableAreas = new Set(session.state.exploration.playerState.knownAreaIds)
+    for (const connId of session.state.exploration.playerState.knownConnectionIds) {
+      const [from, to] = connId.split("->")
+      if (from === currentArea) reachableAreas.add(to)
+      if (to === currentArea) reachableAreas.add(from)
+    }
+
     const action = parseAction(cmd, {
-      knownAreaIds: session.state.exploration.playerState.knownAreaIds,
+      knownAreaIds: Array.from(reachableAreas),
       currentLocationId: session.state.exploration.playerState.currentLocationId,
     })
 
