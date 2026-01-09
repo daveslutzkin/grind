@@ -1324,6 +1324,7 @@ export function executeExplorationTravel(
   // Consume time and move
   consumeTime(state, travelTime)
   exploration.playerState.currentAreaId = destinationAreaId
+  exploration.playerState.currentLocationId = null // Arrive at hub (clearing)
 
   // Ensure destination area is fully generated (content + connections)
   const destArea = exploration.areas.get(destinationAreaId)!
