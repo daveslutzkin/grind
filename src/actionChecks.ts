@@ -12,12 +12,22 @@ import type {
   DropAction,
   GuildEnrolmentAction,
   TurnInCombatTokenAction,
+  TravelToLocationAction,
+  LeaveAction,
   FailureType,
   ItemStack,
   Node,
   GatheringSkillID,
+  ExplorationLocation,
 } from "./types.js"
-import { GatherMode, getCurrentAreaId } from "./types.js"
+import {
+  GatherMode,
+  getCurrentAreaId,
+  getCurrentLocationId,
+  isInTown,
+  ExplorationLocationType,
+} from "./types.js"
+import { getGuildLocationForSkill } from "./world.js"
 
 /**
  * Result of checking action preconditions
@@ -97,6 +107,41 @@ export function canFitItems(
 }
 
 /**
+ * Get a location from the current area by ID
+ */
+export function getLocationInCurrentArea(
+  state: WorldState,
+  locationId: string
+): ExplorationLocation | undefined {
+  const currentAreaId = getCurrentAreaId(state)
+  const area = state.exploration.areas.get(currentAreaId)
+  return area?.locations.find((loc) => loc.id === locationId)
+}
+
+/**
+ * Get the current location object (or undefined if at hub/null)
+ */
+export function getCurrentLocation(state: WorldState): ExplorationLocation | undefined {
+  const locationId = getCurrentLocationId(state)
+  if (locationId === null) return undefined
+  return getLocationInCurrentArea(state, locationId)
+}
+
+/**
+ * Check if player is at a guild hall of a specific type
+ */
+export function isAtGuildHallOfType(
+  state: WorldState,
+  guildType: string
+): { at: boolean; location?: ExplorationLocation } {
+  const location = getCurrentLocation(state)
+  if (!location) return { at: false }
+  if (location.type !== ExplorationLocationType.GUILD_HALL) return { at: false }
+  if (location.guildType !== guildType) return { at: false }
+  return { at: true, location }
+}
+
+/**
  * Check AcceptContract action preconditions
  */
 export function checkAcceptContractAction(
@@ -109,8 +154,22 @@ export function checkAcceptContractAction(
     return { valid: false, failureType: "CONTRACT_NOT_FOUND", timeCost: 0, successProbability: 0 }
   }
 
-  if (getCurrentAreaId(state) !== contract.guildAreaId) {
+  // Must be at the specific location where this contract is offered
+  if (getCurrentLocationId(state) !== contract.acceptLocationId) {
     return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
+  }
+
+  // Check guild hall level meets contract level
+  const location = getCurrentLocation(state)
+  if (location?.type === ExplorationLocationType.GUILD_HALL) {
+    if (location.guildLevel !== undefined && location.guildLevel < contract.level) {
+      return {
+        valid: false,
+        failureType: "GUILD_LEVEL_TOO_LOW",
+        timeCost: 0,
+        successProbability: 0,
+      }
+    }
   }
 
   if (state.player.activeContracts.includes(action.contractId)) {
@@ -389,11 +448,20 @@ export function checkCraftAction(state: WorldState, action: CraftAction): Action
     return { valid: false, failureType: "RECIPE_NOT_FOUND", timeCost: 0, successProbability: 0 }
   }
 
-  if (getCurrentAreaId(state) !== recipe.requiredAreaId) {
-    return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
+  // Must be at a guild hall of the correct type
+  const { at, location } = isAtGuildHallOfType(state, recipe.guildType)
+  if (!at) {
+    return { valid: false, failureType: "WRONG_GUILD_TYPE", timeCost: 0, successProbability: 0 }
   }
 
-  if (state.player.skills.Smithing.level < recipe.requiredSkillLevel) {
+  // Check guild hall level meets recipe level
+  if (location?.guildLevel !== undefined && location.guildLevel < recipe.requiredSkillLevel) {
+    return { valid: false, failureType: "GUILD_LEVEL_TOO_LOW", timeCost: 0, successProbability: 0 }
+  }
+
+  // Check player has required skill level
+  const skillLevel = state.player.skills[recipe.guildType]?.level ?? 0
+  if (skillLevel < recipe.requiredSkillLevel) {
     return { valid: false, failureType: "INSUFFICIENT_SKILL", timeCost: 0, successProbability: 0 }
   }
 
@@ -414,9 +482,12 @@ export function checkCraftAction(state: WorldState, action: CraftAction): Action
 /**
  * Check Store action preconditions
  * Store is a free action (0 ticks, no skill required)
+ * Must be at the warehouse location
  */
 export function checkStoreAction(state: WorldState, action: StoreAction): ActionCheckResult {
-  if (getCurrentAreaId(state) !== state.world.storageAreaId) {
+  // Must be at a warehouse location
+  const location = getCurrentLocation(state)
+  if (!location || location.type !== ExplorationLocationType.WAREHOUSE) {
     return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
   }
 
@@ -460,7 +531,9 @@ export function checkGuildEnrolmentAction(
 ): ActionCheckResult {
   const enrolTime = 3
 
-  if (getCurrentAreaId(state) !== "TOWN") {
+  // Must be at the correct guild hall for this skill
+  const requiredLocation = getGuildLocationForSkill(action.skill)
+  if (getCurrentLocationId(state) !== requiredLocation) {
     return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
   }
 
@@ -480,14 +553,15 @@ export function checkGuildEnrolmentAction(
 
 /**
  * Check TurnInCombatToken action preconditions
- * Cost: 0 ticks, requires being at TOWN (Combat Guild) and having COMBAT_GUILD_TOKEN
+ * Cost: 0 ticks, requires being at Combat Guild and having COMBAT_GUILD_TOKEN
  */
 export function checkTurnInCombatTokenAction(
   state: WorldState,
   _action: TurnInCombatTokenAction
 ): ActionCheckResult {
-  // Must be at Combat Guild (TOWN)
-  if (getCurrentAreaId(state) !== "TOWN") {
+  // Must be at Combat Guild
+  const requiredLocation = getGuildLocationForSkill("Combat")
+  if (getCurrentLocationId(state) !== requiredLocation) {
     return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
   }
 
@@ -498,6 +572,76 @@ export function checkTurnInCombatTokenAction(
   }
 
   return { valid: true, timeCost: 0, successProbability: 1 }
+}
+
+/**
+ * Check TravelToLocation action preconditions
+ * Cost: 0 ticks in town, 1 tick in wilderness
+ * Must be at hub (currentLocationId = null)
+ */
+export function checkTravelToLocationAction(
+  state: WorldState,
+  action: TravelToLocationAction
+): ActionCheckResult {
+  const currentAreaId = getCurrentAreaId(state)
+  const currentLocationId = getCurrentLocationId(state)
+
+  // Can't travel to current location (more specific error first)
+  if (action.locationId === currentLocationId) {
+    return { valid: false, failureType: "ALREADY_AT_LOCATION", timeCost: 0, successProbability: 0 }
+  }
+
+  // Must be at hub (null) to travel to a location
+  if (currentLocationId !== null) {
+    return { valid: false, failureType: "NOT_AT_HUB", timeCost: 0, successProbability: 0 }
+  }
+
+  // Location must exist in current area
+  const area = state.exploration.areas.get(currentAreaId)
+  const location = area?.locations.find((loc) => loc.id === action.locationId)
+  if (!location) {
+    return {
+      valid: false,
+      failureType: "LOCATION_NOT_DISCOVERED",
+      timeCost: 0,
+      successProbability: 0,
+    }
+  }
+
+  // Location must be discovered (known)
+  const knownLocationIds = state.exploration.playerState.knownLocationIds
+  if (!knownLocationIds.includes(action.locationId)) {
+    return {
+      valid: false,
+      failureType: "LOCATION_NOT_DISCOVERED",
+      timeCost: 0,
+      successProbability: 0,
+    }
+  }
+
+  // Time cost: 0 in town, 1 in wilderness
+  const timeCost = isInTown(state) ? 0 : 1
+
+  return { valid: true, timeCost, successProbability: 1 }
+}
+
+/**
+ * Check Leave action preconditions
+ * Cost: 0 ticks in town, 1 tick in wilderness
+ * Must be at a location (not at hub)
+ */
+export function checkLeaveAction(state: WorldState, _action: LeaveAction): ActionCheckResult {
+  const currentLocationId = getCurrentLocationId(state)
+
+  // Must be at a location (not at hub)
+  if (currentLocationId === null) {
+    return { valid: false, failureType: "ALREADY_AT_HUB", timeCost: 0, successProbability: 0 }
+  }
+
+  // Time cost: 0 in town, 1 in wilderness
+  const timeCost = isInTown(state) ? 0 : 1
+
+  return { valid: true, timeCost, successProbability: 1 }
 }
 
 /**
@@ -521,6 +665,10 @@ export function checkAction(state: WorldState, action: Action): ActionCheckResul
       return checkGuildEnrolmentAction(state, action)
     case "TurnInCombatToken":
       return checkTurnInCombatTokenAction(state, action)
+    case "TravelToLocation":
+      return checkTravelToLocationAction(state, action)
+    case "Leave":
+      return checkLeaveAction(state, action)
     // Movement and exploration actions have their own validation in exploration.ts
     case "Move":
     case "Survey":

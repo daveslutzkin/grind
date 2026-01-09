@@ -30,16 +30,105 @@ Areas are discrete regions of the world at a given distance from town.
 Locations are discoverable points of interest within an area.
 
 Location types:
-- **Gathering nodes**: One roll per gathering skill type (mining node, fishing spot, herb patch, etc.)
-- **Mob camps**: Typed by creature, difficulty = area distance ± 3 (normally distributed around 0)
-- **Places**: Future feature (stub for now)
-- **People**: Future feature, always within places (stub for now)
+- **GATHERING_NODE**: Resource extraction points (mining nodes, tree stands, etc.)
+- **MOB_CAMP**: Combat encounters, typed by creature, difficulty = area distance ± 3 (normally distributed around 0)
+- **GUILD_HALL**: Guild buildings for enrolment, contracts, and crafting
+- **WAREHOUSE**: Storage facilities
 
 Location generation:
 - Each potential location type rolls independently for existence
 - No cap on locations per area
 - Most rolls fail, so most areas are naturally sparse
 - "Many areas have nothing, and that's ok"
+
+#### Location-Based Actions
+
+Actions require being at specific locations. Players must travel to a location within an area before performing location-specific actions.
+
+**The null location (area hub)**:
+- `currentLocationId = null` means "in the area but not at a specific location"
+- In town, this is displayed as **Town Square**
+- In wilderness, this is the **Clearing** (entry point to the area)
+- Arriving in an area places you at null
+- Inter-area travel requires being at null first
+
+**Movement within areas**:
+- **Town**: Free movement (0 ticks) between locations
+- **Wilderness**: 1 tick to travel between locations
+- **Leave action**: Returns to null from any location (free in town, 1 tick in wilderness)
+- **TravelToLocation action**: Move from null to a specific location (free in town, 1 tick in wilderness)
+
+**Town structure** (all locations known from start):
+
+| Location | Type | Actions Available |
+|----------|------|-------------------|
+| Town Square (null) | — | Travel to other areas, travel to town locations, view connections |
+| Miners Guild | GUILD_HALL | Enrol (Mining), accept/turn-in mining contracts |
+| Foresters Guild | GUILD_HALL | Enrol (Woodcutting), accept/turn-in woodcutting contracts |
+| Combat Guild | GUILD_HALL | Enrol (Combat), accept/turn-in combat contracts, turn in combat tokens |
+| Smithing Guild | GUILD_HALL | Enrol (Smithing), craft smithing recipes, accept/turn-in smithing contracts |
+| Woodcrafters Guild | GUILD_HALL | Enrol (Woodcrafting), craft woodcrafting recipes, accept/turn-in woodcrafting contracts |
+| Explorers Guild | GUILD_HALL | Enrol (Exploration), accept/turn-in exploration contracts |
+| Warehouse | WAREHOUSE | Store items |
+
+**Wilderness structure**:
+
+| Location | Type | Actions Available |
+|----------|------|-------------------|
+| Clearing (null) | — | Travel to other areas, travel to locations, Survey, Explore, view connections |
+| Gathering node | GATHERING_NODE | Gather, Appraise |
+| Mob camp | MOB_CAMP | Fight |
+| Guild outpost | GUILD_HALL | Same as town guild halls (with level cap) |
+
+**Actions available anywhere**:
+- Drop items
+- Leave (return to null)
+- Travel to location (from null)
+
+#### Guild Halls
+
+Guild halls are locations affiliated with a specific guild (skill). They exist in town and can appear as outposts in wilderness areas.
+
+**Properties**:
+```
+guildType: SkillID     // Which guild this belongs to (Mining, Smithing, etc.)
+level: number          // Maximum contract/recipe level supported here
+```
+
+**Guild hall level**:
+- Town guild halls have high level caps (e.g., 100)
+- Wilderness outposts have lower caps (e.g., level 10-30 depending on distance)
+- Contracts and recipes are only available if their level ≤ guild hall level
+
+**One guild per location**: Each location belongs to exactly one guild. An outpost area with multiple guilds would have multiple GUILD_HALL locations.
+
+#### Contracts and Locations
+
+**Accepting contracts**:
+- Contracts specify an `acceptLocationId` — the specific guild hall where they can be accepted
+- Different guild halls (town vs. outposts) offer different contracts
+- Contract availability also gated by guild hall level
+
+**Turning in contracts**:
+- Can be turned in at ANY guild hall of the matching `guildType`
+- Encourages field turn-ins at outposts when convenient
+- Still requires having the required items
+
+**Contract level**: Contracts have a `level` field (derived from requirements during generation). Only available at guild halls with `guildHall.level >= contract.level`.
+
+#### Recipes and Locations
+
+**Crafting requirements**:
+- Must be at a GUILD_HALL of the matching `guildType`
+- Guild hall must have sufficient level: `guildHall.level >= recipe.requiredSkillLevel`
+- Player must have the required skill level
+
+**Recipe visibility**:
+- At a guild hall, see recipes within 3 levels of your current skill level
+- Higher-level recipes are hidden, but count is shown (e.g., "12 more recipes at higher levels")
+- Encourages leveling to discover new recipes
+
+**Recipe guildType**: Replaces `requiredAreaId`. Recipes specify which guild type can craft them (Smithing, Woodcrafting).
 
 #### Node Visibility
 

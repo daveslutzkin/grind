@@ -4,7 +4,14 @@
  */
 
 import type { Action, ActionLog, WorldState, SkillID, SkillState } from "./types.js"
-import { getTotalXP, getCurrentAreaId, GatherMode } from "./types.js"
+import {
+  getTotalXP,
+  getCurrentAreaId,
+  getCurrentLocationId,
+  GatherMode,
+  ExplorationLocationType,
+} from "./types.js"
+import { LOCATION_DISPLAY_NAMES, getSkillForGuildLocation } from "./world.js"
 
 // Re-export agent formatters for unified display
 export { formatWorldState, formatActionLog } from "./agent/formatters.js"
@@ -43,6 +50,8 @@ const SKILL_MAP: Record<string, EnrolSkill> = {
 export interface ParseContext {
   /** Known area IDs for area name matching (optional) */
   knownAreaIds?: string[]
+  /** Current location ID for context-aware commands (optional) */
+  currentLocationId?: string | null
   /** Whether to log parse errors to console */
   logErrors?: boolean
 }
@@ -56,33 +65,6 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
   const cmd = parts[0]
 
   switch (cmd) {
-    case "move": {
-      const dest = parts[1]
-      if (!dest) {
-        if (context.logErrors) {
-          const areas = context.knownAreaIds?.join(", ") || "?"
-          console.log(`Usage: move <area>  (known areas: ${areas})`)
-        }
-        return null
-      }
-      // If we have known areas, try to match (case-insensitive)
-      if (context.knownAreaIds) {
-        const matchedArea = context.knownAreaIds.find(
-          (a) =>
-            a.toLowerCase() === dest.toLowerCase() || a.toLowerCase().startsWith(dest.toLowerCase())
-        )
-        if (!matchedArea) {
-          if (context.logErrors) {
-            console.log(`Usage: move <area>  (known areas: ${context.knownAreaIds.join(", ")})`)
-          }
-          return null
-        }
-        return { type: "ExplorationTravel", destinationAreaId: matchedArea }
-      }
-      // No area list - pass through as-is (preserve case)
-      return { type: "ExplorationTravel", destinationAreaId: dest }
-    }
-
     case "gather": {
       const nodeId = parts[1]
       const modeName = parts[2]?.toLowerCase()
@@ -177,6 +159,11 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
     case "enroll": {
       const skillName = parts[1]
       if (!skillName) {
+        // Auto-detect skill from current guild hall location
+        const guildSkill = getSkillForGuildLocation(context.currentLocationId ?? null)
+        if (guildSkill) {
+          return { type: "Enrol", skill: guildSkill }
+        }
         if (context.logErrors) {
           console.log("Usage: enrol <skill>  (Exploration, Mining, Woodcutting, Combat, Smithing)")
         }
@@ -190,6 +177,51 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         return null
       }
       return { type: "Enrol", skill }
+    }
+
+    case "goto":
+    case "go":
+    case "move":
+    case "travel": {
+      // Unified travel command - works for both locations and areas
+      const inputName = parts.slice(1).join(" ").toLowerCase()
+      if (!inputName) {
+        if (context.logErrors) console.log("Usage: goto <destination>  (location or area)")
+        return null
+      }
+
+      // First, try to match against location display names (case-insensitive, partial match)
+      const matchedLocation = Object.entries(LOCATION_DISPLAY_NAMES).find(([, displayName]) =>
+        displayName.toLowerCase().includes(inputName)
+      )
+      if (matchedLocation) {
+        return { type: "TravelToLocation", locationId: matchedLocation[0] }
+      }
+
+      // Next, check if it matches a known area (for inter-area travel)
+      // Be strict: only match if input equals area name or area name starts with input
+      if (context.knownAreaIds) {
+        const inputWithDashes = inputName.replace(/\s+/g, "-")
+        const matchedArea = context.knownAreaIds.find(
+          (a) =>
+            a.toLowerCase() === inputName ||
+            a.toLowerCase() === inputWithDashes ||
+            a.toLowerCase().startsWith(inputName) ||
+            a.toLowerCase().startsWith(inputWithDashes)
+        )
+        if (matchedArea) {
+          return { type: "ExplorationTravel", destinationAreaId: matchedArea }
+        }
+      }
+
+      // Fall back: try as location ID (uppercase with underscores)
+      const locationId = parts.slice(1).join("_").toUpperCase()
+      return { type: "TravelToLocation", locationId }
+    }
+
+    case "leave": {
+      // Leave current location, return to hub
+      return { type: "Leave" }
     }
 
     default:
@@ -207,23 +239,28 @@ function makePadInner(width: number): (s: string) => string {
 
 /**
  * Print help with available actions and current location info
+ * @param state - Current world state
+ * @param options.showHints - Whether to show contextual hints (default: true)
  */
-export function printHelp(state: WorldState): void {
+export function printHelp(state: WorldState, options?: { showHints?: boolean }): void {
+  const showHints = options?.showHints ?? true
+
   console.log("\n┌─────────────────────────────────────────────────────────────┐")
   console.log("│ AVAILABLE ACTIONS                                           │")
   console.log("├─────────────────────────────────────────────────────────────┤")
   console.log("│ enrol <skill>       - Enrol in guild (Exploration first!)   │")
   console.log("│ survey              - Discover new areas (connections)      │")
-  console.log("│ move <area>         - Travel to a known area                │")
+  console.log("│ goto <dest>         - Travel to location or area            │")
+  console.log("│ leave               - Leave location, return to hub         │")
   console.log("│ explore             - Discover nodes in current area        │")
-  console.log("│ gather <node> focus <mat>  - Focus on one material           │")
+  console.log("│ gather <node> focus <mat>  - Focus on one material          │")
   console.log("│ gather <node> careful      - Carefully extract all          │")
   console.log("│ gather <node> appraise     - Inspect node contents          │")
   console.log("│ fight <enemy>       - Fight an enemy at current area        │")
-  console.log("│ craft <recipe>      - Craft with a recipe at TOWN           │")
-  console.log("│ store <item> <qty>  - Store items at TOWN                   │")
+  console.log("│ craft <recipe>      - Craft at guild hall                   │")
+  console.log("│ store <item> <qty>  - Store items at warehouse              │")
   console.log("│ drop <item> <qty>   - Drop items                            │")
-  console.log("│ accept <contract>   - Accept a contract                     │")
+  console.log("│ accept <contract>   - Accept a contract at guild            │")
   console.log("├─────────────────────────────────────────────────────────────┤")
   console.log("│ state               - Show current world state              │")
   console.log("│ world               - Show world data (nodes, enemies, etc) │")
@@ -232,19 +269,43 @@ export function printHelp(state: WorldState): void {
   console.log("│ quit                - Exit without summary                  │")
   console.log("└─────────────────────────────────────────────────────────────┘")
 
-  // Show what's available at current location
+  if (!showHints) return
+
+  // Show what's available at current location (context-sensitive hints)
   const currentAreaId = getCurrentAreaId(state)
-  console.log(`\nAt ${currentAreaId}:`)
+  const currentLocationId = getCurrentLocationId(state)
+  const area = state.exploration.areas.get(currentAreaId)
+  const currentLocation = area?.locations.find((loc) => loc.id === currentLocationId)
+
   const nodes = state.world.nodes.filter((n) => n.areaId === currentAreaId)
   const enemies = state.world.enemies.filter((e) => e.areaId === currentAreaId)
-  const recipes = state.world.recipes.filter((r) => r.requiredAreaId === currentAreaId)
-  const contracts = state.world.contracts.filter((c) => c.guildAreaId === currentAreaId)
 
-  if (nodes.length > 0) console.log(`  Nodes: ${nodes.map((n) => n.nodeId).join(", ")}`)
-  if (enemies.length > 0) console.log(`  Enemies: ${enemies.map((e) => e.id).join(", ")}`)
-  if (recipes.length > 0) console.log(`  Recipes: ${recipes.map((r) => r.id).join(", ")}`)
-  if (contracts.length > 0) console.log(`  Contracts: ${contracts.map((c) => c.id).join(", ")}`)
-  if (currentAreaId === state.world.storageAreaId) console.log(`  Storage available`)
+  // Recipes only shown at guild halls of matching type
+  const isAtGuildHall =
+    currentLocation?.type === ExplorationLocationType.GUILD_HALL && currentLocation.guildType
+  const recipes = isAtGuildHall
+    ? state.world.recipes.filter((r) => r.guildType === currentLocation.guildType)
+    : []
+
+  // Contracts shown at their accept location
+  const contracts = state.world.contracts.filter((c) => c.acceptLocationId === currentLocationId)
+
+  // Only show hints section if there's something relevant
+  const hasHints =
+    nodes.length > 0 ||
+    enemies.length > 0 ||
+    recipes.length > 0 ||
+    contracts.length > 0 ||
+    currentAreaId === state.world.storageAreaId
+
+  if (hasHints) {
+    console.log("\nAvailable here:")
+    if (nodes.length > 0) console.log(`  Nodes: ${nodes.map((n) => n.nodeId).join(", ")}`)
+    if (enemies.length > 0) console.log(`  Enemies: ${enemies.map((e) => e.id).join(", ")}`)
+    if (recipes.length > 0) console.log(`  Recipes: ${recipes.map((r) => r.id).join(", ")}`)
+    if (contracts.length > 0) console.log(`  Contracts: ${contracts.map((c) => c.id).join(", ")}`)
+    if (currentAreaId === state.world.storageAreaId) console.log(`  Storage available`)
+  }
 }
 
 // ============================================================================
@@ -597,6 +658,9 @@ export interface RunnerConfig {
   /** Called when a command cannot be parsed. Return 'exit' to stop, 'continue' to keep going. */
   onInvalidCommand: (cmd: string) => "continue" | "exit"
 
+  /** Optional: called once at session start with initial state */
+  onSessionStart?: (state: WorldState) => void
+
   /** Optional meta-commands (e.g., help, state, quit). Return action to take. */
   metaCommands?: Record<string, (state: WorldState) => MetaCommandResult>
 
@@ -611,6 +675,9 @@ export interface RunnerConfig {
 export async function runSession(seed: string, config: RunnerConfig): Promise<void> {
   const session = createSession({ seed, createWorld })
   let showSummary = true
+
+  // Call onSessionStart hook if provided
+  config.onSessionStart?.(session.state)
 
   while (session.state.time.sessionRemainingTicks > 0) {
     const cmd = await config.getNextCommand()
@@ -630,8 +697,18 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
     }
 
     // Parse the action
+    // Include both visited areas and reachable areas (via known connections)
+    const currentArea = session.state.exploration.playerState.currentAreaId
+    const reachableAreas = new Set(session.state.exploration.playerState.knownAreaIds)
+    for (const connId of session.state.exploration.playerState.knownConnectionIds) {
+      const [from, to] = connId.split("->")
+      if (from === currentArea) reachableAreas.add(to)
+      if (to === currentArea) reachableAreas.add(from)
+    }
+
     const action = parseAction(cmd, {
-      knownAreaIds: session.state.exploration.playerState.knownAreaIds,
+      knownAreaIds: Array.from(reachableAreas),
+      currentLocationId: session.state.exploration.playerState.currentLocationId,
     })
 
     if (!action) {

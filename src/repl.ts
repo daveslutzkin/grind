@@ -34,21 +34,19 @@ async function main(): Promise<void> {
   const seed = process.argv[2] || `session-${Date.now()}`
   console.log(`\nSeed: ${seed}`)
 
-  // Track state for initial display and beforeAction hook
-  let currentState: WorldState | null = null
-
   await runSession(seed, {
     getNextCommand: async () => {
-      // Show initial state on first prompt
-      if (currentState) {
-        // Already shown after each action
-      }
       const input = await prompt("\n> ")
       return input.trim() || null
     },
 
+    onSessionStart: (state) => {
+      printHelp(state, { showHints: false })
+      console.log("")
+      console.log(formatWorldState(state))
+    },
+
     onActionComplete: (log, state) => {
-      currentState = state
       console.log(formatActionLog(log, state))
       console.log(formatWorldState(state))
     },
@@ -107,7 +105,6 @@ async function main(): Promise<void> {
     },
 
     beforeAction: (action, state) => {
-      currentState = state
       const eval_ = evaluateAction(state, action)
       if (eval_.successProbability === 0) {
         console.log("⚠ This action will fail (preconditions not met)")
@@ -118,12 +115,7 @@ async function main(): Promise<void> {
   })
 }
 
-// Show initial state and help before starting the loop
 async function start(): Promise<void> {
-  // We need to show initial state before the first prompt
-  // This is a bit awkward with the current runSession API
-  // For now, we'll handle it by showing help on first "help" command
-  console.log("\nType 'help' for available commands, or start with 'enrol exploration'\n")
   await main()
 }
 

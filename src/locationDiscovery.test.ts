@@ -74,8 +74,11 @@ describe("Location Discovery", () => {
       const areaNodes = state.world.nodes.filter((n) => n.areaId === oreAreaId)
       expect(areaNodes.length).toBeGreaterThan(0)
 
-      // But locations are NOT discovered yet
-      expect(state.exploration.playerState.knownLocationIds.length).toBe(0)
+      // Wilderness locations are NOT discovered yet (town locations are known from start)
+      const wildernessLocations = state.exploration.playerState.knownLocationIds.filter(
+        (id) => !id.startsWith("TOWN")
+      )
+      expect(wildernessLocations.length).toBe(0)
 
       // Format state should NOT show resource nodes (shows unexplored instead)
       const formatted = formatWorldState(state)

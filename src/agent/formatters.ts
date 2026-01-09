@@ -1,6 +1,6 @@
 import type { WorldState, ActionLog } from "../types.js"
-import { getCurrentAreaId } from "../types.js"
-import { getUnlockedModes, getNextModeUnlock } from "../actionChecks.js"
+import { getCurrentAreaId, getCurrentLocationId, ExplorationLocationType } from "../types.js"
+import { getUnlockedModes, getNextModeUnlock, getCurrentLocation } from "../actionChecks.js"
 import {
   getPlayerNodeView,
   getNodeTypeName,
@@ -65,22 +65,28 @@ export function formatWorldState(state: WorldState): string {
     lines.push(`Active: ${contracts}`)
   }
 
-  // Recipes - compact (location-specific but useful for player)
-  const recipes = state.world.recipes.filter((r) => r.requiredAreaId === currentArea)
+  // Recipes - only show when at a guild hall of matching type
+  const currentLocationId = getCurrentLocationId(state)
+  const currentLocation = getCurrentLocation(state)
+  const isAtGuildHall =
+    currentLocation?.type === ExplorationLocationType.GUILD_HALL && currentLocation.guildType
+  const recipes = isAtGuildHall
+    ? state.world.recipes.filter((r) => r.guildType === currentLocation.guildType)
+    : []
   if (recipes.length > 0) {
     const recipeStr = recipes
       .map((r) => {
         const inputs = r.inputs.map((i) => `${i.quantity} ${i.itemId}`).join("+")
         const id = r.id.replace(/-recipe$/, "")
-        return `${id} (${inputs})`
+        return `${id} (${inputs}, ${r.guildType})`
       })
       .join(", ")
     lines.push(`Recipes: ${recipeStr}`)
   }
 
-  // Contracts - compact (location-specific but useful for player)
+  // Contracts - only show at the specific accept location
   const contracts = state.world.contracts.filter(
-    (c) => c.guildAreaId === currentArea && !state.player.activeContracts.includes(c.id)
+    (c) => c.acceptLocationId === currentLocationId && !state.player.activeContracts.includes(c.id)
   )
   if (contracts.length > 0) {
     const contractStr = contracts
@@ -195,6 +201,16 @@ export function formatWorldState(state: WorldState): string {
   if (enemies.length > 0) {
     const enemyStr = enemies.map((e) => `${e.id} (Combat L${e.requiredSkillLevel})`).join(", ")
     lines.push(`Enemies: ${enemyStr}`)
+  }
+
+  // Show enrol hint at guild halls (last, as it's the actionable item)
+  if (isAtGuildHall && currentLocation?.guildType) {
+    const skill = currentLocation.guildType
+    const playerSkill = state.player.skills[skill]
+    if (!playerSkill || playerSkill.level === 0) {
+      lines.push("")
+      lines.push(`Can enrol in: ${skill}`)
+    }
   }
 
   return lines.join("\n")

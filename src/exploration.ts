@@ -532,6 +532,7 @@ export interface ExplorationStateData {
   connections: AreaConnection[]
   playerState: {
     currentAreaId: AreaID
+    currentLocationId: string | null
     knownAreaIds: AreaID[]
     knownLocationIds: string[]
     knownConnectionIds: string[]
@@ -569,6 +570,7 @@ export function initializeExplorationState(rng: RngState): ExplorationStateData 
     connections,
     playerState: {
       currentAreaId: "TOWN",
+      currentLocationId: null,
       knownAreaIds: ["TOWN"],
       knownLocationIds: [],
       knownConnectionIds: [],
@@ -1322,6 +1324,7 @@ export function executeExplorationTravel(
   // Consume time and move
   consumeTime(state, travelTime)
   exploration.playerState.currentAreaId = destinationAreaId
+  exploration.playerState.currentLocationId = null // Arrive at hub (clearing)
 
   // Ensure destination area is fully generated (content + connections)
   const destArea = exploration.areas.get(destinationAreaId)!
