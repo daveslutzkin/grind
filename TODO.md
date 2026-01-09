@@ -83,10 +83,12 @@ Gathering: Ore vein
 **Description:** `mine` and `chop` commands were added to agent parser but not to batch runner's `parseCommand` in `runner.ts`. Forces users to use verbose `gather area-d1-i0-node-0 focus COPPER_ORE` syntax.
 
 ### 8. Fix misleading LOCATION_NOT_DISCOVERED error
-**Status:** Pending
+**Status:** Done
 **Description:** When the parser can't match a location name, it returns an action that fails with "LOCATION_NOT_DISCOVERED". This implies the location exists but isn't discovered, when really the parser just didn't recognize the input.
 
 **Decision:** Improve error message to "Unknown location: X" rather than implying it exists but isn't discovered.
+
+**Implementation:** Added new failure type `UNKNOWN_LOCATION` to types.ts. Updated `checkTravelToLocationAction` in actionChecks.ts to return `UNKNOWN_LOCATION` when the location doesn't exist in the current area, while keeping `LOCATION_NOT_DISCOVERED` for when the location exists but hasn't been discovered yet.
 
 ### 9. Material ✓ should respect location tier
 **Status:** Pending
