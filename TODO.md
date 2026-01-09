@@ -127,6 +127,8 @@ Changes:
 - Materials: human readable names ("Copper Ore" not "COPPER_ORE"), sorted by unlock level
 - Connections: sorted by travel time (shortest first)
 
+**Decision on status:** "unexplored" until first discovery of anything (even a connection), then "partly explored". Never show "fully explored".
+
 ### 14. Fractional distances for varied travel times
 **Status:** Pending
 **Description:** Currently all travel times are round multiples of 10 (10t, 20t, 30t, 40t). Distances should be fractional so travel times are more varied (13t, 27t, etc).
