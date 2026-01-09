@@ -34,6 +34,25 @@ export const TOWN_LOCATIONS = {
   WAREHOUSE: "TOWN_WAREHOUSE",
 } as const
 
+/** Display names for locations */
+export const LOCATION_DISPLAY_NAMES: Record<string, string> = {
+  [TOWN_LOCATIONS.MINERS_GUILD]: "Miners Guild",
+  [TOWN_LOCATIONS.FORESTERS_GUILD]: "Foresters Guild",
+  [TOWN_LOCATIONS.COMBAT_GUILD]: "Combat Guild",
+  [TOWN_LOCATIONS.SMITHING_GUILD]: "Smithing Guild",
+  [TOWN_LOCATIONS.WOODCRAFTERS_GUILD]: "Woodcrafters Guild",
+  [TOWN_LOCATIONS.EXPLORERS_GUILD]: "Explorers Guild",
+  [TOWN_LOCATIONS.WAREHOUSE]: "Warehouse",
+}
+
+/** Get display name for a location ID, or the ID itself if not found */
+export function getLocationDisplayName(locationId: string | null, areaId?: string): string {
+  if (locationId === null) {
+    return areaId === "TOWN" ? "Town Square" : "Clearing"
+  }
+  return LOCATION_DISPLAY_NAMES[locationId] ?? locationId
+}
+
 /** Get the guild hall location ID for a skill type */
 export function getGuildLocationForSkill(skill: SkillID): string {
   switch (skill) {
