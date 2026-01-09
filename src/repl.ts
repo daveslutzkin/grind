@@ -2,6 +2,7 @@
  * Interactive REPL for manual control of the simulation
  */
 
+import "dotenv/config"
 import * as readline from "readline"
 import { evaluateAction } from "./evaluate.js"
 import type { WorldState } from "./types.js"
