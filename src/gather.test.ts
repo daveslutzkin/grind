@@ -82,6 +82,16 @@ function discoverAllLocations(state: WorldState, areaId: AreaID): void {
   }
 }
 
+/** Move player to the location containing a specific node */
+function moveToNodeLocation(state: WorldState, node: Node): void {
+  const nodeIndexMatch = node.nodeId.match(/-node-(\d+)$/)
+  if (nodeIndexMatch) {
+    const nodeIndex = nodeIndexMatch[1]
+    const locationId = `${node.areaId}-loc-${nodeIndex}`
+    state.exploration.playerState.currentLocationId = locationId
+  }
+}
+
 describe("Phase 3: Gather Action Overhaul", () => {
   let world: WorldState
   let oreAreaId: AreaID
@@ -99,7 +109,10 @@ describe("Phase 3: Gather Action Overhaul", () => {
   })
 
   function getFirstOreNode(): Node {
-    return world.world.nodes!.find((n) => n.areaId === oreAreaId)!
+    const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
+    // Move player to the node's location (required for Gather)
+    moveToNodeLocation(world, node)
+    return node
   }
 
   describe("APPRAISE mode", () => {
@@ -339,6 +352,8 @@ describe("Phase 3: Gather Action Overhaul", () => {
 
       const node1 = world1.world.nodes!.find((n) => n.areaId === area1)!
       const node2 = world2.world.nodes!.find((n) => n.areaId === area2)!
+      moveToNodeLocation(world1, node1)
+      moveToNodeLocation(world2, node2)
 
       const focusAction: GatherAction = {
         type: "Gather",
@@ -576,6 +591,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         world.exploration.playerState.currentAreaId = midAreaId
         discoverAllLocations(world, midAreaId)
         const node = world.world.nodes!.find((n) => n.areaId === midAreaId)!
+        moveToNodeLocation(world, node)
 
         const action: GatherAction = {
           type: "Gather",
@@ -602,6 +618,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         world.exploration.playerState.currentAreaId = midAreaId
         discoverAllLocations(world, midAreaId)
         const node = world.world.nodes!.find((n) => n.areaId === midAreaId)!
+        moveToNodeLocation(world, node)
 
         const action: GatherAction = {
           type: "Gather",
@@ -627,6 +644,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         world.exploration.playerState.currentAreaId = farAreaId
         discoverAllLocations(world, farAreaId)
         const node = world.world.nodes!.find((n) => n.areaId === farAreaId)!
+        moveToNodeLocation(world, node)
 
         const action: GatherAction = {
           type: "Gather",
@@ -653,6 +671,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         world.exploration.playerState.currentAreaId = farAreaId
         discoverAllLocations(world, farAreaId)
         const node = world.world.nodes!.find((n) => n.areaId === farAreaId)!
+        moveToNodeLocation(world, node)
 
         const action: GatherAction = {
           type: "Gather",
@@ -706,7 +725,9 @@ describe("Phase 3: Gather Action Overhaul", () => {
         const area5 = getOreAreaId(world5)
         world5.exploration.playerState.currentAreaId = area5
         world5.player.skills.Mining.level = 5
+        discoverAllLocations(world5, area5)
         const node5 = world5.world.nodes!.find((n) => n.areaId === area5)!
+        moveToNodeLocation(world5, node5)
         const focusMat5 = node5.materials.find(
           (m) => m.requiredLevel <= world5.player.skills.Mining.level
         )!
@@ -727,7 +748,9 @@ describe("Phase 3: Gather Action Overhaul", () => {
         const area6 = getOreAreaId(world6)
         world6.exploration.playerState.currentAreaId = area6
         world6.player.skills.Mining.level = 6
+        discoverAllLocations(world6, area6)
         const node6 = world6.world.nodes!.find((n) => n.areaId === area6)!
+        moveToNodeLocation(world6, node6)
         const focusMat6 = node6.materials.find(
           (m) => m.requiredLevel <= world6.player.skills.Mining.level
         )!
@@ -777,6 +800,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
 
     it("should find and gather from ORE_VEIN with CAREFUL_ALL mode", async () => {
       world.player.skills.Mining.level = 4
+      getFirstOreNode() // Move to the ore node location
 
       const action: MineAction = {
         type: "Mine",
@@ -851,6 +875,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
       const node = world.world.nodes!.find(
         (n) => n.areaId === woodAreaId && n.nodeType === NodeType.TREE_STAND
       )!
+      moveToNodeLocation(world, node) // Move to the tree node location
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Woodcutting.level
       )!
@@ -872,6 +897,10 @@ describe("Phase 3: Gather Action Overhaul", () => {
     it("should find and gather from TREE_STAND with CAREFUL_ALL mode", async () => {
       if (!woodAreaId) return // Skip if no tree area found
       world.player.skills.Woodcutting.level = 4
+      const node = world.world.nodes!.find(
+        (n) => n.areaId === woodAreaId && n.nodeType === NodeType.TREE_STAND
+      )!
+      moveToNodeLocation(world, node) // Move to the tree node location
 
       const action: ChopAction = {
         type: "Chop",
@@ -891,6 +920,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
       const node = world.world.nodes!.find(
         (n) => n.areaId === woodAreaId && n.nodeType === NodeType.TREE_STAND
       )!
+      moveToNodeLocation(world, node) // Move to the tree node location
 
       const action: ChopAction = {
         type: "Chop",

@@ -53,6 +53,16 @@ function discoverAllLocations(state: WorldState, areaId: AreaID): void {
   }
 }
 
+/** Move player to the location containing a specific node */
+function moveToNodeLocation(state: WorldState, nodeId: string, areaId: string): void {
+  const nodeIndexMatch = nodeId.match(/-node-(\d+)$/)
+  if (nodeIndexMatch) {
+    const nodeIndex = nodeIndexMatch[1]
+    const locationId = `${areaId}-loc-${nodeIndex}`
+    state.exploration.playerState.currentLocationId = locationId
+  }
+}
+
 describe("Formatters", () => {
   describe("formatWorldState", () => {
     it("should format basic world state as readable text", () => {
@@ -82,7 +92,7 @@ describe("Formatters", () => {
       const state = createWorld("ore-test")
       const formatted = formatWorldState(state)
 
-      expect(formatted).toContain("Travel:")
+      expect(formatted).toContain("Connections:")
     })
 
     it("should show nearby resource nodes at current location", () => {
@@ -130,8 +140,8 @@ describe("Formatters", () => {
 
         // Should show node type on one line, materials on next
         expect(formatted).toContain("Gathering: Ore vein")
-        // Should have at least one material with ✓ (L1 gatherable)
-        expect(formatted).toMatch(/[A-Z_]+ ✓/)
+        // Should have at least one material with ✓ (L1 gatherable) - human readable names
+        expect(formatted).toMatch(/[A-Z][a-z]+( [A-Z][a-z]+)? ✓/)
       })
 
       it("should show (L#) for materials requiring higher level", async () => {
@@ -180,6 +190,9 @@ describe("Formatters", () => {
         const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
         if (!node) throw new Error("No node found for test")
 
+        // Move to the node location before APPRAISE
+        moveToNodeLocation(state, node.nodeId, areaId)
+
         // Perform APPRAISE action
         await executeAction(state, {
           type: "Gather",
@@ -189,8 +202,67 @@ describe("Formatters", () => {
 
         const formatted = formatWorldState(state)
 
-        // After appraisal, should show quantities like "80/80 COPPER_ORE ✓"
-        expect(formatted).toMatch(/\d+\/\d+ [A-Z_]+ ✓/)
+        // After appraisal, should show quantities like "80/80 Copper Ore ✓"
+        expect(formatted).toMatch(/\d+\/\d+ [A-Z][a-z]+( [A-Z][a-z]+)? ✓/)
+      })
+
+      it("should show locked node when skill level is insufficient for location tier", () => {
+        const state = createWorld("mat-vis-5")
+
+        // Find a D2 area (distance 2, requires L5) specifically with ORE_VEIN nodes
+        const d2Area = Array.from(state.exploration.areas.values()).find(
+          (a) =>
+            a.distance === 2 &&
+            state.world.nodes?.some((n) => n.areaId === a.id && n.nodeType === NodeType.ORE_VEIN)
+        )
+        if (!d2Area) throw new Error("No D2 area with ore nodes found")
+
+        // Enrol in Mining first (must be at guild)
+        setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
+        executeAction(state, { type: "Enrol", skill: "Mining" })
+
+        // Now move to D2 area (at hub, not at a specific location)
+        makeAreaKnown(state, d2Area.id)
+        state.exploration.playerState.currentAreaId = d2Area.id
+        state.exploration.playerState.currentLocationId = null // At hub/clearing
+        discoverAllLocations(state, d2Area.id)
+
+        const formatted = formatWorldState(state)
+
+        // Should show as locked with skill requirement, not list materials
+        expect(formatted).toContain("🔒 (Mining L5)")
+        // Should NOT show any material checkmarks since node is locked
+        expect(formatted).not.toMatch(/[A-Z_]+ ✓/)
+      })
+
+      it("should show materials normally when skill level meets location tier requirement", () => {
+        const state = createWorld("mat-vis-6")
+
+        // Find a D2 area (distance 2, requires L5) specifically with ORE_VEIN nodes
+        const d2Area = Array.from(state.exploration.areas.values()).find(
+          (a) =>
+            a.distance === 2 &&
+            state.world.nodes?.some((n) => n.areaId === a.id && n.nodeType === NodeType.ORE_VEIN)
+        )
+        if (!d2Area) throw new Error("No D2 area with ore nodes found")
+
+        // Enrol in Mining and set to L5 (meets D2 requirement)
+        setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
+        executeAction(state, { type: "Enrol", skill: "Mining" })
+        state.player.skills.Mining = { level: 5, xp: 0 }
+
+        // Now move to D2 area (at hub, not at a specific location)
+        makeAreaKnown(state, d2Area.id)
+        state.exploration.playerState.currentAreaId = d2Area.id
+        state.exploration.playerState.currentLocationId = null // At hub/clearing
+        discoverAllLocations(state, d2Area.id)
+
+        const formatted = formatWorldState(state)
+
+        // Should NOT show as locked
+        expect(formatted).not.toContain("🔒")
+        // Should show materials with checkmarks (human-readable names now)
+        expect(formatted).toMatch(/\w+ ✓/)
       })
     })
 
@@ -208,7 +280,7 @@ describe("Formatters", () => {
         expect(formatted).not.toContain("Gathering:")
       })
 
-      it("should NOT show 'unexplored' when connection discovered but no locations", () => {
+      it("should show 'partly explored' when connection discovered but no locations", () => {
         const state = createWorld("explore-status-2")
         const areaId = getOreAreaId(state)
         makeAreaKnown(state, areaId)
@@ -228,11 +300,12 @@ describe("Formatters", () => {
 
         const formatted = formatWorldState(state)
 
+        expect(formatted).toContain("partly explored")
         expect(formatted).not.toContain("unexplored")
         expect(formatted).not.toContain("FULLY EXPLORED")
       })
 
-      it("should NOT show 'FULLY EXPLORED' when locations done but connections remain", () => {
+      it("should show 'partly explored' when locations done but connections remain", () => {
         const state = createWorld("explore-status-3")
         const areaId = getOreAreaId(state)
         makeAreaKnown(state, areaId)
@@ -241,7 +314,7 @@ describe("Formatters", () => {
         // Discover all locations
         discoverAllLocations(state, areaId)
 
-        // Add an undiscovered connection from this area to ensure it's not "fully explored"
+        // Add an undiscovered connection from this area
         // (connections may not be generated until explore is called)
         const fakeTargetAreaId = "fake-undiscovered-area"
         state.exploration.connections.push({
@@ -252,12 +325,13 @@ describe("Formatters", () => {
 
         const formatted = formatWorldState(state)
 
+        expect(formatted).toContain("partly explored")
         expect(formatted).not.toContain("unexplored")
         expect(formatted).not.toContain("FULLY EXPLORED")
         expect(formatted).toContain("Gathering:")
       })
 
-      it("should show 'FULLY EXPLORED' when all locations AND connections discovered", () => {
+      it("should show 'partly explored' (never 'fully explored') when all locations AND connections discovered", () => {
         const state = createWorld("explore-status-4")
         const areaId = getOreAreaId(state)
         makeAreaKnown(state, areaId)
@@ -284,7 +358,9 @@ describe("Formatters", () => {
 
         const formatted = formatWorldState(state)
 
-        expect(formatted).toContain("FULLY EXPLORED")
+        // We never show "fully explored" - just "partly explored" once something is discovered
+        expect(formatted).toContain("partly explored")
+        expect(formatted).not.toContain("FULLY EXPLORED")
         expect(formatted).not.toContain("unexplored")
       })
     })
@@ -300,11 +376,12 @@ describe("Formatters", () => {
       makeAreaKnown(state, areaId)
       // Position player at ore area and gather (testing gather log, not travel)
       state.exploration.playerState.currentAreaId = areaId
-      state.exploration.playerState.currentLocationId = null // At clearing
       discoverAllLocations(state, areaId)
 
       const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
       if (!node) throw new Error("No node found for test")
+      // Move to the node location before gathering
+      moveToNodeLocation(state, node.nodeId, areaId)
       const material = node.materials.find((m) => m.requiredLevel <= 1)
       if (!material) throw new Error("No material found for test")
 
@@ -317,7 +394,7 @@ describe("Formatters", () => {
       const formatted = formatActionLog(log)
 
       expect(formatted).toContain("✓")
-      expect(formatted).toContain("Gather")
+      expect(formatted).toContain("extraction") // stateDeltaSummary shows "Focused extraction"
       expect(formatted).toMatch(/\(\d+t\)/)
     })
 

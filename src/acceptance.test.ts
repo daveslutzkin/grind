@@ -13,6 +13,7 @@ import {
   type MoveAction,
   type WorldState,
   type AreaID,
+  type Node,
 } from "./types.js"
 
 /**
@@ -72,6 +73,16 @@ function discoverAllLocations(state: WorldState, areaId: AreaID): void {
   }
 }
 
+/** Move player to the location containing a specific node */
+function moveToNodeLocation(state: WorldState, node: Node): void {
+  const nodeIndexMatch = node.nodeId.match(/-node-(\d+)$/)
+  if (nodeIndexMatch) {
+    const nodeIndex = nodeIndexMatch[1]
+    const locationId = `${node.areaId}-loc-${nodeIndex}`
+    state.exploration.playerState.currentLocationId = locationId
+  }
+}
+
 describe("Acceptance Tests: Gathering MVP", () => {
   // ============================================================================
   // Geography
@@ -122,6 +133,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
       world.player.skills.Mining.level = 5
 
       const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
+      moveToNodeLocation(world, node)
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Mining.level
       )!
@@ -156,6 +168,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
       world.player.skills.Mining.level = 5
 
       const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
+      moveToNodeLocation(world, node)
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Mining.level
       )!
@@ -208,6 +221,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
       const node = world.world.nodes!.find(
         (n) => n.areaId === oreAreaId && n.materials.length >= 2
       )!
+      moveToNodeLocation(world, node)
       expect(node.materials.length).toBeGreaterThanOrEqual(2)
 
       const focusMat = node.materials.find(
@@ -239,6 +253,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
       world.player.skills.Mining.level = 5 // L4+ for CAREFUL_ALL
 
       const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
+      moveToNodeLocation(world, node)
 
       const action: GatherAction = {
         type: "Gather",
@@ -282,6 +297,8 @@ describe("Acceptance Tests: Gathering MVP", () => {
 
       const node1 = world1.world.nodes!.find((n) => n.areaId === oreAreaId)!
       const node10 = world10.world.nodes!.find((n) => n.areaId === oreAreaId)!
+      moveToNodeLocation(world1, node1)
+      moveToNodeLocation(world10, node10)
 
       const focusMat1 = node1.materials.find((m) => m.requiredLevel === 1)!
       const focusMat10 = node10.materials.find((m) => m.requiredLevel === 1)!
@@ -322,6 +339,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
       const node = world.world.nodes!.find(
         (n) => n.areaId === oreAreaId && n.materials.length >= 2
       )!
+      moveToNodeLocation(world, node)
       const focusMat = node.materials[0]
       const collateralMat = node.materials.find((m) => m.materialId !== focusMat.materialId)!
 
@@ -355,6 +373,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
       world.player.skills.Mining.level = 5
 
       const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
+      moveToNodeLocation(world, node)
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Mining.level
       )!
@@ -386,6 +405,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
       world.player.skills.Mining.level = 5
 
       const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
+      moveToNodeLocation(world, node)
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Mining.level
       )!
@@ -423,6 +443,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
       world.exploration.playerState.currentAreaId = oreAreaId
       discoverAllLocations(world, oreAreaId)
       const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
+      moveToNodeLocation(world, node)
 
       // L2: APPRAISE should fail
       world.player.skills.Mining.level = 2
@@ -449,6 +470,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
       world.exploration.playerState.currentAreaId = midAreaId
       discoverAllLocations(world, midAreaId)
       const node = world.world.nodes!.find((n) => n.areaId === midAreaId)!
+      moveToNodeLocation(world, node)
 
       // L4: MID should fail (requires L5) - use APPRAISE to avoid material level issues
       world.player.skills.Mining.level = 4
@@ -483,6 +505,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
       world.player.skills.Mining.level = 5
 
       const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
+      moveToNodeLocation(world, node)
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Mining.level
       )!
@@ -521,6 +544,8 @@ describe("Acceptance Tests: Gathering MVP", () => {
 
       const node1 = world1.world.nodes!.find((n) => n.areaId === oreAreaId1)!
       const node2 = world2.world.nodes!.find((n) => n.areaId === oreAreaId2)!
+      moveToNodeLocation(world1, node1)
+      moveToNodeLocation(world2, node2)
 
       // Find matching materials (same tier)
       const focusMat1 = node1.materials.find(

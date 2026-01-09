@@ -316,7 +316,9 @@ describe("Area Generation", () => {
       const connections = generateAreaConnections(rng, town, [town, area])
 
       for (const conn of connections) {
-        expect([1, 2, 3, 4]).toContain(conn.travelTimeMultiplier)
+        // Fractional multipliers in 0.5-4.5 range
+        expect(conn.travelTimeMultiplier).toBeGreaterThanOrEqual(0.5)
+        expect(conn.travelTimeMultiplier).toBeLessThanOrEqual(4.5)
       }
     })
 
@@ -680,9 +682,9 @@ describe("ExplorationTravel Action", () => {
 
       const log = await executeExplorationTravel(state, action)
 
-      // Time = BASE_TRAVEL_TIME * multiplier (10 * 1-4)
-      expect(log.timeConsumed).toBeGreaterThanOrEqual(10)
-      expect(log.timeConsumed).toBeLessThanOrEqual(40)
+      // Time = BASE_TRAVEL_TIME * multiplier (10 * 0.5-4.5 = 5-45)
+      expect(log.timeConsumed).toBeGreaterThanOrEqual(5)
+      expect(log.timeConsumed).toBeLessThanOrEqual(45)
       expect(state.time.currentTick).toBe(initialTick + log.timeConsumed)
     })
 
@@ -699,9 +701,9 @@ describe("ExplorationTravel Action", () => {
 
       const log = await executeExplorationTravel(state, action)
 
-      // Time = BASE_TRAVEL_TIME * multiplier * 2 (for scavenge)
-      expect(log.timeConsumed).toBeGreaterThanOrEqual(20)
-      expect(log.timeConsumed).toBeLessThanOrEqual(80)
+      // Time = BASE_TRAVEL_TIME * multiplier * 2 (for scavenge, 10 * 0.5-4.5 * 2 = 10-90)
+      expect(log.timeConsumed).toBeGreaterThanOrEqual(10)
+      expect(log.timeConsumed).toBeLessThanOrEqual(90)
     })
 
     it("should support multi-hop pathfinding", async () => {

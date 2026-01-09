@@ -59,7 +59,7 @@ export interface ExplorationLocation {
 export interface AreaConnection {
   fromAreaId: AreaID
   toAreaId: AreaID
-  travelTimeMultiplier: 1 | 2 | 3 | 4 // Distribution: 15% = 1x, 35% = 2x, 35% = 3x, 15% = 4x
+  travelTimeMultiplier: number // 0.5x-4.5x range for varied travel times (5t-45t with base 10t)
 }
 
 /**
@@ -439,10 +439,12 @@ export type FailureType =
   | "NOT_IN_EXPLORATION_GUILD"
   | "NO_CONNECTIONS"
   | "LOCATION_NOT_DISCOVERED"
+  | "UNKNOWN_LOCATION"
   // Location-based action failure types
   | "ALREADY_AT_LOCATION"
   | "NOT_AT_HUB"
   | "ALREADY_AT_HUB"
+  | "NOT_AT_NODE_LOCATION"
   | "WRONG_GUILD_TYPE"
   | "GUILD_LEVEL_TOO_LOW"
 

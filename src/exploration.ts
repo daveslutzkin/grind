@@ -18,6 +18,7 @@ import type {
   ExplorationLuckInfo,
   LevelUp,
 } from "./types.js"
+import { ExplorationLocationType } from "./types.js"
 import { rollFloat, roll } from "./rng.js"
 import { consumeTime } from "./stateHelpers.js"
 import { generateNodesForArea } from "./world.js"
@@ -29,6 +30,28 @@ import { generateAreaName, getNeighborNames } from "./areaNaming.js"
 
 /** Base travel time in ticks (before multiplier) */
 export const BASE_TRAVEL_TIME = 10
+
+/**
+ * Get a friendly display name for an area.
+ * Uses the LLM-generated name if available, otherwise falls back to a generic
+ * description based on distance from town.
+ */
+export function getAreaDisplayName(areaId: AreaID, area?: Area): string {
+  if (areaId === "TOWN") return "Town"
+
+  // Use LLM-generated name if available
+  if (area?.name) return area.name
+
+  // Fallback: generate generic name based on distance
+  const match = areaId.match(/^area-d(\d+)-i\d+$/)
+  if (match) {
+    const distance = parseInt(match[1], 10)
+    if (distance === 1) return "a nearby area"
+    if (distance === 2) return "a distant area"
+    return "a remote area"
+  }
+  return "an area"
+}
 
 /**
  * Probability multiplier for discovering connections to unknown areas
@@ -444,15 +467,13 @@ function rollConnectionCount(rng: RngState, label: string): number {
 }
 
 /**
- * Roll for travel time multiplier (1-4)
- * Distribution: 15% = 1x, 35% = 2x, 35% = 3x, 15% = 4x
+ * Roll for travel time multiplier (0.5-4.5)
+ * Uses uniform distribution for varied non-round travel times
  */
-function rollTravelMultiplier(rng: RngState, label: string): 1 | 2 | 3 | 4 {
-  const rollValue = rollFloat(rng, 0, 1, label)
-  if (rollValue < 0.15) return 1
-  if (rollValue < 0.5) return 2 // 15% + 35% = 50%
-  if (rollValue < 0.85) return 3 // 50% + 35% = 85%
-  return 4 // Remaining 15%
+function rollTravelMultiplier(rng: RngState, label: string): number {
+  // Roll 0.5 to 4.5, round to 1 decimal place for cleaner numbers
+  const rawValue = rollFloat(rng, 0.5, 4.5, label)
+  return Math.round(rawValue * 10) / 10
 }
 
 /**
@@ -865,7 +886,7 @@ export async function executeSurvey(state: WorldState, _action: SurveyAction): P
     skillGained: { skill: "Exploration", amount: xpGained },
     levelUps,
     rngRolls: rolls,
-    stateDeltaSummary: `Discovered area ${exploration.areas.get(discoveredAreaId!)?.name || discoveredAreaId}`,
+    stateDeltaSummary: `Discovered ${getAreaDisplayName(discoveredAreaId!, exploration.areas.get(discoveredAreaId!))}`,
     explorationLog: {
       discoveredAreaId,
       discoveredConnectionId,
@@ -1129,13 +1150,15 @@ export async function executeExplore(
     const location = currentArea.locations.find((loc) => loc.id === discoveredLocationId)
     if (location?.gatheringSkillType) {
       discovered = location.gatheringSkillType === "Mining" ? "ore vein" : "tree stand"
+    } else if (location?.type === ExplorationLocationType.MOB_CAMP) {
+      discovered = "enemy camp"
     } else {
       discovered = "node"
     }
   } else if (connectionToUnknownArea) {
-    discovered = `connection to unknown area (${discoveredConnectionId})`
+    discovered = "connection to unknown area"
   } else {
-    discovered = `connection ${discoveredConnectionId}`
+    discovered = "new connection"
   }
 
   return {
@@ -1302,7 +1325,7 @@ export async function executeExplorationTravel(
 
   // TODO: Scavenge rolls for gathering drops (future implementation)
 
-  const areaDisplayName = destArea.name || destinationAreaId
+  const areaDisplayName = getAreaDisplayName(destinationAreaId, destArea)
   const summary = discoveredOnArrival
     ? `Traveled to ${areaDisplayName} (discovered)`
     : `Traveled to ${areaDisplayName}`

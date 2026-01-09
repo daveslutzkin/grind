@@ -1,9 +1,9 @@
 This file details how you do test runs of the sim.
 
-## Batch Runners
+## Runners
 
 - `src/batch.ts` - Main batch runner with session summary (see MANUAL_RUN.md)
-- `src/gatherBatch.ts` - Specialized runner for gathering with trace saving
+- `src/repl.ts` - One step at a time runner, requires ongoing input
 
 ## Run Modes
 

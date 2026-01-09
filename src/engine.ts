@@ -30,6 +30,7 @@ import {
   executeExplore,
   executeExplorationTravel,
   grantExplorationGuildBenefits,
+  getAreaDisplayName,
 } from "./exploration.js"
 import {
   checkAcceptContractAction,
@@ -52,6 +53,7 @@ import {
   grantXP,
   checkAndCompleteContracts,
 } from "./stateHelpers.js"
+import { getLocationDisplayName } from "./world.js"
 
 /**
  * Collect all level-ups from contract completions
@@ -864,13 +866,14 @@ async function executeGuildEnrolment(
   // Check for contract completion (after every successful action)
   const contractsCompleted = checkAndCompleteContracts(state)
 
-  const discoveredAreaName = explorationBenefits?.discoveredAreaId
-    ? state.exploration?.areas.get(explorationBenefits.discoveredAreaId)?.name ||
-      explorationBenefits.discoveredAreaId
+  const discoveredAreaId = explorationBenefits?.discoveredAreaId
+  const discoveredArea = discoveredAreaId
+    ? state.exploration?.areas.get(discoveredAreaId)
     : undefined
-  const summary = discoveredAreaName
-    ? `Enrolled in ${skill} guild, discovered area ${discoveredAreaName}`
-    : `Enrolled in ${skill} guild`
+  const summary =
+    discoveredArea && discoveredAreaId
+      ? `Enrolled in ${skill} guild, discovered ${getAreaDisplayName(discoveredAreaId, discoveredArea)}`
+      : `Enrolled in ${skill} guild`
 
   return {
     tickBefore,
@@ -924,7 +927,7 @@ function executeTravelToLocation(state: WorldState, action: TravelToLocationActi
     levelUps: mergeLevelUps([], contractsCompleted),
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: [],
-    stateDeltaSummary: `Traveled to ${locationId}`,
+    stateDeltaSummary: `Traveled to ${getLocationDisplayName(locationId)}`,
   }
 }
 
@@ -963,6 +966,6 @@ function executeLeave(state: WorldState, action: LeaveAction): ActionLog {
     levelUps: mergeLevelUps([], contractsCompleted),
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: [],
-    stateDeltaSummary: `Left ${previousLocation} for ${hubName}`,
+    stateDeltaSummary: `Left ${getLocationDisplayName(previousLocation)} for ${hubName}`,
   }
 }
