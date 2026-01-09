@@ -102,7 +102,9 @@ Gathering: Ore vein
 
 ### 11. Improve "Discovered node" message
 **Status:** Pending
-**Description:** When discovering a MOB_CAMP, message says "Discovered node" which is vague. Should say "Discovered mob camp", "Discovered ore vein", or "Discovered tree stand".
+**Description:** When discovering a MOB_CAMP, message says "Discovered node" which is vague.
+
+**Decision:** Say "Discovered enemy camp" for MOB_CAMP (already says "ore vein" and "tree stand" for gathering locations).
 
 ### 12. Show required skill for other gathering nodes
 **Status:** Pending
