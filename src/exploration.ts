@@ -437,15 +437,13 @@ function rollConnectionCount(rng: RngState, label: string): number {
 }
 
 /**
- * Roll for travel time multiplier (1-4)
- * Distribution: 15% = 1x, 35% = 2x, 35% = 3x, 15% = 4x
+ * Roll for travel time multiplier (0.5-4.5)
+ * Uses uniform distribution for varied non-round travel times
  */
-function rollTravelMultiplier(rng: RngState, label: string): 1 | 2 | 3 | 4 {
-  const rollValue = rollFloat(rng, 0, 1, label)
-  if (rollValue < 0.15) return 1
-  if (rollValue < 0.5) return 2 // 15% + 35% = 50%
-  if (rollValue < 0.85) return 3 // 50% + 35% = 85%
-  return 4 // Remaining 15%
+function rollTravelMultiplier(rng: RngState, label: string): number {
+  // Roll 0.5 to 4.5, round to 1 decimal place for cleaner numbers
+  const rawValue = rollFloat(rng, 0.5, 4.5, label)
+  return Math.round(rawValue * 10) / 10
 }
 
 /**

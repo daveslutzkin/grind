@@ -130,10 +130,12 @@ Changes:
 **Decision on status:** "unexplored" until first discovery of anything (even a connection), then "partly explored". Never show "fully explored".
 
 ### 14. Fractional distances for varied travel times
-**Status:** Pending
+**Status:** ✅ Completed
 **Description:** Currently all travel times are round multiples of 10 (10t, 20t, 30t, 40t). Distances should be fractional so travel times are more varied (13t, 27t, etc).
 
 **Decision:** Use 0.5x to 4.5x multiplier range with base 10t, giving 5t-45t travel times. Generate fractional multipliers (e.g., 1.3x, 2.7x) for varied non-round numbers.
+
+**Implementation:** Updated `rollTravelMultiplier` in `src/exploration.ts` to generate uniform random values between 0.5 and 4.5, rounded to 1 decimal place. Updated type from `1 | 2 | 3 | 4` to `number` in `src/types.ts`.
 
 ---
 
