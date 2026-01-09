@@ -324,6 +324,8 @@ export function formatActionLog(log: ActionLog, state?: WorldState): string {
   }
 
   // RNG display - exploration uses luckInfo, others show individual rolls
+  const isExplorationAction = log.actionType === "Explore" || log.actionType === "Survey"
+
   if (log.explorationLog?.luckInfo) {
     // Exploration: show luck summary without revealing individual rolls
     const luck = log.explorationLog.luckInfo
@@ -348,6 +350,9 @@ export function formatActionLog(log: ActionLog, state?: WorldState): string {
       delta > 0 ? `${delta}t faster` : delta < 0 ? `${Math.abs(delta)}t slower` : "on target"
 
     lines.push(`  RNG: ${deltaStr} (${luckLabel})`)
+  } else if (isExplorationAction) {
+    // Failed exploration (e.g., SESSION_ENDED) - don't show individual rolls
+    // as they reveal information about undiscovered things
   } else if (log.rngRolls.length > 0) {
     // Non-exploration: show individual rolls
     const rolls = log.rngRolls.map(
