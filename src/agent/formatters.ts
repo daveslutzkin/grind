@@ -12,6 +12,15 @@ import {
 } from "../visibility.js"
 
 /**
+ * Get display name for an area - uses LLM-generated name if available, otherwise falls back to area ID
+ */
+function getAreaDisplayName(state: WorldState, areaId: string): string {
+  if (areaId === "TOWN") return "TOWN"
+  const area = state.exploration?.areas.get(areaId)
+  return area?.name || areaId
+}
+
+/**
  * Format WorldState as concise text for LLM consumption
  */
 export function formatWorldState(state: WorldState): string {
@@ -168,7 +177,9 @@ export function formatWorldState(state: WorldState): string {
       }
     }
 
-    lines.push(`Location: ${locationName} in ${currentArea}${statusSuffix}`)
+    lines.push(
+      `Location: ${locationName} in ${getAreaDisplayName(state, currentArea)}${statusSuffix}`
+    )
 
     // Only show Gathering line if we've discovered at least one location
     if (knownLocs > 0) {
@@ -245,7 +256,7 @@ export function formatWorldState(state: WorldState): string {
 
   if (destinations.size > 0) {
     const travelList = Array.from(destinations.entries())
-      .map(([dest, time]) => `${dest} (${time}t)`)
+      .map(([dest, time]) => `${getAreaDisplayName(state, dest)} (${time}t)`)
       .join(", ")
     lines.push(`Travel: ${travelList}`)
   } else {
