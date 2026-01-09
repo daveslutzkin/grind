@@ -584,11 +584,12 @@ describe("Explore Action", () => {
 
 describe("ExplorationTravel Action", () => {
   describe("preconditions", () => {
-    it("should fail if destination area is not known", () => {
+    it("should fail if destination area is not known and no direct connection exists", () => {
       const state = createExplorationWorld("travel-test")
+      // area-d1-i0 is not known and no connection is known
       const action: ExplorationTravelAction = {
         type: "ExplorationTravel",
-        destinationAreaId: "area-d1-i0", // Not known yet
+        destinationAreaId: "area-d1-i0",
       }
 
       const log = executeExplorationTravel(state, action)
@@ -642,6 +643,28 @@ describe("ExplorationTravel Action", () => {
 
       expect(log.success).toBe(true)
       expect(state.exploration!.playerState.currentAreaId).toBe(destAreaId)
+    })
+
+    it("should allow direct travel to unknown area via known connection", () => {
+      const state = createExplorationWorld("travel-unknown")
+      // Know a connection to an unknown area (simulating discovered connection from explore)
+      const destAreaId = "area-d1-i0"
+      // Note: destAreaId is NOT in knownAreaIds
+      state.exploration!.playerState.knownConnectionIds.push(`TOWN->${destAreaId}`)
+      const action: ExplorationTravelAction = {
+        type: "ExplorationTravel",
+        destinationAreaId: destAreaId,
+      }
+
+      expect(state.exploration!.playerState.knownAreaIds).not.toContain(destAreaId)
+
+      const log = executeExplorationTravel(state, action)
+
+      expect(log.success).toBe(true)
+      expect(state.exploration!.playerState.currentAreaId).toBe(destAreaId)
+      // Area should now be discovered
+      expect(state.exploration!.playerState.knownAreaIds).toContain(destAreaId)
+      expect(log.stateDeltaSummary).toContain("discovered")
     })
 
     it("should consume time based on travel multiplier", () => {
