@@ -23,10 +23,12 @@ Based on a 24-action adaptive agent test run and comparison with design docs.
 No node IDs needed in display. Just show types: `Gathering: Ore vein, Tree stand`
 
 ### 3. Travel Time Display Discrepancy
-**Status:** Not started
+**Status:** DONE
 **Description:** Travel destinations show costs like "2t" but actual travel takes 10x longer (20t). Either the display calculation is wrong or it's showing "base cost" without the multiplier.
 
 **Decision:** Show actual time. `area-d2-i7 (20t)` not `area-d2-i7 (2t)`.
+
+**Fix:** Updated `formatters.ts` to multiply `travelTimeMultiplier` by `BASE_TRAVEL_TIME` (10) to show actual travel time.
 
 ---
 
