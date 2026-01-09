@@ -10,7 +10,7 @@ Based on a 24-action adaptive agent test run and comparison with design docs.
 **Status:** Not started
 **Description:** When luck is extremely good, display shows "Top 0%" which is mathematically awkward.
 
-**Decision:** Floor percentile to 1% minimum. No special cases - description logic unchanged.
+**Decision:** Clamp percentile to minimum 1% (i.e., `max(1, round(pct))`). No special cases - description logic unchanged.
 
 ### 2. Node ID Display in Gathering Output
 **Status:** Not started
