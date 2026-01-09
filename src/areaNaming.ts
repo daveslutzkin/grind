@@ -5,6 +5,7 @@
 import Anthropic from "@anthropic-ai/sdk"
 import type { Area, AreaConnection, AreaID } from "./types.js"
 import { ExplorationLocationType } from "./types.js"
+import { getAnthropicApiKey } from "./config.js"
 
 /** Model to use for area naming (fast and cheap) */
 const NAMING_MODEL = "claude-3-5-haiku-latest"
@@ -148,23 +149,30 @@ export interface AnthropicMessagesClient {
 
 /**
  * Generate a name for an area using the LLM.
- * Returns a fallback name if the API call fails or returns empty.
+ * Returns a fallback name if the API call fails, returns empty, or no API key is configured.
  *
  * @param area - The area to name
  * @param neighborNames - Names of neighboring areas for thematic context
- * @param apiKey - Anthropic API key
+ * @param apiKey - Anthropic API key (optional, falls back to global config)
  * @param client - Optional Anthropic client for dependency injection (used in tests)
  */
 export async function generateAreaName(
   area: Area,
   neighborNames: string[],
-  apiKey: string,
+  apiKey?: string,
   client?: AnthropicMessagesClient
 ): Promise<string> {
+  const effectiveApiKey = apiKey ?? getAnthropicApiKey()
+
+  // If no API key available, skip LLM call entirely
+  if (!effectiveApiKey && !client) {
+    return FALLBACK_NAME
+  }
+
   const prompt = buildAreaNamingPrompt(area, neighborNames)
 
   try {
-    const messagesClient = client ?? new Anthropic({ apiKey }).messages
+    const messagesClient = client ?? new Anthropic({ apiKey: effectiveApiKey! }).messages
 
     const response = await messagesClient.create({
       model: NAMING_MODEL,

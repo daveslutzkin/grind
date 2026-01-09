@@ -728,7 +728,8 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
     config.beforeAction?.(action, session.state)
 
     // Execute the action
-    const log = await executeAndRecord(session, action, executeAction)
+    const log = await executeAction(session.state, action)
+    session.stats.logs.push(log)
     config.onActionComplete(log, session.state)
   }
 
