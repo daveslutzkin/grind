@@ -133,6 +133,8 @@ Changes:
 **Status:** Pending
 **Description:** Currently all travel times are round multiples of 10 (10t, 20t, 30t, 40t). Distances should be fractional so travel times are more varied (13t, 27t, etc).
 
+**Decision:** Use 0.5x to 4.5x multiplier range with base 10t, giving 5t-45t travel times. Generate fractional multipliers (e.g., 1.3x, 2.7x) for varied non-round numbers.
+
 ---
 
 ## Notes
