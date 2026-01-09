@@ -301,9 +301,24 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
       }
 
       // Next, check if it matches a known area (for inter-area travel)
-      // Be strict: only match if input equals area name or area name starts with input
-      if (context.knownAreaIds) {
+      // Match against both raw area IDs and human-readable area names
+      if (context.knownAreaIds && context.state?.exploration) {
         const inputWithDashes = inputName.replace(/\s+/g, "-")
+
+        // First try matching against human-readable area names
+        for (const areaId of context.knownAreaIds) {
+          const area = context.state.exploration.areas.get(areaId)
+          if (area?.name) {
+            const areaNameLower = area.name.toLowerCase()
+            // Match if input equals or is prefix of area name (not the other way around)
+            // This allows "greymist" to match "Greymist Copse" but not "town_foo" to match "Town"
+            if (areaNameLower === inputName || areaNameLower.startsWith(inputName)) {
+              return { type: "ExplorationTravel", destinationAreaId: areaId }
+            }
+          }
+        }
+
+        // Fall back to matching raw area IDs
         const matchedArea = context.knownAreaIds.find(
           (a) =>
             a.toLowerCase() === inputName ||
