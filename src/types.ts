@@ -268,6 +268,8 @@ export type ActionType =
   | "Move" // Alias for ExplorationTravel for backwards compat
   | "AcceptContract"
   | "Gather"
+  | "Mine" // Alias for Gather at ORE_VEIN (resolves node by type)
+  | "Chop" // Alias for Gather at TREE_STAND (resolves node by type)
   | "Fight"
   | "Craft"
   | "Store"
@@ -294,6 +296,26 @@ export interface GatherAction {
   type: "Gather"
   nodeId: string
   mode?: GatherMode // Optional for backward compat; defaults to legacy behavior
+  focusMaterialId?: MaterialID // Required for FOCUS mode
+}
+
+/**
+ * Mine action - alias for Gather that finds ORE_VEIN node by skill type
+ * Uses Mining skill, resolves to Gather action at runtime
+ */
+export interface MineAction {
+  type: "Mine"
+  mode: GatherMode
+  focusMaterialId?: MaterialID // Required for FOCUS mode
+}
+
+/**
+ * Chop action - alias for Gather that finds TREE_STAND node by skill type
+ * Uses Woodcutting skill, resolves to Gather action at runtime
+ */
+export interface ChopAction {
+  type: "Chop"
+  mode: GatherMode
   focusMaterialId?: MaterialID // Required for FOCUS mode
 }
 
@@ -373,6 +395,8 @@ export type Action =
   | MoveAction
   | AcceptContractAction
   | GatherAction
+  | MineAction
+  | ChopAction
   | FightAction
   | CraftAction
   | StoreAction

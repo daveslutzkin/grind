@@ -5,6 +5,8 @@ import type {
   RngRoll,
   AcceptContractAction,
   GatherAction,
+  MineAction,
+  ChopAction,
   FightAction,
   CraftAction,
   StoreAction,
@@ -21,7 +23,7 @@ import type {
   Node,
   GatheringSkillID,
 } from "./types.js"
-import { isInTown, GatherMode } from "./types.js"
+import { isInTown, GatherMode, NodeType, getCurrentAreaId } from "./types.js"
 import { roll, rollLootTable, rollFloat } from "./rng.js"
 import {
   executeSurvey,
@@ -118,6 +120,10 @@ export function executeAction(state: WorldState, action: Action): ActionLog {
       return executeAcceptContract(state, action, rolls)
     case "Gather":
       return executeGather(state, action, rolls)
+    case "Mine":
+      return executeMine(state, action, rolls)
+    case "Chop":
+      return executeChop(state, action, rolls)
     case "Fight":
       return executeFight(state, action, rolls)
     case "Craft":
@@ -192,6 +198,62 @@ function executeGather(state: WorldState, action: GatherAction, rolls: RngRoll[]
 
   // Execute multi-material node gather
   return executeMultiMaterialGather(state, action, rolls, tickBefore, check.timeCost)
+}
+
+/**
+ * Find a node by type in the player's current area
+ */
+function findNodeByTypeInCurrentArea(state: WorldState, nodeType: NodeType): Node | undefined {
+  const currentAreaId = getCurrentAreaId(state)
+  return state.world.nodes?.find(
+    (n) => n.areaId === currentAreaId && n.nodeType === nodeType && !n.depleted
+  )
+}
+
+/**
+ * Execute Mine action - alias for Gather at ORE_VEIN
+ * Finds the ore vein node in the current area and executes gather
+ */
+function executeMine(state: WorldState, action: MineAction, rolls: RngRoll[]): ActionLog {
+  // Find ORE_VEIN node in current area
+  const node = findNodeByTypeInCurrentArea(state, NodeType.ORE_VEIN)
+
+  if (!node) {
+    return createFailureLog(state, action, "NODE_NOT_FOUND")
+  }
+
+  // Convert to GatherAction and execute
+  const gatherAction: GatherAction = {
+    type: "Gather",
+    nodeId: node.nodeId,
+    mode: action.mode,
+    focusMaterialId: action.focusMaterialId,
+  }
+
+  return executeGather(state, gatherAction, rolls)
+}
+
+/**
+ * Execute Chop action - alias for Gather at TREE_STAND
+ * Finds the tree stand node in the current area and executes gather
+ */
+function executeChop(state: WorldState, action: ChopAction, rolls: RngRoll[]): ActionLog {
+  // Find TREE_STAND node in current area
+  const node = findNodeByTypeInCurrentArea(state, NodeType.TREE_STAND)
+
+  if (!node) {
+    return createFailureLog(state, action, "NODE_NOT_FOUND")
+  }
+
+  // Convert to GatherAction and execute
+  const gatherAction: GatherAction = {
+    type: "Gather",
+    nodeId: node.nodeId,
+    mode: action.mode,
+    focusMaterialId: action.focusMaterialId,
+  }
+
+  return executeGather(state, gatherAction, rolls)
 }
 
 /**

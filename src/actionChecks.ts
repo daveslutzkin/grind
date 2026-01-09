@@ -653,6 +653,10 @@ export function checkAction(state: WorldState, action: Action): ActionCheckResul
       return checkAcceptContractAction(state, action)
     case "Gather":
       return checkGatherAction(state, action)
+    case "Mine":
+    case "Chop":
+      // Mine/Chop are resolved to Gather at runtime; validation happens there
+      return { valid: true, timeCost: 0, successProbability: 1 }
     case "Fight":
       return checkFightAction(state, action)
     case "Craft":

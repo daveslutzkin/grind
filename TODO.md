@@ -13,7 +13,7 @@ Based on a 24-action adaptive agent test run and comparison with design docs.
 **Decision:** Use `ceil(pct)` for all percentiles. 0.4% → "Top 1%", 1.4% → "Top 2%", etc. Naturally prevents "Top 0%" with no special cases.
 
 ### 2. Node ID Display in Gathering Output
-**Status:** Not started
+**Status:** Complete
 **Description:** UI shows "Gathering: Ore vein" but gather command requires node ID like `area-d1-i1-node-0`. Users cannot discover the correct ID to use.
 
 **Decision:** Only one node per type per location, so skill *is* the identifier. Add commands:
@@ -21,6 +21,8 @@ Based on a 24-action adaptive agent test run and comparison with design docs.
 - `chop <mode> [material]` (alias for `gather woodcutting ...`)
 
 No node IDs needed in display. Just show types: `Gathering: Ore vein, Tree stand`
+
+**Implementation:** Added `Mine` and `Chop` action types that resolve to `Gather` at runtime by finding the appropriate node (ORE_VEIN or TREE_STAND) in the player's current area.
 
 ### 3. Travel Time Display Discrepancy
 **Status:** Not started

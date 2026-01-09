@@ -1,4 +1,5 @@
-import type { Action, GatherMode, SkillID } from "../types.js"
+import type { Action, SkillID } from "../types.js"
+import { GatherMode } from "../types.js"
 
 /**
  * Valid skill names for normalization
@@ -104,6 +105,30 @@ function parseAction(actionText: string): Action | null {
   const legacyGatherMatch = text.match(/^gather\s+(\S+)/i)
   if (legacyGatherMatch) {
     return { type: "Gather", nodeId: legacyGatherMatch[1] }
+  }
+
+  // Try to parse Mine action (alias for gather mining)
+  // Patterns: "mine MODE [MATERIAL]"
+  const mineMatch = text.match(/^mine\s+(FOCUS|CAREFUL_ALL|APPRAISE)(?:\s+(\S+))?/i)
+  if (mineMatch) {
+    const mode = mineMatch[1].toUpperCase() as GatherMode
+    const action: Action = { type: "Mine", mode }
+    if (mode === "FOCUS" && mineMatch[2]) {
+      ;(action as { focusMaterialId?: string }).focusMaterialId = mineMatch[2]
+    }
+    return action
+  }
+
+  // Try to parse Chop action (alias for gather woodcutting)
+  // Patterns: "chop MODE [MATERIAL]"
+  const chopMatch = text.match(/^chop\s+(FOCUS|CAREFUL_ALL|APPRAISE)(?:\s+(\S+))?/i)
+  if (chopMatch) {
+    const mode = chopMatch[1].toUpperCase() as GatherMode
+    const action: Action = { type: "Chop", mode }
+    if (mode === "FOCUS" && chopMatch[2]) {
+      ;(action as { focusMaterialId?: string }).focusMaterialId = chopMatch[2]
+    }
+    return action
   }
 
   // Try to parse Enrol action

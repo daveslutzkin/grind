@@ -68,6 +68,92 @@ ACTION: Gather node ore_vein_1 APPRAISE
       })
     })
 
+    it("should parse a Mine action with FOCUS mode", () => {
+      const response = `
+REASONING: I want to focus mine copper.
+
+ACTION: mine FOCUS COPPER_ORE
+`
+      const parsed = parseAgentResponse(response)
+
+      expect(parsed.action).toEqual({
+        type: "Mine",
+        mode: "FOCUS" as GatherMode,
+        focusMaterialId: "COPPER_ORE",
+      })
+    })
+
+    it("should parse a Mine action with CAREFUL_ALL mode", () => {
+      const response = `
+REASONING: I want to carefully extract all minerals.
+
+ACTION: mine CAREFUL_ALL
+`
+      const parsed = parseAgentResponse(response)
+
+      expect(parsed.action).toEqual({
+        type: "Mine",
+        mode: "CAREFUL_ALL" as GatherMode,
+      })
+    })
+
+    it("should parse a Mine action with APPRAISE mode", () => {
+      const response = `
+REASONING: I want to check what's in the ore vein.
+
+ACTION: mine APPRAISE
+`
+      const parsed = parseAgentResponse(response)
+
+      expect(parsed.action).toEqual({
+        type: "Mine",
+        mode: "APPRAISE" as GatherMode,
+      })
+    })
+
+    it("should parse a Chop action with FOCUS mode", () => {
+      const response = `
+REASONING: I want to focus chop oak.
+
+ACTION: chop FOCUS OAK
+`
+      const parsed = parseAgentResponse(response)
+
+      expect(parsed.action).toEqual({
+        type: "Chop",
+        mode: "FOCUS" as GatherMode,
+        focusMaterialId: "OAK",
+      })
+    })
+
+    it("should parse a Chop action with CAREFUL_ALL mode", () => {
+      const response = `
+REASONING: I want to carefully extract all wood.
+
+ACTION: chop CAREFUL_ALL
+`
+      const parsed = parseAgentResponse(response)
+
+      expect(parsed.action).toEqual({
+        type: "Chop",
+        mode: "CAREFUL_ALL" as GatherMode,
+      })
+    })
+
+    it("should parse a Chop action with APPRAISE mode", () => {
+      const response = `
+REASONING: I want to check what's in the tree stand.
+
+ACTION: chop APPRAISE
+`
+      const parsed = parseAgentResponse(response)
+
+      expect(parsed.action).toEqual({
+        type: "Chop",
+        mode: "APPRAISE" as GatherMode,
+      })
+    })
+
     it("should parse an Enrol action", () => {
       const response = `
 REASONING: I need to learn mining before I can gather.
