@@ -203,8 +203,16 @@ export function formatWorldState(state: WorldState): string {
       lines.push(`${locationName} (${areaName})${statusSuffix}`)
     }
 
-    // Only show Gathering line if we've discovered at least one location
-    if (knownLocs > 0) {
+    // Count known gathering locations separately from other location types
+    const knownGatheringLocs = area
+      ? area.locations.filter(
+          (loc) =>
+            loc.type === ExplorationLocationType.GATHERING_NODE && knownLocationIds.includes(loc.id)
+        ).length
+      : 0
+
+    // Only show Gathering line if we've discovered at least one gathering location
+    if (knownGatheringLocs > 0) {
       const nodesHere = state.world.nodes?.filter((n) => {
         if (n.areaId !== currentArea || n.depleted) return false
         const match = n.nodeId.match(/-node-(\d+)$/)
@@ -257,6 +265,19 @@ export function formatWorldState(state: WorldState): string {
       } else {
         lines.push("Gathering: none visible")
       }
+    }
+
+    // Show discovered enemy camps (separate from gathering nodes)
+    const knownMobCamps = area?.locations.filter(
+      (loc) => loc.type === ExplorationLocationType.MOB_CAMP && knownLocationIds.includes(loc.id)
+    )
+    if (knownMobCamps && knownMobCamps.length > 0) {
+      const campDescriptions = knownMobCamps.map((camp) => {
+        const difficultyStr =
+          camp.difficulty !== undefined ? ` (difficulty ${camp.difficulty})` : ""
+        return `enemy camp${difficultyStr}`
+      })
+      lines.push(`Enemy camps: ${campDescriptions.join(", ")}`)
     }
   }
 
