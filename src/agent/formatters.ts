@@ -134,20 +134,29 @@ export function formatWorldState(state: WorldState): string {
       ? area.locations.filter((loc) => knownLocationIds.includes(loc.id)).length
       : 0
 
+    // Count discovered connections FROM this area (not including the one we came from)
+    const knownConnectionIds = new Set(state.exploration.playerState.knownConnectionIds)
+    const connectionsFromArea = state.exploration.connections.filter(
+      (conn) => conn.fromAreaId === currentArea || conn.toAreaId === currentArea
+    )
+    const discoveredConnectionsFromArea = connectionsFromArea.filter((conn) => {
+      const connId = `${conn.fromAreaId}->${conn.toAreaId}`
+      // Don't count the TOWN->here connection as a discovery FROM this area
+      if (conn.fromAreaId === "TOWN" && conn.toAreaId === currentArea) return false
+      return knownConnectionIds.has(connId)
+    })
+
     // Determine status suffix for Location line
     let statusSuffix = ""
-    if (knownLocs === 0) {
-      // Nothing discovered yet
+    const hasAnyDiscovery = knownLocs > 0 || discoveredConnectionsFromArea.length > 0
+
+    if (!hasAnyDiscovery) {
+      // Nothing discovered yet (no locations AND no connections from here)
       statusSuffix = " — unexplored"
     } else if (area) {
       // Check if fully explored (all locations + ALL connections discovered)
       const totalLocs = area.locations.length
-      const knownConnectionIds = new Set(state.exploration.playerState.knownConnectionIds)
-      // Check for ANY undiscovered connections (to known OR unknown areas)
-      const remainingConnections = state.exploration.connections.filter((conn) => {
-        const isFromCurrent = conn.fromAreaId === currentArea
-        const isToCurrent = conn.toAreaId === currentArea
-        if (!isFromCurrent && !isToCurrent) return false
+      const remainingConnections = connectionsFromArea.filter((conn) => {
         const connId = `${conn.fromAreaId}->${conn.toAreaId}`
         return !knownConnectionIds.has(connId)
       })
