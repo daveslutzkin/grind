@@ -15,7 +15,86 @@ export function formatWorldState(state: WorldState): string {
   const lines: string[] = []
   const currentArea = getCurrentAreaId(state)
 
+  // ========== PLAYER SECTION (separated by blank line) ==========
+
+  // Inventory - compact
+  if (state.player.inventory.length === 0) {
+    lines.push(`Inventory: empty (0/${state.player.inventoryCapacity})`)
+  } else {
+    const items = state.player.inventory.map((i) => `${i.quantity} ${i.itemId}`).join(", ")
+    lines.push(
+      `Inventory: ${items} (${state.player.inventory.length}/${state.player.inventoryCapacity})`
+    )
+  }
+
+  // Storage - compact, only if non-empty
+  if (state.player.storage.length > 0) {
+    const items = state.player.storage.map((i) => `${i.quantity} ${i.itemId}`).join(", ")
+    lines.push(`Storage: ${items}`)
+  }
+
+  // Skills - only show enrolled skills
+  const enrolledSkills = Object.entries(state.player.skills)
+    .filter(([, s]) => s.level > 0)
+    .map(([id, s]) => {
+      let skillStr = `${id} L${s.level}`
+      // Add gather modes for gathering skills
+      if (id === "Mining" || id === "Woodcutting") {
+        const modes = getUnlockedModes(s.level)
+        const nextUnlock = getNextModeUnlock(s.level)
+        const modesStr = modes.join("/")
+        skillStr += ` [${modesStr}]`
+        if (nextUnlock) {
+          skillStr += ` (${nextUnlock.mode}@L${nextUnlock.level})`
+        }
+      }
+      return skillStr
+    })
+  lines.push(`Skills: ${enrolledSkills.length > 0 ? enrolledSkills.join(", ") : "none"}`)
+
+  // Active contracts - compact
+  if (state.player.activeContracts.length > 0) {
+    const contracts = state.player.activeContracts
+      .map((id) => {
+        const c = state.world.contracts.find((x) => x.id === id)
+        if (!c) return id
+        const reqs = c.requirements.map((r) => `${r.quantity} ${r.itemId}`).join(", ")
+        return `${id} (need ${reqs})`
+      })
+      .join("; ")
+    lines.push(`Active: ${contracts}`)
+  }
+
+  // Recipes - compact (location-specific but useful for player)
+  const recipes = state.world.recipes.filter((r) => r.requiredAreaId === currentArea)
+  if (recipes.length > 0) {
+    const recipeStr = recipes
+      .map((r) => {
+        const inputs = r.inputs.map((i) => `${i.quantity} ${i.itemId}`).join("+")
+        const id = r.id.replace(/-recipe$/, "")
+        return `${id} (${inputs})`
+      })
+      .join(", ")
+    lines.push(`Recipes: ${recipeStr}`)
+  }
+
+  // Contracts - compact (location-specific but useful for player)
+  const contracts = state.world.contracts.filter(
+    (c) => c.guildAreaId === currentArea && !state.player.activeContracts.includes(c.id)
+  )
+  if (contracts.length > 0) {
+    const contractStr = contracts
+      .map((c) => {
+        const reqs = c.requirements.map((r) => `${r.quantity} ${r.itemId}`).join("+")
+        const rewards = c.rewards.map((r) => `${r.quantity} ${r.itemId}`).join("+")
+        return `${c.id} (${reqs} → ${rewards}, +${c.reputationReward} rep)`
+      })
+      .join("; ")
+    lines.push(`Contracts: ${contractStr}`)
+  }
+
   // ========== LOCATION SECTION ==========
+  lines.push("")
 
   // Location + ticks on one line
   lines.push(`Location: ${currentArea} (${state.time.sessionRemainingTicks} ticks left)`)
@@ -114,85 +193,6 @@ export function formatWorldState(state: WorldState): string {
   if (enemies.length > 0) {
     const enemyStr = enemies.map((e) => `${e.id} (Combat L${e.requiredSkillLevel})`).join(", ")
     lines.push(`Enemies: ${enemyStr}`)
-  }
-
-  // ========== PLAYER SECTION (separated by blank line) ==========
-  lines.push("")
-
-  // Inventory - compact
-  if (state.player.inventory.length === 0) {
-    lines.push(`Inventory: empty (0/${state.player.inventoryCapacity})`)
-  } else {
-    const items = state.player.inventory.map((i) => `${i.quantity} ${i.itemId}`).join(", ")
-    lines.push(
-      `Inventory: ${items} (${state.player.inventory.length}/${state.player.inventoryCapacity})`
-    )
-  }
-
-  // Storage - compact, only if non-empty
-  if (state.player.storage.length > 0) {
-    const items = state.player.storage.map((i) => `${i.quantity} ${i.itemId}`).join(", ")
-    lines.push(`Storage: ${items}`)
-  }
-
-  // Skills - only show enrolled skills
-  const enrolledSkills = Object.entries(state.player.skills)
-    .filter(([, s]) => s.level > 0)
-    .map(([id, s]) => {
-      let skillStr = `${id} L${s.level}`
-      // Add gather modes for gathering skills
-      if (id === "Mining" || id === "Woodcutting") {
-        const modes = getUnlockedModes(s.level)
-        const nextUnlock = getNextModeUnlock(s.level)
-        const modesStr = modes.join("/")
-        skillStr += ` [${modesStr}]`
-        if (nextUnlock) {
-          skillStr += ` (${nextUnlock.mode}@L${nextUnlock.level})`
-        }
-      }
-      return skillStr
-    })
-  lines.push(`Skills: ${enrolledSkills.length > 0 ? enrolledSkills.join(", ") : "none"}`)
-
-  // Active contracts - compact
-  if (state.player.activeContracts.length > 0) {
-    const contracts = state.player.activeContracts
-      .map((id) => {
-        const c = state.world.contracts.find((x) => x.id === id)
-        if (!c) return id
-        const reqs = c.requirements.map((r) => `${r.quantity} ${r.itemId}`).join(", ")
-        return `${id} (need ${reqs})`
-      })
-      .join("; ")
-    lines.push(`Active: ${contracts}`)
-  }
-
-  // Recipes - compact (location-specific but useful for player)
-  const recipes = state.world.recipes.filter((r) => r.requiredAreaId === currentArea)
-  if (recipes.length > 0) {
-    const recipeStr = recipes
-      .map((r) => {
-        const inputs = r.inputs.map((i) => `${i.quantity} ${i.itemId}`).join("+")
-        const id = r.id.replace(/-recipe$/, "")
-        return `${id} (${inputs})`
-      })
-      .join(", ")
-    lines.push(`Recipes: ${recipeStr}`)
-  }
-
-  // Contracts - compact (location-specific but useful for player)
-  const contracts = state.world.contracts.filter(
-    (c) => c.guildAreaId === currentArea && !state.player.activeContracts.includes(c.id)
-  )
-  if (contracts.length > 0) {
-    const contractStr = contracts
-      .map((c) => {
-        const reqs = c.requirements.map((r) => `${r.quantity} ${r.itemId}`).join("+")
-        const rewards = c.rewards.map((r) => `${r.quantity} ${r.itemId}`).join("+")
-        return `${c.id} (${reqs} → ${rewards}, +${c.reputationReward} rep)`
-      })
-      .join("; ")
-    lines.push(`Contracts: ${contractStr}`)
   }
 
   return lines.join("\n")
