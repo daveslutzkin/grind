@@ -140,19 +140,18 @@ export function formatWorldState(state: WorldState): string {
       // Nothing discovered yet
       statusSuffix = " — unexplored"
     } else if (area) {
-      // Check if fully explored (all locations + all known connections discovered)
+      // Check if fully explored (all locations + ALL connections discovered)
       const totalLocs = area.locations.length
       const knownConnectionIds = new Set(state.exploration.playerState.knownConnectionIds)
-      const knownAreaIds = new Set(state.exploration.playerState.knownAreaIds)
-      const remainingKnownConnections = state.exploration.connections.filter((conn) => {
+      // Check for ANY undiscovered connections (to known OR unknown areas)
+      const remainingConnections = state.exploration.connections.filter((conn) => {
         const isFromCurrent = conn.fromAreaId === currentArea
         const isToCurrent = conn.toAreaId === currentArea
         if (!isFromCurrent && !isToCurrent) return false
         const connId = `${conn.fromAreaId}->${conn.toAreaId}`
-        const targetId = isFromCurrent ? conn.toAreaId : conn.fromAreaId
-        return !knownConnectionIds.has(connId) && knownAreaIds.has(targetId)
+        return !knownConnectionIds.has(connId)
       })
-      const fullyExplored = knownLocs >= totalLocs && remainingKnownConnections.length === 0
+      const fullyExplored = knownLocs >= totalLocs && remainingConnections.length === 0
       if (fullyExplored) {
         statusSuffix = " — FULLY EXPLORED!"
       }
