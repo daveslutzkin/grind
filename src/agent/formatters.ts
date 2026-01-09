@@ -323,8 +323,33 @@ export function formatActionLog(log: ActionLog, state?: WorldState): string {
     }
   }
 
-  // RNG rolls (compact, without names) + luck calculation
-  if (log.rngRolls.length > 0) {
+  // RNG display - exploration uses luckInfo, others show individual rolls
+  if (log.explorationLog?.luckInfo) {
+    // Exploration: show luck summary without revealing individual rolls
+    const luck = log.explorationLog.luckInfo
+    const delta = luck.luckDelta
+    const deltaPercent = luck.expectedTicks > 0 ? (delta / luck.expectedTicks) * 100 : 0
+
+    // Determine luck label based on how far from expected
+    let luckLabel: string
+    if (deltaPercent >= 50) {
+      luckLabel = "very lucky"
+    } else if (deltaPercent > 0) {
+      luckLabel = "lucky"
+    } else if (deltaPercent <= -50) {
+      luckLabel = "very unlucky"
+    } else if (deltaPercent < 0) {
+      luckLabel = "unlucky"
+    } else {
+      luckLabel = "average"
+    }
+
+    const deltaStr =
+      delta > 0 ? `${delta}t faster` : delta < 0 ? `${Math.abs(delta)}t slower` : "on target"
+
+    lines.push(`  RNG: ${deltaStr} (${luckLabel})`)
+  } else if (log.rngRolls.length > 0) {
+    // Non-exploration: show individual rolls
     const rolls = log.rngRolls.map(
       (r) => `${Math.round(r.probability * 100)}%:${r.result ? "✓" : "✗"}`
     )
