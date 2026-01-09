@@ -123,15 +123,6 @@ export function formatWorldState(state: WorldState): string {
     }
   }
 
-  // Show enrol hint at guild halls
-  if (isAtGuildHall && currentLocation?.guildType) {
-    const skill = currentLocation.guildType
-    const playerSkill = state.player.skills[skill]
-    if (!playerSkill || playerSkill.level === 0) {
-      lines.push(`Can enrol in: ${skill}`)
-    }
-  }
-
   // Nodes + exploration progress combined (if not TOWN)
   if (currentArea !== "TOWN") {
     const area = state.exploration.areas.get(currentArea)
@@ -226,6 +217,16 @@ export function formatWorldState(state: WorldState): string {
   if (enemies.length > 0) {
     const enemyStr = enemies.map((e) => `${e.id} (Combat L${e.requiredSkillLevel})`).join(", ")
     lines.push(`Enemies: ${enemyStr}`)
+  }
+
+  // Show enrol hint at guild halls (last, as it's the actionable item)
+  if (isAtGuildHall && currentLocation?.guildType) {
+    const skill = currentLocation.guildType
+    const playerSkill = state.player.skills[skill]
+    if (!playerSkill || playerSkill.level === 0) {
+      lines.push("")
+      lines.push(`Can enrol in: ${skill}`)
+    }
   }
 
   return lines.join("\n")
