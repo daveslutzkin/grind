@@ -380,7 +380,7 @@ describe("Formatters", () => {
       const formatted = formatActionLog(log)
 
       expect(formatted).toContain("✓")
-      expect(formatted).toContain("Gather")
+      expect(formatted).toContain("extraction") // stateDeltaSummary shows "Focused extraction"
       expect(formatted).toMatch(/\(\d+t\)/)
     })
 

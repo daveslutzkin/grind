@@ -30,6 +30,7 @@ import {
   executeExplore,
   executeExplorationTravel,
   grantExplorationGuildBenefits,
+  getAreaDisplayName,
 } from "./exploration.js"
 import {
   checkAcceptContractAction,
@@ -52,6 +53,7 @@ import {
   grantXP,
   checkAndCompleteContracts,
 } from "./stateHelpers.js"
+import { getLocationDisplayName } from "./world.js"
 
 /**
  * Collect all level-ups from contract completions
@@ -865,7 +867,7 @@ function executeGuildEnrolment(
   const contractsCompleted = checkAndCompleteContracts(state)
 
   const summary = explorationBenefits?.discoveredAreaId
-    ? `Enrolled in ${skill} guild, discovered area ${explorationBenefits.discoveredAreaId}`
+    ? `Enrolled in ${skill} guild, discovered ${getAreaDisplayName(explorationBenefits.discoveredAreaId)}`
     : `Enrolled in ${skill} guild`
 
   return {
@@ -920,7 +922,7 @@ function executeTravelToLocation(state: WorldState, action: TravelToLocationActi
     levelUps: mergeLevelUps([], contractsCompleted),
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: [],
-    stateDeltaSummary: `Traveled to ${locationId}`,
+    stateDeltaSummary: `Traveled to ${getLocationDisplayName(locationId)}`,
   }
 }
 
@@ -959,6 +961,6 @@ function executeLeave(state: WorldState, action: LeaveAction): ActionLog {
     levelUps: mergeLevelUps([], contractsCompleted),
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: [],
-    stateDeltaSummary: `Left ${previousLocation} for ${hubName}`,
+    stateDeltaSummary: `Left ${getLocationDisplayName(previousLocation)} for ${hubName}`,
   }
 }

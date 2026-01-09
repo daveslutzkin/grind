@@ -47,7 +47,9 @@ async function main(): Promise<void> {
     },
 
     onActionComplete: (log, state) => {
+      console.log("")
       console.log(formatActionLog(log, state))
+      console.log("")
       console.log(formatWorldState(state))
     },
 

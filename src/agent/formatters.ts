@@ -317,19 +317,20 @@ export function formatWorldState(state: WorldState): string {
 export function formatActionLog(log: ActionLog, state?: WorldState): string {
   const lines: string[] = []
 
-  // One-line summary
+  // One-line summary - focus on what happened, not internal action names
   const icon = log.success ? "✓" : "✗"
-  const params = Object.entries(log.parameters)
-    .map(([, v]) => v)
-    .join(" ")
-  let summary = `${icon} ${log.actionType}`
-  if (params) summary += ` ${params}`
-  summary += ` (${log.timeConsumed}t)`
+  const timeStr = log.timeConsumed > 0 ? ` (${log.timeConsumed}t)` : ""
 
+  let summary: string
   if (!log.success && log.failureType) {
-    summary += `: ${log.failureType}`
+    // For failures, show action type and failure reason
+    summary = `${icon} ${log.actionType}: ${log.failureType}`
   } else if (log.stateDeltaSummary) {
-    summary += `: ${log.stateDeltaSummary}`
+    // For successes, just show the human-readable summary
+    summary = `${icon} ${log.stateDeltaSummary}${timeStr}`
+  } else {
+    // Fallback to action type if no summary
+    summary = `${icon} ${log.actionType}${timeStr}`
   }
 
   lines.push(summary)
