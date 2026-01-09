@@ -4,7 +4,13 @@
  */
 
 import type { Action, ActionLog, WorldState, SkillID, SkillState } from "./types.js"
-import { getTotalXP, getCurrentAreaId, GatherMode } from "./types.js"
+import {
+  getTotalXP,
+  getCurrentAreaId,
+  getCurrentLocationId,
+  GatherMode,
+  ExplorationLocationType,
+} from "./types.js"
 
 // Re-export agent formatters for unified display
 export { formatWorldState, formatActionLog } from "./agent/formatters.js"
@@ -249,23 +255,41 @@ export function printHelp(state: WorldState): void {
   console.log("│ quit                - Exit without summary                  │")
   console.log("└─────────────────────────────────────────────────────────────┘")
 
-  // Show what's available at current location
+  // Show what's available at current location (context-sensitive hints)
   const currentAreaId = getCurrentAreaId(state)
-  const currentLocationId = state.exploration.playerState.currentLocationId
-  const locationDisplay =
-    currentLocationId ?? (currentAreaId === "TOWN" ? "Town Square" : "Clearing")
-  console.log(`\nAt ${currentAreaId} - ${locationDisplay}:`)
+  const currentLocationId = getCurrentLocationId(state)
+  const area = state.exploration.areas.get(currentAreaId)
+  const currentLocation = area?.locations.find((loc) => loc.id === currentLocationId)
+
   const nodes = state.world.nodes.filter((n) => n.areaId === currentAreaId)
   const enemies = state.world.enemies.filter((e) => e.areaId === currentAreaId)
-  // Recipes and contracts are now location-based, not area-based
-  const recipes = state.world.recipes
+
+  // Recipes only shown at guild halls of matching type
+  const isAtGuildHall =
+    currentLocation?.type === ExplorationLocationType.GUILD_HALL && currentLocation.guildType
+  const recipes = isAtGuildHall
+    ? state.world.recipes.filter((r) => r.guildType === currentLocation.guildType)
+    : []
+
+  // Contracts shown at their accept location
   const contracts = state.world.contracts.filter((c) => c.acceptLocationId === currentLocationId)
 
-  if (nodes.length > 0) console.log(`  Nodes: ${nodes.map((n) => n.nodeId).join(", ")}`)
-  if (enemies.length > 0) console.log(`  Enemies: ${enemies.map((e) => e.id).join(", ")}`)
-  if (recipes.length > 0) console.log(`  Recipes: ${recipes.map((r) => r.id).join(", ")}`)
-  if (contracts.length > 0) console.log(`  Contracts: ${contracts.map((c) => c.id).join(", ")}`)
-  if (currentAreaId === state.world.storageAreaId) console.log(`  Storage available`)
+  // Only show hints section if there's something relevant
+  const hasHints =
+    nodes.length > 0 ||
+    enemies.length > 0 ||
+    recipes.length > 0 ||
+    contracts.length > 0 ||
+    currentAreaId === state.world.storageAreaId
+
+  if (hasHints) {
+    console.log("\nAvailable here:")
+    if (nodes.length > 0) console.log(`  Nodes: ${nodes.map((n) => n.nodeId).join(", ")}`)
+    if (enemies.length > 0) console.log(`  Enemies: ${enemies.map((e) => e.id).join(", ")}`)
+    if (recipes.length > 0) console.log(`  Recipes: ${recipes.map((r) => r.id).join(", ")}`)
+    if (contracts.length > 0) console.log(`  Contracts: ${contracts.map((c) => c.id).join(", ")}`)
+    if (currentAreaId === state.world.storageAreaId) console.log(`  Storage available`)
+  }
 }
 
 // ============================================================================
