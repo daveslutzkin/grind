@@ -403,7 +403,7 @@ export function createWorld(seed: string): WorldState {
   return {
     time: {
       currentTick: 0,
-      sessionRemainingTicks: 200,
+      sessionRemainingTicks: 20000,
     },
 
     player: {
