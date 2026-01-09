@@ -26,6 +26,8 @@ No node IDs needed in display. Just show types: `Gathering: Ore vein, Tree stand
 **Status:** Not started
 **Description:** Travel destinations show costs like "2t" but actual travel takes 10x longer (20t). Either the display calculation is wrong or it's showing "base cost" without the multiplier.
 
+**Decision:** Show actual time. `area-d2-i7 (20t)` not `area-d2-i7 (2t)`.
+
 ---
 
 ## Medium Fixes
