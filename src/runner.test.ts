@@ -240,4 +240,47 @@ describe("runSession", () => {
       expect(receivedState!.player.skills.Exploration).toBeDefined()
     })
   })
+
+  describe("onSessionStart hook", () => {
+    it("calls onSessionStart with initial state before first command", async () => {
+      const commands = ["enrol exploration", "survey"]
+      let cmdIndex = 0
+      let startState: WorldState | null = null
+      const callSequence: string[] = []
+
+      await runSession("start-hook-test", {
+        getNextCommand: async () => commands[cmdIndex++] ?? null,
+        onActionComplete: (log) => {
+          callSequence.push(`action:${log.actionType}`)
+        },
+        onSessionEnd: () => {},
+        onInvalidCommand: () => "continue",
+        onSessionStart: (state) => {
+          startState = state
+          callSequence.push("start")
+        },
+      })
+
+      expect(startState).not.toBeNull()
+      // onSessionStart should be called before any actions
+      expect(callSequence[0]).toBe("start")
+      expect(callSequence[1]).toBe("action:Enrol")
+      expect(callSequence[2]).toBe("action:Survey")
+    })
+
+    it("does not require onSessionStart to be provided", async () => {
+      const commands = ["enrol exploration"]
+      let cmdIndex = 0
+
+      // Should not throw when onSessionStart is not provided
+      await expect(
+        runSession("no-start-hook-test", {
+          getNextCommand: async () => commands[cmdIndex++] ?? null,
+          onActionComplete: () => {},
+          onSessionEnd: () => {},
+          onInvalidCommand: () => "continue",
+        })
+      ).resolves.not.toThrow()
+    })
+  })
 })
