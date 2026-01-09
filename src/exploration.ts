@@ -1194,58 +1194,8 @@ export async function executeExplore(
 // ============================================================================
 
 /**
- * Find shortest path between two areas using known connections
- */
-function findPath(
-  state: WorldState,
-  fromAreaId: AreaID,
-  toAreaId: AreaID
-): { path: AreaID[]; connections: AreaConnection[] } | null {
-  const exploration = state.exploration!
-  const knownConnectionIds = new Set(exploration.playerState.knownConnectionIds)
-
-  // BFS for shortest path
-  const queue: { areaId: AreaID; path: AreaID[]; connections: AreaConnection[] }[] = [
-    { areaId: fromAreaId, path: [fromAreaId], connections: [] },
-  ]
-  const visited = new Set<AreaID>([fromAreaId])
-
-  while (queue.length > 0) {
-    const current = queue.shift()!
-
-    if (current.areaId === toAreaId) {
-      return { path: current.path, connections: current.connections }
-    }
-
-    // Find all known connections from current area
-    for (const conn of exploration.connections) {
-      if (!isConnectionKnown(knownConnectionIds, conn.fromAreaId, conn.toAreaId)) {
-        continue
-      }
-
-      let nextAreaId: AreaID | null = null
-      if (conn.fromAreaId === current.areaId && !visited.has(conn.toAreaId)) {
-        nextAreaId = conn.toAreaId
-      } else if (conn.toAreaId === current.areaId && !visited.has(conn.fromAreaId)) {
-        nextAreaId = conn.fromAreaId
-      }
-
-      if (nextAreaId) {
-        visited.add(nextAreaId)
-        queue.push({
-          areaId: nextAreaId,
-          path: [...current.path, nextAreaId],
-          connections: [...current.connections, conn],
-        })
-      }
-    }
-  }
-
-  return null
-}
-
-/**
  * Execute ExplorationTravel action - move between areas
+ * Only allows travel to directly connected areas with known connections.
  */
 export async function executeExplorationTravel(
   state: WorldState,
@@ -1269,6 +1219,7 @@ export async function executeExplorationTravel(
   const destinationIsKnown = exploration.playerState.knownAreaIds.includes(destinationAreaId)
 
   // Check for direct known connection from current area to destination
+  // Travel is only allowed to directly connected areas (no multi-hop pathfinding)
   const directConnection = exploration.connections.find(
     (conn) =>
       isConnectionKnown(knownConnectionIds, conn.fromAreaId, conn.toAreaId) &&
@@ -1276,25 +1227,15 @@ export async function executeExplorationTravel(
         (conn.toAreaId === currentAreaId && conn.fromAreaId === destinationAreaId))
   )
 
-  // Determine path to destination
-  let pathResult: { path: AreaID[]; connections: AreaConnection[] } | null
-
-  if (directConnection) {
-    // Direct travel via known connection - allowed even if destination is unknown
-    pathResult = {
-      path: [currentAreaId, destinationAreaId],
-      connections: [directConnection],
-    }
-  } else {
-    // Multi-hop path required - destination must be known
-    if (!destinationIsKnown) {
-      return createFailureLog(state, "ExplorationTravel", "AREA_NOT_KNOWN")
-    }
-    pathResult = findPath(state, currentAreaId, destinationAreaId)
+  if (!directConnection) {
+    // No direct connection - cannot travel (must have a known connection from current area)
+    return createFailureLog(state, "ExplorationTravel", "NO_PATH_TO_DESTINATION")
   }
 
-  if (!pathResult) {
-    return createFailureLog(state, "ExplorationTravel", "NO_PATH_TO_DESTINATION")
+  // Build path using direct connection
+  const pathResult = {
+    path: [currentAreaId, destinationAreaId],
+    connections: [directConnection],
   }
 
   // Calculate travel time

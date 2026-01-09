@@ -586,7 +586,7 @@ describe("Explore Action", () => {
 
 describe("ExplorationTravel Action", () => {
   describe("preconditions", () => {
-    it("should fail if destination area is not known and no direct connection exists", async () => {
+    it("should fail if no direct connection exists to destination", async () => {
       const state = createExplorationWorld("travel-test")
       // area-d1-i0 is not known and no connection is known
       const action: ExplorationTravelAction = {
@@ -597,7 +597,7 @@ describe("ExplorationTravel Action", () => {
       const log = await executeExplorationTravel(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("AREA_NOT_KNOWN")
+      expect(log.failureType).toBe("NO_PATH_TO_DESTINATION")
     })
 
     it("should fail if no path to destination", async () => {
@@ -706,7 +706,7 @@ describe("ExplorationTravel Action", () => {
       expect(log.timeConsumed).toBeLessThanOrEqual(90)
     })
 
-    it("should support multi-hop pathfinding", async () => {
+    it("should NOT allow multi-hop pathfinding (direct connections only)", async () => {
       const state = createExplorationWorld("travel-multihop")
       // Set up: Know area-d1-i0 and area-d1-i1, and connections
       const area0 = "area-d1-i0"
@@ -727,7 +727,8 @@ describe("ExplorationTravel Action", () => {
         })
       }
 
-      // Travel from TOWN to area1 (requires going through area0)
+      // Try to travel from TOWN to area1 (would require going through area0)
+      // This should fail because there's no direct connection from TOWN to area1
       const action: ExplorationTravelAction = {
         type: "ExplorationTravel",
         destinationAreaId: area1,
@@ -735,10 +736,9 @@ describe("ExplorationTravel Action", () => {
 
       const log = await executeExplorationTravel(state, action)
 
-      expect(log.success).toBe(true)
-      expect(state.exploration!.playerState.currentAreaId).toBe(area1)
-      // Should take at least 2 hops worth of time
-      expect(log.timeConsumed).toBeGreaterThanOrEqual(20)
+      // Multi-hop travel is not allowed - must have direct connection
+      expect(log.success).toBe(false)
+      expect(log.failureType).toBe("NO_PATH_TO_DESTINATION")
     })
   })
 })
