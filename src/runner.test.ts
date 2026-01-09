@@ -9,7 +9,8 @@ import { runSession } from "./runner.js"
 describe("runSession", () => {
   describe("basic execution", () => {
     it("executes commands from getNextCommand until null", async () => {
-      const commands = ["enrol exploration", "survey"]
+      // Must go to Explorers Guild before enrolling (location-based actions)
+      const commands = ["goto town_explorers_guild", "enrol exploration", "leave", "survey"]
       let cmdIndex = 0
       const actionLogs: ActionLog[] = []
 
@@ -20,14 +21,23 @@ describe("runSession", () => {
         onInvalidCommand: () => "continue",
       })
 
-      expect(actionLogs).toHaveLength(2)
-      expect(actionLogs[0].actionType).toBe("Enrol")
-      expect(actionLogs[1].actionType).toBe("Survey")
+      expect(actionLogs).toHaveLength(4)
+      expect(actionLogs[0].actionType).toBe("TravelToLocation")
+      expect(actionLogs[1].actionType).toBe("Enrol")
+      expect(actionLogs[2].actionType).toBe("Leave")
+      expect(actionLogs[3].actionType).toBe("Survey")
     })
 
     it("checks time before each command", async () => {
       // Verify that the session checks remaining ticks and stops appropriately
-      const commands = ["enrol exploration", "survey", "survey"]
+      // Must go to Explorers Guild before enrolling (location-based actions)
+      const commands = [
+        "goto town_explorers_guild",
+        "enrol exploration",
+        "leave",
+        "survey",
+        "survey",
+      ]
       let cmdIndex = 0
       let lastTicksRemaining = 200
 
@@ -45,12 +55,13 @@ describe("runSession", () => {
         onInvalidCommand: () => "continue",
       })
 
-      // Time should have been consumed
+      // Time should have been consumed (enrol takes 3 ticks)
       expect(lastTicksRemaining).toBeLessThan(200)
     })
 
     it("passes final state and stats to onSessionEnd", async () => {
-      const commands = ["enrol exploration"]
+      // Must go to Explorers Guild before enrolling (location-based actions)
+      const commands = ["goto town_explorers_guild", "enrol exploration"]
       let cmdIndex = 0
       let finalState: WorldState | null = null
       let finalStats: SessionStats | null = null
@@ -67,14 +78,15 @@ describe("runSession", () => {
 
       expect(finalState).not.toBeNull()
       expect(finalStats).not.toBeNull()
-      expect(finalStats!.logs).toHaveLength(1)
+      expect(finalStats!.logs).toHaveLength(2)
       expect(finalState!.time.sessionRemainingTicks).toBeLessThan(200)
     })
   })
 
   describe("error handling", () => {
     it("calls onInvalidCommand for unparseable commands", async () => {
-      const commands = ["invalid-command", "enrol exploration"]
+      // Must go to Explorers Guild before enrolling (location-based actions)
+      const commands = ["invalid-command", "goto town_explorers_guild", "enrol exploration"]
       let cmdIndex = 0
       const invalidCommands: string[] = []
       const actionLogs: ActionLog[] = []
@@ -90,11 +102,12 @@ describe("runSession", () => {
       })
 
       expect(invalidCommands).toEqual(["invalid-command"])
-      expect(actionLogs).toHaveLength(1) // Only the valid command executed
+      expect(actionLogs).toHaveLength(2) // goto + enrol (valid commands)
     })
 
     it("stops execution when onInvalidCommand returns exit", async () => {
-      const commands = ["enrol exploration", "bad-command", "survey"]
+      // Must go to Explorers Guild before enrolling (location-based actions)
+      const commands = ["goto town_explorers_guild", "enrol exploration", "bad-command", "survey"]
       let cmdIndex = 0
       const actionLogs: ActionLog[] = []
 
@@ -105,13 +118,14 @@ describe("runSession", () => {
         onInvalidCommand: () => "exit",
       })
 
-      expect(actionLogs).toHaveLength(1) // Only first command before error
+      expect(actionLogs).toHaveLength(2) // goto + enrol before error
     })
   })
 
   describe("meta commands", () => {
     it("handles meta commands without executing actions", async () => {
-      const commands = ["enrol exploration", "help", "survey"]
+      // Must go to Explorers Guild before enrolling (location-based actions)
+      const commands = ["goto town_explorers_guild", "enrol exploration", "help", "leave", "survey"]
       let cmdIndex = 0
       const actionLogs: ActionLog[] = []
       const metaCalls: string[] = []
@@ -130,11 +144,12 @@ describe("runSession", () => {
       })
 
       expect(metaCalls).toEqual(["help"])
-      expect(actionLogs).toHaveLength(2) // enrol and survey, not help
+      expect(actionLogs).toHaveLength(4) // goto, enrol, leave, survey (not help)
     })
 
     it("ends session when meta command returns end", async () => {
-      const commands = ["enrol exploration", "end", "survey"]
+      // Must go to Explorers Guild before enrolling (location-based actions)
+      const commands = ["goto town_explorers_guild", "enrol exploration", "end", "survey"]
       let cmdIndex = 0
       const actionLogs: ActionLog[] = []
       let showSummary = false
@@ -151,12 +166,13 @@ describe("runSession", () => {
         },
       })
 
-      expect(actionLogs).toHaveLength(1) // Only enrol before end
+      expect(actionLogs).toHaveLength(2) // goto + enrol before end
       expect(showSummary).toBe(true)
     })
 
     it("ends session without summary when meta command returns quit", async () => {
-      const commands = ["enrol exploration", "quit", "survey"]
+      // Must go to Explorers Guild before enrolling (location-based actions)
+      const commands = ["goto town_explorers_guild", "enrol exploration", "quit", "survey"]
       let cmdIndex = 0
       const actionLogs: ActionLog[] = []
       let showSummary = true
@@ -173,14 +189,15 @@ describe("runSession", () => {
         },
       })
 
-      expect(actionLogs).toHaveLength(1)
+      expect(actionLogs).toHaveLength(2) // goto + enrol
       expect(showSummary).toBe(false)
     })
   })
 
   describe("beforeAction hook", () => {
     it("calls beforeAction before executing each action", async () => {
-      const commands = ["enrol exploration", "survey"]
+      // Must go to Explorers Guild before enrolling (location-based actions)
+      const commands = ["goto town_explorers_guild", "enrol exploration", "leave", "survey"]
       let cmdIndex = 0
       const beforeCalls: string[] = []
 
@@ -194,13 +211,14 @@ describe("runSession", () => {
         },
       })
 
-      expect(beforeCalls).toEqual(["Enrol", "Survey"])
+      expect(beforeCalls).toEqual(["TravelToLocation", "Enrol", "Leave", "Survey"])
     })
   })
 
   describe("onActionComplete receives correct data", () => {
     it("passes action log and current state to onActionComplete", async () => {
-      const commands = ["enrol exploration"]
+      // Must go to Explorers Guild before enrolling (location-based actions)
+      const commands = ["goto town_explorers_guild", "enrol exploration"]
       let cmdIndex = 0
       let receivedLog: ActionLog | null = null
       let receivedState: WorldState | null = null

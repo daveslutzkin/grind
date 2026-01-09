@@ -1,7 +1,13 @@
 import { evaluateAction, evaluatePlan } from "./evaluate.js"
-import { createWorld } from "./world.js"
+import { createWorld, TOWN_LOCATIONS } from "./world.js"
 import type { Action, WorldState, AreaID } from "./types.js"
 import { GatherMode, NodeType } from "./types.js"
+
+/** Set player to be at a specific location in town */
+function setTownLocation(state: WorldState, locationId: string | null): void {
+  state.exploration.playerState.currentAreaId = "TOWN"
+  state.exploration.playerState.currentLocationId = locationId
+}
 
 /**
  * Test helpers for procedural area IDs
@@ -69,6 +75,7 @@ describe("Evaluation APIs", () => {
 
     it("should evaluate AcceptContract action", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       const action: Action = { type: "AcceptContract", contractId: "miners-guild-1" }
 
       const result = evaluateAction(state, action)
@@ -129,6 +136,7 @@ describe("Evaluation APIs", () => {
 
     it("should evaluate Craft action", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD)
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
       const action: Action = { type: "Craft", recipeId: "iron-bar-recipe" }
@@ -142,6 +150,7 @@ describe("Evaluation APIs", () => {
 
     it("should evaluate Store action", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.WAREHOUSE)
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const action: Action = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
 
@@ -325,6 +334,7 @@ describe("Evaluation APIs", () => {
 
     it("should reject 0-tick action when session has ended", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD) // Must be at correct location
       state.time.sessionRemainingTicks = 0 // Session already ended
       const actions: Action[] = [
         { type: "AcceptContract", contractId: "miners-guild-1" }, // 0 ticks but session ended

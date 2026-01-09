@@ -279,7 +279,7 @@ describe("extractStaticWorldData", () => {
     // Add a test recipe
     state.world.recipes.push({
       id: "TEST_RECIPE",
-      requiredAreaId: "TOWN",
+      guildType: "Smithing",
       inputs: [{ itemId: "COPPER_ORE", quantity: 2 }],
       output: { itemId: "COPPER_BAR", quantity: 1 },
       craftTime: 5,

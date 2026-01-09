@@ -1,5 +1,5 @@
 import { executeAction } from "./engine.js"
-import { createWorld } from "./world.js"
+import { createWorld, TOWN_LOCATIONS } from "./world.js"
 import type {
   MoveAction,
   AcceptContractAction,
@@ -13,6 +13,12 @@ import type {
   AreaID,
 } from "./types.js"
 import { GatherMode, NodeType } from "./types.js"
+
+/** Set player to be at a specific location in town */
+function setTownLocation(state: WorldState, locationId: string | null): void {
+  state.exploration.playerState.currentAreaId = "TOWN"
+  state.exploration.playerState.currentLocationId = locationId
+}
 
 /**
  * Test helpers for procedural area IDs
@@ -195,6 +201,7 @@ describe("Engine", () => {
   describe("AcceptContract action", () => {
     it("should add contract to active contracts", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD) // Must be at miners guild
       const action: AcceptContractAction = { type: "AcceptContract", contractId: "miners-guild-1" }
 
       const log = executeAction(state, action)
@@ -205,6 +212,7 @@ describe("Engine", () => {
 
     it("should consume 0 ticks", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       const initialTicks = state.time.sessionRemainingTicks
       const action: AcceptContractAction = { type: "AcceptContract", contractId: "miners-guild-1" }
 
@@ -216,6 +224,7 @@ describe("Engine", () => {
 
     it("should not grant XP", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       const action: AcceptContractAction = { type: "AcceptContract", contractId: "miners-guild-1" }
 
       const log = executeAction(state, action)
@@ -228,6 +237,7 @@ describe("Engine", () => {
       const areaId = getDistance1AreaId(state)
       makeAreaKnown(state, areaId)
       state.exploration.playerState.currentAreaId = areaId
+      state.exploration.playerState.currentLocationId = null // At clearing
       const action: AcceptContractAction = { type: "AcceptContract", contractId: "miners-guild-1" }
 
       const log = executeAction(state, action)
@@ -248,6 +258,7 @@ describe("Engine", () => {
 
     it("should fail if already has contract", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       state.player.activeContracts.push("miners-guild-1")
       const action: AcceptContractAction = { type: "AcceptContract", contractId: "miners-guild-1" }
 
@@ -594,6 +605,7 @@ describe("Engine", () => {
   describe("Craft action", () => {
     it("should consume inputs and produce output", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD)
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 5 })
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
@@ -609,6 +621,7 @@ describe("Engine", () => {
 
     it("should consume craft time", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD)
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
       const initialTicks = state.time.sessionRemainingTicks
@@ -622,6 +635,7 @@ describe("Engine", () => {
 
     it("should grant Smithing XP", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD)
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
@@ -632,19 +646,20 @@ describe("Engine", () => {
       expect(state.player.skills.Smithing).toEqual({ level: 1, xp: 1 }) // Started at level 1/0xp, gained 1 XP
     })
 
-    it("should fail if not at required location", () => {
+    it("should fail if not at required guild hall", () => {
       const state = createWorld("ore-test")
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       const areaId = getDistance1AreaId(state)
       makeAreaKnown(state, areaId)
       state.exploration.playerState.currentAreaId = areaId
+      state.exploration.playerState.currentLocationId = null // At clearing, not a guild hall
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
 
       const log = executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("WRONG_LOCATION")
+      expect(log.failureType).toBe("WRONG_GUILD_TYPE")
     })
 
     it("should fail if recipe not found", () => {
@@ -659,6 +674,7 @@ describe("Engine", () => {
 
     it("should fail if missing inputs", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD)
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 }) // need 2
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
@@ -673,6 +689,7 @@ describe("Engine", () => {
   describe("Store action", () => {
     it("should move item from inventory to storage", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.WAREHOUSE)
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 5 })
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 3 }
 
@@ -687,6 +704,7 @@ describe("Engine", () => {
 
     it("should consume 0 ticks (free action)", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.WAREHOUSE)
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const initialTicks = state.time.sessionRemainingTicks
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
@@ -699,6 +717,7 @@ describe("Engine", () => {
 
     it("should not grant XP", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.WAREHOUSE)
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
 
@@ -712,6 +731,7 @@ describe("Engine", () => {
       const areaId = getDistance1AreaId(state)
       makeAreaKnown(state, areaId)
       state.exploration.playerState.currentAreaId = areaId
+      state.exploration.playerState.currentLocationId = null // At clearing, not warehouse
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
 
@@ -723,6 +743,7 @@ describe("Engine", () => {
 
     it("should fail if item not in inventory", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.WAREHOUSE)
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
 
       const log = executeAction(state, action)
@@ -733,6 +754,7 @@ describe("Engine", () => {
 
     it("should fail if not enough quantity", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.WAREHOUSE)
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 5 }
 
@@ -910,6 +932,7 @@ describe("Engine", () => {
 
     it("should fail Craft when Smithing is level 0", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD) // Must be at smithing guild
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
       // Skills start at 0, so Smithing should be 0
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
@@ -952,6 +975,7 @@ describe("Engine", () => {
   describe("GuildEnrolment action", () => {
     it("should take skill from level 0 to level 1", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       expect(state.player.skills.Mining.level).toBe(0)
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
@@ -964,6 +988,7 @@ describe("Engine", () => {
 
     it("should consume 3 ticks", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       const initialTicks = state.time.sessionRemainingTicks
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
@@ -973,11 +998,22 @@ describe("Engine", () => {
       expect(state.time.sessionRemainingTicks).toBe(initialTicks - 3)
     })
 
-    it("should fail if not at guild location (TOWN)", () => {
+    it("should fail if not at guild location", () => {
       const state = createWorld("ore-test")
-      const areaId = getDistance1AreaId(state)
-      makeAreaKnown(state, areaId)
-      state.exploration.playerState.currentAreaId = areaId
+      // At Town Square, not at any guild
+      setTownLocation(state, null)
+      const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
+
+      const log = executeAction(state, action)
+
+      expect(log.success).toBe(false)
+      expect(log.failureType).toBe("WRONG_LOCATION")
+    })
+
+    it("should fail if at wrong guild location", () => {
+      const state = createWorld("ore-test")
+      // At Combat Guild, trying to enrol in Mining
+      setTownLocation(state, TOWN_LOCATIONS.COMBAT_GUILD)
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
       const log = executeAction(state, action)
@@ -988,6 +1024,7 @@ describe("Engine", () => {
 
     it("should not grant XP (just unlocks the skill)", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
       const log = executeAction(state, action)
@@ -998,6 +1035,7 @@ describe("Engine", () => {
 
     it("should fail if skill is already level 1 or higher", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       state.player.skills.Mining = { level: 1, xp: 0 }
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
@@ -1012,21 +1050,25 @@ describe("Engine", () => {
       const state = createWorld("ore-test")
 
       // Enrol in Mining
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       let log = executeAction(state, { type: "Enrol", skill: "Mining" })
       expect(log.success).toBe(true)
       expect(state.player.skills.Mining.level).toBe(1)
 
       // Enrol in Woodcutting
+      setTownLocation(state, TOWN_LOCATIONS.FORESTERS_GUILD)
       log = executeAction(state, { type: "Enrol", skill: "Woodcutting" })
       expect(log.success).toBe(true)
       expect(state.player.skills.Woodcutting.level).toBe(1)
 
       // Enrol in Combat
+      setTownLocation(state, TOWN_LOCATIONS.COMBAT_GUILD)
       log = executeAction(state, { type: "Enrol", skill: "Combat" })
       expect(log.success).toBe(true)
       expect(state.player.skills.Combat.level).toBe(1)
 
       // Enrol in Smithing
+      setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD)
       log = executeAction(state, { type: "Enrol", skill: "Smithing" })
       expect(log.success).toBe(true)
       expect(state.player.skills.Smithing.level).toBe(1)
@@ -1034,6 +1076,7 @@ describe("Engine", () => {
 
     it("should log action details", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
       const log = executeAction(state, action)
@@ -1045,6 +1088,7 @@ describe("Engine", () => {
 
     it("should fail if session has ended", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       state.time.sessionRemainingTicks = 0
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
@@ -1056,6 +1100,7 @@ describe("Engine", () => {
 
     it("should fail if not enough time remaining", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       state.time.sessionRemainingTicks = 2 // Need 3 ticks
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
@@ -1063,6 +1108,138 @@ describe("Engine", () => {
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("SESSION_ENDED")
+    })
+  })
+
+  describe("TravelToLocation action", () => {
+    it("should move player to location in town (free)", () => {
+      const state = createWorld("ore-test")
+      state.exploration.playerState.currentLocationId = null // At Town Square
+      const initialTicks = state.time.sessionRemainingTicks
+
+      const log = executeAction(state, {
+        type: "TravelToLocation",
+        locationId: TOWN_LOCATIONS.SMITHING_GUILD,
+      })
+
+      expect(log.success).toBe(true)
+      expect(log.timeConsumed).toBe(0) // Free in town
+      expect(state.time.sessionRemainingTicks).toBe(initialTicks)
+      expect(state.exploration.playerState.currentLocationId).toBe(TOWN_LOCATIONS.SMITHING_GUILD)
+    })
+
+    it("should move player to location in wilderness (1 tick)", () => {
+      const state = createWorld("ore-test")
+      const areaId = getOreAreaId(state)
+      makeAreaKnown(state, areaId)
+      state.exploration.playerState.currentAreaId = areaId
+      state.exploration.playerState.currentLocationId = null // At clearing
+      discoverAllLocations(state, areaId)
+      const initialTicks = state.time.sessionRemainingTicks
+
+      // Find a node location in this area
+      const area = state.exploration.areas.get(areaId)!
+      const nodeLocation = area.locations[0]
+
+      const log = executeAction(state, {
+        type: "TravelToLocation",
+        locationId: nodeLocation.id,
+      })
+
+      expect(log.success).toBe(true)
+      expect(log.timeConsumed).toBe(1) // Costs 1 tick in wilderness
+      expect(state.time.sessionRemainingTicks).toBe(initialTicks - 1)
+      expect(state.exploration.playerState.currentLocationId).toBe(nodeLocation.id)
+    })
+
+    it("should fail if location not discovered", () => {
+      const state = createWorld("ore-test")
+      const areaId = getOreAreaId(state)
+      makeAreaKnown(state, areaId)
+      state.exploration.playerState.currentAreaId = areaId
+      state.exploration.playerState.currentLocationId = null
+      // Do NOT discover locations
+
+      const area = state.exploration.areas.get(areaId)!
+      const nodeLocation = area.locations[0]
+
+      const log = executeAction(state, {
+        type: "TravelToLocation",
+        locationId: nodeLocation.id,
+      })
+
+      expect(log.success).toBe(false)
+      expect(log.failureType).toBe("LOCATION_NOT_DISCOVERED")
+    })
+
+    it("should fail if already at location", () => {
+      const state = createWorld("ore-test")
+      state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.SMITHING_GUILD
+
+      const log = executeAction(state, {
+        type: "TravelToLocation",
+        locationId: TOWN_LOCATIONS.SMITHING_GUILD,
+      })
+
+      expect(log.success).toBe(false)
+      expect(log.failureType).toBe("ALREADY_AT_LOCATION")
+    })
+
+    it("should fail if not at hub (null)", () => {
+      const state = createWorld("ore-test")
+      state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD // Not at hub
+
+      const log = executeAction(state, {
+        type: "TravelToLocation",
+        locationId: TOWN_LOCATIONS.SMITHING_GUILD,
+      })
+
+      expect(log.success).toBe(false)
+      expect(log.failureType).toBe("NOT_AT_HUB")
+    })
+  })
+
+  describe("Leave action", () => {
+    it("should return player to hub in town (free)", () => {
+      const state = createWorld("ore-test")
+      state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.SMITHING_GUILD
+      const initialTicks = state.time.sessionRemainingTicks
+
+      const log = executeAction(state, { type: "Leave" })
+
+      expect(log.success).toBe(true)
+      expect(log.timeConsumed).toBe(0) // Free in town
+      expect(state.time.sessionRemainingTicks).toBe(initialTicks)
+      expect(state.exploration.playerState.currentLocationId).toBeNull()
+    })
+
+    it("should return player to clearing in wilderness (1 tick)", () => {
+      const state = createWorld("ore-test")
+      const areaId = getOreAreaId(state)
+      makeAreaKnown(state, areaId)
+      discoverAllLocations(state, areaId)
+      state.exploration.playerState.currentAreaId = areaId
+      const area = state.exploration.areas.get(areaId)!
+      const nodeLocation = area.locations[0]
+      state.exploration.playerState.currentLocationId = nodeLocation.id
+      const initialTicks = state.time.sessionRemainingTicks
+
+      const log = executeAction(state, { type: "Leave" })
+
+      expect(log.success).toBe(true)
+      expect(log.timeConsumed).toBe(1) // Costs 1 tick in wilderness
+      expect(state.time.sessionRemainingTicks).toBe(initialTicks - 1)
+      expect(state.exploration.playerState.currentLocationId).toBeNull()
+    })
+
+    it("should fail if already at hub", () => {
+      const state = createWorld("ore-test")
+      state.exploration.playerState.currentLocationId = null // Already at hub
+
+      const log = executeAction(state, { type: "Leave" })
+
+      expect(log.success).toBe(false)
+      expect(log.failureType).toBe("ALREADY_AT_HUB")
     })
   })
 })

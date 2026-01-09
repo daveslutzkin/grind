@@ -45,6 +45,7 @@ function createTestState(overrides: Partial<WorldState> = {}): WorldState {
       connections: [],
       playerState: {
         currentAreaId: "TOWN",
+        currentLocationId: null,
         knownAreaIds: ["TOWN"],
         knownLocationIds: [],
         knownConnectionIds: [],

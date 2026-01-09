@@ -226,7 +226,7 @@ export function extractStaticWorldData(state: WorldState): string {
   if (state.world.recipes.length > 0) {
     const recipeList = state.world.recipes.map((r) => {
       const inputs = r.inputs.map((i) => `${i.quantity}x${i.itemId}`).join("+")
-      return `${r.id}@${r.requiredAreaId}:${inputs}→${r.output.quantity}x${r.output.itemId}`
+      return `${r.id}@${r.guildType}:${inputs}→${r.output.quantity}x${r.output.itemId}`
     })
     lines.push(`Recipes: ${recipeList.join("; ")}`)
   }
@@ -236,7 +236,7 @@ export function extractStaticWorldData(state: WorldState): string {
     const contractList = state.world.contracts.map((c) => {
       const reqs = c.requirements.map((r) => `${r.quantity}x${r.itemId}`).join("+")
       const rewards = c.rewards.map((r) => `${r.quantity}x${r.itemId}`).join("+")
-      return `${c.id}@${c.guildAreaId}:${reqs}→${rewards}`
+      return `${c.id}@${c.acceptLocationId}:${reqs}→${rewards}`
     })
     lines.push(`Contracts: ${contractList.join("; ")}`)
   }

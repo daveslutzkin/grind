@@ -32,8 +32,8 @@ export type ContractID = string
 export enum ExplorationLocationType {
   GATHERING_NODE = "GATHERING_NODE",
   MOB_CAMP = "MOB_CAMP",
-  PLACE = "PLACE", // Future feature (stub)
-  PERSON = "PERSON", // Future feature, always within places (stub)
+  GUILD_HALL = "GUILD_HALL",
+  WAREHOUSE = "WAREHOUSE",
 }
 
 /**
@@ -48,6 +48,9 @@ export interface ExplorationLocation {
   // For MOB_CAMP: creature type and difficulty
   creatureType?: string
   difficulty?: number // area distance ± 3, normally distributed around 0
+  // For GUILD_HALL: guild affiliation and level cap
+  guildType?: SkillID // Which guild this hall belongs to
+  guildLevel?: number // Max contract/recipe level supported here (null = unlimited)
 }
 
 /**
@@ -185,7 +188,7 @@ export interface Recipe {
   inputs: ItemStack[]
   output: ItemStack
   craftTime: number
-  requiredAreaId: AreaID // Must be in this area to craft
+  guildType: CraftingSkillID // Must be at a guild hall of this type to craft
   requiredSkillLevel: number
 }
 
@@ -196,7 +199,9 @@ export interface KillRequirement {
 
 export interface Contract {
   id: ContractID
-  guildAreaId: AreaID // Which area to accept/turn in this contract
+  level: number // Contract level - determines which guild halls can offer it
+  acceptLocationId: string // Specific location where this contract can be accepted
+  guildType: SkillID // Can turn in at any guild hall of this type
   requirements: ItemStack[]
   killRequirements?: KillRequirement[]
   rewards: ItemStack[]
@@ -244,6 +249,7 @@ export interface WorldState {
     // Player's exploration progress
     playerState: {
       currentAreaId: AreaID
+      currentLocationId: string | null // Which location within area (null = hub/clearing/town square)
       knownAreaIds: AreaID[] // Using array for serialization compatibility
       knownLocationIds: string[]
       knownConnectionIds: string[] // "areaId1->areaId2" format
@@ -261,6 +267,16 @@ export function getCurrentAreaId(state: WorldState): AreaID {
   return state.exploration.playerState.currentAreaId
 }
 
+// Helper to get current location ID from state (null = hub/clearing/town square)
+export function getCurrentLocationId(state: WorldState): string | null {
+  return state.exploration.playerState.currentLocationId
+}
+
+// Helper to check if player is in town
+export function isInTown(state: WorldState): boolean {
+  return state.exploration.playerState.currentAreaId === "TOWN"
+}
+
 // Action types
 export type ActionType =
   | "Move" // Alias for ExplorationTravel for backwards compat
@@ -275,6 +291,8 @@ export type ActionType =
   | "Survey"
   | "Explore"
   | "ExplorationTravel"
+  | "TravelToLocation"
+  | "Leave"
 
 export interface MoveAction {
   type: "Move"
@@ -349,6 +367,22 @@ export interface ExplorationTravelAction {
   scavenge?: boolean // If true, 2x travel time but chance to find resources
 }
 
+/**
+ * Travel to a location within the current area
+ */
+export interface TravelToLocationAction {
+  type: "TravelToLocation"
+  locationId: string // The location to travel to within current area
+}
+
+/**
+ * Leave current location, returning to area hub (null)
+ */
+export interface LeaveAction {
+  type: "Leave"
+  // No parameters - leaves current location to go to null (town square / clearing)
+}
+
 export type Action =
   | MoveAction
   | AcceptContractAction
@@ -362,6 +396,8 @@ export type Action =
   | SurveyAction
   | ExploreAction
   | ExplorationTravelAction
+  | TravelToLocationAction
+  | LeaveAction
 
 // Failure types
 export type FailureType =
@@ -393,6 +429,12 @@ export type FailureType =
   | "NOT_IN_EXPLORATION_GUILD"
   | "NO_CONNECTIONS"
   | "LOCATION_NOT_DISCOVERED"
+  // Location-based action failure types
+  | "ALREADY_AT_LOCATION"
+  | "NOT_AT_HUB"
+  | "ALREADY_AT_HUB"
+  | "WRONG_GUILD_TYPE"
+  | "GUILD_LEVEL_TOO_LOW"
 
 // RNG roll log entry
 export interface RngRoll {
