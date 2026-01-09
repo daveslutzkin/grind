@@ -59,7 +59,7 @@ describe("Formatters", () => {
       const state = createWorld("ore-test")
       const formatted = formatWorldState(state)
 
-      expect(formatted).toContain("Location: TOWN")
+      expect(formatted).toContain("Location: Town Square in TOWN")
       expect(formatted).toContain("Inventory:")
     })
 
