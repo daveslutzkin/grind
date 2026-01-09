@@ -109,6 +109,19 @@ export function formatWorldState(state: WorldState): string {
     `Location: ${currentArea} > ${locationName} (${state.time.sessionRemainingTicks} ticks left)`
   )
 
+  // Show available locations when at hub (null)
+  if (currentLocationId === null) {
+    const area = state.exploration.areas.get(currentArea)
+    const knownLocationIds = state.exploration.playerState.knownLocationIds
+    if (area && area.locations.length > 0) {
+      const knownLocs = area.locations.filter((loc) => knownLocationIds.includes(loc.id))
+      if (knownLocs.length > 0) {
+        const locNames = knownLocs.map((loc) => loc.id).join(", ")
+        lines.push(`Locations: ${locNames}`)
+      }
+    }
+  }
+
   // Nodes + exploration progress combined (if not TOWN)
   if (currentArea !== "TOWN") {
     const area = state.exploration.areas.get(currentArea)
