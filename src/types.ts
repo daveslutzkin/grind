@@ -281,7 +281,6 @@ export type ActionType =
   | "ExplorationTravel"
   | "TravelToLocation"
   | "Leave"
-  | "MoveToGatheringNode" // Move within area to a gathering node location
 
 export interface MoveAction {
   type: "Move"
@@ -392,15 +391,6 @@ export interface LeaveAction {
   // No parameters - leaves current location to go to null (town square / clearing)
 }
 
-/**
- * Move to a gathering node location by node type
- * Resolves to TravelToLocation at runtime
- */
-export interface MoveToGatheringNodeAction {
-  type: "MoveToGatheringNode"
-  nodeType: "ORE_VEIN" | "TREE_STAND" // Which node type to move to
-}
-
 export type Action =
   | MoveAction
   | AcceptContractAction
@@ -418,7 +408,6 @@ export type Action =
   | ExplorationTravelAction
   | TravelToLocationAction
   | LeaveAction
-  | MoveToGatheringNodeAction
 
 // Failure types
 export type FailureType =

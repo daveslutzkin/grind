@@ -15,7 +15,6 @@ import type {
   TurnInCombatTokenAction,
   TravelToLocationAction,
   LeaveAction,
-  MoveToGatheringNodeAction,
   FailureType,
   ContractCompletion,
   LevelUp,
@@ -24,7 +23,6 @@ import type {
   Node,
   GatheringSkillID,
 } from "./types.js"
-import { ExplorationLocationType } from "./types.js"
 import { isInTown, GatherMode, NodeType, getCurrentAreaId } from "./types.js"
 import { roll, rollLootTable, rollFloat } from "./rng.js"
 import {
@@ -150,8 +148,6 @@ export function executeAction(state: WorldState, action: Action): ActionLog {
       return executeTravelToLocation(state, action)
     case "Leave":
       return executeLeave(state, action)
-    case "MoveToGatheringNode":
-      return executeMoveToGatheringNode(state, action)
   }
 }
 
@@ -967,45 +963,4 @@ function executeLeave(state: WorldState, action: LeaveAction): ActionLog {
     rngRolls: [],
     stateDeltaSummary: `Left ${getLocationDisplayName(previousLocation)} for ${hubName}`,
   }
-}
-
-/**
- * Execute MoveToGatheringNode action - move to a gathering node location by type
- * Finds the location in the current area that matches the node type and executes TravelToLocation
- */
-function executeMoveToGatheringNode(
-  state: WorldState,
-  action: MoveToGatheringNodeAction
-): ActionLog {
-  const { nodeType } = action
-  const currentAreaId = getCurrentAreaId(state)
-  const area = state.exploration.areas.get(currentAreaId)
-
-  if (!area) {
-    return createFailureLog(state, action, "AREA_NOT_FOUND")
-  }
-
-  // Map node type to gathering skill type
-  const skillType: GatheringSkillID = nodeType === "ORE_VEIN" ? "Mining" : "Woodcutting"
-
-  // Find a discovered GATHERING_NODE location with the matching skill type
-  const knownLocationIds = new Set(state.exploration.playerState.knownLocationIds)
-  const matchingLocation = area.locations.find(
-    (loc) =>
-      loc.type === ExplorationLocationType.GATHERING_NODE &&
-      loc.gatheringSkillType === skillType &&
-      knownLocationIds.has(loc.id)
-  )
-
-  if (!matchingLocation) {
-    return createFailureLog(state, action, "LOCATION_NOT_DISCOVERED")
-  }
-
-  // Resolve to TravelToLocation and execute
-  const travelAction: TravelToLocationAction = {
-    type: "TravelToLocation",
-    locationId: matchingLocation.id,
-  }
-
-  return executeTravelToLocation(state, travelAction)
 }
