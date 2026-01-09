@@ -82,7 +82,7 @@ describe("Formatters", () => {
       const state = createWorld("ore-test")
       const formatted = formatWorldState(state)
 
-      expect(formatted).toContain("Travel:")
+      expect(formatted).toContain("Connections:")
     })
 
     it("should show nearby resource nodes at current location", () => {
@@ -130,8 +130,8 @@ describe("Formatters", () => {
 
         // Should show node type on one line, materials on next
         expect(formatted).toContain("Gathering: Ore vein")
-        // Should have at least one material with ✓ (L1 gatherable)
-        expect(formatted).toMatch(/[A-Z_]+ ✓/)
+        // Should have at least one material with ✓ (L1 gatherable) - human readable names
+        expect(formatted).toMatch(/[A-Z][a-z]+( [A-Z][a-z]+)? ✓/)
       })
 
       it("should show (L#) for materials requiring higher level", () => {
@@ -189,8 +189,8 @@ describe("Formatters", () => {
 
         const formatted = formatWorldState(state)
 
-        // After appraisal, should show quantities like "80/80 COPPER_ORE ✓"
-        expect(formatted).toMatch(/\d+\/\d+ [A-Z_]+ ✓/)
+        // After appraisal, should show quantities like "80/80 Copper Ore ✓"
+        expect(formatted).toMatch(/\d+\/\d+ [A-Z][a-z]+( [A-Z][a-z]+)? ✓/)
       })
     })
 
@@ -208,7 +208,7 @@ describe("Formatters", () => {
         expect(formatted).not.toContain("Gathering:")
       })
 
-      it("should NOT show 'unexplored' when connection discovered but no locations", () => {
+      it("should show 'partly explored' when connection discovered but no locations", () => {
         const state = createWorld("explore-status-2")
         const areaId = getOreAreaId(state)
         makeAreaKnown(state, areaId)
@@ -228,11 +228,12 @@ describe("Formatters", () => {
 
         const formatted = formatWorldState(state)
 
+        expect(formatted).toContain("partly explored")
         expect(formatted).not.toContain("unexplored")
         expect(formatted).not.toContain("FULLY EXPLORED")
       })
 
-      it("should NOT show 'FULLY EXPLORED' when locations done but connections remain", () => {
+      it("should show 'partly explored' when locations done but connections remain", () => {
         const state = createWorld("explore-status-3")
         const areaId = getOreAreaId(state)
         makeAreaKnown(state, areaId)
@@ -241,7 +242,7 @@ describe("Formatters", () => {
         // Discover all locations
         discoverAllLocations(state, areaId)
 
-        // Add an undiscovered connection from this area to ensure it's not "fully explored"
+        // Add an undiscovered connection from this area
         // (connections may not be generated until explore is called)
         const fakeTargetAreaId = "fake-undiscovered-area"
         state.exploration.connections.push({
@@ -252,12 +253,13 @@ describe("Formatters", () => {
 
         const formatted = formatWorldState(state)
 
+        expect(formatted).toContain("partly explored")
         expect(formatted).not.toContain("unexplored")
         expect(formatted).not.toContain("FULLY EXPLORED")
         expect(formatted).toContain("Gathering:")
       })
 
-      it("should show 'FULLY EXPLORED' when all locations AND connections discovered", () => {
+      it("should show 'partly explored' (never 'fully explored') when all locations AND connections discovered", () => {
         const state = createWorld("explore-status-4")
         const areaId = getOreAreaId(state)
         makeAreaKnown(state, areaId)
@@ -284,7 +286,9 @@ describe("Formatters", () => {
 
         const formatted = formatWorldState(state)
 
-        expect(formatted).toContain("FULLY EXPLORED")
+        // We never show "fully explored" - just "partly explored" once something is discovered
+        expect(formatted).toContain("partly explored")
+        expect(formatted).not.toContain("FULLY EXPLORED")
         expect(formatted).not.toContain("unexplored")
       })
     })
