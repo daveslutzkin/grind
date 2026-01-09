@@ -7,7 +7,7 @@ Based on a 24-action adaptive agent test run and comparison with design docs.
 ## Easy Fixes
 
 ### 1. "Top 0%" Luck Display
-**Status:** Not started
+**Status:** ✅ Completed
 **Description:** When luck is extremely good, display shows "Top 0%" which is mathematically awkward.
 
 **Decision:** Use `ceil(pct)` for all percentiles. 0.4% → "Top 1%", 1.4% → "Top 2%", etc. Naturally prevents "Top 0%" with no special cases.
