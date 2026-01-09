@@ -97,6 +97,103 @@ describe("Formatters", () => {
       expect(formatted).toContain("Gathering:")
     })
 
+    describe("material visibility with skill requirements", () => {
+      it("should show only node type when player has no skill", () => {
+        const state = createWorld("mat-vis-1")
+        const areaId = getOreAreaId(state)
+        makeAreaKnown(state, areaId)
+        state.exploration.playerState.currentAreaId = areaId
+        discoverAllLocations(state, areaId)
+
+        // Player has no Mining skill (not enrolled)
+        const formatted = formatWorldState(state)
+
+        // Should show node type but NO material details
+        expect(formatted).toContain("Gathering: Ore vein")
+        expect(formatted).not.toContain("✓")
+        expect(formatted).not.toMatch(/\(L\d+\)/)
+      })
+
+      it("should show materials with ✓ and (L#) indicators when player has skill", () => {
+        const state = createWorld("mat-vis-2")
+        const areaId = getOreAreaId(state)
+        makeAreaKnown(state, areaId)
+        state.exploration.playerState.currentAreaId = areaId
+        discoverAllLocations(state, areaId)
+
+        // Enrol in Mining at L1
+        setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
+        executeAction(state, { type: "Enrol", skill: "Mining" })
+        state.exploration.playerState.currentAreaId = areaId
+
+        const formatted = formatWorldState(state)
+
+        // Should show node type on one line, materials on next
+        expect(formatted).toContain("Gathering: Ore vein")
+        // Should have at least one material with ✓ (L1 gatherable)
+        expect(formatted).toMatch(/[A-Z_]+ ✓/)
+      })
+
+      it("should show (L#) for materials requiring higher level", () => {
+        const state = createWorld("mat-vis-3")
+        const areaId = getOreAreaId(state)
+        makeAreaKnown(state, areaId)
+        state.exploration.playerState.currentAreaId = areaId
+        discoverAllLocations(state, areaId)
+
+        // Enrol in Mining at L1
+        setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
+        executeAction(state, { type: "Enrol", skill: "Mining" })
+        state.exploration.playerState.currentAreaId = areaId
+
+        // Find a node with a material requiring level > 1
+        const node = state.world.nodes?.find(
+          (n) => n.areaId === areaId && n.materials.some((m) => m.requiredLevel > 1)
+        )
+
+        const formatted = formatWorldState(state)
+
+        // If there's a higher-level material, it should show (L#)
+        if (node) {
+          const higherLevelMat = node.materials.find((m) => m.requiredLevel > 1)
+          if (higherLevelMat && higherLevelMat.requiredLevel <= 3) {
+            // Only visible if within skillLevel + 2
+            expect(formatted).toMatch(/\(L\d+\)/)
+          }
+        }
+      })
+
+      it("should show quantities after APPRAISE", () => {
+        const state = createWorld("mat-vis-4")
+        const areaId = getOreAreaId(state)
+        makeAreaKnown(state, areaId)
+        state.exploration.playerState.currentAreaId = areaId
+        discoverAllLocations(state, areaId)
+
+        // Enrol in Mining and level up to L3 for APPRAISE
+        setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
+        executeAction(state, { type: "Enrol", skill: "Mining" })
+        state.player.skills.Mining = { level: 3, xp: 0 } // L3 unlocks APPRAISE
+        state.exploration.playerState.currentAreaId = areaId
+
+        // Find a node and appraise it
+        const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
+        if (!node) throw new Error("No node found for test")
+
+        // Perform APPRAISE action
+        executeAction(state, {
+          type: "Gather",
+          nodeId: node.nodeId,
+          mode: "APPRAISE" as GatherMode,
+        })
+
+        const formatted = formatWorldState(state)
+
+        // After appraisal, should show quantities like "80/80 COPPER_ORE ✓"
+        expect(formatted).toMatch(/\d+\/\d+ [A-Z_]+ ✓/)
+      })
+    })
+
     describe("wilderness exploration status", () => {
       it("should show 'unexplored' when nothing discovered in area", () => {
         const state = createWorld("explore-status-1")
