@@ -256,7 +256,18 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         return null
       }
 
-      // First, try to match against location display names (case-insensitive, partial match)
+      // First, check for gathering node types (move ore vein, move mining, etc.)
+      // These are resolved at runtime to the actual location in the current area
+      const oreVeinAliases = ["ore vein", "ore", "mining", "mine"]
+      const treeStandAliases = ["tree stand", "tree", "woodcutting", "chop"]
+      if (oreVeinAliases.includes(inputName)) {
+        return { type: "MoveToGatheringNode", nodeType: "ORE_VEIN" }
+      }
+      if (treeStandAliases.includes(inputName)) {
+        return { type: "MoveToGatheringNode", nodeType: "TREE_STAND" }
+      }
+
+      // Next, try to match against location display names (case-insensitive, partial match)
       const matchedLocation = Object.entries(LOCATION_DISPLAY_NAMES).find(([, displayName]) =>
         displayName.toLowerCase().includes(inputName)
       )

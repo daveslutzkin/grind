@@ -53,6 +53,16 @@ function discoverAllLocations(state: WorldState, areaId: AreaID): void {
   }
 }
 
+/** Move player to the location containing a specific node */
+function moveToNodeLocation(state: WorldState, nodeId: string, areaId: string): void {
+  const nodeIndexMatch = nodeId.match(/-node-(\d+)$/)
+  if (nodeIndexMatch) {
+    const nodeIndex = nodeIndexMatch[1]
+    const locationId = `${areaId}-loc-${nodeIndex}`
+    state.exploration.playerState.currentLocationId = locationId
+  }
+}
+
 describe("Formatters", () => {
   describe("formatWorldState", () => {
     it("should format basic world state as readable text", () => {
@@ -179,6 +189,9 @@ describe("Formatters", () => {
         // Find a node and appraise it
         const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
         if (!node) throw new Error("No node found for test")
+
+        // Move to the node location before APPRAISE
+        moveToNodeLocation(state, node.nodeId, areaId)
 
         // Perform APPRAISE action
         executeAction(state, {
@@ -363,11 +376,12 @@ describe("Formatters", () => {
       makeAreaKnown(state, areaId)
       // Position player at ore area and gather (testing gather log, not travel)
       state.exploration.playerState.currentAreaId = areaId
-      state.exploration.playerState.currentLocationId = null // At clearing
       discoverAllLocations(state, areaId)
 
       const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
       if (!node) throw new Error("No node found for test")
+      // Move to the node location before gathering
+      moveToNodeLocation(state, node.nodeId, areaId)
       const material = node.materials.find((m) => m.requiredLevel <= 1)
       if (!material) throw new Error("No material found for test")
 

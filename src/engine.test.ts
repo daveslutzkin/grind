@@ -96,6 +96,16 @@ function discoverAllLocations(state: WorldState, areaId: AreaID): void {
   }
 }
 
+/** Move player to the location containing a specific node */
+function moveToNodeLocation(state: WorldState, nodeId: string, areaId: string): void {
+  const nodeIndexMatch = nodeId.match(/-node-(\d+)$/)
+  if (nodeIndexMatch) {
+    const nodeIndex = nodeIndexMatch[1]
+    const locationId = `${areaId}-loc-${nodeIndex}`
+    state.exploration.playerState.currentLocationId = locationId
+  }
+}
+
 describe("Engine", () => {
   describe("Move action", () => {
     it("should move player to destination", () => {
@@ -312,6 +322,7 @@ describe("Engine", () => {
       // Get a real node from the area
       const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
       expect(node).toBeDefined()
+      moveToNodeLocation(state, node!.nodeId, areaId) // Move to the node location
       // Find a material that requires level 1
       const material = node!.materials.find((m) => m.requiredLevel === 1)
       expect(material).toBeDefined()
@@ -861,6 +872,7 @@ describe("Engine", () => {
       // Get a real node from the area
       const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
       expect(node).toBeDefined()
+      moveToNodeLocation(state, node!.nodeId, areaId) // Move to the node location
       const material = node!.materials[0]
       // Skills start at 0, so Mining should be 0
       const action: GatherAction = {
@@ -886,6 +898,7 @@ describe("Engine", () => {
       // Get a real node from the area
       const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
       expect(node).toBeDefined()
+      moveToNodeLocation(state, node!.nodeId, areaId) // Move to the node location
       const material = node!.materials[0]
       // Skills start at 0, so Woodcutting should be 0
       const action: GatherAction = {
@@ -954,6 +967,7 @@ describe("Engine", () => {
       // Get a real node from the area
       const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
       expect(node).toBeDefined()
+      moveToNodeLocation(state, node!.nodeId, areaId) // Move to the node location
       // Find a material that requires level 1
       const material = node!.materials.find((m) => m.requiredLevel === 1)
       expect(material).toBeDefined()

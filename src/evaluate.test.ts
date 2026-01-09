@@ -59,6 +59,17 @@ function discoverAllLocations(state: WorldState, areaId: AreaID): void {
   }
 }
 
+/** Move player to a node's location (required for gathering) */
+function moveToNodeLocation(state: WorldState, nodeId: string): void {
+  const nodeIndexMatch = nodeId.match(/-node-(\d+)$/)
+  if (nodeIndexMatch) {
+    const areaId = nodeId.replace(/-node-\d+$/, "")
+    const nodeIndex = nodeIndexMatch[1]
+    const locationId = `${areaId}-loc-${nodeIndex}`
+    state.exploration.playerState.currentLocationId = locationId
+  }
+}
+
 describe("Evaluation APIs", () => {
   describe("evaluateAction", () => {
     it("should evaluate Move action", () => {
@@ -92,6 +103,7 @@ describe("Evaluation APIs", () => {
       discoverAllLocations(state, areaId)
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const node = state.world.nodes!.find((n) => n.areaId === areaId && !n.depleted)!
+      moveToNodeLocation(state, node.nodeId) // Must be at node location to gather
       const focusMat = node.materials.find((m) => m.requiredLevel === 1)!
       const action: Action = {
         type: "Gather",
@@ -198,6 +210,7 @@ describe("Evaluation APIs", () => {
       discoverAllLocations(state, areaId)
       // Skills start at 0, so action should fail
       const node = state.world.nodes!.find((n) => n.areaId === areaId && !n.depleted)!
+      moveToNodeLocation(state, node.nodeId) // Must be at node location
       const focusMat = node.materials[0]
       const action: Action = {
         type: "Gather",
@@ -241,9 +254,13 @@ describe("Evaluation APIs", () => {
       discoverAllLocations(state, areaId)
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const node = state.world.nodes!.find((n) => n.areaId === areaId && !n.depleted)!
+      // Get the location ID for the node
+      const nodeIndexMatch = node.nodeId.match(/-node-(\d+)$/)
+      const locationId = nodeIndexMatch ? `${areaId}-loc-${nodeIndexMatch[1]}` : ""
       const focusMat = node.materials.find((m) => m.requiredLevel === 1)!
       const actions: Action[] = [
         { type: "Move", destination: areaId },
+        { type: "TravelToLocation", locationId }, // Must travel to node location first
         {
           type: "Gather",
           nodeId: node.nodeId,
@@ -254,8 +271,9 @@ describe("Evaluation APIs", () => {
 
       const result = evaluatePlan(state, actions)
 
-      expect(result.expectedTime).toBe(5) // 0 (Move time in evaluation) + 5 (FOCUS gather)
-      expect(result.expectedXP).toBe(1) // 0 (no XP for Move) + 1 (gather XP)
+      // 0 (Move) + 1 (TravelToLocation) + 5 (FOCUS gather) = 6
+      expect(result.expectedTime).toBe(6)
+      expect(result.expectedXP).toBe(1) // 0 (no XP for Move) + 0 (TravelToLocation) + 1 (gather XP)
       expect(result.violations).toHaveLength(0)
     })
 
@@ -311,15 +329,19 @@ describe("Evaluation APIs", () => {
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       state.time.sessionRemainingTicks = 3 // Only 3 ticks remaining
       const node = state.world.nodes!.find((n) => n.areaId === areaId && !n.depleted)!
+      // Get the location ID for the node
+      const nodeIndexMatch = node.nodeId.match(/-node-(\d+)$/)
+      const locationId = nodeIndexMatch ? `${areaId}-loc-${nodeIndexMatch[1]}` : ""
       const focusMat = node.materials.find((m) => m.requiredLevel === 1)!
       const actions: Action[] = [
         { type: "Move", destination: areaId }, // 0 ticks in evaluation
+        { type: "TravelToLocation", locationId }, // 1 tick
         {
           type: "Gather",
           nodeId: node.nodeId,
           mode: GatherMode.FOCUS,
           focusMaterialId: focusMat.materialId,
-        }, // 5 ticks - exceeds
+        }, // 5 ticks - total 6 ticks exceeds 3
       ]
 
       const result = evaluatePlan(state, actions)
