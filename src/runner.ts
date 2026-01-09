@@ -574,3 +574,79 @@ export function executeAndRecord(
   session.stats.logs.push(log)
   return log
 }
+
+// ============================================================================
+// Unified Session Runner
+// ============================================================================
+
+import { createWorld } from "./world.js"
+import { executeAction } from "./engine.js"
+
+export type MetaCommandResult = "continue" | "end" | "quit"
+
+export interface RunnerConfig {
+  /** Get the next command to execute. Return null to end the session. */
+  getNextCommand: () => Promise<string | null>
+
+  /** Called after each action is executed */
+  onActionComplete: (log: ActionLog, state: WorldState) => void
+
+  /** Called when the session ends. showSummary is false if user quit. */
+  onSessionEnd: (state: WorldState, stats: SessionStats, showSummary: boolean) => void
+
+  /** Called when a command cannot be parsed. Return 'exit' to stop, 'continue' to keep going. */
+  onInvalidCommand: (cmd: string) => "continue" | "exit"
+
+  /** Optional meta-commands (e.g., help, state, quit). Return action to take. */
+  metaCommands?: Record<string, (state: WorldState) => MetaCommandResult>
+
+  /** Optional hook called before each action is executed */
+  beforeAction?: (action: Action, state: WorldState) => void
+}
+
+/**
+ * Run a session with the given configuration.
+ * This is the unified core loop used by both REPL and batch runners.
+ */
+export async function runSession(seed: string, config: RunnerConfig): Promise<void> {
+  const session = createSession({ seed, createWorld })
+  let showSummary = true
+
+  while (session.state.time.sessionRemainingTicks > 0) {
+    const cmd = await config.getNextCommand()
+    if (cmd === null) break
+
+    const trimmedCmd = cmd.trim().toLowerCase()
+
+    // Check meta-commands first
+    if (config.metaCommands && trimmedCmd in config.metaCommands) {
+      const result = config.metaCommands[trimmedCmd](session.state)
+      if (result === "end") break
+      if (result === "quit") {
+        showSummary = false
+        break
+      }
+      continue
+    }
+
+    // Parse the action
+    const action = parseAction(cmd, {
+      knownAreaIds: session.state.exploration.playerState.knownAreaIds,
+    })
+
+    if (!action) {
+      const result = config.onInvalidCommand(cmd)
+      if (result === "exit") break
+      continue
+    }
+
+    // Call beforeAction hook if provided
+    config.beforeAction?.(action, session.state)
+
+    // Execute the action
+    const log = executeAndRecord(session, action, executeAction)
+    config.onActionComplete(log, session.state)
+  }
+
+  config.onSessionEnd(session.state, session.stats, showSummary)
+}
