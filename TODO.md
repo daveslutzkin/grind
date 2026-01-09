@@ -110,6 +110,8 @@ Gathering: Ore vein
 **Status:** Pending
 **Description:** Tree stand shows "Gathering: Tree stand" with no materials when player lacks Woodcutting skill. Should indicate what skill is needed.
 
+**Decision:** Show both skill and where to get it: "Tree Stand (requires Woodcutting - Foresters Guild)"
+
 ### 13. Reformat location/world state display
 **Status:** Pending
 **Description:** Current display is messy. Reformat to:
