@@ -379,9 +379,13 @@ export async function ensureAreaFullyGenerated(
   }
 
   // Generate area name using LLM (uses global config for API key)
+  // If no API key is configured, area stays unnamed and uses fallback display
   if (!area.name) {
     const neighborNames = getNeighborNames(area, exploration.areas, exploration.connections)
-    area.name = await generateAreaName(area, neighborNames)
+    const generatedName = await generateAreaName(area, neighborNames)
+    if (generatedName) {
+      area.name = generatedName
+    }
   }
 }
 

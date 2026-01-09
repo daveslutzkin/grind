@@ -430,6 +430,31 @@ describe("Area Naming", () => {
       const callArgs = createCallArgs[0] as { max_tokens: number }
       expect(callArgs.max_tokens).toBeLessThanOrEqual(50)
     })
+
+    it("should return undefined when no API key and no client is provided", async () => {
+      // Ensure env var is not set for this test
+      const originalEnv = process.env.ANTHROPIC_API_KEY
+      delete process.env.ANTHROPIC_API_KEY
+
+      try {
+        const area: Area = {
+          id: "area-d1-i0",
+          distance: 1,
+          generated: true,
+          locations: [],
+          indexInDistance: 0,
+        }
+
+        // Call without API key and without mock client
+        const name = await generateAreaName(area, [])
+
+        expect(name).toBeUndefined()
+      } finally {
+        if (originalEnv) {
+          process.env.ANTHROPIC_API_KEY = originalEnv
+        }
+      }
+    })
   })
 
   describe("Integration with ensureAreaFullyGenerated", () => {
@@ -499,7 +524,7 @@ describe("Area Naming", () => {
       }
     })
 
-    it("should use fallback name when ANTHROPIC_API_KEY is not set", async () => {
+    it("should leave area unnamed when ANTHROPIC_API_KEY is not set", async () => {
       // Ensure env var is not set for this test
       const originalEnv = process.env.ANTHROPIC_API_KEY
       delete process.env.ANTHROPIC_API_KEY
@@ -552,8 +577,8 @@ describe("Area Naming", () => {
         const area = areas.get("area-d1-i0")!
         await ensureAreaFullyGenerated(rng, exploration, area)
 
-        // No API key = fallback name
-        expect(area.name).toBe("Unnamed Wilds")
+        // No API key = area stays unnamed (uses distance-based display fallback)
+        expect(area.name).toBeUndefined()
       } finally {
         // Restore original env
         if (originalEnv) {
