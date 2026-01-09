@@ -1,6 +1,6 @@
 import { executeAction } from "./engine.js"
 import { evaluatePlan } from "./evaluate.js"
-import { createWorld, TOWN_LOCATIONS } from "./world.js"
+import { createWorld, TOWN_LOCATIONS, MATERIALS } from "./world.js"
 import type { Action, ActionLog, WorldState, AreaID } from "./types.js"
 import { GatherMode, NodeType, ExplorationLocationType } from "./types.js"
 
@@ -278,15 +278,24 @@ describe("Integration: Full Session Flow", () => {
   it("should show how dominant strategies might form", () => {
     // This test demonstrates that we can evaluate different strategies
     const state = createWorld("strategy-test")
-    state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
-    state.player.skills.Combat = { level: 1, xp: 0 } // Need level 1 to fight
-    state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
-    state.player.equippedWeapon = "CRUDE_WEAPON" // Need weapon to fight
 
     // Get ore area and make it known
     const oreAreaId = getOreAreaId(state)
     makeAreaKnown(state, oreAreaId)
     discoverAllLocations(state, oreAreaId)
+
+    // Get an ore vein node and its first material
+    const mineNode = state.world.nodes.find(
+      (n) => n.areaId === oreAreaId && n.nodeType === NodeType.ORE_VEIN
+    )!
+    const material = mineNode.materials[0]
+
+    // Set skill levels based on material requirements (need enough to gather)
+    const requiredMiningLevel = MATERIALS[material.materialId]?.requiredLevel ?? 1
+    state.player.skills.Mining = { level: requiredMiningLevel, xp: 0 }
+    state.player.skills.Combat = { level: 1, xp: 0 } // Need level 1 to fight
+    state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
+    state.player.equippedWeapon = "CRUDE_WEAPON" // Need weapon to fight
 
     // Add an enemy at this location for fight strategy
     state.world.enemies = state.world.enemies || []
@@ -299,10 +308,6 @@ describe("Integration: Full Session Flow", () => {
       lootTable: [{ itemId: "COPPER_ORE", quantity: 1, weight: 1 }],
       failureAreaId: "TOWN",
     })
-
-    // Get a node from the area
-    const mineNode = state.world.nodes.find((n) => n.areaId === oreAreaId)!
-    const material = mineNode.materials[0]
 
     // Strategy 1: Pure gathering
     const gatherStrategy: Action[] = [
