@@ -12,6 +12,16 @@ import {
 } from "../visibility.js"
 
 /**
+ * Convert a material ID like "COPPER_ORE" to human-readable form like "Copper Ore"
+ */
+function formatMaterialName(materialId: string): string {
+  return materialId
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ")
+}
+
+/**
  * Format WorldState as concise text for LLM consumption
  */
 export function formatWorldState(state: WorldState): string {
@@ -149,26 +159,25 @@ export function formatWorldState(state: WorldState): string {
     })
 
     // Determine status suffix for Location line
+    // Only "unexplored" or "partly explored", never "fully explored"
     let statusSuffix = ""
     const hasAnyDiscovery = knownLocs > 0 || discoveredConnectionsFromArea.length > 0
 
     if (!hasAnyDiscovery) {
       // Nothing discovered yet (no locations AND no connections from here)
       statusSuffix = " — unexplored"
-    } else if (area) {
-      // Check if fully explored (all locations + ALL connections discovered)
-      const totalLocs = area.locations.length
-      const remainingConnections = connectionsFromArea.filter((conn) => {
-        const connId = `${conn.fromAreaId}->${conn.toAreaId}`
-        return !knownConnectionIds.has(connId)
-      })
-      const fullyExplored = knownLocs >= totalLocs && remainingConnections.length === 0
-      if (fullyExplored) {
-        statusSuffix = " — FULLY EXPLORED!"
-      }
+    } else {
+      // Something discovered = partly explored (we never say "fully explored")
+      statusSuffix = " — partly explored"
     }
 
-    lines.push(`Location: ${locationName} in ${currentArea}${statusSuffix}`)
+    // Title format: just area name at hub, "Location Name (area)" at a location
+    const isAtHub = currentLocationId === null
+    if (isAtHub) {
+      lines.push(`${currentArea}${statusSuffix}`)
+    } else {
+      lines.push(`${locationName} (${currentArea})${statusSuffix}`)
+    }
 
     // Only show Gathering line if we've discovered at least one location
     if (knownLocs > 0) {
@@ -192,15 +201,20 @@ export function formatWorldState(state: WorldState): string {
             // Has skill - show materials with requirements
             lines.push(`Gathering: ${nodeName}`)
             const skillLevel = state.player.skills[getSkillForNodeType(view.nodeType)]?.level ?? 0
-            const matStrings = view.visibleMaterials.map((m) => {
+            // Sort materials by unlock level (lowest first)
+            const sortedMaterials = [...view.visibleMaterials].sort(
+              (a, b) => a.requiredLevel - b.requiredLevel
+            )
+            const matStrings = sortedMaterials.map((m) => {
               const canGather = m.requiredLevel <= skillLevel
               const suffix = canGather ? " ✓" : ` (L${m.requiredLevel})`
+              const materialName = formatMaterialName(m.materialId)
               if (view.visibilityTier === "full") {
                 // Appraised - show quantities
-                return `${m.remainingUnits}/${m.maxUnitsInitial} ${m.materialId}${suffix}`
+                return `${m.remainingUnits}/${m.maxUnitsInitial} ${materialName}${suffix}`
               } else {
                 // Not appraised - just material name
-                return `${m.materialId}${suffix}`
+                return `${materialName}${suffix}`
               }
             })
             if (matStrings.length > 0) {
@@ -244,12 +258,14 @@ export function formatWorldState(state: WorldState): string {
   }
 
   if (destinations.size > 0) {
+    // Sort by travel time (shortest first)
     const travelList = Array.from(destinations.entries())
+      .sort((a, b) => a[1] - b[1])
       .map(([dest, time]) => `${dest} (${time}t)`)
       .join(", ")
-    lines.push(`Travel: ${travelList}`)
+    lines.push(`Connections: ${travelList}`)
   } else {
-    lines.push("Travel: none known")
+    lines.push("Connections: none known")
   }
 
   // Enemies at current location
