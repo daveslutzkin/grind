@@ -51,35 +51,40 @@ No node IDs needed in display. Just show types: `Gathering: Ore vein, Tree stand
 
 **Decision:** Single source of truth (option C). Remove `generateAreaLocations` from exploration.ts. Use `generateNodesForArea` from world.ts for all area content generation (gathering nodes+locations together, plus mob camps which don't need nodes). Call it lazily from `ensureAreaGenerated`.
 
-### 6. Node Visibility Tiers (Design Doc Gap)
+### 6. Show Materials with Skill Requirements (merged with old item 7)
 **Status:** Not started
-**Description:** Design doc specifies three tiers: (1) no skill = type only, (2) has skill = material names, (3) appraised = quantities. Currently only showing "Ore vein" regardless of state. Need to implement material visibility.
+**Description:** Currently only shows "Ore vein". Should show materials when you have the skill, with indication of what you can gather.
 
-### 7. Show Gatherable Materials with Skill Requirements
-**Status:** Not started
-**Description:** When viewing a node, show what materials are available and what skill level each requires. Help players understand what they can gather vs. what they need to level for.
+**Decision:** When displaying a node (and player has the skill):
+```
+Gathering: Ore vein
+  STONE ✓, COPPER_ORE ✓, TIN_ORE (L3)
+```
+- ✓ = can gather at current level
+- (L3) = need level 3
+- After APPRAISE: also show quantities
 
 ---
 
 ## Hard / Design Work
 
-### 8. Contracts as Primary Decision Interface (Design Doc Gap)
+### 7. Contracts as Primary Decision Interface (Design Doc Gap)
 **Status:** Not started
 **Description:** Design docs say contracts are "the primary interface for choosing risk, variance, and commitment" and should be "optimisation problems with terms." Currently contracts appear passively with no visible risk/reward/variance info. Need to make contracts the central pull of gameplay.
 
-### 9. Strategic Exploration (Design Doc Gap)
+### 8. Strategic Exploration (Design Doc Gap)
 **Status:** Not started
 **Description:** Design doc asks: "Does exploration make WHERE to explore more interesting than the ACT of exploring?" Currently it's pure button-mashing with no strategic choice. Need to surface knowledge bonuses, risk/reward of pushing deeper, and trade-offs between survey/explore.
 
-### 10. Transformative Level-Ups (Design Doc Gap)
+### 9. Transformative Level-Ups (Design Doc Gap)
 **Status:** Not started
 **Description:** Design docs say "every meaningful level unlocks a new action, risk profile, or removes a constraint." Currently level-ups feel invisible. Need to make unlocks explicit and impactful. The APPRAISE@L3 teaser is good - need more of this.
 
-### 11. Early Inventory Pressure (Design Doc Gap)
+### 10. Early Inventory Pressure (Design Doc Gap)
 **Status:** Not started
 **Description:** Design docs say "running out of space is expected, not exceptional." With 20 slots and slow gathering, inventory never creates decisions. Need earlier constraint to make inventory strategic.
 
-### 12. Guild Depth (Design Doc Gap)
+### 11. Guild Depth (Design Doc Gap)
 **Status:** Not started
 **Description:** Design docs say guilds are "primary progression scaffolding" with faction identity, reputation, and contracts. Currently just enrollment checkpoints. Need to add guild-specific flavor, meaningful reputation, and guild-driven contracts.
 
@@ -87,7 +92,7 @@ No node IDs needed in display. Just show types: `Gathering: Ore vein, Tree stand
 
 ## Notes
 
-- Items 1-7 are implementation fixes (bugs or missing features)
-- Items 8-12 require design decisions before implementation
+- Items 1-6 are implementation fixes (bugs or missing features)
+- Items 7-11 require design decisions before implementation
 - RNG transparency is already well-implemented per design docs
 - Session summary display is good
