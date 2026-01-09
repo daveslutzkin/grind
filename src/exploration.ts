@@ -865,7 +865,7 @@ export async function executeSurvey(state: WorldState, _action: SurveyAction): P
     skillGained: { skill: "Exploration", amount: xpGained },
     levelUps,
     rngRolls: rolls,
-    stateDeltaSummary: `Discovered area ${discoveredAreaId}`,
+    stateDeltaSummary: `Discovered area ${exploration.areas.get(discoveredAreaId!)?.name || discoveredAreaId}`,
     explorationLog: {
       discoveredAreaId,
       discoveredConnectionId,
@@ -1302,9 +1302,10 @@ export async function executeExplorationTravel(
 
   // TODO: Scavenge rolls for gathering drops (future implementation)
 
+  const areaDisplayName = destArea.name || destinationAreaId
   const summary = discoveredOnArrival
-    ? `Traveled to ${destinationAreaId} (discovered)`
-    : `Traveled to ${destinationAreaId}`
+    ? `Traveled to ${areaDisplayName} (discovered)`
+    : `Traveled to ${areaDisplayName}`
 
   return {
     tickBefore,

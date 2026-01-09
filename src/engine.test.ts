@@ -173,7 +173,10 @@ describe("Engine", () => {
       expect(log.tickBefore).toBe(0)
       expect(log.actionType).toBe("ExplorationTravel")
       expect(log.parameters).toEqual({ destinationAreaId: areaId })
-      expect(log.stateDeltaSummary).toContain(areaId)
+      // Summary contains either the area name or ID
+      const area = state.exploration?.areas.get(areaId)
+      const expectedName = area?.name || areaId
+      expect(log.stateDeltaSummary).toContain(expectedName)
     })
 
     it("should work for round-trip travel", async () => {

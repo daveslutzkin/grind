@@ -864,8 +864,12 @@ async function executeGuildEnrolment(
   // Check for contract completion (after every successful action)
   const contractsCompleted = checkAndCompleteContracts(state)
 
-  const summary = explorationBenefits?.discoveredAreaId
-    ? `Enrolled in ${skill} guild, discovered area ${explorationBenefits.discoveredAreaId}`
+  const discoveredAreaName = explorationBenefits?.discoveredAreaId
+    ? state.exploration?.areas.get(explorationBenefits.discoveredAreaId)?.name ||
+      explorationBenefits.discoveredAreaId
+    : undefined
+  const summary = discoveredAreaName
+    ? `Enrolled in ${skill} guild, discovered area ${discoveredAreaName}`
     : `Enrolled in ${skill} guild`
 
   return {
