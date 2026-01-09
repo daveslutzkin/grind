@@ -65,33 +65,6 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
   const cmd = parts[0]
 
   switch (cmd) {
-    case "move": {
-      const dest = parts[1]
-      if (!dest) {
-        if (context.logErrors) {
-          const areas = context.knownAreaIds?.join(", ") || "?"
-          console.log(`Usage: move <area>  (known areas: ${areas})`)
-        }
-        return null
-      }
-      // If we have known areas, try to match (case-insensitive)
-      if (context.knownAreaIds) {
-        const matchedArea = context.knownAreaIds.find(
-          (a) =>
-            a.toLowerCase() === dest.toLowerCase() || a.toLowerCase().startsWith(dest.toLowerCase())
-        )
-        if (!matchedArea) {
-          if (context.logErrors) {
-            console.log(`Usage: move <area>  (known areas: ${context.knownAreaIds.join(", ")})`)
-          }
-          return null
-        }
-        return { type: "ExplorationTravel", destinationAreaId: matchedArea }
-      }
-      // No area list - pass through as-is (preserve case)
-      return { type: "ExplorationTravel", destinationAreaId: dest }
-    }
-
     case "gather": {
       const nodeId = parts[1]
       const modeName = parts[2]?.toLowerCase()
@@ -206,24 +179,42 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
       return { type: "Enrol", skill }
     }
 
-    case "goto": {
-      // Travel to a location within current area
+    case "goto":
+    case "go":
+    case "move":
+    case "travel": {
+      // Unified travel command - works for both locations and areas
       const inputName = parts.slice(1).join(" ").toLowerCase()
       if (!inputName) {
-        if (context.logErrors) console.log("Usage: goto <location>  (e.g., 'goto explorers guild')")
+        if (context.logErrors) console.log("Usage: goto <destination>  (location or area)")
         return null
       }
 
-      // Try to match against display names (case-insensitive, partial match)
-      const matchedEntry = Object.entries(LOCATION_DISPLAY_NAMES).find(([, displayName]) =>
+      // First, try to match against location display names (case-insensitive, partial match)
+      const matchedLocation = Object.entries(LOCATION_DISPLAY_NAMES).find(([, displayName]) =>
         displayName.toLowerCase().includes(inputName)
       )
-
-      if (matchedEntry) {
-        return { type: "TravelToLocation", locationId: matchedEntry[0] }
+      if (matchedLocation) {
+        return { type: "TravelToLocation", locationId: matchedLocation[0] }
       }
 
-      // Fall back to treating input as ID (uppercase with underscores)
+      // Next, check if it matches a known area (for inter-area travel)
+      // Be strict: only match if input equals area name or area name starts with input
+      if (context.knownAreaIds) {
+        const inputWithDashes = inputName.replace(/\s+/g, "-")
+        const matchedArea = context.knownAreaIds.find(
+          (a) =>
+            a.toLowerCase() === inputName ||
+            a.toLowerCase() === inputWithDashes ||
+            a.toLowerCase().startsWith(inputName) ||
+            a.toLowerCase().startsWith(inputWithDashes)
+        )
+        if (matchedArea) {
+          return { type: "ExplorationTravel", destinationAreaId: matchedArea }
+        }
+      }
+
+      // Fall back: try as location ID (uppercase with underscores)
       const locationId = parts.slice(1).join("_").toUpperCase()
       return { type: "TravelToLocation", locationId }
     }
@@ -259,8 +250,7 @@ export function printHelp(state: WorldState, options?: { showHints?: boolean }):
   console.log("├─────────────────────────────────────────────────────────────┤")
   console.log("│ enrol <skill>       - Enrol in guild (Exploration first!)   │")
   console.log("│ survey              - Discover new areas (connections)      │")
-  console.log("│ move <area>         - Travel to a known area                │")
-  console.log("│ goto <location>     - Go to a location in current area      │")
+  console.log("│ goto <dest>         - Travel to location or area            │")
   console.log("│ leave               - Leave location, return to hub         │")
   console.log("│ explore             - Discover nodes in current area        │")
   console.log("│ gather <node> focus <mat>  - Focus on one material          │")
