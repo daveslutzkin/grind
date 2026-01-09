@@ -11,6 +11,7 @@ import {
   GatherMode,
   ExplorationLocationType,
 } from "./types.js"
+import { LOCATION_DISPLAY_NAMES } from "./world.js"
 
 // Re-export agent formatters for unified display
 export { formatWorldState, formatActionLog } from "./agent/formatters.js"
@@ -200,11 +201,23 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
 
     case "goto": {
       // Travel to a location within current area
-      const locationId = parts.slice(1).join("_").toUpperCase()
-      if (!locationId) {
-        if (context.logErrors) console.log("Usage: goto <location-id>")
+      const inputName = parts.slice(1).join(" ").toLowerCase()
+      if (!inputName) {
+        if (context.logErrors) console.log("Usage: goto <location>  (e.g., 'goto explorers guild')")
         return null
       }
+
+      // Try to match against display names (case-insensitive, partial match)
+      const matchedEntry = Object.entries(LOCATION_DISPLAY_NAMES).find(([, displayName]) =>
+        displayName.toLowerCase().includes(inputName)
+      )
+
+      if (matchedEntry) {
+        return { type: "TravelToLocation", locationId: matchedEntry[0] }
+      }
+
+      // Fall back to treating input as ID (uppercase with underscores)
+      const locationId = parts.slice(1).join("_").toUpperCase()
       return { type: "TravelToLocation", locationId }
     }
 
