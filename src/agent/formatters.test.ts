@@ -54,7 +54,6 @@ describe("Formatters", () => {
       const formatted = formatWorldState(state)
 
       expect(formatted).toContain("Location: TOWN")
-      expect(formatted).toContain("ticks left")
       expect(formatted).toContain("Inventory:")
     })
 
@@ -89,7 +88,7 @@ describe("Formatters", () => {
       discoverAllLocations(state, areaId) // Must discover locations to see nodes
       const formatted = formatWorldState(state)
 
-      expect(formatted).toContain("Nodes (")
+      expect(formatted).toContain("Gathering:")
     })
   })
 

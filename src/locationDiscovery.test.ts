@@ -96,7 +96,7 @@ describe("Location Discovery", () => {
 
       // Now format state SHOULD show resource nodes
       const formatted = formatWorldState(state)
-      expect(formatted).toContain("Nodes (")
+      expect(formatted).toContain("Gathering:")
       expect(formatted).toContain("Ore vein")
     })
   })
