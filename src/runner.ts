@@ -158,6 +158,29 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
       return { type: "Enrol", skill }
     }
 
+    case "goto": {
+      // Travel to a location within current area
+      const locationId = parts.slice(1).join("_").toUpperCase()
+      if (!locationId) {
+        if (context.logErrors) console.log("Usage: goto <location-id>")
+        return null
+      }
+      return { type: "TravelToLocation", locationId }
+    }
+
+    case "leave": {
+      // Leave current location, return to hub
+      return { type: "Leave" }
+    }
+
+    case "survey": {
+      return { type: "Survey" }
+    }
+
+    case "explore": {
+      return { type: "Explore" }
+    }
+
     default:
       return null
   }
@@ -328,12 +351,16 @@ export function printHelp(state: WorldState): void {
   console.log("├─────────────────────────────────────────────────────────────┤")
   console.log("│ enrol <skill>       - Enrol in guild (Exploration first!)   │")
   console.log("│ move <area>         - Travel to a known area                │")
+  console.log("│ goto <location>     - Go to a location in current area      │")
+  console.log("│ leave               - Leave location, return to hub         │")
+  console.log("│ survey              - Discover new areas (needs Exploration)│")
+  console.log("│ explore             - Discover locations in current area    │")
   console.log("│ gather <node>       - Gather from a node at current area    │")
   console.log("│ fight <enemy>       - Fight an enemy at current area        │")
-  console.log("│ craft <recipe>      - Craft with a recipe at TOWN           │")
-  console.log("│ store <item> <qty>  - Store items at TOWN                   │")
+  console.log("│ craft <recipe>      - Craft at guild hall                   │")
+  console.log("│ store <item> <qty>  - Store items at warehouse              │")
   console.log("│ drop <item> <qty>   - Drop items                            │")
-  console.log("│ accept <contract>   - Accept a contract                     │")
+  console.log("│ accept <contract>   - Accept a contract at guild            │")
   console.log("├─────────────────────────────────────────────────────────────┤")
   console.log("│ state               - Show current world state              │")
   console.log("│ world               - Show world data (nodes, enemies, etc) │")

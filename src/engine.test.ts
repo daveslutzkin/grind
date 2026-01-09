@@ -975,6 +975,7 @@ describe("Engine", () => {
   describe("GuildEnrolment action", () => {
     it("should take skill from level 0 to level 1", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       expect(state.player.skills.Mining.level).toBe(0)
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
@@ -987,6 +988,7 @@ describe("Engine", () => {
 
     it("should consume 3 ticks", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       const initialTicks = state.time.sessionRemainingTicks
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
@@ -996,11 +998,22 @@ describe("Engine", () => {
       expect(state.time.sessionRemainingTicks).toBe(initialTicks - 3)
     })
 
-    it("should fail if not at guild location (TOWN)", () => {
+    it("should fail if not at guild location", () => {
       const state = createWorld("ore-test")
-      const areaId = getDistance1AreaId(state)
-      makeAreaKnown(state, areaId)
-      state.exploration.playerState.currentAreaId = areaId
+      // At Town Square, not at any guild
+      setTownLocation(state, null)
+      const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
+
+      const log = executeAction(state, action)
+
+      expect(log.success).toBe(false)
+      expect(log.failureType).toBe("WRONG_LOCATION")
+    })
+
+    it("should fail if at wrong guild location", () => {
+      const state = createWorld("ore-test")
+      // At Combat Guild, trying to enrol in Mining
+      setTownLocation(state, TOWN_LOCATIONS.COMBAT_GUILD)
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
       const log = executeAction(state, action)
@@ -1011,6 +1024,7 @@ describe("Engine", () => {
 
     it("should not grant XP (just unlocks the skill)", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
       const log = executeAction(state, action)
@@ -1021,6 +1035,7 @@ describe("Engine", () => {
 
     it("should fail if skill is already level 1 or higher", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       state.player.skills.Mining = { level: 1, xp: 0 }
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
@@ -1035,21 +1050,25 @@ describe("Engine", () => {
       const state = createWorld("ore-test")
 
       // Enrol in Mining
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       let log = executeAction(state, { type: "Enrol", skill: "Mining" })
       expect(log.success).toBe(true)
       expect(state.player.skills.Mining.level).toBe(1)
 
       // Enrol in Woodcutting
+      setTownLocation(state, TOWN_LOCATIONS.FORESTERS_GUILD)
       log = executeAction(state, { type: "Enrol", skill: "Woodcutting" })
       expect(log.success).toBe(true)
       expect(state.player.skills.Woodcutting.level).toBe(1)
 
       // Enrol in Combat
+      setTownLocation(state, TOWN_LOCATIONS.COMBAT_GUILD)
       log = executeAction(state, { type: "Enrol", skill: "Combat" })
       expect(log.success).toBe(true)
       expect(state.player.skills.Combat.level).toBe(1)
 
       // Enrol in Smithing
+      setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD)
       log = executeAction(state, { type: "Enrol", skill: "Smithing" })
       expect(log.success).toBe(true)
       expect(state.player.skills.Smithing.level).toBe(1)
@@ -1057,6 +1076,7 @@ describe("Engine", () => {
 
     it("should log action details", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
       const log = executeAction(state, action)
@@ -1068,6 +1088,7 @@ describe("Engine", () => {
 
     it("should fail if session has ended", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       state.time.sessionRemainingTicks = 0
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
@@ -1079,6 +1100,7 @@ describe("Engine", () => {
 
     it("should fail if not enough time remaining", () => {
       const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       state.time.sessionRemainingTicks = 2 // Need 3 ticks
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 

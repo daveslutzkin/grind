@@ -1,9 +1,15 @@
 import { describe, it, expect } from "@jest/globals"
 import { formatWorldState, formatActionLog } from "./formatters.js"
-import { createWorld } from "../world.js"
+import { createWorld, TOWN_LOCATIONS } from "../world.js"
 import { executeAction } from "../engine.js"
 import type { GatherMode, WorldState, AreaID } from "../types.js"
 import { NodeType } from "../types.js"
+
+/** Set player to be at a specific location in town */
+function setTownLocation(state: WorldState, locationId: string | null): void {
+  state.exploration.playerState.currentAreaId = "TOWN"
+  state.exploration.playerState.currentLocationId = locationId
+}
 
 /**
  * Test helpers for procedural area IDs
@@ -96,12 +102,14 @@ describe("Formatters", () => {
   describe("formatActionLog", () => {
     it("should format successful action log", () => {
       const state = createWorld("ore-test")
-      // Enrol in Mining first
+      // Enrol in Mining first (must be at guild)
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       executeAction(state, { type: "Enrol", skill: "Mining" })
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
       // Position player at ore area and gather (testing gather log, not travel)
       state.exploration.playerState.currentAreaId = areaId
+      state.exploration.playerState.currentLocationId = null // At clearing
       discoverAllLocations(state, areaId)
 
       const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)

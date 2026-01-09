@@ -103,6 +103,21 @@ function parseAction(cmd: string, state: WorldState): Action | null {
       return { type: "Survey" }
     }
 
+    case "goto": {
+      // Travel to a location within current area
+      const locationId = parts[1]
+      if (!locationId) {
+        console.error("Usage: goto <locationId>")
+        return null
+      }
+      return { type: "TravelToLocation", locationId }
+    }
+
+    case "leave": {
+      // Leave current location, return to hub
+      return { type: "Leave" }
+    }
+
     default:
       console.error(`Unknown command: ${type}`)
       return null
@@ -122,6 +137,8 @@ function main(): void {
     console.log(
       "  explore                              - Discover locations (nodes) in current area"
     )
+    console.log("  goto <locationId>                    - Travel to location in current area")
+    console.log("  leave                                - Leave location, return to hub")
     console.log("  gather <node> focus <mat>            - Focus on one material")
     console.log("  gather <node> careful                - Carefully extract all")
     console.log("  gather <node> appraise               - Inspect node contents")

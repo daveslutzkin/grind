@@ -1,6 +1,12 @@
 import { executeAction } from "./engine.js"
-import { createWorld } from "./world.js"
+import { createWorld, TOWN_LOCATIONS } from "./world.js"
 import type { FightAction, GuildEnrolmentAction, ItemStack, WorldState, AreaID } from "./types.js"
+
+/** Set player to be at a specific location in town */
+function setTownLocation(state: WorldState, locationId: string | null): void {
+  state.exploration.playerState.currentAreaId = "TOWN"
+  state.exploration.playerState.currentLocationId = locationId
+}
 
 /** Get a distance-1 area ID */
 function getDistance1AreaId(state: WorldState): AreaID {
@@ -63,6 +69,7 @@ describe("Combat Progression", () => {
   describe("Combat enrolment grants CrudeWeapon", () => {
     it("should grant CRUDE_WEAPON when enrolling in Combat", () => {
       const state = createWorld("test-seed")
+      setTownLocation(state, TOWN_LOCATIONS.COMBAT_GUILD)
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Combat" }
 
       const log = executeAction(state, action)
@@ -76,6 +83,7 @@ describe("Combat Progression", () => {
 
     it("should NOT grant weapon when enrolling in Mining", () => {
       const state = createWorld("test-seed")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
       executeAction(state, action)
@@ -87,7 +95,9 @@ describe("Combat Progression", () => {
     it("should NOT grant weapon when enrolling in other skills", () => {
       const state = createWorld("test-seed")
 
+      setTownLocation(state, TOWN_LOCATIONS.FORESTERS_GUILD)
       executeAction(state, { type: "Enrol", skill: "Woodcutting" })
+      setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD)
       executeAction(state, { type: "Enrol", skill: "Smithing" })
 
       const weapon = state.player.inventory.find((i) => i.itemId === "CRUDE_WEAPON")
@@ -105,6 +115,7 @@ describe("Combat Progression", () => {
 
     it("should auto-equip CRUDE_WEAPON when granted from Combat enrolment", () => {
       const state = createWorld("test-seed")
+      setTownLocation(state, TOWN_LOCATIONS.COMBAT_GUILD)
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Combat" }
 
       executeAction(state, action)
@@ -321,6 +332,7 @@ describe("Combat Progression", () => {
 
   describe("TurnInCombatToken action", () => {
     function setupStateWithToken(state: WorldState): void {
+      setTownLocation(state, TOWN_LOCATIONS.COMBAT_GUILD)
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "COMBAT_GUILD_TOKEN", quantity: 1 })
     }
@@ -347,12 +359,12 @@ describe("Combat Progression", () => {
       expect(state.time.sessionRemainingTicks).toBe(initialTicks)
     })
 
-    it("should fail if not at Combat Guild (TOWN)", () => {
+    it("should fail if not at Combat Guild", () => {
       const state = createWorld("test-seed")
-      setupStateWithToken(state)
-      // Move to a non-TOWN location
-      const areaId = getDistance1AreaId(state)
-      state.exploration.playerState.currentAreaId = areaId
+      state.player.skills.Combat = { level: 1, xp: 0 }
+      state.player.inventory.push({ itemId: "COMBAT_GUILD_TOKEN", quantity: 1 })
+      // At Town Square, not at Combat Guild
+      setTownLocation(state, null)
 
       const log = executeAction(state, { type: "TurnInCombatToken" })
 
@@ -362,6 +374,7 @@ describe("Combat Progression", () => {
 
     it("should fail if player does not have token", () => {
       const state = createWorld("test-seed")
+      setTownLocation(state, TOWN_LOCATIONS.COMBAT_GUILD)
       state.player.skills.Combat = { level: 1, xp: 0 }
       // No token in inventory
 
@@ -386,6 +399,7 @@ describe("Combat Progression", () => {
 
   describe("Combat contract: combat-guild-1", () => {
     function setupStateForCombatContract(state: WorldState): void {
+      setTownLocation(state, TOWN_LOCATIONS.COMBAT_GUILD)
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
       state.player.equippedWeapon = "CRUDE_WEAPON"

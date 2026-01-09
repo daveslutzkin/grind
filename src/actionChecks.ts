@@ -27,6 +27,7 @@ import {
   isInTown,
   ExplorationLocationType,
 } from "./types.js"
+import { getGuildLocationForSkill } from "./world.js"
 
 /**
  * Result of checking action preconditions
@@ -530,7 +531,9 @@ export function checkGuildEnrolmentAction(
 ): ActionCheckResult {
   const enrolTime = 3
 
-  if (getCurrentAreaId(state) !== "TOWN") {
+  // Must be at the correct guild hall for this skill
+  const requiredLocation = getGuildLocationForSkill(action.skill)
+  if (getCurrentLocationId(state) !== requiredLocation) {
     return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
   }
 
@@ -550,14 +553,15 @@ export function checkGuildEnrolmentAction(
 
 /**
  * Check TurnInCombatToken action preconditions
- * Cost: 0 ticks, requires being at TOWN (Combat Guild) and having COMBAT_GUILD_TOKEN
+ * Cost: 0 ticks, requires being at Combat Guild and having COMBAT_GUILD_TOKEN
  */
 export function checkTurnInCombatTokenAction(
   state: WorldState,
   _action: TurnInCombatTokenAction
 ): ActionCheckResult {
-  // Must be at Combat Guild (TOWN)
-  if (getCurrentAreaId(state) !== "TOWN") {
+  // Must be at Combat Guild
+  const requiredLocation = getGuildLocationForSkill("Combat")
+  if (getCurrentLocationId(state) !== requiredLocation) {
     return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
   }
 
