@@ -301,18 +301,53 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
       }
 
       // Next, check if it matches a known area (for inter-area travel)
-      // Be strict: only match if input equals area name or area name starts with input
-      if (context.knownAreaIds) {
+      // Match against both raw area IDs and human-readable area names
+      if (context.knownAreaIds && context.state?.exploration) {
         const inputWithDashes = inputName.replace(/\s+/g, "-")
-        const matchedArea = context.knownAreaIds.find(
-          (a) =>
-            a.toLowerCase() === inputName ||
-            a.toLowerCase() === inputWithDashes ||
-            a.toLowerCase().startsWith(inputName) ||
-            a.toLowerCase().startsWith(inputWithDashes)
+
+        // Collect all matching areas (both exact and prefix matches)
+        const exactMatches: string[] = []
+        const prefixMatches: string[] = []
+
+        for (const areaId of context.knownAreaIds) {
+          const area = context.state.exploration.areas.get(areaId)
+          if (area?.name) {
+            const areaNameLower = area.name.toLowerCase()
+            if (areaNameLower === inputName) {
+              exactMatches.push(areaId)
+            } else if (areaNameLower.startsWith(inputName)) {
+              prefixMatches.push(areaId)
+            }
+          }
+        }
+
+        // Prefer exact matches, then unique prefix matches
+        // If ambiguous (multiple prefix matches), fail to let user be more specific
+        if (exactMatches.length === 1) {
+          return { type: "ExplorationTravel", destinationAreaId: exactMatches[0] }
+        }
+        if (exactMatches.length === 0 && prefixMatches.length === 1) {
+          return { type: "ExplorationTravel", destinationAreaId: prefixMatches[0] }
+        }
+        // If multiple matches, don't return - let it fall through to fail
+
+        // Fall back to matching raw area IDs (same logic: prefer exact, then unique prefix)
+        const exactIdMatches = context.knownAreaIds.filter(
+          (a) => a.toLowerCase() === inputName || a.toLowerCase() === inputWithDashes
         )
-        if (matchedArea) {
-          return { type: "ExplorationTravel", destinationAreaId: matchedArea }
+        const prefixIdMatches = context.knownAreaIds.filter(
+          (a) =>
+            (a.toLowerCase().startsWith(inputName) ||
+              a.toLowerCase().startsWith(inputWithDashes)) &&
+            a.toLowerCase() !== inputName &&
+            a.toLowerCase() !== inputWithDashes
+        )
+
+        if (exactIdMatches.length === 1) {
+          return { type: "ExplorationTravel", destinationAreaId: exactIdMatches[0] }
+        }
+        if (exactIdMatches.length === 0 && prefixIdMatches.length === 1) {
+          return { type: "ExplorationTravel", destinationAreaId: prefixIdMatches[0] }
         }
       }
 
