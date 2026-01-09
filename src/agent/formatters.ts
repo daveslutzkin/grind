@@ -34,16 +34,12 @@ export function formatWorldState(state: WorldState): string {
 
     if (area) {
       const totalLocs = area.locations.length
-      const knownLocs = area.locations.filter((loc) =>
-        knownLocationIds.includes(loc.id)
-      ).length
+      const knownLocs = area.locations.filter((loc) => knownLocationIds.includes(loc.id)).length
 
       // Only show nodes section if we've discovered at least one location
       if (knownLocs > 0) {
         const exploredStatus =
-          knownLocs < totalLocs
-            ? `${knownLocs} found, more remain`
-            : "fully explored"
+          knownLocs < totalLocs ? `${knownLocs} found, more remain` : "fully explored"
 
         if (nodesHere && nodesHere.length > 0) {
           lines.push(`Nodes (${exploredStatus}):`)
@@ -295,7 +291,9 @@ export function formatActionLog(log: ActionLog, state?: WorldState): string {
 
   // RNG rolls (compact, without names) + luck calculation
   if (log.rngRolls.length > 0) {
-    const rolls = log.rngRolls.map((r) => `${Math.round(r.probability * 100)}%:${r.result ? "✓" : "✗"}`)
+    const rolls = log.rngRolls.map(
+      (r) => `${Math.round(r.probability * 100)}%:${r.result ? "✓" : "✗"}`
+    )
 
     // Calculate luck: expected ticks vs actual ticks
     // For repeated rolls at probability p every N ticks, expected = N/p per success
@@ -325,11 +323,7 @@ export function formatActionLog(log: ActionLog, state?: WorldState): string {
       }
 
       const deltaStr =
-        delta > 0
-          ? `${delta}t faster`
-          : delta < 0
-            ? `${Math.abs(delta)}t slower`
-            : "on target"
+        delta > 0 ? `${delta}t faster` : delta < 0 ? `${Math.abs(delta)}t slower` : "on target"
 
       lines.push(`  RNG: [${rolls.join(", ")}] — ${deltaStr} (${luckLabel})`)
     } else {
