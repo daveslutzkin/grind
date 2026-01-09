@@ -618,6 +618,9 @@ export interface RunnerConfig {
   /** Called when a command cannot be parsed. Return 'exit' to stop, 'continue' to keep going. */
   onInvalidCommand: (cmd: string) => "continue" | "exit"
 
+  /** Optional: called once at session start with initial state */
+  onSessionStart?: (state: WorldState) => void
+
   /** Optional meta-commands (e.g., help, state, quit). Return action to take. */
   metaCommands?: Record<string, (state: WorldState) => MetaCommandResult>
 
@@ -632,6 +635,9 @@ export interface RunnerConfig {
 export async function runSession(seed: string, config: RunnerConfig): Promise<void> {
   const session = createSession({ seed, createWorld })
   let showSummary = true
+
+  // Call onSessionStart hook if provided
+  config.onSessionStart?.(session.state)
 
   while (session.state.time.sessionRemainingTicks > 0) {
     const cmd = await config.getNextCommand()
