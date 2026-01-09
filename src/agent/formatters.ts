@@ -7,7 +7,7 @@ import {
   getLocationSkillRequirement,
 } from "../actionChecks.js"
 import { getLocationDisplayName } from "../world.js"
-import { BASE_TRAVEL_TIME } from "../exploration.js"
+import { BASE_TRAVEL_TIME, getAreaDisplayName as getAreaDisplayNameBase } from "../exploration.js"
 import {
   getPlayerNodeView,
   getNodeTypeName,
@@ -32,6 +32,16 @@ function formatMaterialName(materialId: string): string {
     .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(" ")
+}
+
+/**
+ * Get display name for an area from WorldState.
+ * Wrapper around getAreaDisplayName from exploration.ts that looks up the area automatically.
+ * Uses LLM-generated name if available, otherwise falls back to distance-based generic names.
+ */
+function getAreaDisplayName(state: WorldState, areaId: string): string {
+  const area = state.exploration?.areas.get(areaId)
+  return getAreaDisplayNameBase(areaId, area)
 }
 
 /**
@@ -185,11 +195,12 @@ export function formatWorldState(state: WorldState): string {
     }
 
     // Title format: just area name at hub, "Location Name (area)" at a location
+    const areaName = getAreaDisplayName(state, currentArea)
     const isAtHub = currentLocationId === null
     if (isAtHub) {
-      lines.push(`${currentArea}${statusSuffix}`)
+      lines.push(`${areaName}${statusSuffix}`)
     } else {
-      lines.push(`${locationName} (${currentArea})${statusSuffix}`)
+      lines.push(`${locationName} (${areaName})${statusSuffix}`)
     }
 
     // Only show Gathering line if we've discovered at least one location
@@ -282,7 +293,7 @@ export function formatWorldState(state: WorldState): string {
     // Sort by travel time (shortest first)
     const travelList = Array.from(destinations.entries())
       .sort((a, b) => a[1] - b[1])
-      .map(([dest, time]) => `${dest} (${time}t)`)
+      .map(([dest, time]) => `${getAreaDisplayName(state, dest)} (${time}t)`)
       .join(", ")
     lines.push(`Connections: ${travelList}`)
   } else {

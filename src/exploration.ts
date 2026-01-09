@@ -22,6 +22,7 @@ import { ExplorationLocationType } from "./types.js"
 import { rollFloat, roll } from "./rng.js"
 import { consumeTime } from "./stateHelpers.js"
 import { generateNodesForArea } from "./world.js"
+import { generateAreaName, getNeighborNames } from "./areaNaming.js"
 
 // ============================================================================
 // Constants
@@ -31,12 +32,20 @@ import { generateNodesForArea } from "./world.js"
 export const BASE_TRAVEL_TIME = 10
 
 /**
- * Get a friendly display name for an area based on its ID.
- * Avoids exposing internal IDs like "area-d1-i0" to users.
+ * Get a friendly display name for an area.
+ * Uses the LLM-generated name if available, otherwise falls back to a generic
+ * description based on distance from town.
+ *
+ * This is the base implementation. For use with WorldState, see the wrapper
+ * in agent/formatters.ts which looks up the area from state automatically.
  */
-export function getAreaDisplayName(areaId: AreaID): string {
+export function getAreaDisplayName(areaId: AreaID, area?: Area): string {
   if (areaId === "TOWN") return "Town"
-  // Parse area ID format: area-d{distance}-i{index}
+
+  // Use LLM-generated name if available
+  if (area?.name) return area.name
+
+  // Fallback: generate generic name based on distance
   const match = areaId.match(/^area-d(\d+)-i\d+$/)
   if (match) {
     const distance = parseInt(match[1], 10)
@@ -252,6 +261,7 @@ function updateLuckTracking(
 export function generateTown(): Area {
   return {
     id: "TOWN",
+    name: "Town",
     distance: 0,
     generated: true,
     locations: [], // Town locations are handled elsewhere
@@ -315,23 +325,24 @@ export function ensureAreaGenerated(_rng: RngState, area: Area): Area {
 }
 
 /**
- * Ensure an area is fully generated INCLUDING its connections.
+ * Ensure an area is fully generated INCLUDING its connections and name.
  * This should be called when first visiting or discovering an area.
  * It will:
  * 1. Generate the area's content (locations)
  * 2. Create placeholders for the next distance if they don't exist
  * 3. Generate connections from this area to same/adjacent distances
+ * 4. Generate a human-readable name using LLM (if ANTHROPIC_API_KEY is configured)
  */
-export function ensureAreaFullyGenerated(
+export async function ensureAreaFullyGenerated(
   rng: RngState,
   exploration: NonNullable<WorldState["exploration"]>,
   area: Area
-): void {
-  // Skip if already fully generated (has connections)
+): Promise<void> {
+  // Skip if already fully generated (has connections and name)
   const hasConnections = exploration.connections.some(
     (c) => c.fromAreaId === area.id || c.toAreaId === area.id
   )
-  if (area.generated && hasConnections) return
+  if (area.generated && hasConnections && area.name) return
 
   // Generate area content
   ensureAreaGenerated(rng, area)
@@ -368,6 +379,16 @@ export function ensureAreaFullyGenerated(
       if (!exists) {
         exploration.connections.push(conn)
       }
+    }
+  }
+
+  // Generate area name using LLM (uses global config for API key)
+  // If no API key is configured, area stays unnamed and uses fallback display
+  if (!area.name) {
+    const neighborNames = getNeighborNames(area, exploration.areas, exploration.connections)
+    const generatedName = await generateAreaName(area, neighborNames)
+    if (generatedName) {
+      area.name = generatedName
     }
   }
 }
@@ -540,10 +561,10 @@ export function initializeExplorationState(rng: RngState): ExplorationStateData 
  * - Discovers one distance 1 area
  * - Discovers the connection from town to that area
  */
-export function grantExplorationGuildBenefits(state: WorldState): {
+export async function grantExplorationGuildBenefits(state: WorldState): Promise<{
   discoveredAreaId: AreaID
   discoveredConnectionId: string
-} {
+}> {
   const exploration = state.exploration!
 
   // Find a distance 1 area that isn't already known
@@ -559,8 +580,8 @@ export function grantExplorationGuildBenefits(state: WorldState): {
   // Pick the first one (deterministic)
   const areaToDiscover = unknownD1Areas[0]
 
-  // Ensure the area is fully generated (content + connections)
-  ensureAreaFullyGenerated(state.rng, exploration, areaToDiscover)
+  // Ensure the area is fully generated (content + connections + name)
+  await ensureAreaFullyGenerated(state.rng, exploration, areaToDiscover)
 
   // Mark area and connection as known
   exploration.playerState.knownAreaIds.push(areaToDiscover.id)
@@ -725,7 +746,7 @@ function getKnowledgeParams(
  * Per spec (lines 76-77): "If the roll hits an already-discovered area, the roll is wasted.
  * Keep rolling until a new area is found (or player abandons)"
  */
-export function executeSurvey(state: WorldState, _action: SurveyAction): ActionLog {
+export async function executeSurvey(state: WorldState, _action: SurveyAction): Promise<ActionLog> {
   const tickBefore = state.time.currentTick
   const rolls: RngRoll[] = []
 
@@ -828,9 +849,9 @@ export function executeSurvey(state: WorldState, _action: SurveyAction): ActionL
         continue
       }
 
-      // Discover the area - ensure it's fully generated (content + connections)
+      // Discover the area - ensure it's fully generated (content + connections + name)
       const targetArea = exploration.areas.get(targetId)!
-      ensureAreaFullyGenerated(state.rng, exploration, targetArea)
+      await ensureAreaFullyGenerated(state.rng, exploration, targetArea)
 
       // Mark area and connection as known
       exploration.playerState.knownAreaIds.push(targetId)
@@ -873,7 +894,7 @@ export function executeSurvey(state: WorldState, _action: SurveyAction): ActionL
     skillGained: { skill: "Exploration", amount: xpGained },
     levelUps,
     rngRolls: rolls,
-    stateDeltaSummary: `Discovered ${getAreaDisplayName(discoveredAreaId!)}`,
+    stateDeltaSummary: `Discovered ${getAreaDisplayName(discoveredAreaId!, exploration.areas.get(discoveredAreaId!))}`,
     explorationLog: {
       discoveredAreaId,
       discoveredConnectionId,
@@ -893,7 +914,10 @@ export function executeSurvey(state: WorldState, _action: SurveyAction): ActionL
  * lower probability, but does not reveal the area itself - just that a connection
  * exists to somewhere unknown)"
  */
-export function executeExplore(state: WorldState, _action: ExploreAction): ActionLog {
+export async function executeExplore(
+  state: WorldState,
+  _action: ExploreAction
+): Promise<ActionLog> {
   const tickBefore = state.time.currentTick
   const rolls: RngRoll[] = []
 
@@ -910,8 +934,8 @@ export function executeExplore(state: WorldState, _action: ExploreAction): Actio
   const currentArea = exploration.areas.get(exploration.playerState.currentAreaId)!
   const level = state.player.skills.Exploration.level
 
-  // Ensure area is fully generated (content + connections)
-  ensureAreaFullyGenerated(state.rng, exploration, currentArea)
+  // Ensure area is fully generated (content + connections + name)
+  await ensureAreaFullyGenerated(state.rng, exploration, currentArea)
 
   // Find undiscovered locations in current area
   const knownLocationIds = new Set(exploration.playerState.knownLocationIds)
@@ -1223,10 +1247,10 @@ function findPath(
 /**
  * Execute ExplorationTravel action - move between areas
  */
-export function executeExplorationTravel(
+export async function executeExplorationTravel(
   state: WorldState,
   action: ExplorationTravelAction
-): ActionLog {
+): Promise<ActionLog> {
   const tickBefore = state.time.currentTick
   const exploration = state.exploration!
   const { destinationAreaId, scavenge } = action
@@ -1303,15 +1327,16 @@ export function executeExplorationTravel(
     exploration.playerState.knownAreaIds.push(destinationAreaId)
   }
 
-  // Ensure destination area is fully generated (content + connections)
+  // Ensure destination area is fully generated (content + connections + name)
   const destArea = exploration.areas.get(destinationAreaId)!
-  ensureAreaFullyGenerated(state.rng, exploration, destArea)
+  await ensureAreaFullyGenerated(state.rng, exploration, destArea)
 
   // TODO: Scavenge rolls for gathering drops (future implementation)
 
+  const areaDisplayName = getAreaDisplayName(destinationAreaId, destArea)
   const summary = discoveredOnArrival
-    ? `Traveled to ${getAreaDisplayName(destinationAreaId)} (discovered)`
-    : `Traveled to ${getAreaDisplayName(destinationAreaId)}`
+    ? `Traveled to ${areaDisplayName} (discovered)`
+    : `Traveled to ${areaDisplayName}`
 
   return {
     tickBefore,

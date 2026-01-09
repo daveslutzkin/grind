@@ -67,12 +67,12 @@ describe("Combat Progression", () => {
   })
 
   describe("Combat enrolment grants CrudeWeapon", () => {
-    it("should grant CRUDE_WEAPON when enrolling in Combat", () => {
+    it("should grant CRUDE_WEAPON when enrolling in Combat", async () => {
       const state = createWorld("test-seed")
       setTownLocation(state, TOWN_LOCATIONS.COMBAT_GUILD)
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Combat" }
 
-      const log = executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(true)
       expect(state.player.skills.Combat.level).toBe(1)
@@ -81,24 +81,24 @@ describe("Combat Progression", () => {
       expect(weapon?.quantity).toBe(1)
     })
 
-    it("should NOT grant weapon when enrolling in Mining", () => {
+    it("should NOT grant weapon when enrolling in Mining", async () => {
       const state = createWorld("test-seed")
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
-      executeAction(state, action)
+      await executeAction(state, action)
 
       const weapon = state.player.inventory.find((i) => i.itemId === "CRUDE_WEAPON")
       expect(weapon).toBeUndefined()
     })
 
-    it("should NOT grant weapon when enrolling in other skills", () => {
+    it("should NOT grant weapon when enrolling in other skills", async () => {
       const state = createWorld("test-seed")
 
       setTownLocation(state, TOWN_LOCATIONS.FORESTERS_GUILD)
-      executeAction(state, { type: "Enrol", skill: "Woodcutting" })
+      await executeAction(state, { type: "Enrol", skill: "Woodcutting" })
       setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD)
-      executeAction(state, { type: "Enrol", skill: "Smithing" })
+      await executeAction(state, { type: "Enrol", skill: "Smithing" })
 
       const weapon = state.player.inventory.find((i) => i.itemId === "CRUDE_WEAPON")
       expect(weapon).toBeUndefined()
@@ -113,33 +113,33 @@ describe("Combat Progression", () => {
       expect(state.player.equippedWeapon).toBeNull()
     })
 
-    it("should auto-equip CRUDE_WEAPON when granted from Combat enrolment", () => {
+    it("should auto-equip CRUDE_WEAPON when granted from Combat enrolment", async () => {
       const state = createWorld("test-seed")
       setTownLocation(state, TOWN_LOCATIONS.COMBAT_GUILD)
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Combat" }
 
-      executeAction(state, action)
+      await executeAction(state, action)
 
       expect(state.player.equippedWeapon).toBe("CRUDE_WEAPON")
     })
   })
 
   describe("Fight requires weapon", () => {
-    it("should fail Fight if no weapon equipped", () => {
+    it("should fail Fight if no weapon equipped", async () => {
       const state = createWorld("test-seed")
       setupCombatArea(state)
       state.player.skills.Combat = { level: 1, xp: 0 }
       // No weapon equipped
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
-      const log = executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("MISSING_WEAPON")
       expect(log.timeConsumed).toBe(0)
     })
 
-    it("should fail Fight if weapon equipped but not in inventory", () => {
+    it("should fail Fight if weapon equipped but not in inventory", async () => {
       const state = createWorld("test-seed")
       setupCombatArea(state)
       state.player.skills.Combat = { level: 1, xp: 0 }
@@ -148,14 +148,14 @@ describe("Combat Progression", () => {
       // inventory is empty - no weapon
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
-      const log = executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("MISSING_WEAPON")
       expect(log.timeConsumed).toBe(0)
     })
 
-    it("should succeed Fight if CRUDE_WEAPON equipped", () => {
+    it("should succeed Fight if CRUDE_WEAPON equipped", async () => {
       const state = createWorld("test-seed")
       setupCombatArea(state)
       state.player.skills.Combat = { level: 1, xp: 0 }
@@ -163,13 +163,13 @@ describe("Combat Progression", () => {
       state.player.equippedWeapon = "CRUDE_WEAPON"
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
-      const log = executeAction(state, action)
+      const log = await executeAction(state, action)
 
       // Should not fail due to missing weapon (may still fail due to RNG)
       expect(log.failureType).not.toBe("MISSING_WEAPON")
     })
 
-    it("should succeed Fight if IMPROVED_WEAPON equipped", () => {
+    it("should succeed Fight if IMPROVED_WEAPON equipped", async () => {
       const state = createWorld("test-seed")
       setupCombatArea(state)
       state.player.skills.Combat = { level: 1, xp: 0 }
@@ -177,14 +177,14 @@ describe("Combat Progression", () => {
       state.player.equippedWeapon = "IMPROVED_WEAPON"
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
-      const log = executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.failureType).not.toBe("MISSING_WEAPON")
     })
   })
 
   describe("Weapon determines fight parameters", () => {
-    it("should use 3 ticks and 70% success with CRUDE_WEAPON", () => {
+    it("should use 3 ticks and 70% success with CRUDE_WEAPON", async () => {
       const state = createWorld("test-seed")
       setupCombatArea(state)
       state.player.skills.Combat = { level: 1, xp: 0 }
@@ -192,13 +192,13 @@ describe("Combat Progression", () => {
       state.player.equippedWeapon = "CRUDE_WEAPON"
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
-      const log = executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.timeConsumed).toBe(3)
       expect(log.rngRolls[0].probability).toBe(0.7)
     })
 
-    it("should use 2 ticks and 80% success with IMPROVED_WEAPON", () => {
+    it("should use 2 ticks and 80% success with IMPROVED_WEAPON", async () => {
       const state = createWorld("test-seed")
       setupCombatArea(state)
       state.player.skills.Combat = { level: 1, xp: 0 }
@@ -206,7 +206,7 @@ describe("Combat Progression", () => {
       state.player.equippedWeapon = "IMPROVED_WEAPON"
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
-      const log = executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.timeConsumed).toBe(2)
       expect(log.rngRolls[0].probability).toBe(0.8)
@@ -214,7 +214,7 @@ describe("Combat Progression", () => {
   })
 
   describe("Combat failure does NOT relocate", () => {
-    it("should NOT relocate player on combat failure", () => {
+    it("should NOT relocate player on combat failure", async () => {
       const state = createWorld("fight-fail-no-relocate")
       const areaId = setupCombatArea(state)
       state.player.skills.Combat = { level: 1, xp: 0 }
@@ -224,7 +224,7 @@ describe("Combat Progression", () => {
       state.rng.seed = "force-fight-fail"
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
-      const log = executeAction(state, action)
+      const log = await executeAction(state, action)
 
       if (log.failureType === "COMBAT_FAILURE") {
         // Player should stay at combat area, not relocate to TOWN
@@ -233,7 +233,7 @@ describe("Combat Progression", () => {
       }
     })
 
-    it("should consume time on combat failure", () => {
+    it("should consume time on combat failure", async () => {
       const state = createWorld("fight-fail-time")
       setupCombatArea(state)
       state.player.skills.Combat = { level: 1, xp: 0 }
@@ -243,7 +243,7 @@ describe("Combat Progression", () => {
       const initialTicks = state.time.sessionRemainingTicks
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
-      const log = executeAction(state, action)
+      const log = await executeAction(state, action)
 
       if (log.failureType === "COMBAT_FAILURE") {
         expect(log.timeConsumed).toBe(3)
@@ -253,7 +253,7 @@ describe("Combat Progression", () => {
   })
 
   describe("Combat loot table", () => {
-    it("should have 10% chance to drop IMPROVED_WEAPON on successful fight", () => {
+    it("should have 10% chance to drop IMPROVED_WEAPON on successful fight", async () => {
       // We need to test this with controlled RNG
       const state = createWorld("test-improved-drop")
       setupCombatArea(state)
@@ -262,7 +262,7 @@ describe("Combat Progression", () => {
       state.player.equippedWeapon = "CRUDE_WEAPON"
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
-      const log = executeAction(state, action)
+      const log = await executeAction(state, action)
 
       if (log.success) {
         // Should have made 2 RNG rolls: fight success + loot table roll
@@ -274,7 +274,7 @@ describe("Combat Progression", () => {
       }
     })
 
-    it("should have 1% chance to drop COMBAT_GUILD_TOKEN on successful fight", () => {
+    it("should have 1% chance to drop COMBAT_GUILD_TOKEN on successful fight", async () => {
       const state = createWorld("test-token-drop")
       setupCombatArea(state)
       state.player.skills.Combat = { level: 1, xp: 0 }
@@ -282,7 +282,7 @@ describe("Combat Progression", () => {
       state.player.equippedWeapon = "CRUDE_WEAPON"
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
-      const log = executeAction(state, action)
+      const log = await executeAction(state, action)
 
       if (log.success) {
         // Should have made 2 RNG rolls: fight success + loot table roll
@@ -337,58 +337,58 @@ describe("Combat Progression", () => {
       state.player.inventory.push({ itemId: "COMBAT_GUILD_TOKEN", quantity: 1 })
     }
 
-    it("should consume the token", () => {
+    it("should consume the token", async () => {
       const state = createWorld("test-seed")
       setupStateWithToken(state)
 
-      const log = executeAction(state, { type: "TurnInCombatToken" })
+      const log = await executeAction(state, { type: "TurnInCombatToken" })
 
       expect(log.success).toBe(true)
       const token = state.player.inventory.find((i) => i.itemId === "COMBAT_GUILD_TOKEN")
       expect(token).toBeUndefined()
     })
 
-    it("should cost 0 ticks", () => {
+    it("should cost 0 ticks", async () => {
       const state = createWorld("test-seed")
       setupStateWithToken(state)
       const initialTicks = state.time.sessionRemainingTicks
 
-      const log = executeAction(state, { type: "TurnInCombatToken" })
+      const log = await executeAction(state, { type: "TurnInCombatToken" })
 
       expect(log.timeConsumed).toBe(0)
       expect(state.time.sessionRemainingTicks).toBe(initialTicks)
     })
 
-    it("should fail if not at Combat Guild", () => {
+    it("should fail if not at Combat Guild", async () => {
       const state = createWorld("test-seed")
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "COMBAT_GUILD_TOKEN", quantity: 1 })
       // At Town Square, not at Combat Guild
       setTownLocation(state, null)
 
-      const log = executeAction(state, { type: "TurnInCombatToken" })
+      const log = await executeAction(state, { type: "TurnInCombatToken" })
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("WRONG_LOCATION")
     })
 
-    it("should fail if player does not have token", () => {
+    it("should fail if player does not have token", async () => {
       const state = createWorld("test-seed")
       setTownLocation(state, TOWN_LOCATIONS.COMBAT_GUILD)
       state.player.skills.Combat = { level: 1, xp: 0 }
       // No token in inventory
 
-      const log = executeAction(state, { type: "TurnInCombatToken" })
+      const log = await executeAction(state, { type: "TurnInCombatToken" })
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("MISSING_ITEMS")
     })
 
-    it("should unlock combat-guild-1 contract", () => {
+    it("should unlock combat-guild-1 contract", async () => {
       const state = createWorld("test-seed")
       setupStateWithToken(state)
 
-      const log = executeAction(state, { type: "TurnInCombatToken" })
+      const log = await executeAction(state, { type: "TurnInCombatToken" })
 
       expect(log.success).toBe(true)
       // The combat contract should now be available
@@ -398,27 +398,27 @@ describe("Combat Progression", () => {
   })
 
   describe("Combat contract: combat-guild-1", () => {
-    function setupStateForCombatContract(state: WorldState): void {
+    async function setupStateForCombatContract(state: WorldState): Promise<void> {
       setTownLocation(state, TOWN_LOCATIONS.COMBAT_GUILD)
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
       state.player.equippedWeapon = "CRUDE_WEAPON"
       // Unlock the contract by turning in token
       state.player.inventory.push({ itemId: "COMBAT_GUILD_TOKEN", quantity: 1 })
-      executeAction(state, { type: "TurnInCombatToken" })
+      await executeAction(state, { type: "TurnInCombatToken" })
     }
 
-    it("should be unlocked after turning in token", () => {
+    it("should be unlocked after turning in token", async () => {
       const state = createWorld("test-seed")
-      setupStateForCombatContract(state)
+      await setupStateForCombatContract(state)
 
       const contract = state.world.contracts.find((c) => c.id === "combat-guild-1")
       expect(contract).toBeDefined()
     })
 
-    it("should require defeating 2 cave rats", () => {
+    it("should require defeating 2 cave rats", async () => {
       const state = createWorld("test-seed")
-      setupStateForCombatContract(state)
+      await setupStateForCombatContract(state)
 
       const contract = state.world.contracts.find((c) => c.id === "combat-guild-1")
       expect(contract?.requirements).toBeDefined()
@@ -426,9 +426,9 @@ describe("Combat Progression", () => {
       // This is a special type of contract - need to think about this
     })
 
-    it("should reward 4-6 Combat XP on completion", () => {
+    it("should reward 4-6 Combat XP on completion", async () => {
       const state = createWorld("test-seed")
-      setupStateForCombatContract(state)
+      await setupStateForCombatContract(state)
 
       const contract = state.world.contracts.find((c) => c.id === "combat-guild-1")
       expect(contract?.xpReward).toBeDefined()

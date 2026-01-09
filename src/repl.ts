@@ -2,6 +2,7 @@
  * Interactive REPL for manual control of the simulation
  */
 
+import "dotenv/config"
 import * as readline from "readline"
 import { evaluateAction } from "./evaluate.js"
 import type { WorldState } from "./types.js"
@@ -32,7 +33,11 @@ async function main(): Promise<void> {
   console.log("╚═════════════════════════════════════════════════════════════╝")
 
   const seed = process.argv[2] || `session-${Date.now()}`
+  const hasApiKey = !!process.env.ANTHROPIC_API_KEY
   console.log(`\nSeed: ${seed}`)
+  if (hasApiKey) {
+    console.log("🌍 Area naming enabled (ANTHROPIC_API_KEY detected)")
+  }
 
   await runSession(seed, {
     getNextCommand: async () => {

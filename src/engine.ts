@@ -103,7 +103,7 @@ function extractParameters(action: Action): Record<string, unknown> {
   return params
 }
 
-export function executeAction(state: WorldState, action: Action): ActionLog {
+export async function executeAction(state: WorldState, action: Action): Promise<ActionLog> {
   const rolls: RngRoll[] = []
 
   // Check if session has ended
@@ -826,11 +826,11 @@ function executeTurnInCombatToken(
   }
 }
 
-function executeGuildEnrolment(
+async function executeGuildEnrolment(
   state: WorldState,
   action: GuildEnrolmentAction,
   rolls: RngRoll[]
-): ActionLog {
+): Promise<ActionLog> {
   const tickBefore = state.time.currentTick
   const { skill } = action
 
@@ -860,15 +860,20 @@ function executeGuildEnrolment(
   // Exploration enrolment grants one distance 1 area and connection
   let explorationBenefits: { discoveredAreaId: string; discoveredConnectionId: string } | undefined
   if (skill === "Exploration") {
-    explorationBenefits = grantExplorationGuildBenefits(state)
+    explorationBenefits = await grantExplorationGuildBenefits(state)
   }
 
   // Check for contract completion (after every successful action)
   const contractsCompleted = checkAndCompleteContracts(state)
 
-  const summary = explorationBenefits?.discoveredAreaId
-    ? `Enrolled in ${skill} guild, discovered ${getAreaDisplayName(explorationBenefits.discoveredAreaId)}`
-    : `Enrolled in ${skill} guild`
+  const discoveredAreaId = explorationBenefits?.discoveredAreaId
+  const discoveredArea = discoveredAreaId
+    ? state.exploration?.areas.get(discoveredAreaId)
+    : undefined
+  const summary =
+    discoveredArea && discoveredAreaId
+      ? `Enrolled in ${skill} guild, discovered ${getAreaDisplayName(discoveredAreaId, discoveredArea)}`
+      : `Enrolled in ${skill} guild`
 
   return {
     tickBefore,

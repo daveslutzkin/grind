@@ -3,6 +3,7 @@
  * Shows last action result, final state, and session summary
  */
 
+import "dotenv/config"
 import type { ActionLog, WorldState } from "./types.js"
 import {
   runSession,

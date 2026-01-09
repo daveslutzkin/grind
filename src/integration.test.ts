@@ -67,7 +67,7 @@ function getNodeLocationId(nodeId: string, areaId: string): string {
 }
 
 describe("Integration: Full Session Flow", () => {
-  it("should run a complete session with various actions", () => {
+  it("should run a complete session with various actions", async () => {
     const state = createWorld("integration-test-seed")
     // Set skills to level 1 to allow actions
     state.player.skills.Mining = { level: 1, xp: 0 }
@@ -76,7 +76,7 @@ describe("Integration: Full Session Flow", () => {
 
     // Accept a contract at Miners Guild
     setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-    logs.push(executeAction(state, { type: "AcceptContract", contractId: "miners-guild-1" }))
+    logs.push(await executeAction(state, { type: "AcceptContract", contractId: "miners-guild-1" }))
     expect(logs[logs.length - 1].success).toBe(true)
     expect(state.player.activeContracts).toContain("miners-guild-1")
 
@@ -89,7 +89,7 @@ describe("Integration: Full Session Flow", () => {
     discoverAllLocations(state, oreAreaId)
 
     // Move to ore area
-    logs.push(executeAction(state, { type: "Move", destination: oreAreaId }))
+    logs.push(await executeAction(state, { type: "Move", destination: oreAreaId }))
     expect(logs[logs.length - 1].success).toBe(true)
     expect(state.exploration.playerState.currentAreaId).toBe(oreAreaId)
 
@@ -102,7 +102,7 @@ describe("Integration: Full Session Flow", () => {
     if (copperNode) {
       for (let i = 0; i < 3; i++) {
         logs.push(
-          executeAction(state, {
+          await executeAction(state, {
             type: "Gather",
             nodeId: copperNode.nodeId,
             mode: GatherMode.FOCUS,
@@ -113,12 +113,12 @@ describe("Integration: Full Session Flow", () => {
     }
 
     // Move back to TOWN
-    logs.push(executeAction(state, { type: "Move", destination: "TOWN" }))
+    logs.push(await executeAction(state, { type: "Move", destination: "TOWN" }))
 
     // Try to craft if we have enough copper ore
     const copperOre = state.player.inventory.find((i) => i.itemId === "COPPER_ORE")
     if (copperOre && copperOre.quantity >= 2) {
-      logs.push(executeAction(state, { type: "Craft", recipeId: "copper-bar-recipe" }))
+      logs.push(await executeAction(state, { type: "Craft", recipeId: "copper-bar-recipe" }))
     }
 
     // Session should have consumed ticks
@@ -136,10 +136,10 @@ describe("Integration: Full Session Flow", () => {
     }
   })
 
-  it("should demonstrate RNG determinism", () => {
+  it("should demonstrate RNG determinism", async () => {
     // Run the same sequence twice with the same seed
-    const results1 = runSession("determinism-test")
-    const results2 = runSession("determinism-test")
+    const results1 = await runSession("determinism-test")
+    const results2 = await runSession("determinism-test")
 
     // Results should be identical
     expect(results1.logs.length).toBe(results2.logs.length)
@@ -149,7 +149,7 @@ describe("Integration: Full Session Flow", () => {
     }
   })
 
-  it("should demonstrate logging shows what happened and why", () => {
+  it("should demonstrate logging shows what happened and why", async () => {
     const state = createWorld("logging-test")
     state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
     const logs: ActionLog[] = []
@@ -160,7 +160,7 @@ describe("Integration: Full Session Flow", () => {
     discoverAllLocations(state, oreAreaId)
 
     // Move to ore area
-    logs.push(executeAction(state, { type: "Move", destination: oreAreaId }))
+    logs.push(await executeAction(state, { type: "Move", destination: oreAreaId }))
 
     // Get a node from the area
     const mineNode = state.world.nodes.find((n) => n.areaId === oreAreaId)
@@ -169,7 +169,7 @@ describe("Integration: Full Session Flow", () => {
     // Gather (may succeed or fail based on RNG)
     if (mineNode && material) {
       logs.push(
-        executeAction(state, {
+        await executeAction(state, {
           type: "Gather",
           nodeId: mineNode.nodeId,
           mode: GatherMode.FOCUS,
@@ -199,7 +199,7 @@ describe("Integration: Full Session Flow", () => {
     expect(gatherLog.stateDeltaSummary).toBeDefined()
   })
 
-  it("should demonstrate plan evaluation finds violations", () => {
+  it("should demonstrate plan evaluation finds violations", async () => {
     const state = createWorld("plan-test")
     state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
 
@@ -252,7 +252,7 @@ describe("Integration: Full Session Flow", () => {
     expect(invalidResult.violations.length).toBeGreaterThan(0)
   })
 
-  it("should demonstrate session ends when ticks run out", () => {
+  it("should demonstrate session ends when ticks run out", async () => {
     const state = createWorld("session-end-test")
     const logs: ActionLog[] = []
 
@@ -273,7 +273,7 @@ describe("Integration: Full Session Flow", () => {
     while (!sessionEnded && i < 10000) {
       const dest = destinations[i % 3]
       if (state.exploration.playerState.currentAreaId !== dest) {
-        const log = executeAction(state, { type: "Move", destination: dest })
+        const log = await executeAction(state, { type: "Move", destination: dest })
         logs.push(log)
 
         if (log.failureType === "SESSION_ENDED") {
@@ -287,7 +287,7 @@ describe("Integration: Full Session Flow", () => {
     expect(sessionEnded || state.time.sessionRemainingTicks <= 0).toBe(true)
   })
 
-  it("should show how dominant strategies might form", () => {
+  it("should show how dominant strategies might form", async () => {
     // This test demonstrates that we can evaluate different strategies
     const state = createWorld("strategy-test")
 
@@ -377,7 +377,7 @@ describe("Integration: Full Session Flow", () => {
     // This is the kind of insight that reveals dominant strategies
   })
 
-  it("should demonstrate contract completion consumes items and cannot be exploited", () => {
+  it("should demonstrate contract completion consumes items and cannot be exploited", async () => {
     const state = createWorld("contract-exploit-test")
     setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD) // Must be at miners guild to accept
 
@@ -386,7 +386,7 @@ describe("Integration: Full Session Flow", () => {
 
     // Accept the miners-guild-1 contract (requires 2 COPPER_BAR, rewards 5 COPPER_ORE, 10 rep)
     // Since requirements are already met, contract completes immediately
-    const acceptLog = executeAction(state, {
+    const acceptLog = await executeAction(state, {
       type: "AcceptContract",
       contractId: "miners-guild-1",
     })
@@ -421,7 +421,7 @@ describe("Integration: Full Session Flow", () => {
 
     // EXPLOIT TEST: Try to accept the same contract again
     // This should succeed (contract can be re-accepted after completion)
-    const acceptLog2 = executeAction(state, {
+    const acceptLog2 = await executeAction(state, {
       type: "AcceptContract",
       contractId: "miners-guild-1",
     })
@@ -440,7 +440,7 @@ describe("Integration: Full Session Flow", () => {
     // because items are consumed on completion
   })
 
-  it("should include contract XP level-ups in ActionLog.levelUps", () => {
+  it("should include contract XP level-ups in ActionLog.levelUps", async () => {
     const state = createWorld("contract-levelup-test")
     // Set Smithing to level 1 so contract XP causes level up from 1->2
     state.player.skills.Smithing = { level: 1, xp: 0 }
@@ -464,7 +464,7 @@ describe("Integration: Full Session Flow", () => {
     state.player.inventory.push({ itemId: "IRON_BAR", quantity: 1 })
 
     // Accept the contract - it should complete immediately and grant XP
-    const acceptLog = executeAction(state, {
+    const acceptLog = await executeAction(state, {
       type: "AcceptContract",
       contractId: "xp-contract",
     })
@@ -496,7 +496,7 @@ describe("Integration: Full Session Flow", () => {
     expect(state.player.skills.Smithing.xp).toBe(1) // 5 - 4 (threshold) = 1 carry-over
   })
 
-  it("should merge action level-ups with contract level-ups", () => {
+  it("should merge action level-ups with contract level-ups", async () => {
     const state = createWorld("merged-levelup-test")
     // Set skills to level 1 so we can do actions and level up
     state.player.skills.Mining = { level: 1, xp: 0 }
@@ -535,9 +535,9 @@ describe("Integration: Full Session Flow", () => {
     })
 
     // Move to ore area and go to the mining outpost to accept contract
-    executeAction(state, { type: "Move", destination: oreAreaId })
+    await executeAction(state, { type: "Move", destination: oreAreaId })
     state.exploration.playerState.currentLocationId = miningOutpostId
-    executeAction(state, { type: "AcceptContract", contractId: "mining-xp-contract" })
+    await executeAction(state, { type: "AcceptContract", contractId: "mining-xp-contract" })
 
     // Give player enough Mining XP to be close to level up (need 4 XP total)
     state.player.skills.Mining.xp = 3
@@ -547,7 +547,7 @@ describe("Integration: Full Session Flow", () => {
     state.player.inventory.push({ itemId: "COPPER_ORE", quantity: 1 })
 
     const material = mineNode.materials.find((m) => m.materialId === "COPPER_ORE")!
-    const gatherLog = executeAction(state, {
+    const gatherLog = await executeAction(state, {
       type: "Gather",
       nodeId: mineNode.nodeId,
       mode: GatherMode.FOCUS,
@@ -578,10 +578,10 @@ describe("Integration: Full Session Flow", () => {
 })
 
 // Helper function to run a standard session
-function runSession(seed: string): {
+async function runSession(seed: string): Promise<{
   logs: ActionLog[]
   state: ReturnType<typeof createWorld>
-} {
+}> {
   const state = createWorld(seed)
   // Set skills to level 1 to allow actions
   state.player.skills.Mining = { level: 1, xp: 0 }
@@ -611,9 +611,9 @@ function runSession(seed: string): {
   const mineNode = state.world.nodes.find((n) => n.areaId === oreAreaId)!
   const material = mineNode.materials[0]
 
-  logs.push(executeAction(state, { type: "Move", destination: oreAreaId }))
+  logs.push(await executeAction(state, { type: "Move", destination: oreAreaId }))
   logs.push(
-    executeAction(state, {
+    await executeAction(state, {
       type: "Gather",
       nodeId: mineNode.nodeId,
       mode: GatherMode.FOCUS,
@@ -621,15 +621,15 @@ function runSession(seed: string): {
     })
   )
   logs.push(
-    executeAction(state, {
+    await executeAction(state, {
       type: "Gather",
       nodeId: mineNode.nodeId,
       mode: GatherMode.FOCUS,
       focusMaterialId: material.materialId,
     })
   )
-  logs.push(executeAction(state, { type: "Fight", enemyId: "cave-rat" }))
-  logs.push(executeAction(state, { type: "Move", destination: "TOWN" }))
+  logs.push(await executeAction(state, { type: "Fight", enemyId: "cave-rat" }))
+  logs.push(await executeAction(state, { type: "Move", destination: "TOWN" }))
 
   return { logs, state }
 }

@@ -116,7 +116,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
   }
 
   describe("APPRAISE mode", () => {
-    it("should cost 1 tick", () => {
+    it("should cost 1 tick", async () => {
       world.player.skills.Mining.level = 3 // L3 required for APPRAISE
       const node = getFirstOreNode()
       const action: GatherAction = {
@@ -126,14 +126,14 @@ describe("Phase 3: Gather Action Overhaul", () => {
       }
 
       const ticksBefore = world.time.sessionRemainingTicks
-      const log = executeAction(world, action)
+      const log = await await executeAction(world, action)
 
       expect(log.success).toBe(true)
       expect(log.timeConsumed).toBe(1)
       expect(world.time.sessionRemainingTicks).toBe(ticksBefore - 1)
     })
 
-    it("should not modify node materials", () => {
+    it("should not modify node materials", async () => {
       world.player.skills.Mining.level = 3 // L3 required for APPRAISE
       const node = getFirstOreNode()
       const materialsBefore = JSON.stringify(node.materials)
@@ -144,12 +144,12 @@ describe("Phase 3: Gather Action Overhaul", () => {
         mode: GatherMode.APPRAISE,
       }
 
-      executeAction(world, action)
+      await executeAction(world, action)
 
       expect(JSON.stringify(node.materials)).toBe(materialsBefore)
     })
 
-    it("should not grant XP", () => {
+    it("should not grant XP", async () => {
       world.player.skills.Mining.level = 3 // L3 required for APPRAISE
       const node = getFirstOreNode()
       const action: GatherAction = {
@@ -158,12 +158,12 @@ describe("Phase 3: Gather Action Overhaul", () => {
         mode: GatherMode.APPRAISE,
       }
 
-      const log = executeAction(world, action)
+      const log = await await executeAction(world, action)
 
       expect(log.skillGained).toBeUndefined()
     })
 
-    it("should include node info in log", () => {
+    it("should include node info in log", async () => {
       world.player.skills.Mining.level = 3 // L3 required for APPRAISE
       const node = getFirstOreNode()
       const action: GatherAction = {
@@ -172,7 +172,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         mode: GatherMode.APPRAISE,
       }
 
-      const log = executeAction(world, action)
+      const log = await await executeAction(world, action)
 
       // Log should contain extraction info with node details
       expect(log.extraction).toBeDefined()
@@ -196,7 +196,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
   })
 
   describe("FOCUS mode", () => {
-    it("should require focusMaterialId", () => {
+    it("should require focusMaterialId", async () => {
       world.player.skills.Mining.level = 5 // High enough for any material
       const node = getFirstOreNode()
       const action: GatherAction = {
@@ -206,13 +206,13 @@ describe("Phase 3: Gather Action Overhaul", () => {
         // Missing focusMaterialId
       }
 
-      const log = executeAction(world, action)
+      const log = await await executeAction(world, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("MISSING_FOCUS_MATERIAL")
     })
 
-    it("should extract focus material with variance", () => {
+    it("should extract focus material with variance", async () => {
       world.player.skills.Mining.level = 5 // High enough for any material
       const node = getFirstOreNode()
       // Find a material the player can extract
@@ -228,7 +228,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         focusMaterialId: focusMat.materialId,
       }
 
-      const log = executeAction(world, action)
+      const log = await await executeAction(world, action)
 
       expect(log.success).toBe(true)
       expect(log.extraction).toBeDefined()
@@ -236,7 +236,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
       expect(focusMat.remainingUnits).toBeLessThan(initialUnits)
     })
 
-    it("should cause collateral damage to other materials", () => {
+    it("should cause collateral damage to other materials", async () => {
       world.player.skills.Mining.level = 5 // High enough for any material
       const node = getFirstOreNode()
       // Ensure node has at least 2 materials
@@ -257,13 +257,13 @@ describe("Phase 3: Gather Action Overhaul", () => {
         focusMaterialId: focusMat.materialId,
       }
 
-      executeAction(world, action)
+      await executeAction(world, action)
 
       // Collateral should be damaged
       expect(collateralMat.remainingUnits).toBeLessThan(collateralBefore)
     })
 
-    it("should grant XP based on ticks × tier", () => {
+    it("should grant XP based on ticks × tier", async () => {
       world.player.skills.Mining.level = 5 // High enough for any material
       const node = getFirstOreNode()
       // Find a material the player can extract
@@ -278,7 +278,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         focusMaterialId: focusMat.materialId,
       }
 
-      const log = executeAction(world, action)
+      const log = await await executeAction(world, action)
 
       expect(log.skillGained).toBeDefined()
       expect(log.skillGained!.skill).toBe("Mining")
@@ -286,7 +286,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
       expect(log.skillGained!.amount).toBe(log.timeConsumed * focusMat.tier)
     })
 
-    it("should log variance info (expected, actual, range)", () => {
+    it("should log variance info (expected, actual, range)", async () => {
       world.player.skills.Mining.level = 5 // High enough for any material
       const node = getFirstOreNode()
       // Find a material the player can extract
@@ -301,7 +301,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         focusMaterialId: focusMat.materialId,
       }
 
-      const log = executeAction(world, action)
+      const log = await await executeAction(world, action)
 
       expect(log.extraction!.variance).toBeDefined()
       expect(log.extraction!.variance!.expected).toBeDefined()
@@ -309,7 +309,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
       expect(log.extraction!.variance!.range).toBeDefined()
     })
 
-    it("should add extracted items to inventory", () => {
+    it("should add extracted items to inventory", async () => {
       world.player.skills.Mining.level = 5 // High enough for any material
       const node = getFirstOreNode()
       // Find a material the player can extract
@@ -324,7 +324,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         focusMaterialId: focusMat.materialId,
       }
 
-      executeAction(world, action)
+      await executeAction(world, action)
 
       // Should have more items in inventory
       const totalItems = world.player.inventory.reduce((sum, s) => sum + s.quantity, 0)
@@ -333,7 +333,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
   })
 
   describe("CAREFUL_ALL mode", () => {
-    it("should take more ticks than FOCUS mode", () => {
+    it("should take more ticks than FOCUS mode", async () => {
       // We'll compare approximate tick costs
       // CAREFUL_ALL should be slower
 
@@ -368,13 +368,13 @@ describe("Phase 3: Gather Action Overhaul", () => {
         mode: GatherMode.CAREFUL_ALL,
       }
 
-      const focusLog = executeAction(world1, focusAction)
-      const carefulLog = executeAction(world2, carefulAction)
+      const focusLog = await executeAction(world1, focusAction)
+      const carefulLog = await executeAction(world2, carefulAction)
 
       expect(carefulLog.timeConsumed).toBeGreaterThan(focusLog.timeConsumed)
     })
 
-    it("should NOT cause collateral damage", () => {
+    it("should NOT cause collateral damage", async () => {
       world.player.skills.Mining.level = 4 // L4 unlocks CAREFUL_ALL
       const node = getFirstOreNode()
 
@@ -384,7 +384,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         mode: GatherMode.CAREFUL_ALL,
       }
 
-      const log = executeAction(world, action)
+      const log = await await executeAction(world, action)
       expect(log.success).toBe(true)
 
       // Check collateral damage is 0 or near 0
@@ -396,7 +396,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
       expect(totalCollateral).toBe(0)
     })
 
-    it("should extract from multiple materials", () => {
+    it("should extract from multiple materials", async () => {
       world.player.skills.Mining.level = 4
       const node = getFirstOreNode()
 
@@ -406,7 +406,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         mode: GatherMode.CAREFUL_ALL,
       }
 
-      const log = executeAction(world, action)
+      const log = await await executeAction(world, action)
 
       // Should have extracted multiple material types
       const extractedTypes = new Set(log.extraction!.extracted.map((s) => s.itemId))
@@ -415,7 +415,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
   })
 
   describe("Collateral damage floor", () => {
-    it("should have minimum 20% collateral at high levels", () => {
+    it("should have minimum 20% collateral at high levels", async () => {
       world.player.skills.Mining.level = 10 // Max level
       const node = getFirstOreNode()
 
@@ -432,7 +432,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         focusMaterialId: focusMat.materialId,
       }
 
-      const log = executeAction(world, action)
+      const log = await await executeAction(world, action)
 
       // Even at L10, collateral should be at least 20% of impacted units
       const collateralDamage = log.extraction!.collateralDamage[collateralMat.materialId] ?? 0
@@ -442,7 +442,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
   })
 
   describe("Focus yield progression", () => {
-    it("should have ~40% yield at unlock level", () => {
+    it("should have ~40% yield at unlock level", async () => {
       // At level 1 with a level-1 material, yield should be around 40%
       const node = getFirstOreNode()
       const focusMat = node.materials.find((m) => m.requiredLevel === 1)!
@@ -456,14 +456,14 @@ describe("Phase 3: Gather Action Overhaul", () => {
         focusMaterialId: focusMat.materialId,
       }
 
-      const log = executeAction(world, action)
+      const log = await await executeAction(world, action)
 
       // Expected yield should be around 40% of base attempt
       // This is approximate due to variance
       expect(log.extraction!.variance!.expected).toBeGreaterThan(0)
     })
 
-    it("should have 100% yield at level 10 (perfect focus)", () => {
+    it("should have 100% yield at level 10 (perfect focus)", async () => {
       world.player.skills.Mining.level = 10
       const node = getFirstOreNode()
       const focusMat = node.materials.find((m) => m.requiredLevel === 1)!
@@ -475,7 +475,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         focusMaterialId: focusMat.materialId,
       }
 
-      const log = executeAction(world, action)
+      const log = await await executeAction(world, action)
 
       // At L10, focusWaste should be 0
       expect(log.extraction!.focusWaste).toBe(0)
@@ -483,7 +483,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
   })
 
   describe("Node depletion", () => {
-    it("should mark node depleted when all materials exhausted", () => {
+    it("should mark node depleted when all materials exhausted", async () => {
       const node = getFirstOreNode()
 
       // Drain all materials
@@ -498,7 +498,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         focusMaterialId: node.materials[0].materialId,
       }
 
-      const log = executeAction(world, action)
+      const log = await await executeAction(world, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("NODE_DEPLETED")
@@ -506,7 +506,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
   })
 
   describe("Skill gating", () => {
-    it("should fail if player lacks required skill level for focus material", () => {
+    it("should fail if player lacks required skill level for focus material", async () => {
       world.player.skills.Mining.level = 1
       const node = getFirstOreNode()
 
@@ -524,7 +524,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         focusMaterialId: highLevelMat.materialId,
       }
 
-      const log = executeAction(world, action)
+      const log = await await executeAction(world, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("INSUFFICIENT_SKILL")
@@ -532,7 +532,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
   })
 
   describe("Location validation", () => {
-    it("should fail if player is not at node location", () => {
+    it("should fail if player is not at node location", async () => {
       world.exploration.playerState.currentAreaId = "TOWN" // Not at mining location
       const node = getFirstOreNode()
 
@@ -542,7 +542,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         mode: GatherMode.APPRAISE,
       }
 
-      const log = executeAction(world, action)
+      const log = await await executeAction(world, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("WRONG_LOCATION")
@@ -550,7 +550,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
   })
 
   describe("XP source attribution", () => {
-    it("should include source in log for future contract tracking", () => {
+    it("should include source in log for future contract tracking", async () => {
       world.player.skills.Mining.level = 5 // High enough for any material
       const node = getFirstOreNode()
       // Find a material the player can extract
@@ -565,7 +565,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         focusMaterialId: focusMat.materialId,
       }
 
-      const log = executeAction(world, action)
+      const log = await await executeAction(world, action)
 
       expect(log.success).toBe(true)
       expect(log.xpSource).toBe("node_extraction")
@@ -578,7 +578,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
 
   describe("Phase 4: Skill Unlocks", () => {
     describe("Location access gating", () => {
-      it("should require L5 Mining to access MID mining locations", () => {
+      it("should require L5 Mining to access MID mining locations", async () => {
         world.player.skills.Mining.level = 4 // Not enough for MID
         // Use a MID (distance 2) area
         let midAreaId: AreaID | undefined
@@ -599,13 +599,13 @@ describe("Phase 3: Gather Action Overhaul", () => {
           mode: GatherMode.APPRAISE,
         }
 
-        const log = executeAction(world, action)
+        const log = await await executeAction(world, action)
 
         expect(log.success).toBe(false)
         expect(log.failureType).toBe("INSUFFICIENT_SKILL")
       })
 
-      it("should allow L5+ Mining to access MID mining locations", () => {
+      it("should allow L5+ Mining to access MID mining locations", async () => {
         world.player.skills.Mining.level = 5 // Enough for MID
         // Use a MID (distance 2) area
         let midAreaId: AreaID | undefined
@@ -626,12 +626,12 @@ describe("Phase 3: Gather Action Overhaul", () => {
           mode: GatherMode.APPRAISE,
         }
 
-        const log = executeAction(world, action)
+        const log = await await executeAction(world, action)
 
         expect(log.success).toBe(true)
       })
 
-      it("should require L9 Mining to access FAR mining locations", () => {
+      it("should require L9 Mining to access FAR mining locations", async () => {
         world.player.skills.Mining.level = 8 // Not enough for FAR
         // Use a FAR (distance 3) area
         let farAreaId: AreaID | undefined
@@ -652,13 +652,13 @@ describe("Phase 3: Gather Action Overhaul", () => {
           mode: GatherMode.APPRAISE,
         }
 
-        const log = executeAction(world, action)
+        const log = await await executeAction(world, action)
 
         expect(log.success).toBe(false)
         expect(log.failureType).toBe("INSUFFICIENT_SKILL")
       })
 
-      it("should allow L9+ Mining to access FAR mining locations", () => {
+      it("should allow L9+ Mining to access FAR mining locations", async () => {
         world.player.skills.Mining.level = 9 // Enough for FAR
         // Use a FAR (distance 3) area
         let farAreaId: AreaID | undefined
@@ -679,14 +679,14 @@ describe("Phase 3: Gather Action Overhaul", () => {
           mode: GatherMode.APPRAISE,
         }
 
-        const log = executeAction(world, action)
+        const log = await await executeAction(world, action)
 
         expect(log.success).toBe(true)
       })
     })
 
     describe("APPRAISE mode unlock", () => {
-      it("should require L3 Mining for APPRAISE mode", () => {
+      it("should require L3 Mining for APPRAISE mode", async () => {
         world.player.skills.Mining.level = 2 // Not enough for APPRAISE
         const node = getFirstOreNode()
 
@@ -696,13 +696,13 @@ describe("Phase 3: Gather Action Overhaul", () => {
           mode: GatherMode.APPRAISE,
         }
 
-        const log = executeAction(world, action)
+        const log = await await executeAction(world, action)
 
         expect(log.success).toBe(false)
         expect(log.failureType).toBe("MODE_NOT_UNLOCKED")
       })
 
-      it("should allow L3+ Mining for APPRAISE mode", () => {
+      it("should allow L3+ Mining for APPRAISE mode", async () => {
         world.player.skills.Mining.level = 3 // Enough for APPRAISE
         const node = getFirstOreNode()
 
@@ -712,14 +712,14 @@ describe("Phase 3: Gather Action Overhaul", () => {
           mode: GatherMode.APPRAISE,
         }
 
-        const log = executeAction(world, action)
+        const log = await await executeAction(world, action)
 
         expect(log.success).toBe(true)
       })
     })
 
     describe("Collateral damage step reduction at L6", () => {
-      it("should have lower collateral at L6+ than at L5", () => {
+      it("should have lower collateral at L6+ than at L5", async () => {
         // Test at L5
         const world5 = createWorld("collateral-test")
         const area5 = getOreAreaId(world5)
@@ -740,7 +740,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
           mode: GatherMode.FOCUS,
           focusMaterialId: focusMat5.materialId,
         }
-        executeAction(world5, action5)
+        await executeAction(world5, action5)
         const collateralDamage5 = collateralBefore5 - collateralMat5.remainingUnits
 
         // Test at L6
@@ -763,7 +763,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
           mode: GatherMode.FOCUS,
           focusMaterialId: focusMat6.materialId,
         }
-        executeAction(world6, action6)
+        await executeAction(world6, action6)
         const collateralDamage6 = collateralBefore6 - collateralMat6.remainingUnits
 
         // L6 should have less collateral damage than L5
@@ -777,7 +777,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
   // ============================================================================
 
   describe("Mine command (alias for gather mining)", () => {
-    it("should find and gather from ORE_VEIN in current area with FOCUS mode", () => {
+    it("should find and gather from ORE_VEIN in current area with FOCUS mode", async () => {
       world.player.skills.Mining.level = 5
       const node = getFirstOreNode()
       const focusMat = node.materials.find(
@@ -791,14 +791,14 @@ describe("Phase 3: Gather Action Overhaul", () => {
         focusMaterialId: focusMat.materialId,
       }
 
-      const log = executeAction(world, action)
+      const log = await await executeAction(world, action)
 
       expect(log.success).toBe(true)
       expect(log.actionType).toBe("Gather") // Should be recorded as Gather in log
       expect(focusMat.remainingUnits).toBeLessThan(initialUnits)
     })
 
-    it("should find and gather from ORE_VEIN with CAREFUL_ALL mode", () => {
+    it("should find and gather from ORE_VEIN with CAREFUL_ALL mode", async () => {
       world.player.skills.Mining.level = 4
       getFirstOreNode() // Move to the ore node location
 
@@ -807,14 +807,14 @@ describe("Phase 3: Gather Action Overhaul", () => {
         mode: GatherMode.CAREFUL_ALL,
       }
 
-      const log = executeAction(world, action)
+      const log = await await executeAction(world, action)
 
       expect(log.success).toBe(true)
       expect(log.extraction).toBeDefined()
       expect(log.extraction!.mode).toBe(GatherMode.CAREFUL_ALL)
     })
 
-    it("should find and appraise ORE_VEIN with APPRAISE mode", () => {
+    it("should find and appraise ORE_VEIN with APPRAISE mode", async () => {
       world.player.skills.Mining.level = 3
       const node = getFirstOreNode()
 
@@ -823,14 +823,14 @@ describe("Phase 3: Gather Action Overhaul", () => {
         mode: GatherMode.APPRAISE,
       }
 
-      const log = executeAction(world, action)
+      const log = await await executeAction(world, action)
 
       expect(log.success).toBe(true)
       expect(log.extraction!.appraisal).toBeDefined()
       expect(log.extraction!.appraisal!.nodeId).toBe(node.nodeId)
     })
 
-    it("should fail if no ORE_VEIN in current area", () => {
+    it("should fail if no ORE_VEIN in current area", async () => {
       // Move to town (no ore nodes there)
       world.exploration.playerState.currentAreaId = "TOWN"
 
@@ -839,7 +839,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         mode: GatherMode.APPRAISE,
       }
 
-      const log = executeAction(world, action)
+      const log = await await executeAction(world, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("NODE_NOT_FOUND")
@@ -869,7 +869,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
       }
     })
 
-    it("should find and gather from TREE_STAND in current area with FOCUS mode", () => {
+    it("should find and gather from TREE_STAND in current area with FOCUS mode", async () => {
       if (!woodAreaId) return // Skip if no tree area found
       world.player.skills.Woodcutting.level = 5
       const node = world.world.nodes!.find(
@@ -887,14 +887,14 @@ describe("Phase 3: Gather Action Overhaul", () => {
         focusMaterialId: focusMat.materialId,
       }
 
-      const log = executeAction(world, action)
+      const log = await await executeAction(world, action)
 
       expect(log.success).toBe(true)
       expect(log.actionType).toBe("Gather") // Should be recorded as Gather in log
       expect(focusMat.remainingUnits).toBeLessThan(initialUnits)
     })
 
-    it("should find and gather from TREE_STAND with CAREFUL_ALL mode", () => {
+    it("should find and gather from TREE_STAND with CAREFUL_ALL mode", async () => {
       if (!woodAreaId) return // Skip if no tree area found
       world.player.skills.Woodcutting.level = 4
       const node = world.world.nodes!.find(
@@ -907,14 +907,14 @@ describe("Phase 3: Gather Action Overhaul", () => {
         mode: GatherMode.CAREFUL_ALL,
       }
 
-      const log = executeAction(world, action)
+      const log = await await executeAction(world, action)
 
       expect(log.success).toBe(true)
       expect(log.extraction).toBeDefined()
       expect(log.extraction!.mode).toBe(GatherMode.CAREFUL_ALL)
     })
 
-    it("should find and appraise TREE_STAND with APPRAISE mode", () => {
+    it("should find and appraise TREE_STAND with APPRAISE mode", async () => {
       if (!woodAreaId) return // Skip if no tree area found
       world.player.skills.Woodcutting.level = 3
       const node = world.world.nodes!.find(
@@ -927,14 +927,14 @@ describe("Phase 3: Gather Action Overhaul", () => {
         mode: GatherMode.APPRAISE,
       }
 
-      const log = executeAction(world, action)
+      const log = await await executeAction(world, action)
 
       expect(log.success).toBe(true)
       expect(log.extraction!.appraisal).toBeDefined()
       expect(log.extraction!.appraisal!.nodeId).toBe(node.nodeId)
     })
 
-    it("should fail if no TREE_STAND in current area", () => {
+    it("should fail if no TREE_STAND in current area", async () => {
       // Move to town (no tree nodes there)
       world.exploration.playerState.currentAreaId = "TOWN"
 
@@ -943,7 +943,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         mode: GatherMode.APPRAISE,
       }
 
-      const log = executeAction(world, action)
+      const log = await await executeAction(world, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("NODE_NOT_FOUND")

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import "dotenv/config"
 import { createAgentLoop } from "./loop.js"
 import { createTraceWriter } from "./output.js"
 import { formatWorldState, formatActionLog } from "./formatters.js"
