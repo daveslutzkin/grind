@@ -1,8 +1,14 @@
 import { executeAction } from "./engine.js"
 import { evaluatePlan } from "./evaluate.js"
-import { createWorld } from "./world.js"
+import { createWorld, TOWN_LOCATIONS } from "./world.js"
 import type { Action, ActionLog, WorldState, AreaID } from "./types.js"
-import { GatherMode, NodeType } from "./types.js"
+import { GatherMode, NodeType, ExplorationLocationType } from "./types.js"
+
+/** Set player to be at a specific location in town */
+function setTownLocation(state: WorldState, locationId: string | null): void {
+  state.exploration.playerState.currentAreaId = "TOWN"
+  state.exploration.playerState.currentLocationId = locationId
+}
 
 /**
  * Test helpers for procedural area IDs
@@ -59,10 +65,14 @@ describe("Integration: Full Session Flow", () => {
     state.player.skills.Smithing = { level: 1, xp: 0 }
     const logs: ActionLog[] = []
 
-    // Accept a contract at TOWN
+    // Accept a contract at Miners Guild
+    setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
     logs.push(executeAction(state, { type: "AcceptContract", contractId: "miners-guild-1" }))
     expect(logs[logs.length - 1].success).toBe(true)
     expect(state.player.activeContracts).toContain("miners-guild-1")
+
+    // Return to Town Square before traveling
+    state.exploration.playerState.currentLocationId = null
 
     // Get ore area and make it known
     const oreAreaId = getOreAreaId(state)
@@ -350,6 +360,7 @@ describe("Integration: Full Session Flow", () => {
 
   it("should demonstrate contract completion consumes items and cannot be exploited", () => {
     const state = createWorld("contract-exploit-test")
+    setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD) // Must be at miners guild to accept
 
     // Give player 2 COPPER_BAR directly (simulating they crafted them)
     state.player.inventory.push({ itemId: "COPPER_BAR", quantity: 2 })
@@ -418,12 +429,17 @@ describe("Integration: Full Session Flow", () => {
     // Create a contract that gives XP reward
     state.world.contracts.push({
       id: "xp-contract",
-      guildAreaId: "TOWN",
+      level: 1,
+      acceptLocationId: "TOWN_SMITHING_GUILD",
+      guildType: "Smithing",
       requirements: [{ itemId: "IRON_BAR", quantity: 1 }],
       rewards: [],
       reputationReward: 5,
       xpReward: { skill: "Smithing", amount: 5 }, // Enough to level up (need 4 XP for level 2)
     })
+
+    // Must be at the guild location to accept
+    state.exploration.playerState.currentLocationId = "TOWN_SMITHING_GUILD"
 
     // Give player the required items
     state.player.inventory.push({ itemId: "IRON_BAR", quantity: 1 })
@@ -475,18 +491,33 @@ describe("Integration: Full Session Flow", () => {
     // Get a node from the area
     const mineNode = state.world.nodes.find((n) => n.areaId === oreAreaId)!
 
+    // Create a location in the ore area for the contract
+    const miningOutpostId = `${oreAreaId}-mining-outpost`
+    const oreArea = state.exploration.areas.get(oreAreaId)!
+    oreArea.locations.push({
+      id: miningOutpostId,
+      areaId: oreAreaId,
+      type: ExplorationLocationType.GUILD_HALL,
+      guildType: "Mining",
+      guildLevel: 100,
+    })
+    state.exploration.playerState.knownLocationIds.push(miningOutpostId)
+
     // Create a contract that gives XP reward
     state.world.contracts.push({
       id: "mining-xp-contract",
-      guildAreaId: oreAreaId,
+      level: 1,
+      acceptLocationId: miningOutpostId,
+      guildType: "Mining",
       requirements: [{ itemId: "COPPER_ORE", quantity: 1 }],
       rewards: [],
       reputationReward: 5,
       xpReward: { skill: "Combat", amount: 5 }, // Enough to level up Combat
     })
 
-    // Move to ore area and accept contract
+    // Move to ore area and go to the mining outpost to accept contract
     executeAction(state, { type: "Move", destination: oreAreaId })
+    state.exploration.playerState.currentLocationId = miningOutpostId
     executeAction(state, { type: "AcceptContract", contractId: "mining-xp-contract" })
 
     // Give player enough Mining XP to be close to level up (need 4 XP total)

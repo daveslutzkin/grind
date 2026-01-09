@@ -65,22 +65,23 @@ export function formatWorldState(state: WorldState): string {
     lines.push(`Active: ${contracts}`)
   }
 
-  // Recipes - compact (location-specific but useful for player)
-  const recipes = state.world.recipes.filter((r) => r.requiredAreaId === currentArea)
+  // Recipes - show all available recipes (guild-based, not location-based)
+  const currentLocationId = state.exploration.playerState.currentLocationId
+  const recipes = state.world.recipes
   if (recipes.length > 0) {
     const recipeStr = recipes
       .map((r) => {
         const inputs = r.inputs.map((i) => `${i.quantity} ${i.itemId}`).join("+")
         const id = r.id.replace(/-recipe$/, "")
-        return `${id} (${inputs})`
+        return `${id} (${inputs}, ${r.guildType})`
       })
       .join(", ")
     lines.push(`Recipes: ${recipeStr}`)
   }
 
-  // Contracts - compact (location-specific but useful for player)
+  // Contracts - compact (location-specific for acceptance)
   const contracts = state.world.contracts.filter(
-    (c) => c.guildAreaId === currentArea && !state.player.activeContracts.includes(c.id)
+    (c) => c.acceptLocationId === currentLocationId && !state.player.activeContracts.includes(c.id)
   )
   if (contracts.length > 0) {
     const contractStr = contracts

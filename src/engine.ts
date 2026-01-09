@@ -11,6 +11,8 @@ import type {
   DropAction,
   GuildEnrolmentAction,
   TurnInCombatTokenAction,
+  TravelToLocationAction,
+  LeaveAction,
   FailureType,
   ItemID,
   ContractCompletion,
@@ -21,6 +23,7 @@ import type {
   Node,
   GatheringSkillID,
 } from "./types.js"
+import { isInTown } from "./types.js"
 import { addXPToSkill, GatherMode } from "./types.js"
 import { roll, rollLootTable, rollFloat } from "./rng.js"
 import {
@@ -39,6 +42,8 @@ import {
   checkDropAction,
   checkGuildEnrolmentAction,
   checkTurnInCombatTokenAction,
+  checkTravelToLocationAction,
+  checkLeaveAction,
   getNodeSkill,
 } from "./actionChecks.js"
 
@@ -313,6 +318,10 @@ export function executeAction(state: WorldState, action: Action): ActionLog {
       return executeExplore(state, action)
     case "ExplorationTravel":
       return executeExplorationTravel(state, action)
+    case "TravelToLocation":
+      return executeTravelToLocation(state, action)
+    case "Leave":
+      return executeLeave(state, action)
   }
 }
 
@@ -908,7 +917,9 @@ function executeTurnInCombatToken(
   if (!state.world.contracts.find((c) => c.id === "combat-guild-1")) {
     state.world.contracts.push({
       id: "combat-guild-1",
-      guildAreaId: "TOWN",
+      level: 1,
+      acceptLocationId: "TOWN_COMBAT_GUILD",
+      guildType: "Combat",
       requirements: [],
       killRequirements: [{ enemyId: "cave-rat", count: 2 }],
       rewards: [],
@@ -993,5 +1004,81 @@ function executeGuildEnrolment(
           discoveredConnectionId: explorationBenefits.discoveredConnectionId,
         }
       : undefined,
+  }
+}
+
+function executeTravelToLocation(state: WorldState, action: TravelToLocationAction): ActionLog {
+  const tickBefore = state.time.currentTick
+  const { locationId } = action
+
+  // Use shared precondition check
+  const check = checkTravelToLocationAction(state, action)
+  if (!check.valid) {
+    return createFailureLog(state, action, check.failureType!)
+  }
+
+  // Check if enough time remaining
+  if (state.time.sessionRemainingTicks < check.timeCost) {
+    return createFailureLog(state, action, "SESSION_ENDED")
+  }
+
+  // Consume time
+  consumeTime(state, check.timeCost)
+
+  // Move to location
+  state.exploration.playerState.currentLocationId = locationId
+
+  // Check for contract completion (after every successful action)
+  const contractsCompleted = checkContractCompletion(state)
+
+  return {
+    tickBefore,
+    actionType: "TravelToLocation",
+    parameters: { locationId },
+    success: true,
+    timeConsumed: check.timeCost,
+    levelUps: mergeLevelUps([], contractsCompleted),
+    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+    rngRolls: [],
+    stateDeltaSummary: `Traveled to ${locationId}`,
+  }
+}
+
+function executeLeave(state: WorldState, action: LeaveAction): ActionLog {
+  const tickBefore = state.time.currentTick
+  const previousLocation = state.exploration.playerState.currentLocationId
+
+  // Use shared precondition check
+  const check = checkLeaveAction(state, action)
+  if (!check.valid) {
+    return createFailureLog(state, action, check.failureType!)
+  }
+
+  // Check if enough time remaining
+  if (state.time.sessionRemainingTicks < check.timeCost) {
+    return createFailureLog(state, action, "SESSION_ENDED")
+  }
+
+  // Consume time
+  consumeTime(state, check.timeCost)
+
+  // Return to hub (null)
+  state.exploration.playerState.currentLocationId = null
+
+  // Check for contract completion (after every successful action)
+  const contractsCompleted = checkContractCompletion(state)
+
+  const hubName = isInTown(state) ? "Town Square" : "clearing"
+
+  return {
+    tickBefore,
+    actionType: "Leave",
+    parameters: {},
+    success: true,
+    timeConsumed: check.timeCost,
+    levelUps: mergeLevelUps([], contractsCompleted),
+    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+    rngRolls: [],
+    stateDeltaSummary: `Left ${previousLocation} for ${hubName}`,
   }
 }

@@ -532,6 +532,7 @@ export interface ExplorationStateData {
   connections: AreaConnection[]
   playerState: {
     currentAreaId: AreaID
+    currentLocationId: string | null
     knownAreaIds: AreaID[]
     knownLocationIds: string[]
     knownConnectionIds: string[]
@@ -569,6 +570,7 @@ export function initializeExplorationState(rng: RngState): ExplorationStateData 
     connections,
     playerState: {
       currentAreaId: "TOWN",
+      currentLocationId: null,
       knownAreaIds: ["TOWN"],
       knownLocationIds: [],
       knownConnectionIds: [],

@@ -344,11 +344,15 @@ export function printHelp(state: WorldState): void {
 
   // Show what's available at current location
   const currentAreaId = getCurrentAreaId(state)
-  console.log(`\nAt ${currentAreaId}:`)
+  const currentLocationId = state.exploration.playerState.currentLocationId
+  const locationDisplay =
+    currentLocationId ?? (currentAreaId === "TOWN" ? "Town Square" : "Clearing")
+  console.log(`\nAt ${currentAreaId} - ${locationDisplay}:`)
   const nodes = state.world.nodes.filter((n) => n.areaId === currentAreaId)
   const enemies = state.world.enemies.filter((e) => e.areaId === currentAreaId)
-  const recipes = state.world.recipes.filter((r) => r.requiredAreaId === currentAreaId)
-  const contracts = state.world.contracts.filter((c) => c.guildAreaId === currentAreaId)
+  // Recipes and contracts are now location-based, not area-based
+  const recipes = state.world.recipes
+  const contracts = state.world.contracts.filter((c) => c.acceptLocationId === currentLocationId)
 
   if (nodes.length > 0) console.log(`  Nodes: ${nodes.map((n) => n.nodeId).join(", ")}`)
   if (enemies.length > 0) console.log(`  Enemies: ${enemies.map((e) => e.id).join(", ")}`)
@@ -401,7 +405,7 @@ export function printWorld(state: WorldState): void {
   console.log("├─────────────────────────────────────────────────────────────┤")
   console.log("│ RECIPES                                                     │")
   for (const recipe of state.world.recipes) {
-    console.log(`│   ${recipe.id} @ ${recipe.requiredAreaId}`.padEnd(62) + "│")
+    console.log(`│   ${recipe.id} @ ${recipe.guildType} guild`.padEnd(62) + "│")
     console.log(
       `│     → ${recipe.inputs.map((i) => `${i.quantity}x ${i.itemId}`).join(" + ")} = ${recipe.output.quantity}x ${recipe.output.itemId}`.padEnd(
         62
@@ -411,7 +415,7 @@ export function printWorld(state: WorldState): void {
   console.log("├─────────────────────────────────────────────────────────────┤")
   console.log("│ CONTRACTS                                                   │")
   for (const contract of state.world.contracts) {
-    console.log(`│   ${contract.id} @ ${contract.guildAreaId}`.padEnd(62) + "│")
+    console.log(`│   ${contract.id} @ ${contract.acceptLocationId}`.padEnd(62) + "│")
     console.log(
       `│     Requires: ${contract.requirements.map((r) => `${r.quantity}x ${r.itemId}`).join(", ")}`.padEnd(
         62

@@ -37,6 +37,7 @@ describe("Types", () => {
         connections: [],
         playerState: {
           currentAreaId: "TOWN",
+          currentLocationId: null,
           knownAreaIds: ["TOWN"],
           knownLocationIds: [],
           knownConnectionIds: [],

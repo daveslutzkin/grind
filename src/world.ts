@@ -16,14 +16,104 @@ import type {
   RngState,
   AreaID,
   ExplorationLocation,
+  SkillID,
 } from "./types.js"
 import { NodeType, ExplorationLocationType } from "./types.js"
+
+// ============================================================================
+// Town Location IDs
+// ============================================================================
+
+export const TOWN_LOCATIONS = {
+  MINERS_GUILD: "TOWN_MINERS_GUILD",
+  FORESTERS_GUILD: "TOWN_FORESTERS_GUILD",
+  COMBAT_GUILD: "TOWN_COMBAT_GUILD",
+  SMITHING_GUILD: "TOWN_SMITHING_GUILD",
+  WOODCRAFTERS_GUILD: "TOWN_WOODCRAFTERS_GUILD",
+  EXPLORERS_GUILD: "TOWN_EXPLORERS_GUILD",
+  WAREHOUSE: "TOWN_WAREHOUSE",
+} as const
+
+/** Get the guild hall location ID for a skill type */
+export function getGuildLocationForSkill(skill: SkillID): string {
+  switch (skill) {
+    case "Mining":
+      return TOWN_LOCATIONS.MINERS_GUILD
+    case "Woodcutting":
+      return TOWN_LOCATIONS.FORESTERS_GUILD
+    case "Combat":
+      return TOWN_LOCATIONS.COMBAT_GUILD
+    case "Smithing":
+      return TOWN_LOCATIONS.SMITHING_GUILD
+    case "Woodcrafting":
+      return TOWN_LOCATIONS.WOODCRAFTERS_GUILD
+    case "Exploration":
+      return TOWN_LOCATIONS.EXPLORERS_GUILD
+  }
+}
+
 import { createRng, rollFloat } from "./rng.js"
 import {
   getAreaCountForDistance,
   createAreaPlaceholder,
   generateAreaConnections,
 } from "./exploration.js"
+
+/** Default guild hall level for town (high cap) */
+const TOWN_GUILD_LEVEL = 100
+
+/** Create all town locations (guild halls and warehouse) */
+function createTownLocations(): ExplorationLocation[] {
+  return [
+    {
+      id: TOWN_LOCATIONS.MINERS_GUILD,
+      areaId: "TOWN",
+      type: ExplorationLocationType.GUILD_HALL,
+      guildType: "Mining",
+      guildLevel: TOWN_GUILD_LEVEL,
+    },
+    {
+      id: TOWN_LOCATIONS.FORESTERS_GUILD,
+      areaId: "TOWN",
+      type: ExplorationLocationType.GUILD_HALL,
+      guildType: "Woodcutting",
+      guildLevel: TOWN_GUILD_LEVEL,
+    },
+    {
+      id: TOWN_LOCATIONS.COMBAT_GUILD,
+      areaId: "TOWN",
+      type: ExplorationLocationType.GUILD_HALL,
+      guildType: "Combat",
+      guildLevel: TOWN_GUILD_LEVEL,
+    },
+    {
+      id: TOWN_LOCATIONS.SMITHING_GUILD,
+      areaId: "TOWN",
+      type: ExplorationLocationType.GUILD_HALL,
+      guildType: "Smithing",
+      guildLevel: TOWN_GUILD_LEVEL,
+    },
+    {
+      id: TOWN_LOCATIONS.WOODCRAFTERS_GUILD,
+      areaId: "TOWN",
+      type: ExplorationLocationType.GUILD_HALL,
+      guildType: "Woodcrafting",
+      guildLevel: TOWN_GUILD_LEVEL,
+    },
+    {
+      id: TOWN_LOCATIONS.EXPLORERS_GUILD,
+      areaId: "TOWN",
+      type: ExplorationLocationType.GUILD_HALL,
+      guildType: "Exploration",
+      guildLevel: TOWN_GUILD_LEVEL,
+    },
+    {
+      id: TOWN_LOCATIONS.WAREHOUSE,
+      areaId: "TOWN",
+      type: ExplorationLocationType.WAREHOUSE,
+    },
+  ]
+}
 
 // ============================================================================
 // Material Definitions
@@ -227,13 +317,14 @@ export function generateNodesForArea(
 export function createWorld(seed: string): WorldState {
   const rng = createRng(seed)
 
-  // Create TOWN as the only initial area
+  // Create TOWN as the only initial area with all guild halls and warehouse
+  const townLocations = createTownLocations()
   const town: Area = {
     id: "TOWN",
     name: "Town",
     distance: 0,
     generated: true,
-    locations: [],
+    locations: townLocations,
     indexInDistance: 0,
   }
 
@@ -265,8 +356,9 @@ export function createWorld(seed: string): WorldState {
     }
   }
 
-  // Start knowing only TOWN
+  // Start knowing only TOWN and all town locations
   const knownAreaIds = ["TOWN"]
+  const knownLocationIds = townLocations.map((loc) => loc.id) // All town locations known from start
   const knownConnectionIds: string[] = []
 
   return {
@@ -303,7 +395,7 @@ export function createWorld(seed: string): WorldState {
           inputs: [{ itemId: "IRON_ORE", quantity: 2 }],
           output: { itemId: "IRON_BAR", quantity: 1 },
           craftTime: 3,
-          requiredAreaId: "TOWN",
+          guildType: "Smithing",
           requiredSkillLevel: 1,
         },
         {
@@ -311,14 +403,16 @@ export function createWorld(seed: string): WorldState {
           inputs: [{ itemId: "COPPER_ORE", quantity: 2 }],
           output: { itemId: "COPPER_BAR", quantity: 1 },
           craftTime: 2,
-          requiredAreaId: "TOWN",
+          guildType: "Smithing",
           requiredSkillLevel: 1,
         },
       ],
       contracts: [
         {
           id: "miners-guild-1",
-          guildAreaId: "TOWN",
+          level: 1,
+          acceptLocationId: TOWN_LOCATIONS.MINERS_GUILD,
+          guildType: "Mining",
           requirements: [{ itemId: "COPPER_BAR", quantity: 2 }],
           rewards: [{ itemId: "COPPER_ORE", quantity: 5 }],
           reputationReward: 10,
@@ -333,8 +427,9 @@ export function createWorld(seed: string): WorldState {
       connections,
       playerState: {
         currentAreaId: "TOWN",
+        currentLocationId: null, // Start at Town Square (hub)
         knownAreaIds,
-        knownLocationIds: [],
+        knownLocationIds,
         knownConnectionIds,
         totalLuckDelta: 0,
         currentStreak: 0,
