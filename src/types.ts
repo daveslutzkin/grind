@@ -59,7 +59,7 @@ export interface ExplorationLocation {
 export interface AreaConnection {
   fromAreaId: AreaID
   toAreaId: AreaID
-  travelTimeMultiplier: 1 | 2 | 3 | 4 // Distribution: 15% = 1x, 35% = 2x, 35% = 3x, 15% = 4x
+  travelTimeMultiplier: number // 0.5x-4.5x range for varied travel times (5t-45t with base 10t)
 }
 
 /**
