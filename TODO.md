@@ -38,9 +38,23 @@ No node IDs needed in display. Just show types: `Gathering: Ore vein, Tree stand
 
 **Decision:** Direct travel through a known connection should work even if destination is unknown (you discover the area on arrival). Auto-pathing (multi-hop) still requires all areas on path to be known. Display can show unknown destinations as: `area-d2-i7 (20t, unexplored)`
 
-### 5. Node Discovery Persistence
+### 5. Location/Node Sync Bug (CONFIRMED)
 **Status:** Not started
-**Description:** Nodes discovered before acquiring the gathering skill don't appear when returning with the skill. Ore vein found in area-d1-i0 wasn't visible after getting Mining skill. Discoveries should persist.
+**Description:** Locations can exist without corresponding nodes, causing "Discovered ore vein" but "Gathering: none visible".
+
+**Root Cause:** (verified with debug script)
+- `world.ts` generates nodes with RNG label `location_roll_{area}_ORE_VEIN`
+- If rolls fail, area has 0 nodes and 0 locations
+- Later, `ensureAreaFullyGenerated` sees `locations.length === 0`
+- Calls `generateAreaLocations` with DIFFERENT RNG label `loc_mining_{area}`
+- Different labels = different rolls = locations created without nodes
+
+**Fix Options:**
+A) Use same RNG labels in both places (ensures consistency)
+B) Generate nodes lazily alongside locations in `ensureAreaGenerated`
+C) Only generate locations when nodes are also generated
+
+**Question for discussion:** Which approach?
 
 ### 6. Node Visibility Tiers (Design Doc Gap)
 **Status:** Not started
