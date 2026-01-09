@@ -21,6 +21,16 @@ import type {
 import { NodeType, ExplorationLocationType } from "./types.js"
 
 // ============================================================================
+// Location Generation Constants
+// ============================================================================
+
+/** Probability of generating a mob camp in an area */
+const MOB_CAMP_PROBABILITY = 0.25
+
+/** Standard deviation for mob difficulty offset (normally distributed) */
+const MOB_DIFFICULTY_STD_DEV = 1.5 // ~95% of values within ±3
+
+// ============================================================================
 // Town Location IDs
 // ============================================================================
 
@@ -91,7 +101,7 @@ export function getSkillForGuildLocation(locationId: string | null): SkillID | n
   }
 }
 
-import { createRng, rollFloat } from "./rng.js"
+import { createRng, rollFloat, rollNormal } from "./rng.js"
 import {
   getAreaCountForDistance,
   createAreaPlaceholder,
@@ -309,7 +319,10 @@ export interface NodeGenerationResult {
  * Generate nodes for an area based on its distance.
  * Per spec: Each location type rolls independently for existence.
  * Most rolls fail, so most areas are naturally sparse.
- * Also generates corresponding ExplorationLocation entries for discovery tracking.
+ * Also generates corresponding ExplorationLocation entries for discovery tracking,
+ * including mob camps (which don't need nodes).
+ *
+ * This is the single source of truth for area content generation.
  */
 export function generateNodesForArea(
   areaId: AreaID,
@@ -317,14 +330,14 @@ export function generateNodesForArea(
   rng: RngState
 ): NodeGenerationResult {
   const pools = getNodePoolsForDistance(distance)
-  if (pools.length === 0) return { nodes: [], locations: [] }
+  if (distance === 0) return { nodes: [], locations: [] } // TOWN has no content
 
   const nodes: Node[] = []
   const locations: ExplorationLocation[] = []
   let nodeIndex = 0
   let locationIndex = 0
 
-  // Roll for each location type independently
+  // Roll for each gathering node type independently
   for (const pool of pools) {
     const roll = rollFloat(rng, 0, 1, `location_roll_${areaId}_${pool.nodeType}`)
     if (roll < pool.probability) {
@@ -344,6 +357,22 @@ export function generateNodesForArea(
       })
       locationIndex++
     }
+  }
+
+  // Roll for mob camp (doesn't need a corresponding node)
+  const mobRoll = rollFloat(rng, 0, 1, `location_roll_${areaId}_MOB_CAMP`)
+  if (mobRoll < MOB_CAMP_PROBABILITY) {
+    // Difficulty = area distance ± ~3 (normally distributed, stdDev 1.5 means ~95% within ±3)
+    const difficultyOffset = Math.round(
+      rollNormal(rng, 0, MOB_DIFFICULTY_STD_DEV, `mob_difficulty_${areaId}`)
+    )
+    locations.push({
+      id: `${areaId}-loc-${locationIndex}`,
+      areaId,
+      type: ExplorationLocationType.MOB_CAMP,
+      creatureType: "creature", // Placeholder - creature types TBD
+      difficulty: Math.max(1, distance + difficultyOffset), // Minimum difficulty 1
+    })
   }
 
   return { nodes, locations }

@@ -39,7 +39,7 @@ No node IDs needed in display. Just show types: `Gathering: Ore vein, Tree stand
 **Decision:** Direct travel through a known connection should work even if destination is unknown (you discover the area on arrival). Auto-pathing (multi-hop) still requires all areas on path to be known. Display can show unknown destinations as: `area-d2-i7 (20t, unexplored)`
 
 ### 5. Location/Node Sync Bug (CONFIRMED)
-**Status:** Not started
+**Status:** DONE
 **Description:** Locations can exist without corresponding nodes, causing "Discovered ore vein" but "Gathering: none visible".
 
 **Root Cause:** (verified with debug script)
@@ -49,7 +49,11 @@ No node IDs needed in display. Just show types: `Gathering: Ore vein, Tree stand
 - Calls `generateAreaLocations` with DIFFERENT RNG label `loc_mining_{area}`
 - Different labels = different rolls = locations created without nodes
 
-**Decision:** Single source of truth (option C). Remove `generateAreaLocations` from exploration.ts. Use `generateNodesForArea` from world.ts for all area content generation (gathering nodes+locations together, plus mob camps which don't need nodes). Call it lazily from `ensureAreaGenerated`.
+**Solution Implemented:**
+- Single source of truth: `generateNodesForArea` in world.ts now generates all area content (gathering nodes+locations AND mob camps)
+- Removed `generateAreaLocations` from exploration.ts
+- `ensureAreaGenerated` no longer regenerates locations - just marks area as generated
+- Mob camps now generated at world creation time alongside gathering nodes
 
 ### 6. Show Materials with Skill Requirements (merged with old item 7)
 **Status:** Not started
