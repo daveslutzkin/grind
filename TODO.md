@@ -96,7 +96,9 @@ Gathering: Ore vein
 
 ### 10. Require move to node location before gathering
 **Status:** Pending
-**Description:** Currently can gather from hub (Clearing) without moving to the node's specific location. Should require `move area-d1-i0-loc-0` before gathering from that node.
+**Description:** Currently can gather from hub (Clearing) without moving to the node's specific location. Should require moving to the location first.
+
+**Decision:** Accept both node type and display name: `move ore vein`, `move mining`, `move Ore Vein` all work to move to that location in the current area. No need to expose internal location IDs.
 
 ### 11. Improve "Discovered node" message
 **Status:** Pending
