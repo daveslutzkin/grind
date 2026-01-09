@@ -111,10 +111,12 @@ Gathering: Ore vein
 **Decision:** Say "Discovered enemy camp" for MOB_CAMP (already says "ore vein" and "tree stand" for gathering locations).
 
 ### 12. Show required skill for other gathering nodes
-**Status:** Pending
+**Status:** ✅ Complete
 **Description:** Tree stand shows "Gathering: Tree stand" with no materials when player lacks Woodcutting skill. Should indicate what skill is needed.
 
 **Decision:** Show both skill and where to get it: "Tree Stand (requires Woodcutting - Foresters Guild)"
+
+**Implementation:** Updated `formatWorldState` in `src/agent/formatters.ts` to show the required skill and guild when the player doesn't have the skill for a gathering node. Added `getGuildForSkill` helper function to map gathering skills to their guild names.
 
 ### 13. Reformat location/world state display
 **Status:** Pending

@@ -10,6 +10,14 @@ import {
   isMaterialVisible,
   getMaxVisibleMaterialLevel,
 } from "../visibility.js"
+import type { GatheringSkillID } from "../types.js"
+
+/**
+ * Get the guild name where a gathering skill can be learned
+ */
+function getGuildForSkill(skill: GatheringSkillID): string {
+  return skill === "Mining" ? "Miners Guild" : "Foresters Guild"
+}
 
 /**
  * Format WorldState as concise text for LLM consumption
@@ -186,8 +194,10 @@ export function formatWorldState(state: WorldState): string {
           const nodeName = getNodeTypeName(view.nodeType)
 
           if (view.visibilityTier === "none") {
-            // No skill - just show node type
-            lines.push(`Gathering: ${nodeName}`)
+            // No skill - show node type with required skill and guild
+            const requiredSkill = getSkillForNodeType(view.nodeType)
+            const guildName = getGuildForSkill(requiredSkill)
+            lines.push(`Gathering: ${nodeName} (requires ${requiredSkill} - ${guildName})`)
           } else {
             // Has skill - show materials with requirements
             lines.push(`Gathering: ${nodeName}`)
