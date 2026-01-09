@@ -1014,18 +1014,68 @@ export function executeExplore(state: WorldState, _action: ExploreAction): Actio
     }
   }
 
-  // Calculate success chance
+  // Calculate base success chance (used to derive individual thresholds)
   const knowledgeParams = getKnowledgeParams(state, currentArea)
-  const successChance = calculateSuccessChance({
+  const baseChance = calculateSuccessChance({
     level,
     distance: currentArea.distance,
     ...knowledgeParams,
   })
 
   const rollInterval = getRollInterval(level)
-  const expectedTicks = calculateExpectedTicks(successChance, rollInterval)
+
+  // Build list of discoverables with their individual thresholds
+  // Threshold multipliers per spec:
+  // - Connection to known area: 1.0×
+  // - Mob camp: 0.5×
+  // - Gathering node with skill: 0.5×
+  // - Gathering node without skill: 0.05× (10× lower)
+  // - Connection to unknown area: 0.25×
+  type Discoverable = {
+    type: "location" | "knownConnection" | "unknownConnection"
+    id: string
+    threshold: number // % chance per roll (0-1)
+    locationType?: string
+  }
+
+  const getLocationThreshold = (loc: ExplorationLocation): number => {
+    if (loc.type === "GATHERING_NODE" && loc.gatheringSkillType) {
+      const skillLevel = state.player.skills[loc.gatheringSkillType]?.level ?? 0
+      if (skillLevel === 0) {
+        // 10x lower chance without skill
+        return baseChance * 0.05
+      }
+      return baseChance * 0.5
+    }
+    // Mob camp
+    return baseChance * 0.5
+  }
+
+  const discoverables: Discoverable[] = [
+    ...undiscoveredLocations.map((loc) => ({
+      type: "location" as const,
+      id: loc.id,
+      threshold: getLocationThreshold(loc),
+      locationType: loc.type,
+    })),
+    ...undiscoveredKnownConnections.map((conn) => ({
+      type: "knownConnection" as const,
+      id: createConnectionId(conn.fromAreaId, conn.toAreaId),
+      threshold: baseChance * 1.0,
+    })),
+    ...undiscoveredUnknownConnections.map((conn) => ({
+      type: "unknownConnection" as const,
+      id: createConnectionId(conn.fromAreaId, conn.toAreaId),
+      threshold: baseChance * UNKNOWN_CONNECTION_DISCOVERY_MULTIPLIER,
+    })),
+  ]
+
+  // Max threshold determines expected ticks to find anything
+  const maxThreshold = Math.max(...discoverables.map((d) => d.threshold))
+  const expectedTicks = calculateExpectedTicks(maxThreshold, rollInterval)
 
   // Roll until success or session ends
+  // Overlaid threshold model: roll 0-100, check which thresholds are hit
   let ticksConsumed = 0
   let discoveredLocationId: string | undefined
   let discoveredConnectionId: string | undefined
@@ -1049,64 +1099,18 @@ export function executeExplore(state: WorldState, _action: ExploreAction): Actio
       ticksConsumed += ticksThisRoll
     }
 
-    // Roll for success
-    const success = roll(state.rng, successChance, `explore_roll_${ticksConsumed}`, rolls)
+    // Roll 0-1 (equivalent to 0-100%)
+    const rollValue = rollFloat(state.rng, 0, 1, `explore_roll_${ticksConsumed}`)
 
-    if (success) {
-      // Build weighted pool of discoverable things
-      // Unknown connections have lower probability per spec
-      // Gathering nodes have 10x lower weight if player lacks the skill
-      type Discoverable = {
-        type: "location" | "knownConnection" | "unknownConnection"
-        id: string
-        weight: number
-      }
+    // Check which thresholds are hit (roll must be <= threshold)
+    const hits = discoverables.filter((d) => rollValue <= d.threshold)
 
-      // Calculate weight for a location based on skill
-      const getLocationWeight = (loc: ExplorationLocation): number => {
-        // If it's a gathering node, check if player has the skill
-        if (loc.type === "GATHERING_NODE" && loc.gatheringSkillType) {
-          const skillLevel = state.player.skills[loc.gatheringSkillType]?.level ?? 0
-          if (skillLevel === 0) {
-            // 10x lower chance to discover without the skill
-            return 0.1
-          }
-        }
-        return 1
-      }
-
-      const pool: Discoverable[] = [
-        ...undiscoveredLocations.map((loc) => ({
-          type: "location" as const,
-          id: loc.id,
-          weight: getLocationWeight(loc),
-        })),
-        ...undiscoveredKnownConnections.map((conn) => ({
-          type: "knownConnection" as const,
-          id: createConnectionId(conn.fromAreaId, conn.toAreaId),
-          weight: 1,
-        })),
-        ...undiscoveredUnknownConnections.map((conn) => ({
-          type: "unknownConnection" as const,
-          id: createConnectionId(conn.fromAreaId, conn.toAreaId),
-          weight: UNKNOWN_CONNECTION_DISCOVERY_MULTIPLIER,
-        })),
-      ]
-
-      // Weighted random selection
-      const totalWeight = pool.reduce((sum, item) => sum + item.weight, 0)
-      let pickRoll = rollFloat(state.rng, 0, totalWeight, `explore_pick_${ticksConsumed}`)
-
-      let picked: Discoverable | undefined
-      for (const item of pool) {
-        pickRoll -= item.weight
-        if (pickRoll <= 0) {
-          picked = item
-          break
-        }
-      }
-
-      if (!picked) picked = pool[pool.length - 1] // Fallback
+    if (hits.length > 0) {
+      // Pick randomly among hits (equal probability)
+      const pickIndex = Math.floor(
+        rollFloat(state.rng, 0, hits.length, `explore_pick_${ticksConsumed}`)
+      )
+      const picked = hits[pickIndex]
 
       if (picked.type === "location") {
         exploration.playerState.knownLocationIds.push(picked.id)
@@ -1117,7 +1121,23 @@ export function executeExplore(state: WorldState, _action: ExploreAction): Actio
         connectionToUnknownArea = picked.type === "unknownConnection"
       }
 
+      // Record the roll for display (show max threshold as the "chance")
+      rolls.push({
+        label: `explore_roll_${ticksConsumed}`,
+        probability: maxThreshold,
+        result: true,
+        rngCounter: state.rng.counter,
+      })
+
       succeeded = true
+    } else {
+      // Record miss
+      rolls.push({
+        label: `explore_roll_${ticksConsumed}`,
+        probability: maxThreshold,
+        result: false,
+        rngCounter: state.rng.counter,
+      })
     }
   }
 
