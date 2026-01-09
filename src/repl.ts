@@ -113,9 +113,7 @@ async function main(): Promise<void> {
 
     beforeAction: (action, state) => {
       const eval_ = evaluateAction(state, action)
-      if (eval_.successProbability === 0) {
-        console.log("⚠ This action will fail (preconditions not met)")
-      } else if (eval_.successProbability < 1) {
+      if (eval_.successProbability > 0 && eval_.successProbability < 1) {
         console.log(`⚠ Success chance: ${(eval_.successProbability * 100).toFixed(0)}%`)
       }
     },
