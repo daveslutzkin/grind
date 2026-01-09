@@ -2,9 +2,8 @@
  * Tests for the shared runner module
  */
 
-import { createWorld } from "./world.js"
 import type { ActionLog, WorldState } from "./types.js"
-import type { RunnerConfig, SessionStats } from "./runner.js"
+import type { SessionStats } from "./runner.js"
 import { runSession } from "./runner.js"
 
 describe("runSession", () => {
