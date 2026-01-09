@@ -1,7 +1,6 @@
 import type { WorldState, ActionLog } from "../types.js"
 import { getCurrentAreaId, getCurrentLocationId, ExplorationLocationType } from "../types.js"
 import { getUnlockedModes, getNextModeUnlock, getCurrentLocation } from "../actionChecks.js"
-import { getLocationDisplayName } from "../world.js"
 import {
   getPlayerNodeView,
   getNodeTypeName,
@@ -103,30 +102,34 @@ export function formatWorldState(state: WorldState): string {
   // ========== LOCATION SECTION ==========
   lines.push("")
 
-  // Location + ticks on one line
-  // Show location within area: "TOWN > Smithing Guild" or "TOWN > Town Square"
-  const locationName = getLocationDisplayName(currentLocationId, currentArea)
-  lines.push(
-    `Location: ${currentArea} > ${locationName} (${state.time.sessionRemainingTicks} ticks left)`
-  )
-
-  // Show available locations when at hub (null)
-  if (currentLocationId === null) {
-    const area = state.exploration.areas.get(currentArea)
-    const knownLocationIds = state.exploration.playerState.knownLocationIds
-    if (area && area.locations.length > 0) {
-      const knownLocs = area.locations.filter((loc) => knownLocationIds.includes(loc.id))
-      if (knownLocs.length > 0) {
-        const locNames = knownLocs.map((loc) => getLocationDisplayName(loc.id)).join(", ")
-        lines.push(`Locations: ${locNames}`)
-      }
-    }
-  }
-
-  // Nodes + exploration progress combined (if not TOWN)
+  // Location line with area name and optional FULLY EXPLORED indicator
   if (currentArea !== "TOWN") {
     const area = state.exploration.areas.get(currentArea)
     const knownLocationIds = state.exploration.playerState.knownLocationIds
+
+    // Check if fully explored (all locations + all known connections discovered)
+    let fullyExplored = false
+    if (area) {
+      const totalLocs = area.locations.length
+      const knownLocs = area.locations.filter((loc) => knownLocationIds.includes(loc.id)).length
+      const knownConnectionIds = new Set(state.exploration.playerState.knownConnectionIds)
+      const knownAreaIds = new Set(state.exploration.playerState.knownAreaIds)
+      const remainingKnownConnections = state.exploration.connections.filter((conn) => {
+        const isFromCurrent = conn.fromAreaId === currentArea
+        const isToCurrent = conn.toAreaId === currentArea
+        if (!isFromCurrent && !isToCurrent) return false
+        const connId = `${conn.fromAreaId}->${conn.toAreaId}`
+        const targetId = isFromCurrent ? conn.toAreaId : conn.fromAreaId
+        return !knownConnectionIds.has(connId) && knownAreaIds.has(targetId)
+      })
+      fullyExplored = knownLocs >= totalLocs && remainingKnownConnections.length === 0
+    }
+
+    const areaName = area?.name ?? "Unknown"
+    const exploredSuffix = fullyExplored ? " — FULLY EXPLORED!" : ""
+    lines.push(`Location: ${areaName} in ${currentArea}${exploredSuffix}`)
+
+    // Gathering nodes (horizontal display)
     const nodesHere = state.world.nodes?.filter((n) => {
       if (n.areaId !== currentArea || n.depleted) return false
       const match = n.nodeId.match(/-node-(\d+)$/)
@@ -136,43 +139,24 @@ export function formatWorldState(state: WorldState): string {
     })
 
     if (area) {
-      const totalLocs = area.locations.length
       const knownLocs = area.locations.filter((loc) => knownLocationIds.includes(loc.id)).length
 
-      // Only show nodes section if we've discovered at least one location
       if (knownLocs > 0) {
-        const exploredStatus =
-          knownLocs < totalLocs ? `${knownLocs} found, more remain` : "fully explored"
-
         if (nodesHere && nodesHere.length > 0) {
-          lines.push(`Nodes (${exploredStatus}):`)
-          for (const node of nodesHere) {
+          const nodeNames = nodesHere.map((node) => {
             const view = getPlayerNodeView(node, state)
-            const nodeName = getNodeTypeName(view.nodeType)
-
-            if (view.visibilityTier === "none" || view.visibleMaterials.length === 0) {
-              lines.push(`  ${nodeName}`)
-            } else if (view.visibilityTier === "materials") {
-              const mats = view.visibleMaterials.map((m) => m.materialId).join(", ")
-              lines.push(`  ${nodeName}: ${mats}`)
-            } else {
-              const mats = view.visibleMaterials
-                .map((m) => {
-                  const req = m.requiredLevel > 0 ? ` [${m.requiresSkill} L${m.requiredLevel}]` : ""
-                  return `${m.remainingUnits}/${m.maxUnitsInitial} ${m.materialId}${req}`
-                })
-                .join(", ")
-              lines.push(`  ${nodeName}: ${mats}`)
-            }
-          }
+            return getNodeTypeName(view.nodeType)
+          })
+          lines.push(`Gathering: ${nodeNames.join(", ")}`)
         } else {
-          lines.push(`Nodes (${exploredStatus}): none visible`)
+          lines.push("Gathering: none visible")
         }
       } else {
-        // No locations discovered yet - show unexplored status
-        lines.push("Nodes: unexplored (use 'explore' to discover)")
+        lines.push("Gathering: unexplored (use 'explore' to discover)")
       }
     }
+  } else {
+    lines.push(`Location: ${currentArea}`)
   }
 
   // Travel - available connections (bidirectional - can go back the way you came)

@@ -42,7 +42,7 @@ async function main(): Promise<void> {
 
     onSessionStart: (state) => {
       printHelp(state, { showHints: false })
-      console.log("");
+      console.log("")
       console.log(formatWorldState(state))
     },
 

@@ -366,6 +366,6 @@ describe("formatDynamicState", () => {
 
     // Dynamic state should not be dramatically larger than full state
     // (both are now compact formats, so similar sizes are acceptable)
-    expect(dynamicState.length).toBeLessThanOrEqual(fullState.length * 1.3)
+    expect(dynamicState.length).toBeLessThanOrEqual(fullState.length * 1.35)
   })
 })

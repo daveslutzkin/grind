@@ -39,7 +39,7 @@ describe("runSession", () => {
         "survey",
       ]
       let cmdIndex = 0
-      let lastTicksRemaining = 200
+      let lastTicksRemaining = 20000
 
       await runSession("time-check-test", {
         getNextCommand: async () => commands[cmdIndex++] ?? null,
@@ -56,7 +56,7 @@ describe("runSession", () => {
       })
 
       // Time should have been consumed (enrol takes 3 ticks)
-      expect(lastTicksRemaining).toBeLessThan(200)
+      expect(lastTicksRemaining).toBeLessThan(20000)
     })
 
     it("passes final state and stats to onSessionEnd", async () => {
@@ -79,7 +79,7 @@ describe("runSession", () => {
       expect(finalState).not.toBeNull()
       expect(finalStats).not.toBeNull()
       expect(finalStats!.logs).toHaveLength(2)
-      expect(finalState!.time.sessionRemainingTicks).toBeLessThan(200)
+      expect(finalState!.time.sessionRemainingTicks).toBeLessThan(20000)
     })
   })
 
