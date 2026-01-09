@@ -1,0 +1,548 @@
+import { describe, it, expect, beforeEach } from "@jest/globals"
+import {
+  buildAreaNamingPrompt,
+  generateAreaName,
+  getNeighborNames,
+  AnthropicMessagesClient,
+} from "./areaNaming.js"
+import type { Area, ExplorationLocation, AreaConnection } from "./types.js"
+import { ExplorationLocationType } from "./types.js"
+
+describe("Area Naming", () => {
+  describe("buildAreaNamingPrompt", () => {
+    it("should include distance from town in the prompt", () => {
+      const area: Area = {
+        id: "area-d2-i0",
+        distance: 2,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
+      }
+
+      const prompt = buildAreaNamingPrompt(area, [])
+
+      expect(prompt).toContain("distance 2")
+      expect(prompt).toContain("town")
+    })
+
+    it("should indicate safety for close areas (distance 1)", () => {
+      const area: Area = {
+        id: "area-d1-i0",
+        distance: 1,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
+      }
+
+      const prompt = buildAreaNamingPrompt(area, [])
+
+      expect(prompt.toLowerCase()).toMatch(/safe|peaceful|settled|close/)
+    })
+
+    it("should indicate danger for far areas (distance 3+)", () => {
+      const area: Area = {
+        id: "area-d3-i0",
+        distance: 3,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
+      }
+
+      const prompt = buildAreaNamingPrompt(area, [])
+
+      expect(prompt.toLowerCase()).toMatch(/danger|wild|remote|frontier/)
+    })
+
+    it("should include gathering node information", () => {
+      const miningLocation: ExplorationLocation = {
+        id: "loc-1",
+        areaId: "area-d1-i0",
+        type: ExplorationLocationType.GATHERING_NODE,
+        gatheringSkillType: "Mining",
+      }
+      const woodcuttingLocation: ExplorationLocation = {
+        id: "loc-2",
+        areaId: "area-d1-i0",
+        type: ExplorationLocationType.GATHERING_NODE,
+        gatheringSkillType: "Woodcutting",
+      }
+
+      const area: Area = {
+        id: "area-d1-i0",
+        distance: 1,
+        generated: true,
+        locations: [miningLocation, woodcuttingLocation],
+        indexInDistance: 0,
+      }
+
+      const prompt = buildAreaNamingPrompt(area, [])
+
+      expect(prompt.toLowerCase()).toMatch(/mining|ore|mineral/)
+      expect(prompt.toLowerCase()).toMatch(/woodcutting|tree|forest|lumber/)
+    })
+
+    it("should include mob camp information", () => {
+      const mobCamp: ExplorationLocation = {
+        id: "loc-1",
+        areaId: "area-d2-i0",
+        type: ExplorationLocationType.MOB_CAMP,
+        creatureType: "goblin",
+        difficulty: 2,
+      }
+
+      const area: Area = {
+        id: "area-d2-i0",
+        distance: 2,
+        generated: true,
+        locations: [mobCamp],
+        indexInDistance: 0,
+      }
+
+      const prompt = buildAreaNamingPrompt(area, [])
+
+      expect(prompt.toLowerCase()).toMatch(/mob|creature|monster|camp|hostile/)
+    })
+
+    it("should include neighbor area names when provided", () => {
+      const area: Area = {
+        id: "area-d2-i0",
+        distance: 2,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
+      }
+
+      const neighborNames = ["Whispering Hollow", "The Iron Ridge"]
+      const prompt = buildAreaNamingPrompt(area, neighborNames)
+
+      expect(prompt).toContain("Whispering Hollow")
+      expect(prompt).toContain("The Iron Ridge")
+    })
+
+    it("should handle areas with no locations gracefully", () => {
+      const area: Area = {
+        id: "area-d1-i0",
+        distance: 1,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
+      }
+
+      const prompt = buildAreaNamingPrompt(area, [])
+
+      // Should still produce a valid prompt
+      expect(prompt.length).toBeGreaterThan(50)
+      expect(prompt).toContain("distance 1")
+    })
+
+    it("should handle areas with no neighbor names gracefully", () => {
+      const area: Area = {
+        id: "area-d1-i0",
+        distance: 1,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
+      }
+
+      const prompt = buildAreaNamingPrompt(area, [])
+
+      // Should still produce a valid prompt without crashing
+      expect(prompt.length).toBeGreaterThan(50)
+    })
+
+    it("should request short 1-3 word names", () => {
+      const area: Area = {
+        id: "area-d1-i0",
+        distance: 1,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
+      }
+
+      const prompt = buildAreaNamingPrompt(area, [])
+
+      expect(prompt.toLowerCase()).toMatch(/short|1-3 word|brief|concise/)
+    })
+
+    it("should request evocative place-style names", () => {
+      const area: Area = {
+        id: "area-d1-i0",
+        distance: 1,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
+      }
+
+      const prompt = buildAreaNamingPrompt(area, [])
+
+      expect(prompt.toLowerCase()).toMatch(/place|location|name|evocative/)
+    })
+  })
+
+  describe("getNeighborNames", () => {
+    it("should return names of connected areas that have names", () => {
+      const areas = new Map<string, Area>([
+        [
+          "area-d1-i0",
+          {
+            id: "area-d1-i0",
+            name: "Whispering Hollow",
+            distance: 1,
+            generated: true,
+            locations: [],
+            indexInDistance: 0,
+          },
+        ],
+        [
+          "area-d1-i1",
+          {
+            id: "area-d1-i1",
+            name: "The Iron Ridge",
+            distance: 1,
+            generated: true,
+            locations: [],
+            indexInDistance: 1,
+          },
+        ],
+        [
+          "area-d1-i2",
+          {
+            id: "area-d1-i2",
+            distance: 1,
+            generated: true,
+            locations: [],
+            indexInDistance: 2,
+          },
+        ],
+        [
+          "area-d2-i0",
+          {
+            id: "area-d2-i0",
+            distance: 2,
+            generated: true,
+            locations: [],
+            indexInDistance: 0,
+          },
+        ],
+      ])
+
+      const connections: AreaConnection[] = [
+        { fromAreaId: "area-d2-i0", toAreaId: "area-d1-i0", travelTimeMultiplier: 2 },
+        { fromAreaId: "area-d2-i0", toAreaId: "area-d1-i1", travelTimeMultiplier: 2 },
+        { fromAreaId: "area-d2-i0", toAreaId: "area-d1-i2", travelTimeMultiplier: 2 },
+      ]
+
+      const targetArea = areas.get("area-d2-i0")!
+      const names = getNeighborNames(targetArea, areas, connections)
+
+      expect(names).toContain("Whispering Hollow")
+      expect(names).toContain("The Iron Ridge")
+      expect(names).toHaveLength(2) // area-d1-i2 has no name
+    })
+
+    it("should return empty array when no neighbors have names", () => {
+      const areas = new Map<string, Area>([
+        [
+          "area-d1-i0",
+          {
+            id: "area-d1-i0",
+            distance: 1,
+            generated: true,
+            locations: [],
+            indexInDistance: 0,
+          },
+        ],
+        [
+          "area-d2-i0",
+          {
+            id: "area-d2-i0",
+            distance: 2,
+            generated: true,
+            locations: [],
+            indexInDistance: 0,
+          },
+        ],
+      ])
+
+      const connections: AreaConnection[] = [
+        { fromAreaId: "area-d2-i0", toAreaId: "area-d1-i0", travelTimeMultiplier: 2 },
+      ]
+
+      const targetArea = areas.get("area-d2-i0")!
+      const names = getNeighborNames(targetArea, areas, connections)
+
+      expect(names).toHaveLength(0)
+    })
+
+    it("should handle areas with no connections", () => {
+      const areas = new Map<string, Area>([
+        [
+          "area-d1-i0",
+          {
+            id: "area-d1-i0",
+            distance: 1,
+            generated: true,
+            locations: [],
+            indexInDistance: 0,
+          },
+        ],
+      ])
+
+      const connections: AreaConnection[] = []
+
+      const targetArea = areas.get("area-d1-i0")!
+      const names = getNeighborNames(targetArea, areas, connections)
+
+      expect(names).toHaveLength(0)
+    })
+  })
+
+  describe("generateAreaName", () => {
+    let mockClient: AnthropicMessagesClient
+    let createCallArgs: unknown[]
+
+    beforeEach(() => {
+      createCallArgs = []
+      mockClient = {
+        create: async (params) => {
+          createCallArgs.push(params)
+          return { content: [{ type: "text", text: "Thornwood Vale" }] }
+        },
+      }
+    })
+
+    it("should call Anthropic API and return the generated name", async () => {
+      const area: Area = {
+        id: "area-d1-i0",
+        distance: 1,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
+      }
+
+      const name = await generateAreaName(area, [], "test-api-key", mockClient)
+
+      expect(name).toBe("Thornwood Vale")
+      expect(createCallArgs).toHaveLength(1)
+    })
+
+    it("should trim whitespace from the response", async () => {
+      mockClient.create = async () => ({
+        content: [{ type: "text", text: "  The Scarred Basin  \n" }],
+      })
+
+      const area: Area = {
+        id: "area-d1-i0",
+        distance: 1,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
+      }
+
+      const name = await generateAreaName(area, [], "test-api-key", mockClient)
+
+      expect(name).toBe("The Scarred Basin")
+    })
+
+    it("should pass neighbor names to the prompt", async () => {
+      const area: Area = {
+        id: "area-d1-i0",
+        distance: 1,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
+      }
+
+      const neighborNames = ["Whispering Hollow", "The Iron Ridge"]
+      await generateAreaName(area, neighborNames, "test-api-key", mockClient)
+
+      // Check that the prompt contains neighbor names
+      const callArgs = createCallArgs[0] as { messages: Array<{ content: string }> }
+      const userMessage = callArgs.messages[0].content
+      expect(userMessage).toContain("Whispering Hollow")
+      expect(userMessage).toContain("The Iron Ridge")
+    })
+
+    it("should return fallback name if API returns empty response", async () => {
+      mockClient.create = async () => ({
+        content: [{ type: "text", text: "" }],
+      })
+
+      const area: Area = {
+        id: "area-d1-i0",
+        distance: 1,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
+      }
+
+      const name = await generateAreaName(area, [], "test-api-key", mockClient)
+
+      // Should return a fallback based on area ID
+      expect(name).toBe("Unnamed Wilds")
+    })
+
+    it("should return fallback name if API call fails", async () => {
+      mockClient.create = async () => {
+        throw new Error("API Error")
+      }
+
+      const area: Area = {
+        id: "area-d1-i0",
+        distance: 1,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
+      }
+
+      const name = await generateAreaName(area, [], "test-api-key", mockClient)
+
+      expect(name).toBe("Unnamed Wilds")
+    })
+
+    it("should use a small, fast model for naming", async () => {
+      const area: Area = {
+        id: "area-d1-i0",
+        distance: 1,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
+      }
+
+      await generateAreaName(area, [], "test-api-key", mockClient)
+
+      const callArgs = createCallArgs[0] as { model: string }
+      // Should use haiku for speed/cost efficiency
+      expect(callArgs.model).toMatch(/haiku/)
+    })
+
+    it("should set low max_tokens since we only need a short name", async () => {
+      const area: Area = {
+        id: "area-d1-i0",
+        distance: 1,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
+      }
+
+      await generateAreaName(area, [], "test-api-key", mockClient)
+
+      const callArgs = createCallArgs[0] as { max_tokens: number }
+      expect(callArgs.max_tokens).toBeLessThanOrEqual(50)
+    })
+  })
+
+  describe("Integration with ensureAreaFullyGenerated", () => {
+    it("should set area name when apiKey is provided", async () => {
+      // Import here to avoid circular dependency issues
+      const { ensureAreaFullyGenerated } = await import("./exploration.js")
+      const { createRng } = await import("./rng.js")
+
+      const rng = createRng("test-seed")
+      const mockLlmClient: AnthropicMessagesClient = {
+        create: async () => ({
+          content: [{ type: "text", text: "Thornwood Vale" }],
+        }),
+      }
+
+      const areas = new Map<string, Area>([
+        [
+          "TOWN",
+          {
+            id: "TOWN",
+            distance: 0,
+            generated: true,
+            locations: [],
+            indexInDistance: 0,
+          },
+        ],
+        [
+          "area-d1-i0",
+          {
+            id: "area-d1-i0",
+            distance: 1,
+            generated: false,
+            locations: [],
+            indexInDistance: 0,
+          },
+        ],
+      ])
+
+      const exploration = {
+        areas,
+        connections: [
+          { fromAreaId: "TOWN", toAreaId: "area-d1-i0", travelTimeMultiplier: 2 as const },
+        ],
+        playerState: {
+          currentAreaId: "TOWN",
+          currentLocationId: null,
+          knownAreaIds: ["TOWN"],
+          knownLocationIds: [],
+          knownConnectionIds: [],
+          totalLuckDelta: 0,
+          currentStreak: 0,
+        },
+      }
+
+      const area = areas.get("area-d1-i0")!
+      await ensureAreaFullyGenerated(rng, exploration, area, {
+        apiKey: "test-key",
+        llmClient: mockLlmClient,
+      })
+
+      expect(area.name).toBe("Thornwood Vale")
+    })
+
+    it("should not set area name when apiKey is not provided", async () => {
+      const { ensureAreaFullyGenerated } = await import("./exploration.js")
+      const { createRng } = await import("./rng.js")
+
+      const rng = createRng("test-seed")
+
+      const areas = new Map<string, Area>([
+        [
+          "TOWN",
+          {
+            id: "TOWN",
+            distance: 0,
+            generated: true,
+            locations: [],
+            indexInDistance: 0,
+          },
+        ],
+        [
+          "area-d1-i0",
+          {
+            id: "area-d1-i0",
+            distance: 1,
+            generated: false,
+            locations: [],
+            indexInDistance: 0,
+          },
+        ],
+      ])
+
+      const exploration = {
+        areas,
+        connections: [
+          { fromAreaId: "TOWN", toAreaId: "area-d1-i0", travelTimeMultiplier: 2 as const },
+        ],
+        playerState: {
+          currentAreaId: "TOWN",
+          currentLocationId: null,
+          knownAreaIds: ["TOWN"],
+          knownLocationIds: [],
+          knownConnectionIds: [],
+          totalLuckDelta: 0,
+          currentStreak: 0,
+        },
+      }
+
+      const area = areas.get("area-d1-i0")!
+      await ensureAreaFullyGenerated(rng, exploration, area)
+
+      // No apiKey provided, so no name should be set
+      expect(area.name).toBeUndefined()
+    })
+  })
+})

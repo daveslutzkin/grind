@@ -78,7 +78,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
   // ============================================================================
 
   describe("Geography", () => {
-    it("should have fixed travel time that is never modified by skills", () => {
+    it("should have fixed travel time that is never modified by skills", async () => {
       // Create two worlds with different skill levels
       // Use "ore-test" seed which has ore at distance 1 (reachable from TOWN)
       const world1 = createWorld("ore-test")
@@ -97,8 +97,8 @@ describe("Acceptance Tests: Gathering MVP", () => {
       // Travel to the same destination
       const moveAction: MoveAction = { type: "Move", destination: oreAreaId }
 
-      const log1 = executeAction(world1, moveAction)
-      const log2 = executeAction(world2, moveAction)
+      const log1 = await executeAction(world1, moveAction)
+      const log2 = await executeAction(world2, moveAction)
 
       // Travel time should be identical regardless of skill level
       expect(log1.timeConsumed).toBe(log2.timeConsumed)
@@ -112,7 +112,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
   // ============================================================================
 
   describe("Node Persistence", () => {
-    it("should reduce reserves when extracting and persist changes", () => {
+    it("should reduce reserves when extracting and persist changes", async () => {
       const world = createWorld("persist-test")
       // Get ore area and make it known
       const oreAreaId = getOreAreaId(world)
@@ -134,19 +134,19 @@ describe("Acceptance Tests: Gathering MVP", () => {
         focusMaterialId: focusMat.materialId,
       }
 
-      executeAction(world, action)
+      await executeAction(world, action)
 
       // Reserves should be reduced
       expect(focusMat.remainingUnits).toBeLessThan(initialUnits)
 
       // Execute again - should still work on same node with reduced reserves
       const secondUnits = focusMat.remainingUnits
-      executeAction(world, action)
+      await executeAction(world, action)
 
       expect(focusMat.remainingUnits).toBeLessThan(secondUnits)
     })
 
-    it("should never regenerate node materials", () => {
+    it("should never regenerate node materials", async () => {
       const world = createWorld("regen-test")
       // Get ore area and make it known
       const oreAreaId = getOreAreaId(world)
@@ -169,9 +169,9 @@ describe("Acceptance Tests: Gathering MVP", () => {
       }
 
       const unitsAfterFirst = focusMat.remainingUnits
-      executeAction(world, action)
+      await executeAction(world, action)
       const unitsAfterSecond = focusMat.remainingUnits
-      executeAction(world, action)
+      await executeAction(world, action)
       const unitsAfterThird = focusMat.remainingUnits
 
       // Units should only decrease, never increase
@@ -196,7 +196,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
       expect(multiMaterialNodes.length / allNodes.length).toBeGreaterThanOrEqual(0.5)
     })
 
-    it("should cause collateral damage with FOCUS mode", () => {
+    it("should cause collateral damage with FOCUS mode", async () => {
       const world = createWorld("collateral-test")
       // Get ore area and make it known
       const oreAreaId = getOreAreaId(world)
@@ -223,13 +223,13 @@ describe("Acceptance Tests: Gathering MVP", () => {
         focusMaterialId: focusMat.materialId,
       }
 
-      executeAction(world, action)
+      await executeAction(world, action)
 
       // Collateral should be damaged
       expect(collateralMat.remainingUnits).toBeLessThan(collateralBefore)
     })
 
-    it("should NOT cause collateral damage with CAREFUL_ALL mode", () => {
+    it("should NOT cause collateral damage with CAREFUL_ALL mode", async () => {
       const world = createWorld("collateral-test") // Use same seed as collateral test
       // Get ore area and make it known
       const oreAreaId = getOreAreaId(world)
@@ -246,7 +246,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
         mode: GatherMode.CAREFUL_ALL,
       }
 
-      const log = executeAction(world, action)
+      const log = await executeAction(world, action)
       expect(log.success).toBe(true)
 
       // Collateral damage should be 0
@@ -264,7 +264,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
   // ============================================================================
 
   describe("Focus Yield Progression", () => {
-    it("should have focus waste decrease with level and reach 0% at mastery", () => {
+    it("should have focus waste decrease with level and reach 0% at mastery", async () => {
       const world1 = createWorld("yield-test")
       // Get ore area and make it known
       const oreAreaId = getOreAreaId(world1)
@@ -300,8 +300,8 @@ describe("Acceptance Tests: Gathering MVP", () => {
         focusMaterialId: focusMat10.materialId,
       }
 
-      const log1 = executeAction(world1, action1)
-      const log10 = executeAction(world10, action10)
+      const log1 = await executeAction(world1, action1)
+      const log10 = await executeAction(world10, action10)
 
       // L1 should have significant waste (~60%)
       expect(log1.extraction!.focusWaste).toBeGreaterThan(0.3)
@@ -310,7 +310,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
       expect(log10.extraction!.focusWaste).toBe(0)
     })
 
-    it("should have collateral damage with hard floor at high levels", () => {
+    it("should have collateral damage with hard floor at high levels", async () => {
       const world = createWorld("floor-test")
       // Get ore area and make it known
       const oreAreaId = getOreAreaId(world)
@@ -332,7 +332,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
         focusMaterialId: focusMat.materialId,
       }
 
-      const log = executeAction(world, action)
+      const log = await executeAction(world, action)
 
       // Even at L10, there should be some collateral damage (20% floor)
       const collateralDamage = log.extraction!.collateralDamage[collateralMat.materialId] ?? 0
@@ -345,7 +345,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
   // ============================================================================
 
   describe("Variance", () => {
-    it("should have extraction yield vary around expected value", () => {
+    it("should have extraction yield vary around expected value", async () => {
       const world = createWorld("variance-test")
       // Get ore area and make it known
       const oreAreaId = getOreAreaId(world)
@@ -366,7 +366,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
         focusMaterialId: focusMat.materialId,
       }
 
-      const log = executeAction(world, action)
+      const log = await executeAction(world, action)
 
       // Variance info should be present
       expect(log.extraction!.variance).toBeDefined()
@@ -376,7 +376,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
       expect(log.extraction!.variance!.range.length).toBe(2)
     })
 
-    it("should show variance info explicitly (EV, range, actual vs expected)", () => {
+    it("should show variance info explicitly (EV, range, actual vs expected)", async () => {
       const world = createWorld("explicit-variance-test")
       // Get ore area and make it known
       const oreAreaId = getOreAreaId(world)
@@ -397,7 +397,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
         focusMaterialId: focusMat.materialId,
       }
 
-      const log = executeAction(world, action)
+      const log = await executeAction(world, action)
 
       // Variance should include expected, actual, and range
       const variance = log.extraction!.variance!
@@ -415,7 +415,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
   // ============================================================================
 
   describe("Progression", () => {
-    it("should unlock new actions at specific levels", () => {
+    it("should unlock new actions at specific levels", async () => {
       const world = createWorld("unlock-test")
       // Get ore area and make it known
       const oreAreaId = getOreAreaId(world)
@@ -431,17 +431,17 @@ describe("Acceptance Tests: Gathering MVP", () => {
         nodeId: node.nodeId,
         mode: GatherMode.APPRAISE,
       }
-      const failLog = executeAction(world, appraiseAction)
+      const failLog = await executeAction(world, appraiseAction)
       expect(failLog.success).toBe(false)
       expect(failLog.failureType).toBe("MODE_NOT_UNLOCKED")
 
       // L3: APPRAISE should succeed
       world.player.skills.Mining.level = 3
-      const successLog = executeAction(world, appraiseAction)
+      const successLog = await executeAction(world, appraiseAction)
       expect(successLog.success).toBe(true)
     })
 
-    it("should unlock locations at specific levels", () => {
+    it("should unlock locations at specific levels", async () => {
       const world = createWorld("location-unlock-test")
       // Get a MID area (distance 2) that has ore
       const midAreaId = getMidOreAreaId(world)
@@ -457,13 +457,13 @@ describe("Acceptance Tests: Gathering MVP", () => {
         nodeId: node.nodeId,
         mode: GatherMode.APPRAISE,
       }
-      const failLog = executeAction(world, appraiseAction)
+      const failLog = await executeAction(world, appraiseAction)
       expect(failLog.success).toBe(false)
       expect(failLog.failureType).toBe("INSUFFICIENT_SKILL")
 
       // L5: MID should succeed
       world.player.skills.Mining.level = 5
-      const successLog = executeAction(world, appraiseAction)
+      const successLog = await executeAction(world, appraiseAction)
       expect(successLog.success).toBe(true)
     })
   })
@@ -473,7 +473,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
   // ============================================================================
 
   describe("XP Model", () => {
-    it("should calculate XP based on ticks × tier, not units extracted", () => {
+    it("should calculate XP based on ticks × tier, not units extracted", async () => {
       const world = createWorld("xp-test")
       // Get ore area and make it known
       const oreAreaId = getOreAreaId(world)
@@ -494,14 +494,14 @@ describe("Acceptance Tests: Gathering MVP", () => {
         focusMaterialId: focusMat.materialId,
       }
 
-      const log = executeAction(world, action)
+      const log = await executeAction(world, action)
 
       // XP should be ticks × tier
       expect(log.skillGained).toBeDefined()
       expect(log.skillGained!.amount).toBe(log.timeConsumed * focusMat.tier)
     })
 
-    it("should not double-punish bad RNG (yield varies, XP stays constant)", () => {
+    it("should not double-punish bad RNG (yield varies, XP stays constant)", async () => {
       // Use two different seeds to get different RNG outcomes
       const world1 = createWorld("xp-rng-1")
       // Get ore area and make it known
@@ -544,8 +544,8 @@ describe("Acceptance Tests: Gathering MVP", () => {
           focusMaterialId: focusMat2.materialId,
         }
 
-        const log1 = executeAction(world1, action1)
-        const log2 = executeAction(world2, action2)
+        const log1 = await executeAction(world1, action1)
+        const log2 = await executeAction(world2, action2)
 
         // Yields may differ due to RNG
         // But XP should be based on ticks × tier (constant for same tier)

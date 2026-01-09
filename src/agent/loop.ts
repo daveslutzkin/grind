@@ -386,7 +386,7 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
         console.log(`Reasoning: ${response.reasoning}`)
       }
 
-      const log = executeAction(state, action)
+      const log = await executeAction(state, action)
 
       // Track action log for summarization
       actionLogs.push(log)

@@ -30,6 +30,7 @@ import {
   executeExplore,
   executeExplorationTravel,
   grantExplorationGuildBenefits,
+  AreaGenerationOptions,
 } from "./exploration.js"
 import {
   checkAcceptContractAction,
@@ -101,7 +102,11 @@ function extractParameters(action: Action): Record<string, unknown> {
   return params
 }
 
-export function executeAction(state: WorldState, action: Action): ActionLog {
+export async function executeAction(
+  state: WorldState,
+  action: Action,
+  options?: AreaGenerationOptions
+): Promise<ActionLog> {
   const rolls: RngRoll[] = []
 
   // Check if session has ended
@@ -112,10 +117,14 @@ export function executeAction(state: WorldState, action: Action): ActionLog {
   switch (action.type) {
     case "Move":
       // Move is an alias for ExplorationTravel
-      return executeExplorationTravel(state, {
-        type: "ExplorationTravel",
-        destinationAreaId: action.destination,
-      })
+      return executeExplorationTravel(
+        state,
+        {
+          type: "ExplorationTravel",
+          destinationAreaId: action.destination,
+        },
+        options
+      )
     case "AcceptContract":
       return executeAcceptContract(state, action, rolls)
     case "Gather":
@@ -133,15 +142,15 @@ export function executeAction(state: WorldState, action: Action): ActionLog {
     case "Drop":
       return executeDrop(state, action, rolls)
     case "Enrol":
-      return executeGuildEnrolment(state, action, rolls)
+      return executeGuildEnrolment(state, action, rolls, options)
     case "TurnInCombatToken":
       return executeTurnInCombatToken(state, action, rolls)
     case "Survey":
-      return executeSurvey(state, action)
+      return executeSurvey(state, action, options)
     case "Explore":
-      return executeExplore(state, action)
+      return executeExplore(state, action, options)
     case "ExplorationTravel":
-      return executeExplorationTravel(state, action)
+      return executeExplorationTravel(state, action, options)
     case "TravelToLocation":
       return executeTravelToLocation(state, action)
     case "Leave":
@@ -824,11 +833,12 @@ function executeTurnInCombatToken(
   }
 }
 
-function executeGuildEnrolment(
+async function executeGuildEnrolment(
   state: WorldState,
   action: GuildEnrolmentAction,
-  rolls: RngRoll[]
-): ActionLog {
+  rolls: RngRoll[],
+  options?: AreaGenerationOptions
+): Promise<ActionLog> {
   const tickBefore = state.time.currentTick
   const { skill } = action
 
@@ -858,7 +868,7 @@ function executeGuildEnrolment(
   // Exploration enrolment grants one distance 1 area and connection
   let explorationBenefits: { discoveredAreaId: string; discoveredConnectionId: string } | undefined
   if (skill === "Exploration") {
-    explorationBenefits = grantExplorationGuildBenefits(state)
+    explorationBenefits = await grantExplorationGuildBenefits(state, options)
   }
 
   // Check for contract completion (after every successful action)

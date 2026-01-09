@@ -114,7 +114,7 @@ describe("Formatters", () => {
         expect(formatted).not.toMatch(/\(L\d+\)/)
       })
 
-      it("should show materials with ✓ and (L#) indicators when player has skill", () => {
+      it("should show materials with ✓ and (L#) indicators when player has skill", async () => {
         const state = createWorld("mat-vis-2")
         const areaId = getOreAreaId(state)
         makeAreaKnown(state, areaId)
@@ -123,7 +123,7 @@ describe("Formatters", () => {
 
         // Enrol in Mining at L1
         setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-        executeAction(state, { type: "Enrol", skill: "Mining" })
+        await executeAction(state, { type: "Enrol", skill: "Mining" })
         state.exploration.playerState.currentAreaId = areaId
 
         const formatted = formatWorldState(state)
@@ -134,7 +134,7 @@ describe("Formatters", () => {
         expect(formatted).toMatch(/[A-Z_]+ ✓/)
       })
 
-      it("should show (L#) for materials requiring higher level", () => {
+      it("should show (L#) for materials requiring higher level", async () => {
         const state = createWorld("mat-vis-3")
         const areaId = getOreAreaId(state)
         makeAreaKnown(state, areaId)
@@ -143,7 +143,7 @@ describe("Formatters", () => {
 
         // Enrol in Mining at L1
         setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-        executeAction(state, { type: "Enrol", skill: "Mining" })
+        await executeAction(state, { type: "Enrol", skill: "Mining" })
         state.exploration.playerState.currentAreaId = areaId
 
         // Find a node with a material requiring level > 1
@@ -163,7 +163,7 @@ describe("Formatters", () => {
         }
       })
 
-      it("should show quantities after APPRAISE", () => {
+      it("should show quantities after APPRAISE", async () => {
         const state = createWorld("mat-vis-4")
         const areaId = getOreAreaId(state)
         makeAreaKnown(state, areaId)
@@ -172,7 +172,7 @@ describe("Formatters", () => {
 
         // Enrol in Mining and level up to L3 for APPRAISE
         setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-        executeAction(state, { type: "Enrol", skill: "Mining" })
+        await executeAction(state, { type: "Enrol", skill: "Mining" })
         state.player.skills.Mining = { level: 3, xp: 0 } // L3 unlocks APPRAISE
         state.exploration.playerState.currentAreaId = areaId
 
@@ -181,7 +181,7 @@ describe("Formatters", () => {
         if (!node) throw new Error("No node found for test")
 
         // Perform APPRAISE action
-        executeAction(state, {
+        await executeAction(state, {
           type: "Gather",
           nodeId: node.nodeId,
           mode: "APPRAISE" as GatherMode,
@@ -291,11 +291,11 @@ describe("Formatters", () => {
   })
 
   describe("formatActionLog", () => {
-    it("should format successful action log", () => {
+    it("should format successful action log", async () => {
       const state = createWorld("ore-test")
       // Enrol in Mining first (must be at guild)
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-      executeAction(state, { type: "Enrol", skill: "Mining" })
+      await executeAction(state, { type: "Enrol", skill: "Mining" })
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
       // Position player at ore area and gather (testing gather log, not travel)
@@ -308,7 +308,7 @@ describe("Formatters", () => {
       const material = node.materials.find((m) => m.requiredLevel <= 1)
       if (!material) throw new Error("No material found for test")
 
-      const log = executeAction(state, {
+      const log = await executeAction(state, {
         type: "Gather",
         nodeId: node.nodeId,
         mode: "FOCUS" as GatherMode,
@@ -321,7 +321,7 @@ describe("Formatters", () => {
       expect(formatted).toMatch(/\(\d+t\)/)
     })
 
-    it("should format failed action log with failure reason", () => {
+    it("should format failed action log with failure reason", async () => {
       const state = createWorld("ore-test")
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
@@ -334,7 +334,7 @@ describe("Formatters", () => {
       if (!node) throw new Error("No node found for test")
 
       // Try to gather without enrolling - should fail
-      const log = executeAction(state, {
+      const log = await executeAction(state, {
         type: "Gather",
         nodeId: node.nodeId,
         mode: "FOCUS" as GatherMode,
@@ -346,9 +346,9 @@ describe("Formatters", () => {
       expect(formatted).toContain("✗")
     })
 
-    it("should include XP gain information when present", () => {
+    it("should include XP gain information when present", async () => {
       const state = createWorld("ore-test")
-      executeAction(state, { type: "Enrol", skill: "Mining" })
+      await executeAction(state, { type: "Enrol", skill: "Mining" })
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
       // Position player at ore area directly
@@ -362,7 +362,7 @@ describe("Formatters", () => {
       const material = node.materials.find((m) => m.requiredLevel <= 1)
       if (!material) throw new Error("No material found for test")
 
-      const log = executeAction(state, {
+      const log = await executeAction(state, {
         type: "Gather",
         nodeId: node.nodeId,
         mode: "FOCUS" as GatherMode,
@@ -376,9 +376,9 @@ describe("Formatters", () => {
       }
     })
 
-    it("should include RNG roll outcomes when present", () => {
+    it("should include RNG roll outcomes when present", async () => {
       const state = createWorld("ore-test")
-      executeAction(state, { type: "Enrol", skill: "Mining" })
+      await executeAction(state, { type: "Enrol", skill: "Mining" })
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
       // Position player at ore area directly
@@ -390,7 +390,7 @@ describe("Formatters", () => {
       const material = node.materials.find((m) => m.requiredLevel <= 1)
       if (!material) throw new Error("No material found for test")
 
-      const log = executeAction(state, {
+      const log = await executeAction(state, {
         type: "Gather",
         nodeId: node.nodeId,
         mode: "FOCUS" as GatherMode,
@@ -404,9 +404,9 @@ describe("Formatters", () => {
       }
     })
 
-    it("should include items gained/lost", () => {
+    it("should include items gained/lost", async () => {
       const state = createWorld("ore-test")
-      executeAction(state, { type: "Enrol", skill: "Mining" })
+      await executeAction(state, { type: "Enrol", skill: "Mining" })
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
       // Position player at ore area directly
@@ -418,7 +418,7 @@ describe("Formatters", () => {
       const material = node.materials.find((m) => m.requiredLevel <= 1)
       if (!material) throw new Error("No material found for test")
 
-      const log = executeAction(state, {
+      const log = await executeAction(state, {
         type: "Gather",
         nodeId: node.nodeId,
         mode: "FOCUS" as GatherMode,

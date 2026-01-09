@@ -633,12 +633,12 @@ export function createSession(options: CreateSessionOptions): Session {
 /**
  * Execute an action and record it in stats
  */
-export function executeAndRecord(
+export async function executeAndRecord(
   session: Session,
   action: Action,
-  execute: (state: WorldState, action: Action) => ActionLog
-): ActionLog {
-  const log = execute(session.state, action)
+  execute: (state: WorldState, action: Action) => Promise<ActionLog>
+): Promise<ActionLog> {
+  const log = await execute(session.state, action)
   session.stats.logs.push(log)
   return log
 }
@@ -728,7 +728,7 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
     config.beforeAction?.(action, session.state)
 
     // Execute the action
-    const log = executeAndRecord(session, action, executeAction)
+    const log = await executeAndRecord(session, action, executeAction)
     config.onActionComplete(log, session.state)
   }
 

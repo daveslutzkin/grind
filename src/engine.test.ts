@@ -98,26 +98,26 @@ function discoverAllLocations(state: WorldState, areaId: AreaID): void {
 
 describe("Engine", () => {
   describe("Move action", () => {
-    it("should move player to destination", () => {
+    it("should move player to destination", async () => {
       const state = createWorld("ore-test")
       const areaId = getDistance1AreaId(state)
       makeAreaKnown(state, areaId)
       const action: MoveAction = { type: "Move", destination: areaId }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(true)
       expect(state.exploration.playerState.currentAreaId).toBe(areaId)
     })
 
-    it("should consume travel time", () => {
+    it("should consume travel time", async () => {
       const state = createWorld("ore-test")
       const areaId = getDistance1AreaId(state)
       makeAreaKnown(state, areaId)
       const initialTicks = state.time.sessionRemainingTicks
       const action: MoveAction = { type: "Move", destination: areaId }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       // Travel time is BASE_TRAVEL_TIME (10) * multiplier (1-4) = 10-40 ticks
       expect(log.timeConsumed).toBeGreaterThanOrEqual(10)
@@ -126,49 +126,49 @@ describe("Engine", () => {
       expect(state.time.currentTick).toBe(log.timeConsumed)
     })
 
-    it("should not grant XP (travel is purely logistical)", () => {
+    it("should not grant XP (travel is purely logistical)", async () => {
       const state = createWorld("ore-test")
       const areaId = getDistance1AreaId(state)
       makeAreaKnown(state, areaId)
       const action: MoveAction = { type: "Move", destination: areaId }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.skillGained).toBeUndefined()
     })
 
-    it("should fail if already at destination", () => {
+    it("should fail if already at destination", async () => {
       const state = createWorld("ore-test")
       const areaId = getDistance1AreaId(state)
       state.exploration.playerState.currentAreaId = areaId
       const action: MoveAction = { type: "Move", destination: areaId }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("ALREADY_IN_AREA")
       expect(log.timeConsumed).toBe(0)
     })
 
-    it("should fail if session has ended", () => {
+    it("should fail if session has ended", async () => {
       const state = createWorld("ore-test")
       const areaId = getDistance1AreaId(state)
       state.time.sessionRemainingTicks = 0
       const action: MoveAction = { type: "Move", destination: areaId }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("SESSION_ENDED")
     })
 
-    it("should log action details", () => {
+    it("should log action details", async () => {
       const state = createWorld("ore-test")
       const areaId = getDistance1AreaId(state)
       makeAreaKnown(state, areaId)
       const action: MoveAction = { type: "Move", destination: areaId }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.tickBefore).toBe(0)
       expect(log.actionType).toBe("ExplorationTravel")
@@ -176,13 +176,13 @@ describe("Engine", () => {
       expect(log.stateDeltaSummary).toContain(areaId)
     })
 
-    it("should work for round-trip travel", () => {
+    it("should work for round-trip travel", async () => {
       const state = createWorld("ore-test")
       const area1 = getDistance1AreaId(state)
       makeAreaKnown(state, area1)
 
       // TOWN -> distance-1 area
-      let log = executeAction(state, { type: "Move", destination: area1 })
+      let log = await executeAction(state, { type: "Move", destination: area1 })
       expect(log.success).toBe(true)
       expect(log.timeConsumed).toBeGreaterThanOrEqual(10)
       expect(log.timeConsumed).toBeLessThanOrEqual(40)
@@ -190,7 +190,7 @@ describe("Engine", () => {
 
       // Return to TOWN (reverse connection should exist)
       makeConnectionKnown(state, area1, "TOWN")
-      log = executeAction(state, { type: "Move", destination: "TOWN" })
+      log = await executeAction(state, { type: "Move", destination: "TOWN" })
       expect(log.success).toBe(true)
       expect(log.timeConsumed).toBeGreaterThanOrEqual(10)
       expect(log.timeConsumed).toBeLessThanOrEqual(40)
@@ -199,40 +199,40 @@ describe("Engine", () => {
   })
 
   describe("AcceptContract action", () => {
-    it("should add contract to active contracts", () => {
+    it("should add contract to active contracts", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD) // Must be at miners guild
       const action: AcceptContractAction = { type: "AcceptContract", contractId: "miners-guild-1" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(true)
       expect(state.player.activeContracts).toContain("miners-guild-1")
     })
 
-    it("should consume 0 ticks", () => {
+    it("should consume 0 ticks", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       const initialTicks = state.time.sessionRemainingTicks
       const action: AcceptContractAction = { type: "AcceptContract", contractId: "miners-guild-1" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.timeConsumed).toBe(0)
       expect(state.time.sessionRemainingTicks).toBe(initialTicks)
     })
 
-    it("should not grant XP", () => {
+    it("should not grant XP", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       const action: AcceptContractAction = { type: "AcceptContract", contractId: "miners-guild-1" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.skillGained).toBeUndefined()
     })
 
-    it("should fail if not at guild location", () => {
+    it("should fail if not at guild location", async () => {
       const state = createWorld("ore-test")
       const areaId = getDistance1AreaId(state)
       makeAreaKnown(state, areaId)
@@ -240,29 +240,29 @@ describe("Engine", () => {
       state.exploration.playerState.currentLocationId = null // At clearing
       const action: AcceptContractAction = { type: "AcceptContract", contractId: "miners-guild-1" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("WRONG_LOCATION")
     })
 
-    it("should fail if contract not found", () => {
+    it("should fail if contract not found", async () => {
       const state = createWorld("ore-test")
       const action: AcceptContractAction = { type: "AcceptContract", contractId: "nonexistent" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("CONTRACT_NOT_FOUND")
     })
 
-    it("should fail if already has contract", () => {
+    it("should fail if already has contract", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       state.player.activeContracts.push("miners-guild-1")
       const action: AcceptContractAction = { type: "AcceptContract", contractId: "miners-guild-1" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("ALREADY_HAS_CONTRACT")
@@ -270,7 +270,7 @@ describe("Engine", () => {
   })
 
   describe("Gather action", () => {
-    it("should add item to inventory on success", () => {
+    it("should add item to inventory on success", async () => {
       const state = createWorld("gather-success-seed")
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
@@ -291,7 +291,7 @@ describe("Engine", () => {
       }
 
       // Try multiple times to find a successful gather
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       // The RNG should produce a consistent result
       if (log.success) {
@@ -301,7 +301,7 @@ describe("Engine", () => {
       }
     })
 
-    it("should consume gather time", () => {
+    it("should consume gather time", async () => {
       const state = createWorld("ore-test")
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
@@ -322,13 +322,13 @@ describe("Engine", () => {
         focusMaterialId: material!.materialId,
       }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.timeConsumed).toBeGreaterThan(0)
       expect(state.time.sessionRemainingTicks).toBe(initialTicks - log.timeConsumed)
     })
 
-    it("should grant Mining XP on success", () => {
+    it("should grant Mining XP on success", async () => {
       const state = createWorld("ore-test")
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
@@ -348,7 +348,7 @@ describe("Engine", () => {
         focusMaterialId: material!.materialId,
       }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       if (log.success) {
         expect(log.skillGained).toEqual({ skill: "Mining", amount: expect.any(Number) })
@@ -356,7 +356,7 @@ describe("Engine", () => {
       }
     })
 
-    it("should fail if not at node location", () => {
+    it("should fail if not at node location", async () => {
       const state = createWorld("ore-test")
       const areaId = getOreAreaId(state)
       // Player starts at TOWN, nodes are at ore area
@@ -370,27 +370,27 @@ describe("Engine", () => {
         focusMaterialId: material.materialId,
       }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("WRONG_LOCATION")
       expect(log.timeConsumed).toBe(0)
     })
 
-    it("should fail if node not found", () => {
+    it("should fail if node not found", async () => {
       const state = createWorld("ore-test")
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
       state.exploration.playerState.currentAreaId = areaId
       const action: GatherAction = { type: "Gather", nodeId: "nonexistent-node" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("NODE_NOT_FOUND")
     })
 
-    it("should log RNG roll", () => {
+    it("should log RNG roll", async () => {
       const state = createWorld("ore-test")
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
@@ -407,14 +407,14 @@ describe("Engine", () => {
         focusMaterialId: material.materialId,
       }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       // FOCUS mode doesn't use RNG rolls, so this test may not have rolls
       // Just check that it completes
       expect(log).toBeDefined()
     })
 
-    it("should stack items in inventory", () => {
+    it("should stack items in inventory", async () => {
       const state = createWorld("stack-test")
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
@@ -434,7 +434,7 @@ describe("Engine", () => {
         focusMaterialId: material.materialId,
       }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       if (log.success) {
         const item = state.player.inventory.find((i) => i.itemId === material.materialId)
@@ -445,7 +445,7 @@ describe("Engine", () => {
       }
     })
 
-    it("should succeed if inventory full but already has that item (slot-based)", () => {
+    it("should succeed if inventory full but already has that item (slot-based)", async () => {
       const state = createWorld("ore-test")
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
@@ -467,7 +467,7 @@ describe("Engine", () => {
         focusMaterialId: material.materialId,
       }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       // Should not fail with INVENTORY_FULL because we can stack on existing material
       expect(log.failureType).not.toBe("INVENTORY_FULL")
@@ -496,12 +496,12 @@ describe("Engine", () => {
       return areaId
     }
 
-    it("should add loot to inventory on success", () => {
+    it("should add loot to inventory on success", async () => {
       const state = createWorld("fight-success")
       setupCombatState(state)
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       if (log.success) {
         // cave-rat drops COPPER_ORE or other items based on loot table
@@ -509,24 +509,24 @@ describe("Engine", () => {
       }
     })
 
-    it("should consume fight time", () => {
+    it("should consume fight time", async () => {
       const state = createWorld("ore-test")
       setupCombatState(state)
       const initialTicks = state.time.sessionRemainingTicks
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.timeConsumed).toBe(3) // CrudeWeapon fightTime is 3
       expect(state.time.sessionRemainingTicks).toBe(initialTicks - 3)
     })
 
-    it("should grant Combat XP on success", () => {
+    it("should grant Combat XP on success", async () => {
       const state = createWorld("ore-test")
       setupCombatState(state)
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       if (log.success) {
         expect(log.skillGained).toEqual({ skill: "Combat", amount: 1 })
@@ -534,7 +534,7 @@ describe("Engine", () => {
       }
     })
 
-    it("should fail if not at enemy location", () => {
+    it("should fail if not at enemy location", async () => {
       const state = createWorld("ore-test")
       const areaId = getDistance1AreaId(state)
       // Player starts at TOWN, enemy is at areaId
@@ -553,14 +553,14 @@ describe("Engine", () => {
       })
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("WRONG_LOCATION")
       expect(log.timeConsumed).toBe(0)
     })
 
-    it("should fail if enemy not found", () => {
+    it("should fail if enemy not found", async () => {
       const state = createWorld("ore-test")
       const areaId = getDistance1AreaId(state)
       makeAreaKnown(state, areaId)
@@ -569,19 +569,19 @@ describe("Engine", () => {
       state.player.equippedWeapon = "CRUDE_WEAPON"
       const action: FightAction = { type: "Fight", enemyId: "nonexistent" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("ENEMY_NOT_FOUND")
     })
 
-    it("should NOT relocate player on RNG failure (per spec)", () => {
+    it("should NOT relocate player on RNG failure (per spec)", async () => {
       const state = createWorld("fight-fail")
       const areaId = setupCombatState(state)
       state.rng.seed = "force-fight-fail"
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       if (!log.success && log.failureType === "COMBAT_FAILURE") {
         // Per spec: player stays at location, is NOT relocated
@@ -589,12 +589,12 @@ describe("Engine", () => {
       }
     })
 
-    it("should log RNG roll", () => {
+    it("should log RNG roll", async () => {
       const state = createWorld("ore-test")
       setupCombatState(state)
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       // At least 1 roll for fight success, possibly more for loot drops
       expect(log.rngRolls.length).toBeGreaterThanOrEqual(1)
@@ -603,14 +603,14 @@ describe("Engine", () => {
   })
 
   describe("Craft action", () => {
-    it("should consume inputs and produce output", () => {
+    it("should consume inputs and produce output", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD)
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 5 })
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(true)
       const ironOre = state.player.inventory.find((i) => i.itemId === "IRON_ORE")
@@ -619,7 +619,7 @@ describe("Engine", () => {
       expect(ironBar?.quantity).toBe(1)
     })
 
-    it("should consume craft time", () => {
+    it("should consume craft time", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD)
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
@@ -627,26 +627,26 @@ describe("Engine", () => {
       const initialTicks = state.time.sessionRemainingTicks
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.timeConsumed).toBe(3) // iron-bar-recipe craftTime is 3
       expect(state.time.sessionRemainingTicks).toBe(initialTicks - 3)
     })
 
-    it("should grant Smithing XP", () => {
+    it("should grant Smithing XP", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD)
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.skillGained).toEqual({ skill: "Smithing", amount: 1 })
       expect(state.player.skills.Smithing).toEqual({ level: 1, xp: 1 }) // Started at level 1/0xp, gained 1 XP
     })
 
-    it("should fail if not at required guild hall", () => {
+    it("should fail if not at required guild hall", async () => {
       const state = createWorld("ore-test")
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       const areaId = getDistance1AreaId(state)
@@ -656,30 +656,30 @@ describe("Engine", () => {
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("WRONG_GUILD_TYPE")
     })
 
-    it("should fail if recipe not found", () => {
+    it("should fail if recipe not found", async () => {
       const state = createWorld("ore-test")
       const action: CraftAction = { type: "Craft", recipeId: "nonexistent" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("RECIPE_NOT_FOUND")
     })
 
-    it("should fail if missing inputs", () => {
+    it("should fail if missing inputs", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD)
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 }) // need 2
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("MISSING_ITEMS")
@@ -687,13 +687,13 @@ describe("Engine", () => {
   })
 
   describe("Store action", () => {
-    it("should move item from inventory to storage", () => {
+    it("should move item from inventory to storage", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.WAREHOUSE)
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 5 })
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 3 }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(true)
       const invOre = state.player.inventory.find((i) => i.itemId === "IRON_ORE")
@@ -702,31 +702,31 @@ describe("Engine", () => {
       expect(storageOre?.quantity).toBe(3)
     })
 
-    it("should consume 0 ticks (free action)", () => {
+    it("should consume 0 ticks (free action)", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.WAREHOUSE)
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const initialTicks = state.time.sessionRemainingTicks
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.timeConsumed).toBe(0)
       expect(state.time.sessionRemainingTicks).toBe(initialTicks)
     })
 
-    it("should not grant XP", () => {
+    it("should not grant XP", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.WAREHOUSE)
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.skillGained).toBeUndefined()
     })
 
-    it("should fail if not at storage location", () => {
+    it("should fail if not at storage location", async () => {
       const state = createWorld("ore-test")
       const areaId = getDistance1AreaId(state)
       makeAreaKnown(state, areaId)
@@ -735,30 +735,30 @@ describe("Engine", () => {
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("WRONG_LOCATION")
     })
 
-    it("should fail if item not in inventory", () => {
+    it("should fail if item not in inventory", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.WAREHOUSE)
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("ITEM_NOT_FOUND")
     })
 
-    it("should fail if not enough quantity", () => {
+    it("should fail if not enough quantity", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.WAREHOUSE)
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 5 }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("MISSING_ITEMS")
@@ -766,67 +766,67 @@ describe("Engine", () => {
   })
 
   describe("Drop action", () => {
-    it("should remove item from inventory", () => {
+    it("should remove item from inventory", async () => {
       const state = createWorld("ore-test")
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 5 })
       const action: DropAction = { type: "Drop", itemId: "IRON_ORE", quantity: 3 }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(true)
       const invOre = state.player.inventory.find((i) => i.itemId === "IRON_ORE")
       expect(invOre?.quantity).toBe(2)
     })
 
-    it("should consume 1 tick", () => {
+    it("should consume 1 tick", async () => {
       const state = createWorld("ore-test")
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const initialTicks = state.time.sessionRemainingTicks
       const action: DropAction = { type: "Drop", itemId: "IRON_ORE", quantity: 1 }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.timeConsumed).toBe(1)
       expect(state.time.sessionRemainingTicks).toBe(initialTicks - 1)
     })
 
-    it("should not grant XP", () => {
+    it("should not grant XP", async () => {
       const state = createWorld("ore-test")
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const action: DropAction = { type: "Drop", itemId: "IRON_ORE", quantity: 1 }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.skillGained).toBeUndefined()
     })
 
-    it("should fail if item not in inventory", () => {
+    it("should fail if item not in inventory", async () => {
       const state = createWorld("ore-test")
       const action: DropAction = { type: "Drop", itemId: "IRON_ORE", quantity: 1 }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("ITEM_NOT_FOUND")
     })
 
-    it("should fail if not enough quantity", () => {
+    it("should fail if not enough quantity", async () => {
       const state = createWorld("ore-test")
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
       const action: DropAction = { type: "Drop", itemId: "IRON_ORE", quantity: 5 }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("MISSING_ITEMS")
     })
 
-    it("should remove item stack if quantity becomes 0", () => {
+    it("should remove item stack if quantity becomes 0", async () => {
       const state = createWorld("ore-test")
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 3 })
       const action: DropAction = { type: "Drop", itemId: "IRON_ORE", quantity: 3 }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(true)
       const invOre = state.player.inventory.find((i) => i.itemId === "IRON_ORE")
@@ -835,7 +835,7 @@ describe("Engine", () => {
   })
 
   describe("Skills starting at level 0", () => {
-    it("should start all skills at level 0", () => {
+    it("should start all skills at level 0", async () => {
       const state = createWorld("ore-test")
 
       expect(state.player.skills.Mining.level).toBe(0)
@@ -844,7 +844,7 @@ describe("Engine", () => {
       expect(state.player.skills.Smithing.level).toBe(0)
     })
 
-    it("should not have Logistics skill", () => {
+    it("should not have Logistics skill", async () => {
       const state = createWorld("ore-test")
 
       expect((state.player.skills as Record<string, unknown>).Logistics).toBeUndefined()
@@ -852,7 +852,7 @@ describe("Engine", () => {
   })
 
   describe("Level 0 blocks skill actions", () => {
-    it("should fail Gather when Mining is level 0", () => {
+    it("should fail Gather when Mining is level 0", async () => {
       const state = createWorld("ore-test")
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
@@ -870,14 +870,14 @@ describe("Engine", () => {
         focusMaterialId: material.materialId,
       }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("INSUFFICIENT_SKILL")
       expect(log.timeConsumed).toBe(0)
     })
 
-    it("should fail Gather when Woodcutting is level 0", () => {
+    it("should fail Gather when Woodcutting is level 0", async () => {
       const state = createWorld("ore-test")
       const areaId = getTreeAreaId(state)
       makeAreaKnown(state, areaId)
@@ -895,13 +895,13 @@ describe("Engine", () => {
         focusMaterialId: material.materialId,
       }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("INSUFFICIENT_SKILL")
     })
 
-    it("should fail Fight when Combat is level 0", () => {
+    it("should fail Fight when Combat is level 0", async () => {
       const state = createWorld("ore-test")
       const areaId = getDistance1AreaId(state)
       makeAreaKnown(state, areaId)
@@ -923,28 +923,28 @@ describe("Engine", () => {
       // Skills start at 0, so Combat should be 0
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("INSUFFICIENT_SKILL")
       expect(log.timeConsumed).toBe(0)
     })
 
-    it("should fail Craft when Smithing is level 0", () => {
+    it("should fail Craft when Smithing is level 0", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD) // Must be at smithing guild
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
       // Skills start at 0, so Smithing should be 0
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("INSUFFICIENT_SKILL")
       expect(log.timeConsumed).toBe(0)
     })
 
-    it("should succeed Gather when Mining is level 1", () => {
+    it("should succeed Gather when Mining is level 1", async () => {
       const state = createWorld("ore-test")
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
@@ -964,7 +964,7 @@ describe("Engine", () => {
         focusMaterialId: material!.materialId,
       }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       // Should not fail due to skill
       expect(log.failureType).not.toBe("INSUFFICIENT_SKILL")
@@ -973,138 +973,138 @@ describe("Engine", () => {
   })
 
   describe("GuildEnrolment action", () => {
-    it("should take skill from level 0 to level 1", () => {
+    it("should take skill from level 0 to level 1", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       expect(state.player.skills.Mining.level).toBe(0)
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(true)
       expect(state.player.skills.Mining.level).toBe(1)
       expect(state.player.skills.Mining.xp).toBe(0)
     })
 
-    it("should consume 3 ticks", () => {
+    it("should consume 3 ticks", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       const initialTicks = state.time.sessionRemainingTicks
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.timeConsumed).toBe(3)
       expect(state.time.sessionRemainingTicks).toBe(initialTicks - 3)
     })
 
-    it("should fail if not at guild location", () => {
+    it("should fail if not at guild location", async () => {
       const state = createWorld("ore-test")
       // At Town Square, not at any guild
       setTownLocation(state, null)
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("WRONG_LOCATION")
     })
 
-    it("should fail if at wrong guild location", () => {
+    it("should fail if at wrong guild location", async () => {
       const state = createWorld("ore-test")
       // At Combat Guild, trying to enrol in Mining
       setTownLocation(state, TOWN_LOCATIONS.COMBAT_GUILD)
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("WRONG_LOCATION")
     })
 
-    it("should not grant XP (just unlocks the skill)", () => {
+    it("should not grant XP (just unlocks the skill)", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.skillGained).toBeUndefined()
       expect(state.player.skills.Mining.xp).toBe(0)
     })
 
-    it("should fail if skill is already level 1 or higher", () => {
+    it("should fail if skill is already level 1 or higher", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       state.player.skills.Mining = { level: 1, xp: 0 }
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("ALREADY_ENROLLED")
       expect(log.timeConsumed).toBe(0)
     })
 
-    it("should work for all skills", () => {
+    it("should work for all skills", async () => {
       const state = createWorld("ore-test")
 
       // Enrol in Mining
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-      let log = executeAction(state, { type: "Enrol", skill: "Mining" })
+      let log = await executeAction(state, { type: "Enrol", skill: "Mining" })
       expect(log.success).toBe(true)
       expect(state.player.skills.Mining.level).toBe(1)
 
       // Enrol in Woodcutting
       setTownLocation(state, TOWN_LOCATIONS.FORESTERS_GUILD)
-      log = executeAction(state, { type: "Enrol", skill: "Woodcutting" })
+      log = await executeAction(state, { type: "Enrol", skill: "Woodcutting" })
       expect(log.success).toBe(true)
       expect(state.player.skills.Woodcutting.level).toBe(1)
 
       // Enrol in Combat
       setTownLocation(state, TOWN_LOCATIONS.COMBAT_GUILD)
-      log = executeAction(state, { type: "Enrol", skill: "Combat" })
+      log = await executeAction(state, { type: "Enrol", skill: "Combat" })
       expect(log.success).toBe(true)
       expect(state.player.skills.Combat.level).toBe(1)
 
       // Enrol in Smithing
       setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD)
-      log = executeAction(state, { type: "Enrol", skill: "Smithing" })
+      log = await executeAction(state, { type: "Enrol", skill: "Smithing" })
       expect(log.success).toBe(true)
       expect(state.player.skills.Smithing.level).toBe(1)
     })
 
-    it("should log action details", () => {
+    it("should log action details", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.actionType).toBe("Enrol")
       expect(log.parameters).toEqual({ skill: "Mining" })
       expect(log.stateDeltaSummary).toContain("Mining")
     })
 
-    it("should fail if session has ended", () => {
+    it("should fail if session has ended", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       state.time.sessionRemainingTicks = 0
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("SESSION_ENDED")
     })
 
-    it("should fail if not enough time remaining", () => {
+    it("should fail if not enough time remaining", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       state.time.sessionRemainingTicks = 2 // Need 3 ticks
       const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
 
-      const log = executeAction(state, action)
+      const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("SESSION_ENDED")
@@ -1112,12 +1112,12 @@ describe("Engine", () => {
   })
 
   describe("TravelToLocation action", () => {
-    it("should move player to location in town (free)", () => {
+    it("should move player to location in town (free)", async () => {
       const state = createWorld("ore-test")
       state.exploration.playerState.currentLocationId = null // At Town Square
       const initialTicks = state.time.sessionRemainingTicks
 
-      const log = executeAction(state, {
+      const log = await executeAction(state, {
         type: "TravelToLocation",
         locationId: TOWN_LOCATIONS.SMITHING_GUILD,
       })
@@ -1128,7 +1128,7 @@ describe("Engine", () => {
       expect(state.exploration.playerState.currentLocationId).toBe(TOWN_LOCATIONS.SMITHING_GUILD)
     })
 
-    it("should move player to location in wilderness (1 tick)", () => {
+    it("should move player to location in wilderness (1 tick)", async () => {
       const state = createWorld("ore-test")
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
@@ -1141,7 +1141,7 @@ describe("Engine", () => {
       const area = state.exploration.areas.get(areaId)!
       const nodeLocation = area.locations[0]
 
-      const log = executeAction(state, {
+      const log = await executeAction(state, {
         type: "TravelToLocation",
         locationId: nodeLocation.id,
       })
@@ -1152,7 +1152,7 @@ describe("Engine", () => {
       expect(state.exploration.playerState.currentLocationId).toBe(nodeLocation.id)
     })
 
-    it("should fail if location not discovered", () => {
+    it("should fail if location not discovered", async () => {
       const state = createWorld("ore-test")
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
@@ -1163,7 +1163,7 @@ describe("Engine", () => {
       const area = state.exploration.areas.get(areaId)!
       const nodeLocation = area.locations[0]
 
-      const log = executeAction(state, {
+      const log = await executeAction(state, {
         type: "TravelToLocation",
         locationId: nodeLocation.id,
       })
@@ -1172,11 +1172,11 @@ describe("Engine", () => {
       expect(log.failureType).toBe("LOCATION_NOT_DISCOVERED")
     })
 
-    it("should fail if already at location", () => {
+    it("should fail if already at location", async () => {
       const state = createWorld("ore-test")
       state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.SMITHING_GUILD
 
-      const log = executeAction(state, {
+      const log = await executeAction(state, {
         type: "TravelToLocation",
         locationId: TOWN_LOCATIONS.SMITHING_GUILD,
       })
@@ -1185,11 +1185,11 @@ describe("Engine", () => {
       expect(log.failureType).toBe("ALREADY_AT_LOCATION")
     })
 
-    it("should fail if not at hub (null)", () => {
+    it("should fail if not at hub (null)", async () => {
       const state = createWorld("ore-test")
       state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD // Not at hub
 
-      const log = executeAction(state, {
+      const log = await executeAction(state, {
         type: "TravelToLocation",
         locationId: TOWN_LOCATIONS.SMITHING_GUILD,
       })
@@ -1200,12 +1200,12 @@ describe("Engine", () => {
   })
 
   describe("Leave action", () => {
-    it("should return player to hub in town (free)", () => {
+    it("should return player to hub in town (free)", async () => {
       const state = createWorld("ore-test")
       state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.SMITHING_GUILD
       const initialTicks = state.time.sessionRemainingTicks
 
-      const log = executeAction(state, { type: "Leave" })
+      const log = await executeAction(state, { type: "Leave" })
 
       expect(log.success).toBe(true)
       expect(log.timeConsumed).toBe(0) // Free in town
@@ -1213,7 +1213,7 @@ describe("Engine", () => {
       expect(state.exploration.playerState.currentLocationId).toBeNull()
     })
 
-    it("should return player to clearing in wilderness (1 tick)", () => {
+    it("should return player to clearing in wilderness (1 tick)", async () => {
       const state = createWorld("ore-test")
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
@@ -1224,7 +1224,7 @@ describe("Engine", () => {
       state.exploration.playerState.currentLocationId = nodeLocation.id
       const initialTicks = state.time.sessionRemainingTicks
 
-      const log = executeAction(state, { type: "Leave" })
+      const log = await executeAction(state, { type: "Leave" })
 
       expect(log.success).toBe(true)
       expect(log.timeConsumed).toBe(1) // Costs 1 tick in wilderness
@@ -1232,11 +1232,11 @@ describe("Engine", () => {
       expect(state.exploration.playerState.currentLocationId).toBeNull()
     })
 
-    it("should fail if already at hub", () => {
+    it("should fail if already at hub", async () => {
       const state = createWorld("ore-test")
       state.exploration.playerState.currentLocationId = null // Already at hub
 
-      const log = executeAction(state, { type: "Leave" })
+      const log = await executeAction(state, { type: "Leave" })
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("ALREADY_AT_HUB")

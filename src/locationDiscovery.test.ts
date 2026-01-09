@@ -64,7 +64,7 @@ function discoverLocation(state: WorldState, locationId: string): void {
 
 describe("Location Discovery", () => {
   describe("Nodes not visible until discovered", () => {
-    it("should NOT show nodes at an area until locations are discovered", () => {
+    it("should NOT show nodes at an area until locations are discovered", async () => {
       const state = createWorld("ore-test")
       const oreAreaId = getOreAreaId(state)
       makeAreaKnown(state, oreAreaId)
@@ -86,7 +86,7 @@ describe("Location Discovery", () => {
       expect(formatted).not.toContain("Ore vein")
     })
 
-    it("should show nodes AFTER their location is discovered", () => {
+    it("should show nodes AFTER their location is discovered", async () => {
       const state = createWorld("ore-test")
       const oreAreaId = getOreAreaId(state)
       makeAreaKnown(state, oreAreaId)
@@ -105,7 +105,7 @@ describe("Location Discovery", () => {
   })
 
   describe("Gather requires discovered location", () => {
-    it("should fail Gather if node location is not discovered", () => {
+    it("should fail Gather if node location is not discovered", async () => {
       const state = createWorld("ore-test")
       state.player.skills.Mining = { level: 1, xp: 0 }
       const oreAreaId = getOreAreaId(state)
@@ -123,13 +123,13 @@ describe("Location Discovery", () => {
         focusMaterialId: material.materialId,
       }
 
-      const log = executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("LOCATION_NOT_DISCOVERED")
     })
 
-    it("should succeed Gather if node location IS discovered", () => {
+    it("should succeed Gather if node location IS discovered", async () => {
       const state = createWorld("ore-test")
       state.player.skills.Mining = { level: 1, xp: 0 }
       const oreAreaId = getOreAreaId(state)
@@ -150,7 +150,7 @@ describe("Location Discovery", () => {
         focusMaterialId: material.materialId,
       }
 
-      const log = executeAction(state, action)
+      const log = await executeAction(state, action)
 
       // Should not fail due to location not discovered
       expect(log.failureType).not.toBe("LOCATION_NOT_DISCOVERED")
@@ -158,7 +158,7 @@ describe("Location Discovery", () => {
   })
 
   describe("Explore discovers locations", () => {
-    it("should discover a location or connection via Explore action", () => {
+    it("should discover a location or connection via Explore action", async () => {
       const state = createWorld("ore-test")
       state.player.skills.Exploration = { level: 1, xp: 0 }
       const oreAreaId = getOreAreaId(state)
@@ -173,7 +173,7 @@ describe("Location Discovery", () => {
       const initialKnownConnections = state.exploration.playerState.knownConnectionIds.length
       const action: ExploreAction = { type: "Explore" }
 
-      const log = executeExplore(state, action)
+      const log = await executeExplore(state, action)
 
       if (log.success) {
         // Should have discovered either a location or a connection
@@ -188,7 +188,7 @@ describe("Location Discovery", () => {
       }
     })
 
-    it("should allow gathering after Explore discovers the node location", () => {
+    it("should allow gathering after Explore discovers the node location", async () => {
       const state = createWorld("ore-test")
       state.player.skills.Exploration = { level: 1, xp: 0 }
       state.player.skills.Mining = { level: 1, xp: 0 }
@@ -202,7 +202,7 @@ describe("Location Discovery", () => {
         if (state.time.sessionRemainingTicks <= 0) break
 
         const exploreAction: ExploreAction = { type: "Explore" }
-        const exploreLog = executeExplore(state, exploreAction)
+        const exploreLog = await executeExplore(state, exploreAction)
 
         if (exploreLog.success && exploreLog.explorationLog?.discoveredLocationId) {
           const locId = exploreLog.explorationLog.discoveredLocationId
@@ -230,7 +230,7 @@ describe("Location Discovery", () => {
             focusMaterialId: material.materialId,
           }
 
-          const gatherLog = executeAction(state, gatherAction)
+          const gatherLog = await executeAction(state, gatherAction)
 
           // Should NOT fail due to location not discovered
           expect(gatherLog.failureType).not.toBe("LOCATION_NOT_DISCOVERED")

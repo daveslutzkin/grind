@@ -385,24 +385,24 @@ function createExplorationWorld(seed: string): WorldState {
 
 describe("Survey Action", () => {
   describe("preconditions", () => {
-    it("should fail if player is not in exploration guild (level 0)", () => {
+    it("should fail if player is not in exploration guild (level 0)", async () => {
       const state = createExplorationWorld("survey-test")
       state.player.skills.Exploration = { level: 0, xp: 0 }
       const action: SurveyAction = { type: "Survey" }
 
-      const log = executeSurvey(state, action)
+      const log = await executeSurvey(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("NOT_IN_EXPLORATION_GUILD")
     })
 
-    it("should fail if session has ended", () => {
+    it("should fail if session has ended", async () => {
       const state = createExplorationWorld("survey-test")
       state.player.skills.Exploration = { level: 1, xp: 0 }
       state.time.sessionRemainingTicks = 0
       const action: SurveyAction = { type: "Survey" }
 
-      const log = executeSurvey(state, action)
+      const log = await executeSurvey(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("SESSION_ENDED")
@@ -410,13 +410,13 @@ describe("Survey Action", () => {
   })
 
   describe("successful survey", () => {
-    it("should discover a new area when successful", () => {
+    it("should discover a new area when successful", async () => {
       const state = createExplorationWorld("survey-success")
       state.player.skills.Exploration = { level: 1, xp: 0 }
       const action: SurveyAction = { type: "Survey" }
       const knownBefore = state.exploration!.playerState.knownAreaIds.length
 
-      const log = executeSurvey(state, action)
+      const log = await executeSurvey(state, action)
 
       // Should eventually succeed (may take multiple internal rolls)
       if (log.success) {
@@ -425,13 +425,13 @@ describe("Survey Action", () => {
       }
     })
 
-    it("should also discover the connection to the new area", () => {
+    it("should also discover the connection to the new area", async () => {
       const state = createExplorationWorld("survey-conn")
       state.player.skills.Exploration = { level: 1, xp: 0 }
       const action: SurveyAction = { type: "Survey" }
       const connsBefore = state.exploration!.playerState.knownConnectionIds.length
 
-      const log = executeSurvey(state, action)
+      const log = await executeSurvey(state, action)
 
       if (log.success) {
         expect(state.exploration!.playerState.knownConnectionIds.length).toBe(connsBefore + 1)
@@ -439,25 +439,25 @@ describe("Survey Action", () => {
       }
     })
 
-    it("should consume time based on rolls until success", () => {
+    it("should consume time based on rolls until success", async () => {
       const state = createExplorationWorld("survey-time")
       state.player.skills.Exploration = { level: 1, xp: 0 }
       const initialTick = state.time.currentTick
       const action: SurveyAction = { type: "Survey" }
 
-      const log = executeSurvey(state, action)
+      const log = await executeSurvey(state, action)
 
       expect(log.timeConsumed).toBeGreaterThan(0)
       expect(state.time.currentTick).toBe(initialTick + log.timeConsumed)
     })
 
-    it("should grant Exploration XP", () => {
+    it("should grant Exploration XP", async () => {
       const state = createExplorationWorld("survey-xp")
       const initialLevel = 1
       state.player.skills.Exploration = { level: initialLevel, xp: 0 }
       const action: SurveyAction = { type: "Survey" }
 
-      const log = executeSurvey(state, action)
+      const log = await executeSurvey(state, action)
 
       if (log.success) {
         expect(log.skillGained).toBeDefined()
@@ -473,12 +473,12 @@ describe("Survey Action", () => {
   })
 
   describe("luck surfacing", () => {
-    it("should include luck info in the log", () => {
+    it("should include luck info in the log", async () => {
       const state = createExplorationWorld("survey-luck")
       state.player.skills.Exploration = { level: 1, xp: 0 }
       const action: SurveyAction = { type: "Survey" }
 
-      const log = executeSurvey(state, action)
+      const log = await executeSurvey(state, action)
 
       if (log.success) {
         expect(log.explorationLog?.luckInfo).toBeDefined()
@@ -492,18 +492,18 @@ describe("Survey Action", () => {
 
 describe("Explore Action", () => {
   describe("preconditions", () => {
-    it("should fail if player is not in exploration guild", () => {
+    it("should fail if player is not in exploration guild", async () => {
       const state = createExplorationWorld("explore-test")
       state.player.skills.Exploration = { level: 0, xp: 0 }
       const action: ExploreAction = { type: "Explore" }
 
-      const log = executeExplore(state, action)
+      const log = await executeExplore(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("NOT_IN_EXPLORATION_GUILD")
     })
 
-    it("should fail if area is fully explored", () => {
+    it("should fail if area is fully explored", async () => {
       const state = createExplorationWorld("explore-full")
       state.player.skills.Exploration = { level: 1, xp: 0 }
       // Mark all locations and connections as known for current area
@@ -524,7 +524,7 @@ describe("Explore Action", () => {
       }
       const action: ExploreAction = { type: "Explore" }
 
-      const log = executeExplore(state, action)
+      const log = await executeExplore(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("AREA_FULLY_EXPLORED")
@@ -532,7 +532,7 @@ describe("Explore Action", () => {
   })
 
   describe("successful exploration", () => {
-    it("should discover a location or connection in current area", () => {
+    it("should discover a location or connection in current area", async () => {
       const state = createExplorationWorld("explore-success")
       state.player.skills.Exploration = { level: 1, xp: 0 }
       // Move to a distance 1 area that has locations
@@ -546,7 +546,7 @@ describe("Explore Action", () => {
       }
       const action: ExploreAction = { type: "Explore" }
 
-      const log = executeExplore(state, action)
+      const log = await executeExplore(state, action)
 
       if (log.success) {
         expect(
@@ -555,24 +555,24 @@ describe("Explore Action", () => {
       }
     })
 
-    it("should consume time based on rolls until success", () => {
+    it("should consume time based on rolls until success", async () => {
       const state = createExplorationWorld("explore-time")
       state.player.skills.Exploration = { level: 1, xp: 0 }
       const initialTick = state.time.currentTick
       const action: ExploreAction = { type: "Explore" }
 
-      const log = executeExplore(state, action)
+      const log = await executeExplore(state, action)
 
       expect(log.timeConsumed).toBeGreaterThan(0)
       expect(state.time.currentTick).toBe(initialTick + log.timeConsumed)
     })
 
-    it("should grant Exploration XP", () => {
+    it("should grant Exploration XP", async () => {
       const state = createExplorationWorld("explore-xp")
       state.player.skills.Exploration = { level: 1, xp: 0 }
       const action: ExploreAction = { type: "Explore" }
 
-      const log = executeExplore(state, action)
+      const log = await executeExplore(state, action)
 
       if (log.success) {
         expect(log.skillGained).toBeDefined()
@@ -584,7 +584,7 @@ describe("Explore Action", () => {
 
 describe("ExplorationTravel Action", () => {
   describe("preconditions", () => {
-    it("should fail if destination area is not known and no direct connection exists", () => {
+    it("should fail if destination area is not known and no direct connection exists", async () => {
       const state = createExplorationWorld("travel-test")
       // area-d1-i0 is not known and no connection is known
       const action: ExplorationTravelAction = {
@@ -592,13 +592,13 @@ describe("ExplorationTravel Action", () => {
         destinationAreaId: "area-d1-i0",
       }
 
-      const log = executeExplorationTravel(state, action)
+      const log = await executeExplorationTravel(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("AREA_NOT_KNOWN")
     })
 
-    it("should fail if no path to destination", () => {
+    it("should fail if no path to destination", async () => {
       const state = createExplorationWorld("travel-no-path")
       // Know an area but don't know any connections
       state.exploration!.playerState.knownAreaIds.push("area-d1-i0")
@@ -607,20 +607,20 @@ describe("ExplorationTravel Action", () => {
         destinationAreaId: "area-d1-i0",
       }
 
-      const log = executeExplorationTravel(state, action)
+      const log = await executeExplorationTravel(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("NO_PATH_TO_DESTINATION")
     })
 
-    it("should fail if already in destination area", () => {
+    it("should fail if already in destination area", async () => {
       const state = createExplorationWorld("travel-same")
       const action: ExplorationTravelAction = {
         type: "ExplorationTravel",
         destinationAreaId: "TOWN",
       }
 
-      const log = executeExplorationTravel(state, action)
+      const log = await executeExplorationTravel(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("ALREADY_IN_AREA")
@@ -628,7 +628,7 @@ describe("ExplorationTravel Action", () => {
   })
 
   describe("successful travel", () => {
-    it("should move player to destination area", () => {
+    it("should move player to destination area", async () => {
       const state = createExplorationWorld("travel-success")
       // Know an area and its connection from town
       const destAreaId = "area-d1-i0"
@@ -639,13 +639,13 @@ describe("ExplorationTravel Action", () => {
         destinationAreaId: destAreaId,
       }
 
-      const log = executeExplorationTravel(state, action)
+      const log = await executeExplorationTravel(state, action)
 
       expect(log.success).toBe(true)
       expect(state.exploration!.playerState.currentAreaId).toBe(destAreaId)
     })
 
-    it("should allow direct travel to unknown area via known connection", () => {
+    it("should allow direct travel to unknown area via known connection", async () => {
       const state = createExplorationWorld("travel-unknown")
       // Know a connection to an unknown area (simulating discovered connection from explore)
       const destAreaId = "area-d1-i0"
@@ -658,7 +658,7 @@ describe("ExplorationTravel Action", () => {
 
       expect(state.exploration!.playerState.knownAreaIds).not.toContain(destAreaId)
 
-      const log = executeExplorationTravel(state, action)
+      const log = await executeExplorationTravel(state, action)
 
       expect(log.success).toBe(true)
       expect(state.exploration!.playerState.currentAreaId).toBe(destAreaId)
@@ -667,7 +667,7 @@ describe("ExplorationTravel Action", () => {
       expect(log.stateDeltaSummary).toContain("discovered")
     })
 
-    it("should consume time based on travel multiplier", () => {
+    it("should consume time based on travel multiplier", async () => {
       const state = createExplorationWorld("travel-time")
       const destAreaId = "area-d1-i0"
       state.exploration!.playerState.knownAreaIds.push(destAreaId)
@@ -678,7 +678,7 @@ describe("ExplorationTravel Action", () => {
         destinationAreaId: destAreaId,
       }
 
-      const log = executeExplorationTravel(state, action)
+      const log = await executeExplorationTravel(state, action)
 
       // Time = BASE_TRAVEL_TIME * multiplier (10 * 1-4)
       expect(log.timeConsumed).toBeGreaterThanOrEqual(10)
@@ -686,7 +686,7 @@ describe("ExplorationTravel Action", () => {
       expect(state.time.currentTick).toBe(initialTick + log.timeConsumed)
     })
 
-    it("should consume 2x time when scavenging", () => {
+    it("should consume 2x time when scavenging", async () => {
       const state = createExplorationWorld("travel-scavenge")
       const destAreaId = "area-d1-i0"
       state.exploration!.playerState.knownAreaIds.push(destAreaId)
@@ -697,14 +697,14 @@ describe("ExplorationTravel Action", () => {
         scavenge: true,
       }
 
-      const log = executeExplorationTravel(state, action)
+      const log = await executeExplorationTravel(state, action)
 
       // Time = BASE_TRAVEL_TIME * multiplier * 2 (for scavenge)
       expect(log.timeConsumed).toBeGreaterThanOrEqual(20)
       expect(log.timeConsumed).toBeLessThanOrEqual(80)
     })
 
-    it("should support multi-hop pathfinding", () => {
+    it("should support multi-hop pathfinding", async () => {
       const state = createExplorationWorld("travel-multihop")
       // Set up: Know area-d1-i0 and area-d1-i1, and connections
       const area0 = "area-d1-i0"
@@ -731,7 +731,7 @@ describe("ExplorationTravel Action", () => {
         destinationAreaId: area1,
       }
 
-      const log = executeExplorationTravel(state, action)
+      const log = await executeExplorationTravel(state, action)
 
       expect(log.success).toBe(true)
       expect(state.exploration!.playerState.currentAreaId).toBe(area1)
@@ -742,13 +742,13 @@ describe("ExplorationTravel Action", () => {
 })
 
 describe("XP on Session End", () => {
-  it("should NOT grant XP when Survey fails due to session end (no discovery)", () => {
+  it("should NOT grant XP when Survey fails due to session end (no discovery)", async () => {
     const state = createExplorationWorld("survey-session-end")
     state.player.skills.Exploration = { level: 1, xp: 0 }
     state.time.sessionRemainingTicks = 4 // Just enough for 2 rolls
     const action: SurveyAction = { type: "Survey" }
 
-    const log = executeSurvey(state, action)
+    const log = await executeSurvey(state, action)
 
     // XP is only granted on successful discovery, not on failed attempts
     if (!log.success) {
@@ -756,7 +756,7 @@ describe("XP on Session End", () => {
     }
   })
 
-  it("should NOT grant XP when Explore fails due to session end (no discovery)", () => {
+  it("should NOT grant XP when Explore fails due to session end (no discovery)", async () => {
     const state = createExplorationWorld("explore-session-end")
     state.player.skills.Exploration = { level: 1, xp: 0 }
     // Move to an area that has content
@@ -766,7 +766,7 @@ describe("XP on Session End", () => {
     state.time.sessionRemainingTicks = 4
 
     const action: ExploreAction = { type: "Explore" }
-    const log = executeExplore(state, action)
+    const log = await executeExplore(state, action)
 
     // XP is only granted on successful discovery, not on failed attempts
     if (!log.success) {
@@ -790,7 +790,7 @@ describe("Lazy Area Generation", () => {
     }
   })
 
-  it("should generate area content when discovered via Survey", () => {
+  it("should generate area content when discovered via Survey", async () => {
     const state = createExplorationWorld("lazy-survey")
     state.player.skills.Exploration = { level: 1, xp: 0 }
 
@@ -800,7 +800,7 @@ describe("Lazy Area Generation", () => {
     expect(allUngenerated).toBe(true)
 
     const action: SurveyAction = { type: "Survey" }
-    const log = executeSurvey(state, action)
+    const log = await executeSurvey(state, action)
 
     if (log.success && log.explorationLog?.discoveredAreaId) {
       const discoveredArea = state.exploration!.areas.get(log.explorationLog.discoveredAreaId)!
@@ -810,12 +810,12 @@ describe("Lazy Area Generation", () => {
 })
 
 describe("Exploration Guild Enrollment Benefits", () => {
-  it("should grant initial area and connection when enrolling in Exploration guild", () => {
+  it("should grant initial area and connection when enrolling in Exploration guild", async () => {
     const state = createExplorationWorld("enrol-benefits")
     const initialKnownAreas = state.exploration!.playerState.knownAreaIds.length
     const initialKnownConnections = state.exploration!.playerState.knownConnectionIds.length
 
-    const result = grantExplorationGuildBenefits(state)
+    const result = await grantExplorationGuildBenefits(state)
 
     expect(result.discoveredAreaId).toBeTruthy()
     expect(result.discoveredConnectionId).toBeTruthy()
@@ -827,7 +827,7 @@ describe("Exploration Guild Enrollment Benefits", () => {
 })
 
 describe("Explore Discovering Unknown Connections", () => {
-  it("should be able to discover connections to unknown areas with lower probability", () => {
+  it("should be able to discover connections to unknown areas with lower probability", async () => {
     const state = createExplorationWorld("explore-unknown-conn")
     state.player.skills.Exploration = { level: 5, xp: 0 }
 
@@ -857,7 +857,7 @@ describe("Explore Discovering Unknown Connections", () => {
     }
 
     const action: ExploreAction = { type: "Explore" }
-    const log = executeExplore(state, action)
+    const log = await executeExplore(state, action)
 
     // If there are unknown connections, the explore should be able to find them
     // (it might find something else, but the option should exist)
