@@ -98,6 +98,72 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
       }
     }
 
+    case "mine": {
+      // Alias for gather mining - finds ore vein in current area
+      const modeName = parts[1]?.toLowerCase()
+
+      if (!modeName) {
+        if (context.logErrors) {
+          console.log("Usage: mine <mode> [material]")
+          console.log("  Modes: focus <material>, careful, appraise")
+        }
+        return null
+      }
+
+      if (modeName === "focus") {
+        const focusMaterial = parts[2]?.toUpperCase()
+        if (!focusMaterial) {
+          if (context.logErrors) {
+            console.log("FOCUS mode requires a material: mine focus <material>")
+          }
+          return null
+        }
+        return { type: "Mine", mode: GatherMode.FOCUS, focusMaterialId: focusMaterial }
+      } else if (modeName === "careful") {
+        return { type: "Mine", mode: GatherMode.CAREFUL_ALL }
+      } else if (modeName === "appraise") {
+        return { type: "Mine", mode: GatherMode.APPRAISE }
+      } else {
+        if (context.logErrors) {
+          console.log("Invalid mine mode. Use: focus, careful, or appraise")
+        }
+        return null
+      }
+    }
+
+    case "chop": {
+      // Alias for gather woodcutting - finds tree stand in current area
+      const modeName = parts[1]?.toLowerCase()
+
+      if (!modeName) {
+        if (context.logErrors) {
+          console.log("Usage: chop <mode> [material]")
+          console.log("  Modes: focus <material>, careful, appraise")
+        }
+        return null
+      }
+
+      if (modeName === "focus") {
+        const focusMaterial = parts[2]?.toUpperCase()
+        if (!focusMaterial) {
+          if (context.logErrors) {
+            console.log("FOCUS mode requires a material: chop focus <material>")
+          }
+          return null
+        }
+        return { type: "Chop", mode: GatherMode.FOCUS, focusMaterialId: focusMaterial }
+      } else if (modeName === "careful") {
+        return { type: "Chop", mode: GatherMode.CAREFUL_ALL }
+      } else if (modeName === "appraise") {
+        return { type: "Chop", mode: GatherMode.APPRAISE }
+      } else {
+        if (context.logErrors) {
+          console.log("Invalid chop mode. Use: focus, careful, or appraise")
+        }
+        return null
+      }
+    }
+
     case "explore": {
       // Discover locations (nodes) in the current area
       return { type: "Explore" }
@@ -256,6 +322,8 @@ export function printHelp(state: WorldState, options?: { showHints?: boolean }):
   console.log("│ gather <node> focus <mat>  - Focus on one material          │")
   console.log("│ gather <node> careful      - Carefully extract all          │")
   console.log("│ gather <node> appraise     - Inspect node contents          │")
+  console.log("│ mine <mode> [material]     - Mine ore vein (focus/careful)  │")
+  console.log("│ chop <mode> [material]     - Chop tree stand (focus/careful)│")
   console.log("│ fight <enemy>       - Fight an enemy at current area        │")
   console.log("│ craft <recipe>      - Craft at guild hall                   │")
   console.log("│ store <item> <qty>  - Store items at warehouse              │")

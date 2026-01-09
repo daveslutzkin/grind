@@ -19,7 +19,6 @@ import type {
   LevelUp,
 } from "./types.js"
 import { rollFloat, roll } from "./rng.js"
-import { ExplorationLocationType } from "./types.js"
 import { consumeTime } from "./stateHelpers.js"
 import { generateNodesForArea } from "./world.js"
 
