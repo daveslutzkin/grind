@@ -3,7 +3,14 @@ import type { Action, GatherMode, SkillID } from "../types.js"
 /**
  * Valid skill names for normalization
  */
-const VALID_SKILLS: SkillID[] = ["Mining", "Woodcutting", "Combat", "Smithing", "Woodcrafting"]
+const VALID_SKILLS: SkillID[] = [
+  "Mining",
+  "Woodcutting",
+  "Combat",
+  "Smithing",
+  "Woodcrafting",
+  "Exploration",
+]
 
 /**
  * Normalize a skill name to match the exact SkillID casing

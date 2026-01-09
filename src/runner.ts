@@ -504,7 +504,14 @@ export function computeSessionStats(state: WorldState, stats: SessionStats): Com
   }
 
   const skillDelta: string[] = []
-  const skills: SkillID[] = ["Mining", "Woodcutting", "Combat", "Smithing"]
+  const skills: SkillID[] = [
+    "Mining",
+    "Woodcutting",
+    "Combat",
+    "Smithing",
+    "Woodcrafting",
+    "Exploration",
+  ]
   for (const skill of skills) {
     const startXP = getTotalXP(stats.startingSkills[skill])
     const endXP = getTotalXP(state.player.skills[skill])

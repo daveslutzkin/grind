@@ -77,20 +77,6 @@ export interface Area {
 }
 
 /**
- * Player's exploration state
- */
-export interface ExplorationState {
-  currentAreaId: AreaID // Which area the player is in
-  currentLocationId: string | null // Which location within that area (if any)
-  knownAreaIds: Set<AreaID> // Discovered areas
-  knownLocationIds: Set<string> // Discovered locations within areas
-  knownConnectionIds: Set<string> // Discovered connections (formatted as "areaId1->areaId2")
-  // Luck tracking
-  totalLuckDelta: number // Cumulative ticks saved/lost
-  currentStreak: number // Consecutive lucky (positive) or unlucky (negative) discoveries
-}
-
-/**
  * Luck surfacing info for exploration actions
  */
 export interface ExplorationLuckInfo {

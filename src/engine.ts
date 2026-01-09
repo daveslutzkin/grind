@@ -14,17 +14,14 @@ import type {
   TravelToLocationAction,
   LeaveAction,
   FailureType,
-  ItemID,
   ContractCompletion,
-  SkillID,
   LevelUp,
   ExtractionLog,
   ItemStack,
   Node,
   GatheringSkillID,
 } from "./types.js"
-import { isInTown } from "./types.js"
-import { addXPToSkill, GatherMode } from "./types.js"
+import { isInTown, GatherMode } from "./types.js"
 import { roll, rollLootTable, rollFloat } from "./rng.js"
 import {
   executeSurvey,
@@ -32,7 +29,6 @@ import {
   executeExplorationTravel,
   grantExplorationGuildBenefits,
 } from "./exploration.js"
-
 import {
   checkAcceptContractAction,
   checkGatherAction,
@@ -46,17 +42,14 @@ import {
   checkLeaveAction,
   getNodeSkill,
 } from "./actionChecks.js"
-
-/**
- * Grant XP to a skill and handle level-ups
- * Returns any level-ups that occurred
- */
-function grantXP(state: WorldState, skill: SkillID, amount: number): LevelUp[] {
-  const result = addXPToSkill(state.player.skills[skill], amount)
-  state.player.skills[skill] = result.skill
-  // Fill in the skill ID for each level-up
-  return result.levelUps.map((lu) => ({ ...lu, skill }))
-}
+import {
+  consumeTime,
+  addToInventory,
+  removeFromInventory,
+  addToStorage,
+  grantXP,
+  checkAndCompleteContracts,
+} from "./stateHelpers.js"
 
 /**
  * Collect all level-ups from contract completions
@@ -104,181 +97,6 @@ function createFailureLog(
 function extractParameters(action: Action): Record<string, unknown> {
   const { type: _type, ...params } = action
   return params
-}
-
-function consumeTime(state: WorldState, ticks: number): void {
-  state.time.currentTick += ticks
-  state.time.sessionRemainingTicks -= ticks
-}
-
-function addToInventory(state: WorldState, itemId: ItemID, quantity: number): void {
-  const existing = state.player.inventory.find((i) => i.itemId === itemId)
-  if (existing) {
-    existing.quantity += quantity
-  } else {
-    state.player.inventory.push({ itemId, quantity })
-  }
-}
-
-function removeFromInventory(state: WorldState, itemId: ItemID, quantity: number): void {
-  const item = state.player.inventory.find((i) => i.itemId === itemId)
-  if (item) {
-    item.quantity -= quantity
-    if (item.quantity <= 0) {
-      const index = state.player.inventory.indexOf(item)
-      state.player.inventory.splice(index, 1)
-    }
-  }
-}
-
-function addToStorage(state: WorldState, itemId: ItemID, quantity: number): void {
-  const existing = state.player.storage.find((i) => i.itemId === itemId)
-  if (existing) {
-    existing.quantity += quantity
-  } else {
-    state.player.storage.push({ itemId, quantity })
-  }
-}
-
-/**
- * Check if contract rewards will fit in inventory after consuming requirements.
- * Returns true if rewards will fit, false otherwise.
- */
-function canFitContractRewards(
-  state: WorldState,
-  requirements: { itemId: ItemID; quantity: number }[],
-  rewards: { itemId: ItemID; quantity: number }[]
-): boolean {
-  // Simulate inventory state after consuming requirements
-  // Track which item types will be completely removed (freeing slots)
-  const simulatedInventory = new Map<ItemID, number>()
-  for (const item of state.player.inventory) {
-    simulatedInventory.set(item.itemId, item.quantity)
-  }
-
-  // Simulate consuming requirements from inventory
-  for (const req of requirements) {
-    const current = simulatedInventory.get(req.itemId) ?? 0
-    // We consume from inventory first; if not enough, remainder comes from storage
-    // For slot calculation, we only care about inventory
-    const toConsume = Math.min(current, req.quantity)
-    if (toConsume >= current) {
-      simulatedInventory.delete(req.itemId) // Slot freed
-    } else {
-      simulatedInventory.set(req.itemId, current - toConsume)
-    }
-  }
-
-  // Simulate adding rewards
-  for (const reward of rewards) {
-    const current = simulatedInventory.get(reward.itemId) ?? 0
-    simulatedInventory.set(reward.itemId, current + reward.quantity)
-  }
-
-  // Check if simulated inventory fits in capacity
-  return simulatedInventory.size <= state.player.inventoryCapacity
-}
-
-function checkContractCompletion(state: WorldState): ContractCompletion[] {
-  const completions: ContractCompletion[] = []
-
-  // Check each active contract
-  for (const contractId of [...state.player.activeContracts]) {
-    const contract = state.world.contracts.find((c) => c.id === contractId)
-    if (!contract) continue
-
-    // Check if all item requirements are met (in inventory or storage)
-    const allItemRequirementsMet = contract.requirements.every((req) => {
-      const inInventory = state.player.inventory.find((i) => i.itemId === req.itemId)
-      const inStorage = state.player.storage.find((i) => i.itemId === req.itemId)
-      const totalQuantity = (inInventory?.quantity ?? 0) + (inStorage?.quantity ?? 0)
-      return totalQuantity >= req.quantity
-    })
-
-    // Check if all kill requirements are met
-    const allKillRequirementsMet = (contract.killRequirements ?? []).every((req) => {
-      const progress = state.player.contractKillProgress[contractId]?.[req.enemyId] ?? 0
-      return progress >= req.count
-    })
-
-    // Check if rewards will fit in inventory (respecting slot capacity)
-    const rewardsWillFit = canFitContractRewards(state, contract.requirements, contract.rewards)
-
-    if (allItemRequirementsMet && allKillRequirementsMet && rewardsWillFit) {
-      // Record what we're consuming for the log
-      const itemsConsumed = contract.requirements.map((req) => ({
-        itemId: req.itemId,
-        quantity: req.quantity,
-      }))
-
-      // Consume required items (from inventory first, then storage)
-      for (const req of contract.requirements) {
-        let remaining = req.quantity
-
-        // Take from inventory first
-        const invItem = state.player.inventory.find((i) => i.itemId === req.itemId)
-        if (invItem) {
-          const takeFromInv = Math.min(invItem.quantity, remaining)
-          invItem.quantity -= takeFromInv
-          remaining -= takeFromInv
-          if (invItem.quantity <= 0) {
-            const index = state.player.inventory.indexOf(invItem)
-            state.player.inventory.splice(index, 1)
-          }
-        }
-
-        // Take remainder from storage
-        if (remaining > 0) {
-          const storageItem = state.player.storage.find((i) => i.itemId === req.itemId)
-          if (storageItem) {
-            storageItem.quantity -= remaining
-            if (storageItem.quantity <= 0) {
-              const index = state.player.storage.indexOf(storageItem)
-              state.player.storage.splice(index, 1)
-            }
-          }
-        }
-      }
-
-      // Record what we're granting for the log
-      const rewardsGranted = contract.rewards.map((reward) => ({
-        itemId: reward.itemId,
-        quantity: reward.quantity,
-      }))
-
-      // Grant contract rewards (items go to inventory)
-      for (const reward of contract.rewards) {
-        addToInventory(state, reward.itemId, reward.quantity)
-      }
-
-      // Award reputation
-      state.player.guildReputation += contract.reputationReward
-
-      // Award XP if contract has xpReward and capture level-ups
-      let contractLevelUps: LevelUp[] = []
-      if (contract.xpReward) {
-        contractLevelUps = grantXP(state, contract.xpReward.skill, contract.xpReward.amount)
-      }
-
-      // Remove from active contracts
-      const index = state.player.activeContracts.indexOf(contractId)
-      state.player.activeContracts.splice(index, 1)
-
-      // Clean up kill progress for this contract
-      delete state.player.contractKillProgress[contractId]
-
-      completions.push({
-        contractId,
-        itemsConsumed,
-        rewardsGranted,
-        reputationGained: contract.reputationReward,
-        xpGained: contract.xpReward,
-        levelUps: contractLevelUps.length > 0 ? contractLevelUps : undefined,
-      })
-    }
-  }
-
-  return completions
 }
 
 export function executeAction(state: WorldState, action: Action): ActionLog {
@@ -343,7 +161,7 @@ function executeAcceptContract(
   state.player.activeContracts.push(contractId)
 
   // Check for contract completion (after every successful action)
-  const contractsCompleted = checkContractCompletion(state)
+  const contractsCompleted = checkAndCompleteContracts(state)
 
   return {
     tickBefore,
@@ -471,7 +289,7 @@ function executeMultiMaterialGather(
     }
 
     // Check for contract completion
-    const contractsCompleted = checkContractCompletion(state)
+    const contractsCompleted = checkAndCompleteContracts(state)
 
     return {
       tickBefore,
@@ -600,7 +418,7 @@ function executeFocusExtraction(
   }
 
   // Check for contract completion
-  const contractsCompleted = checkContractCompletion(state)
+  const contractsCompleted = checkAndCompleteContracts(state)
 
   return {
     tickBefore,
@@ -670,7 +488,7 @@ function executeCarefulAllExtraction(
   }
 
   // Check for contract completion
-  const contractsCompleted = checkContractCompletion(state)
+  const contractsCompleted = checkAndCompleteContracts(state)
 
   return {
     tickBefore,
@@ -763,7 +581,7 @@ function executeFight(state: WorldState, action: FightAction, rolls: RngRoll[]):
   const levelUps = grantXP(state, "Combat", 1)
 
   // Check for contract completion (after every successful action)
-  const contractsCompleted = checkContractCompletion(state)
+  const contractsCompleted = checkAndCompleteContracts(state)
 
   return {
     tickBefore,
@@ -808,11 +626,11 @@ function executeCraft(state: WorldState, action: CraftAction, rolls: RngRoll[]):
   // Produce output
   addToInventory(state, recipe.output.itemId, recipe.output.quantity)
 
-  // Grant XP
-  const levelUps = grantXP(state, "Smithing", 1)
+  // Grant XP to the skill matching the recipe's guild type
+  const levelUps = grantXP(state, recipe.guildType, 1)
 
   // Check for contract completion (after every successful action)
-  const contractsCompleted = checkContractCompletion(state)
+  const contractsCompleted = checkAndCompleteContracts(state)
 
   return {
     tickBefore,
@@ -820,7 +638,7 @@ function executeCraft(state: WorldState, action: CraftAction, rolls: RngRoll[]):
     parameters: { recipeId },
     success: true,
     timeConsumed: check.timeCost,
-    skillGained: { skill: "Smithing", amount: 1 },
+    skillGained: { skill: recipe.guildType, amount: 1 },
     levelUps: mergeLevelUps(levelUps, contractsCompleted),
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
@@ -845,7 +663,7 @@ function executeStore(state: WorldState, action: StoreAction, rolls: RngRoll[]):
   addToStorage(state, itemId, quantity)
 
   // Check for contract completion (after every successful action)
-  const contractsCompleted = checkContractCompletion(state)
+  const contractsCompleted = checkAndCompleteContracts(state)
 
   return {
     tickBefore,
@@ -882,7 +700,7 @@ function executeDrop(state: WorldState, action: DropAction, rolls: RngRoll[]): A
   removeFromInventory(state, itemId, quantity)
 
   // Check for contract completion (after every successful action)
-  const contractsCompleted = checkContractCompletion(state)
+  const contractsCompleted = checkAndCompleteContracts(state)
 
   return {
     tickBefore,
@@ -929,7 +747,7 @@ function executeTurnInCombatToken(
   }
 
   // Check for contract completion (after every successful action)
-  const contractsCompleted = checkContractCompletion(state)
+  const contractsCompleted = checkAndCompleteContracts(state)
 
   return {
     tickBefore,
@@ -982,7 +800,7 @@ function executeGuildEnrolment(
   }
 
   // Check for contract completion (after every successful action)
-  const contractsCompleted = checkContractCompletion(state)
+  const contractsCompleted = checkAndCompleteContracts(state)
 
   const summary = explorationBenefits?.discoveredAreaId
     ? `Enrolled in ${skill} guild, discovered area ${explorationBenefits.discoveredAreaId}`
@@ -1029,7 +847,7 @@ function executeTravelToLocation(state: WorldState, action: TravelToLocationActi
   state.exploration.playerState.currentLocationId = locationId
 
   // Check for contract completion (after every successful action)
-  const contractsCompleted = checkContractCompletion(state)
+  const contractsCompleted = checkAndCompleteContracts(state)
 
   return {
     tickBefore,
@@ -1066,7 +884,7 @@ function executeLeave(state: WorldState, action: LeaveAction): ActionLog {
   state.exploration.playerState.currentLocationId = null
 
   // Check for contract completion (after every successful action)
-  const contractsCompleted = checkContractCompletion(state)
+  const contractsCompleted = checkAndCompleteContracts(state)
 
   const hubName = isInTown(state) ? "Town Square" : "clearing"
 

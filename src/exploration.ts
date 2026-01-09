@@ -20,6 +20,7 @@ import type {
 } from "./types.js"
 import { rollFloat, roll, rollNormal } from "./rng.js"
 import { ExplorationLocationType } from "./types.js"
+import { consumeTime } from "./stateHelpers.js"
 
 // ============================================================================
 // Constants
@@ -626,14 +627,6 @@ export function grantExplorationGuildBenefits(state: WorldState): {
 // ============================================================================
 // Action Execution Helpers
 // ============================================================================
-
-/**
- * Helper to consume time from state
- */
-function consumeTime(state: WorldState, ticks: number): void {
-  state.time.currentTick += ticks
-  state.time.sessionRemainingTicks -= ticks
-}
 
 /**
  * Helper to create a failure log
