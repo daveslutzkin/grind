@@ -128,8 +128,8 @@ export function formatWorldState(state: WorldState): string {
       }
     }
   } else {
-    // Wilderness: show area name with status suffix
-    const areaName = area?.name ?? "Unknown"
+    // Wilderness: show location name (Clearing when at hub) with status suffix
+    const locationName = getLocationDisplayName(currentLocationId, currentArea)
     const knownLocs = area
       ? area.locations.filter((loc) => knownLocationIds.includes(loc.id)).length
       : 0
@@ -166,7 +166,7 @@ export function formatWorldState(state: WorldState): string {
       }
     }
 
-    lines.push(`Location: ${areaName} in ${currentArea}${statusSuffix}`)
+    lines.push(`Location: ${locationName} in ${currentArea}${statusSuffix}`)
 
     // Only show Gathering line if we've discovered at least one location
     if (knownLocs > 0) {
