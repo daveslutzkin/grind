@@ -305,7 +305,7 @@ describe("Formatters", () => {
         expect(formatted).not.toContain("FULLY EXPLORED")
       })
 
-      it("should show 'partly explored' when locations done but connections remain", () => {
+      it("should show 'fully explored' when locations done and only unknown-area connections remain", () => {
         const state = createWorld("explore-status-3")
         const areaId = getOreAreaId(state)
         makeAreaKnown(state, areaId)
@@ -314,8 +314,8 @@ describe("Formatters", () => {
         // Discover all locations
         discoverAllLocations(state, areaId)
 
-        // Add an undiscovered connection from this area
-        // (connections may not be generated until explore is called)
+        // Add an undiscovered connection from this area to an UNKNOWN area
+        // Per exploration.ts line 1166: "We don't count unknown connections as 'remaining' for 'fully explored' status"
         const fakeTargetAreaId = "fake-undiscovered-area"
         state.exploration.connections.push({
           fromAreaId: areaId,
@@ -325,13 +325,14 @@ describe("Formatters", () => {
 
         const formatted = formatWorldState(state)
 
-        expect(formatted).toContain("partly explored")
+        // Should show "fully explored" because unknown-area connections don't count
+        expect(formatted).toContain("fully explored")
         expect(formatted).not.toContain("unexplored")
-        expect(formatted).not.toContain("FULLY EXPLORED")
+        expect(formatted).not.toContain("partly explored")
         expect(formatted).toContain("Gathering:")
       })
 
-      it("should show 'partly explored' (never 'fully explored') when all locations AND connections discovered", () => {
+      it("should show 'fully explored' when all locations AND connections discovered", () => {
         const state = createWorld("explore-status-4")
         const areaId = getOreAreaId(state)
         makeAreaKnown(state, areaId)
@@ -358,9 +359,9 @@ describe("Formatters", () => {
 
         const formatted = formatWorldState(state)
 
-        // We never show "fully explored" - just "partly explored" once something is discovered
-        expect(formatted).toContain("partly explored")
-        expect(formatted).not.toContain("FULLY EXPLORED")
+        // Should show "fully explored" when all locations and known-area connections are discovered
+        expect(formatted).toContain("fully explored")
+        expect(formatted).not.toContain("partly explored")
         expect(formatted).not.toContain("unexplored")
       })
     })

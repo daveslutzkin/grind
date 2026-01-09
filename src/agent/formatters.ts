@@ -182,15 +182,33 @@ export function formatWorldState(state: WorldState): string {
     })
 
     // Determine status suffix for Location line
-    // Only "unexplored" or "partly explored", never "fully explored"
     let statusSuffix = ""
     const hasAnyDiscovery = knownLocs > 0 || discoveredConnectionsFromArea.length > 0
+
+    // Check if area is fully explored (same logic as in exploration.ts)
+    const remainingLocations = area
+      ? area.locations.filter((loc) => !knownLocationIds.includes(loc.id))
+      : []
+    const remainingKnownConnections = state.exploration.connections.filter((conn) => {
+      const isFromCurrent = conn.fromAreaId === currentArea
+      const isToCurrent = conn.toAreaId === currentArea
+      if (!isFromCurrent && !isToCurrent) return false
+      const connId = `${conn.fromAreaId}->${conn.toAreaId}`
+      const targetId = isFromCurrent ? conn.toAreaId : conn.fromAreaId
+      const targetIsKnown = state.exploration.playerState.knownAreaIds.includes(targetId)
+      return !knownConnectionIds.has(connId) && targetIsKnown
+    })
+    const isFullyExplored =
+      remainingLocations.length === 0 && remainingKnownConnections.length === 0
 
     if (!hasAnyDiscovery) {
       // Nothing discovered yet (no locations AND no connections from here)
       statusSuffix = " — unexplored"
+    } else if (isFullyExplored) {
+      // All locations and connections to known areas discovered
+      statusSuffix = " — fully explored"
     } else {
-      // Something discovered = partly explored (we never say "fully explored")
+      // Something discovered but not everything
       statusSuffix = " — partly explored"
     }
 
