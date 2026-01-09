@@ -1,6 +1,7 @@
 import type { WorldState, ActionLog } from "../types.js"
 import { getCurrentAreaId, getCurrentLocationId, ExplorationLocationType } from "../types.js"
 import { getUnlockedModes, getNextModeUnlock, getCurrentLocation } from "../actionChecks.js"
+import { getLocationDisplayName } from "../world.js"
 import {
   getPlayerNodeView,
   getNodeTypeName,
@@ -102,11 +103,21 @@ export function formatWorldState(state: WorldState): string {
   // ========== LOCATION SECTION ==========
   lines.push("")
 
-  // Location line with area name and optional FULLY EXPLORED indicator
-  if (currentArea !== "TOWN") {
-    const area = state.exploration.areas.get(currentArea)
-    const knownLocationIds = state.exploration.playerState.knownLocationIds
+  const area = state.exploration.areas.get(currentArea)
+  const knownLocationIds = state.exploration.playerState.knownLocationIds
 
+  if (currentArea === "TOWN") {
+    // TOWN: show current location name and available locations
+    const locationName = getLocationDisplayName(currentLocationId, currentArea)
+    lines.push(`Location: ${locationName} in TOWN`)
+
+    // Show available TOWN locations
+    if (area && area.locations.length > 0) {
+      const locNames = area.locations.map((loc) => getLocationDisplayName(loc.id)).join(", ")
+      lines.push(`Locations: ${locNames}`)
+    }
+  } else {
+    // Wilderness: show area name and FULLY EXPLORED indicator
     // Check if fully explored (all locations + all known connections discovered)
     let fullyExplored = false
     if (area) {
@@ -155,8 +166,6 @@ export function formatWorldState(state: WorldState): string {
         lines.push("Gathering: unexplored (use 'explore' to discover)")
       }
     }
-  } else {
-    lines.push(`Location: ${currentArea}`)
   }
 
   // Travel - available connections (bidirectional - can go back the way you came)
