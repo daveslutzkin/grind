@@ -14,6 +14,8 @@ import {
   GatherMode,
   NodeType,
   type GatherAction,
+  type MineAction,
+  type ChopAction,
   type WorldState,
   type Node,
   type AreaID,
@@ -744,6 +746,177 @@ describe("Phase 3: Gather Action Overhaul", () => {
         // L6 should have less collateral damage than L5
         expect(collateralDamage6).toBeLessThanOrEqual(collateralDamage5)
       })
+    })
+  })
+
+  // ============================================================================
+  // Mine and Chop command aliases
+  // ============================================================================
+
+  describe("Mine command (alias for gather mining)", () => {
+    it("should find and gather from ORE_VEIN in current area with FOCUS mode", () => {
+      world.player.skills.Mining.level = 5
+      const node = getFirstOreNode()
+      const focusMat = node.materials.find(
+        (m) => m.requiredLevel <= world.player.skills.Mining.level
+      )!
+      const initialUnits = focusMat.remainingUnits
+
+      const action: MineAction = {
+        type: "Mine",
+        mode: GatherMode.FOCUS,
+        focusMaterialId: focusMat.materialId,
+      }
+
+      const log = executeAction(world, action)
+
+      expect(log.success).toBe(true)
+      expect(log.actionType).toBe("Gather") // Should be recorded as Gather in log
+      expect(focusMat.remainingUnits).toBeLessThan(initialUnits)
+    })
+
+    it("should find and gather from ORE_VEIN with CAREFUL_ALL mode", () => {
+      world.player.skills.Mining.level = 4
+
+      const action: MineAction = {
+        type: "Mine",
+        mode: GatherMode.CAREFUL_ALL,
+      }
+
+      const log = executeAction(world, action)
+
+      expect(log.success).toBe(true)
+      expect(log.extraction).toBeDefined()
+      expect(log.extraction!.mode).toBe(GatherMode.CAREFUL_ALL)
+    })
+
+    it("should find and appraise ORE_VEIN with APPRAISE mode", () => {
+      world.player.skills.Mining.level = 3
+      const node = getFirstOreNode()
+
+      const action: MineAction = {
+        type: "Mine",
+        mode: GatherMode.APPRAISE,
+      }
+
+      const log = executeAction(world, action)
+
+      expect(log.success).toBe(true)
+      expect(log.extraction!.appraisal).toBeDefined()
+      expect(log.extraction!.appraisal!.nodeId).toBe(node.nodeId)
+    })
+
+    it("should fail if no ORE_VEIN in current area", () => {
+      // Move to town (no ore nodes there)
+      world.exploration.playerState.currentAreaId = "TOWN"
+
+      const action: MineAction = {
+        type: "Mine",
+        mode: GatherMode.APPRAISE,
+      }
+
+      const log = executeAction(world, action)
+
+      expect(log.success).toBe(false)
+      expect(log.failureType).toBe("NODE_NOT_FOUND")
+    })
+  })
+
+  describe("Chop command (alias for gather woodcutting)", () => {
+    let woodAreaId: AreaID
+
+    beforeEach(() => {
+      // Find an area with tree nodes
+      const areas = Array.from(world.exploration.areas.values())
+        .filter((a) => a.distance > 0)
+        .sort((a, b) => a.distance - b.distance)
+      for (const area of areas) {
+        const hasTree = world.world.nodes?.some(
+          (n) => n.areaId === area.id && n.nodeType === NodeType.TREE_STAND
+        )
+        if (hasTree) {
+          woodAreaId = area.id
+          break
+        }
+      }
+      if (woodAreaId) {
+        world.exploration.playerState.currentAreaId = woodAreaId
+        discoverAllLocations(world, woodAreaId)
+      }
+    })
+
+    it("should find and gather from TREE_STAND in current area with FOCUS mode", () => {
+      if (!woodAreaId) return // Skip if no tree area found
+      world.player.skills.Woodcutting.level = 5
+      const node = world.world.nodes!.find(
+        (n) => n.areaId === woodAreaId && n.nodeType === NodeType.TREE_STAND
+      )!
+      const focusMat = node.materials.find(
+        (m) => m.requiredLevel <= world.player.skills.Woodcutting.level
+      )!
+      const initialUnits = focusMat.remainingUnits
+
+      const action: ChopAction = {
+        type: "Chop",
+        mode: GatherMode.FOCUS,
+        focusMaterialId: focusMat.materialId,
+      }
+
+      const log = executeAction(world, action)
+
+      expect(log.success).toBe(true)
+      expect(log.actionType).toBe("Gather") // Should be recorded as Gather in log
+      expect(focusMat.remainingUnits).toBeLessThan(initialUnits)
+    })
+
+    it("should find and gather from TREE_STAND with CAREFUL_ALL mode", () => {
+      if (!woodAreaId) return // Skip if no tree area found
+      world.player.skills.Woodcutting.level = 4
+
+      const action: ChopAction = {
+        type: "Chop",
+        mode: GatherMode.CAREFUL_ALL,
+      }
+
+      const log = executeAction(world, action)
+
+      expect(log.success).toBe(true)
+      expect(log.extraction).toBeDefined()
+      expect(log.extraction!.mode).toBe(GatherMode.CAREFUL_ALL)
+    })
+
+    it("should find and appraise TREE_STAND with APPRAISE mode", () => {
+      if (!woodAreaId) return // Skip if no tree area found
+      world.player.skills.Woodcutting.level = 3
+      const node = world.world.nodes!.find(
+        (n) => n.areaId === woodAreaId && n.nodeType === NodeType.TREE_STAND
+      )!
+
+      const action: ChopAction = {
+        type: "Chop",
+        mode: GatherMode.APPRAISE,
+      }
+
+      const log = executeAction(world, action)
+
+      expect(log.success).toBe(true)
+      expect(log.extraction!.appraisal).toBeDefined()
+      expect(log.extraction!.appraisal!.nodeId).toBe(node.nodeId)
+    })
+
+    it("should fail if no TREE_STAND in current area", () => {
+      // Move to town (no tree nodes there)
+      world.exploration.playerState.currentAreaId = "TOWN"
+
+      const action: ChopAction = {
+        type: "Chop",
+        mode: GatherMode.APPRAISE,
+      }
+
+      const log = executeAction(world, action)
+
+      expect(log.success).toBe(false)
+      expect(log.failureType).toBe("NODE_NOT_FOUND")
     })
   })
 })
