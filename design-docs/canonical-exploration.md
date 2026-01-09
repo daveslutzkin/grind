@@ -209,19 +209,7 @@ Discover a location or connection within your current area.
 - **Skip rule**: Already-known locations/connections are skipped in rolls
 - **Fully explored**: Player is informed when an area has nothing left to discover
 
-**Skill-based discovery probability:**
-
-Gathering nodes are easier to find if you have the relevant gathering skill:
-- **With skill**: Normal discovery chance
-- **Without skill**: 10x lower chance to discover the node
-
-This means:
-- A miner is much more likely to notice ore veins while exploring
-- You can still stumble upon nodes for skills you don't have, just rarely
-- Encourages joining gathering guilds before exploring for those resources
-- Creates interesting decisions: explore now (lower chance) or enrol first?
-
-When rolling for what to discover, the effective weight of each node type is divided by 10 if the player lacks the corresponding skill.
+**Discovery uses overlaid probability thresholds** (see Success Mechanics below for details).
 
 #### Travel
 
@@ -244,7 +232,7 @@ Move between areas while foraging.
 
 ### Success Mechanics
 
-Both Survey and Explore roll for success periodically until something is found (or player abandons).
+Both Survey and Explore roll for discovery periodically until something is found (or player abandons).
 
 #### Roll Frequency
 
@@ -260,43 +248,82 @@ Rolls happen every N ticks, where N decreases with level:
 
 Formula: `max(1, 2 - floor(level / 10) × 0.1)`
 
-#### Base Formula
+#### Overlaid Threshold Model
 
+Each undiscovered thing in the area has its own discovery threshold (% chance per tick). On each roll:
+
+1. **Roll once**: Generate a random number 0-100
+2. **Check thresholds**: See which discoverable things have thresholds >= the roll
+3. **If multiple hit**: Pick randomly (equal probability) among those that were hit
+4. **If none hit**: No discovery this tick, keep rolling
+
+This means:
+- Low rolls discover rare things (and potentially common things too)
+- High rolls only discover common things (or nothing)
+- When you roll low enough to hit multiple things, you get one at random
+
+#### Discovery Thresholds
+
+Each discoverable type has a base threshold, modified by the exploration success chance:
+
+**Base success chance** (same formula as before):
 ```
 success_chance = base_rate + level_bonus - distance_penalty + knowledge_bonus
 ```
 
-#### Components
+Where:
+- **Base rate**: 5%
+- **Level bonus**: `(level - 1) × 5%`
+- **Distance penalty**: `(distance - 1) × 5%`
+- **Knowledge bonus**: +5% per connected known area + `20% × (known non-connected / total at distance)`
 
-**Base rate**: 5%
+**Threshold multipliers by type:**
 
-**Level bonus**: +5% per exploration level above 1
-- Level 1: 0% (no bonus)
-- Level 2: +5%
-- Level 5: +20%
-- Level 10: +45%
-- Level 20: +95%
+| Discoverable Type | Multiplier | Example (10% base) |
+|-------------------|------------|-------------------|
+| Connection to known area | 1.0× | 10% |
+| Mob camp | 0.5× | 5% |
+| Gathering node (with skill) | 0.5× | 5% |
+| Gathering node (without skill) | 0.05× | 0.5% |
+| Connection to unknown area | 0.25× | 2.5% |
 
-Formula: `(level - 1) × 5%`
+**Skill-based discovery:**
 
-**Distance penalty**: -5% per distance beyond 1
-- Distance 1: 0%
-- Distance 5: -20%
-- Distance 10: -45%
+Gathering nodes are 10× harder to find without the relevant gathering skill:
+- **With skill**: 0.5× multiplier (same as mob camps)
+- **Without skill**: 0.05× multiplier (10× lower)
 
-Formula: `(distance - 1) × 5%`
+This means:
+- A miner exploring is much more likely to notice ore veins
+- You can still stumble upon nodes for skills you don't have, but rarely
+- Encourages joining gathering guilds before exploring for those resources
+- Creates interesting decisions: explore now (lower chance) or enrol first?
 
-**Knowledge bonus**: Based on known adjacent areas
-- +5% per directly connected known area (only if you know the connection)
-- +20% max from same-distance non-connected areas, scaling proportionally to % of such areas known
+#### Example: Overlaid Thresholds in Action
 
-Formula for non-connected bonus: `20% × (known non-connected areas at this distance / total areas at this distance)`
+Area contains: Mining node, Mob camp, Connection to known area, Connection to unknown area.
+Player has Mining skill. Base success chance: 10%.
+
+Thresholds:
+- Connection to known: 10%
+- Mob camp: 5%
+- Mining node: 5% (has skill)
+- Connection to unknown: 2.5%
+
+Roll outcomes:
+- **Roll 11-100**: Miss everything, no discovery
+- **Roll 6-10**: Hit connection to known only → discover connection
+- **Roll 3-5**: Hit connection + mob + mining → 33% chance each
+- **Roll 1-2**: Hit all four → 25% chance each
+
+If player lacked Mining skill, mining threshold would be 0.5%, so:
+- **Roll 1-2**: Would only hit connection + mob + unknown connection (not mining)
+- **Roll ≤0.5**: Would hit mining too (very rare)
 
 #### Without Exploration Guild
 
 Players not in the exploration guild:
-- Fixed 1% success rate
-- No level scaling
+- All thresholds reduced to 1% fixed (no scaling)
 - No XP gain from exploration actions
 - Can still buy maps from NPC explorers
 
@@ -306,12 +333,23 @@ Per RNG canon, all randomness must be explicit and measured. On every discovery:
 
 **Show immediately**:
 - Actual ticks taken
-- Expected ticks (based on success chance and roll interval)
+- Expected ticks to find *anything* (max threshold determines this)
 - Luck delta: `(expected - actual)` ticks saved/lost
 
+**Important**: Expected ticks is based on the probability of discovering *anything*, not the specific thing found. This avoids revealing what undiscovered things remain.
+
 **Example outputs**:
-- "Found mining node in 8 ticks (expected: 20) — 12 ticks faster than average"
-- "Found connection in 45 ticks (expected: 20) — 25 ticks slower than average"
+- "Discovered ore vein in 8t — 12t faster (very lucky)"
+- "Discovered connection in 45t — 25t slower (unlucky)"
+
+**When exploring discovers multiple things** (auto-continue), show each on its own line:
+```
+✓ Explore (45t):
+  12t: ore vein
+  8t: connection (→area-d1-i3)
+  25t: mob camp
+  — 8t faster overall (lucky)
+```
 
 **Track cumulatively**:
 - Total exploration luck delta (ticks saved/lost across all discoveries)

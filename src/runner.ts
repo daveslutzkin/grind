@@ -4,7 +4,10 @@
  */
 
 import type { Action, ActionLog, WorldState, SkillID, SkillState } from "./types.js"
-import { getTotalXP, getCurrentAreaId } from "./types.js"
+import { getTotalXP, getCurrentAreaId, GatherMode } from "./types.js"
+
+// Re-export agent formatters for unified display
+export { formatWorldState, formatActionLog } from "./agent/formatters.js"
 
 // ============================================================================
 // Types
@@ -21,11 +24,6 @@ export interface RngStream {
   trials: number
   probability: number
   successes: number
-}
-
-export interface DisplayOptions {
-  boxed?: boolean // Use box borders around output
-  width?: number // Display width (default 120)
 }
 
 // ============================================================================
@@ -51,7 +49,7 @@ export interface ParseContext {
 
 /**
  * Parse a command string into an Action.
- * Supports: move, gather, fight, craft, store, drop, accept, enrol/enroll
+ * Supports: move, gather (with modes), fight, craft, store, drop, accept, enrol/enroll, explore, survey
  */
 export function parseAction(input: string, context: ParseContext = {}): Action | null {
   const parts = input.trim().toLowerCase().split(/\s+/)
@@ -59,7 +57,7 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
 
   switch (cmd) {
     case "move": {
-      const dest = parts[1]?.toUpperCase()
+      const dest = parts[1]
       if (!dest) {
         if (context.logErrors) {
           const areas = context.knownAreaIds?.join(", ") || "?"
@@ -67,10 +65,11 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         }
         return null
       }
-      // If we have known areas, try to match partial names
+      // If we have known areas, try to match (case-insensitive)
       if (context.knownAreaIds) {
         const matchedArea = context.knownAreaIds.find(
-          (a) => a.toUpperCase() === dest || a.toUpperCase().startsWith(dest)
+          (a) =>
+            a.toLowerCase() === dest.toLowerCase() || a.toLowerCase().startsWith(dest.toLowerCase())
         )
         if (!matchedArea) {
           if (context.logErrors) {
@@ -80,16 +79,51 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         }
         return { type: "ExplorationTravel", destinationAreaId: matchedArea }
       }
+      // No area list - pass through as-is (preserve case)
       return { type: "ExplorationTravel", destinationAreaId: dest }
     }
 
     case "gather": {
       const nodeId = parts[1]
-      if (!nodeId) {
-        if (context.logErrors) console.log("Usage: gather <node-id>")
+      const modeName = parts[2]?.toLowerCase()
+
+      if (!nodeId || !modeName) {
+        if (context.logErrors) {
+          console.log("Usage: gather <node> <mode> [material]")
+          console.log("  Modes: focus <material>, careful, appraise")
+        }
         return null
       }
-      return { type: "Gather", nodeId }
+
+      if (modeName === "focus") {
+        const focusMaterial = parts[3]?.toUpperCase()
+        if (!focusMaterial) {
+          if (context.logErrors) {
+            console.log("FOCUS mode requires a material: gather <node> focus <material>")
+          }
+          return null
+        }
+        return { type: "Gather", nodeId, mode: GatherMode.FOCUS, focusMaterialId: focusMaterial }
+      } else if (modeName === "careful") {
+        return { type: "Gather", nodeId, mode: GatherMode.CAREFUL_ALL }
+      } else if (modeName === "appraise") {
+        return { type: "Gather", nodeId, mode: GatherMode.APPRAISE }
+      } else {
+        if (context.logErrors) {
+          console.log("Invalid gather mode. Use: focus, careful, or appraise")
+        }
+        return null
+      }
+    }
+
+    case "explore": {
+      // Discover locations (nodes) in the current area
+      return { type: "Explore" }
+    }
+
+    case "survey": {
+      // Discover new areas (connections)
+      return { type: "Survey" }
     }
 
     case "fight": {
@@ -173,14 +207,6 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
       return { type: "Leave" }
     }
 
-    case "survey": {
-      return { type: "Survey" }
-    }
-
-    case "explore": {
-      return { type: "Explore" }
-    }
-
     default:
       return null
   }
@@ -190,156 +216,8 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
 // Display Formatting
 // ============================================================================
 
-const DEFAULT_WIDTH = 120
-
-function makePad(width: number): (s: string) => string {
-  return (s: string) => s.padEnd(width - 2) + "│"
-}
-
 function makePadInner(width: number): (s: string) => string {
   return (s: string) => "│ " + s.padEnd(width - 4) + " │"
-}
-
-/**
- * Format the loot section for Fight actions
- */
-export function formatLootSection(log: ActionLog): string {
-  if (log.actionType !== "Fight" || !log.success) return ""
-
-  const lootRolls = log.rngRolls.filter((r) => r.label.startsWith("loot:"))
-  if (lootRolls.length === 0) return ""
-
-  const lootParts = lootRolls.map((roll) => {
-    const itemName = roll.label.replace("loot:", "").replace("IRON_", "").replace("_", " ")
-    const shortName = itemName === "ORE" ? "ORE" : itemName.split(" ")[0]
-    const pct = (roll.probability * 100).toFixed(0)
-    const label = `${shortName}(${pct}%)`
-    return roll.result ? `[${label}]` : label
-  })
-
-  return `🎁 ${lootParts.join(" ")}`
-}
-
-/**
- * Print current world state
- */
-export function printState(state: WorldState, options: DisplayOptions = {}): void {
-  const W = options.width || DEFAULT_WIDTH
-  const line = "─".repeat(W - 2)
-  const pad = makePad(W)
-
-  const invStr =
-    state.player.inventory.length === 0
-      ? "(empty)"
-      : state.player.inventory.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")
-  const storStr =
-    state.player.storage.length === 0
-      ? "(empty)"
-      : state.player.storage.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")
-  const skills = `Mining:${state.player.skills.Mining.level} Woodcut:${state.player.skills.Woodcutting.level} Combat:${state.player.skills.Combat.level} Smith:${state.player.skills.Smithing.level}`
-  const contracts = state.player.activeContracts.join(", ") || "(none)"
-
-  console.log(`\n┌${line}┐`)
-  console.log(
-    `│${pad(` 📍 ${getCurrentAreaId(state)}  │  ⏱ ${state.time.sessionRemainingTicks} ticks left  │  ⭐ Rep: ${state.player.guildReputation}  │  📜 Contracts: ${contracts}`)}`
-  )
-  console.log(`├${line}┤`)
-  console.log(
-    `│${pad(` 🎒 Inventory [${state.player.inventory.length}/${state.player.inventoryCapacity}]: ${invStr}`)}`
-  )
-  console.log(`│${pad(` 📦 Storage: ${storStr}`)}`)
-  console.log(`│${pad(` 📊 Skills: ${skills}`)}`)
-  console.log(`└${line}┘`)
-}
-
-/**
- * Print an action log
- */
-export function printLog(log: ActionLog, options: DisplayOptions = {}): void {
-  const boxed = options.boxed ?? false
-  const W = options.width || DEFAULT_WIDTH
-  const line = "─".repeat(W - 2)
-  const pad = makePad(W)
-
-  const status = log.success ? "✓" : "✗"
-
-  // For Fight actions, separate main fight roll from loot rolls
-  let rngStr = ""
-  if (log.rngRolls.length > 0) {
-    const mainRolls = log.rngRolls.filter((r) => !r.label.startsWith("loot:"))
-    if (mainRolls.length > 0) {
-      rngStr = mainRolls
-        .map((r) => `${(r.probability * 100).toFixed(0)}%→${r.result ? "hit" : "miss"}`)
-        .join(" ")
-    }
-  }
-
-  const skillStr = log.skillGained ? `+1 ${log.skillGained.skill}` : ""
-  const lootStr = formatLootSection(log)
-
-  const parts = [
-    `${status} ${log.actionType}: ${log.stateDeltaSummary}`,
-    `⏱ ${log.timeConsumed}t`,
-    rngStr ? `🎲 ${rngStr}` : "",
-    skillStr ? `📈 ${skillStr}` : "",
-    lootStr,
-    log.failureType ? `❌ ${log.failureType}` : "",
-  ].filter(Boolean)
-
-  if (boxed) {
-    console.log(`\n┌${line}┐`)
-    console.log(`│${pad(` ${parts.join("  │  ")}`)}`)
-
-    if (log.levelUps) {
-      for (const lu of log.levelUps) {
-        console.log(`├${line}┤`)
-        console.log(`│${pad(` 📈 LEVEL UP: ${lu.skill} ${lu.fromLevel} → ${lu.toLevel}`)}`)
-      }
-    }
-
-    if (log.contractsCompleted) {
-      for (const c of log.contractsCompleted) {
-        console.log(`├${line}┤`)
-        const consumed = c.itemsConsumed.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")
-        const granted = c.rewardsGranted.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")
-        const xpStr = c.xpGained ? `  │  📈 +${c.xpGained.amount} ${c.xpGained.skill}` : ""
-        console.log(
-          `│${pad(` 🏆 CONTRACT COMPLETE: ${c.contractId}  │  Consumed: ${consumed}  │  Granted: ${granted}  │  +${c.reputationGained} rep${xpStr}`)}`
-        )
-        if (c.levelUps) {
-          for (const lu of c.levelUps) {
-            console.log(`│${pad(`   📈 LEVEL UP: ${lu.skill} ${lu.fromLevel} → ${lu.toLevel}`)}`)
-          }
-        }
-      }
-    }
-    console.log(`└${line}┘`)
-  } else {
-    // Compact format (no borders)
-    console.log(`  ${parts.join("  │  ")}`)
-
-    if (log.levelUps) {
-      for (const lu of log.levelUps) {
-        console.log(`    📈 LEVEL UP: ${lu.skill} ${lu.fromLevel} → ${lu.toLevel}`)
-      }
-    }
-
-    if (log.contractsCompleted) {
-      for (const c of log.contractsCompleted) {
-        const consumed = c.itemsConsumed.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")
-        const granted = c.rewardsGranted.map((i) => `${i.quantity}x ${i.itemId}`).join(", ")
-        const xpStr = c.xpGained ? `  │  📈 +${c.xpGained.amount} ${c.xpGained.skill}` : ""
-        console.log(
-          `    🏆 CONTRACT COMPLETE: ${c.contractId}  │  Consumed: ${consumed}  │  Granted: ${granted}  │  +${c.reputationGained} rep${xpStr}`
-        )
-        if (c.levelUps) {
-          for (const lu of c.levelUps) {
-            console.log(`      📈 LEVEL UP: ${lu.skill} ${lu.fromLevel} → ${lu.toLevel}`)
-          }
-        }
-      }
-    }
-  }
 }
 
 /**
@@ -350,12 +228,14 @@ export function printHelp(state: WorldState): void {
   console.log("│ AVAILABLE ACTIONS                                           │")
   console.log("├─────────────────────────────────────────────────────────────┤")
   console.log("│ enrol <skill>       - Enrol in guild (Exploration first!)   │")
+  console.log("│ survey              - Discover new areas (connections)      │")
   console.log("│ move <area>         - Travel to a known area                │")
   console.log("│ goto <location>     - Go to a location in current area      │")
   console.log("│ leave               - Leave location, return to hub         │")
-  console.log("│ survey              - Discover new areas (needs Exploration)│")
-  console.log("│ explore             - Discover locations in current area    │")
-  console.log("│ gather <node>       - Gather from a node at current area    │")
+  console.log("│ explore             - Discover nodes in current area        │")
+  console.log("│ gather <node> focus <mat>  - Focus on one material          │")
+  console.log("│ gather <node> careful      - Carefully extract all          │")
+  console.log("│ gather <node> appraise     - Inspect node contents          │")
   console.log("│ fight <enemy>       - Fight an enemy at current area        │")
   console.log("│ craft <recipe>      - Craft at guild hall                   │")
   console.log("│ store <item> <qty>  - Store items at warehouse              │")
@@ -386,75 +266,6 @@ export function printHelp(state: WorldState): void {
   if (recipes.length > 0) console.log(`  Recipes: ${recipes.map((r) => r.id).join(", ")}`)
   if (contracts.length > 0) console.log(`  Contracts: ${contracts.map((c) => c.id).join(", ")}`)
   if (currentAreaId === state.world.storageAreaId) console.log(`  Storage available`)
-}
-
-/**
- * Print world data (nodes, enemies, recipes, contracts)
- */
-export function printWorld(state: WorldState): void {
-  const knownAreas = state.exploration.playerState.knownAreaIds
-  console.log("\n┌─────────────────────────────────────────────────────────────┐")
-  console.log("│ WORLD DATA                                                  │")
-  console.log("├─────────────────────────────────────────────────────────────┤")
-  console.log(`│ Known areas: ${knownAreas.join(", ")}`.padEnd(62) + "│")
-  console.log(`│ Total areas in world: ${state.exploration.areas.size}`.padEnd(62) + "│")
-  console.log("├─────────────────────────────────────────────────────────────┤")
-  console.log("│ NODES AT KNOWN AREAS                                        │")
-  for (const areaId of knownAreas) {
-    const areaNodes = state.world.nodes.filter((n) => n.areaId === areaId)
-    if (areaNodes.length > 0) {
-      console.log(`│   ${areaId}:`.padEnd(62) + "│")
-      for (const node of areaNodes) {
-        console.log(`│     ${node.nodeId} (${node.nodeType})`.padEnd(62) + "│")
-        console.log(
-          `│       → ${node.materials.map((m) => m.materialId).join(", ")}`.padEnd(62) + "│"
-        )
-      }
-    }
-  }
-  console.log("├─────────────────────────────────────────────────────────────┤")
-  console.log("│ ENEMIES AT KNOWN AREAS                                      │")
-  const knownEnemies = state.world.enemies.filter((e) => knownAreas.includes(e.areaId))
-  if (knownEnemies.length === 0) {
-    console.log("│   (no enemies discovered yet)".padEnd(62) + "│")
-  }
-  for (const enemy of knownEnemies) {
-    console.log(`│   ${enemy.id} @ ${enemy.areaId}`.padEnd(62) + "│")
-    const lootStr = enemy.lootTable
-      .map((l) => `${l.quantity}x ${l.itemId}(${l.weight}%)`)
-      .join(", ")
-    console.log(
-      `│     → ${enemy.fightTime} ticks, ${(enemy.successProbability * 100).toFixed(0)}% success, loot: ${lootStr}`.padEnd(
-        62
-      ) + "│"
-    )
-  }
-  console.log("├─────────────────────────────────────────────────────────────┤")
-  console.log("│ RECIPES                                                     │")
-  for (const recipe of state.world.recipes) {
-    console.log(`│   ${recipe.id} @ ${recipe.guildType} guild`.padEnd(62) + "│")
-    console.log(
-      `│     → ${recipe.inputs.map((i) => `${i.quantity}x ${i.itemId}`).join(" + ")} = ${recipe.output.quantity}x ${recipe.output.itemId}`.padEnd(
-        62
-      ) + "│"
-    )
-  }
-  console.log("├─────────────────────────────────────────────────────────────┤")
-  console.log("│ CONTRACTS                                                   │")
-  for (const contract of state.world.contracts) {
-    console.log(`│   ${contract.id} @ ${contract.acceptLocationId}`.padEnd(62) + "│")
-    console.log(
-      `│     Requires: ${contract.requirements.map((r) => `${r.quantity}x ${r.itemId}`).join(", ")}`.padEnd(
-        62
-      ) + "│"
-    )
-    console.log(
-      `│     Rewards: ${contract.rewards.map((r) => `${r.quantity}x ${r.itemId}`).join(", ")} + ${contract.reputationReward} rep`.padEnd(
-        62
-      ) + "│"
-    )
-  }
-  console.log("└─────────────────────────────────────────────────────────────┘")
 }
 
 // ============================================================================
@@ -783,4 +594,80 @@ export function executeAndRecord(
   const log = execute(session.state, action)
   session.stats.logs.push(log)
   return log
+}
+
+// ============================================================================
+// Unified Session Runner
+// ============================================================================
+
+import { createWorld } from "./world.js"
+import { executeAction } from "./engine.js"
+
+export type MetaCommandResult = "continue" | "end" | "quit"
+
+export interface RunnerConfig {
+  /** Get the next command to execute. Return null to end the session. */
+  getNextCommand: () => Promise<string | null>
+
+  /** Called after each action is executed */
+  onActionComplete: (log: ActionLog, state: WorldState) => void
+
+  /** Called when the session ends. showSummary is false if user quit. */
+  onSessionEnd: (state: WorldState, stats: SessionStats, showSummary: boolean) => void
+
+  /** Called when a command cannot be parsed. Return 'exit' to stop, 'continue' to keep going. */
+  onInvalidCommand: (cmd: string) => "continue" | "exit"
+
+  /** Optional meta-commands (e.g., help, state, quit). Return action to take. */
+  metaCommands?: Record<string, (state: WorldState) => MetaCommandResult>
+
+  /** Optional hook called before each action is executed */
+  beforeAction?: (action: Action, state: WorldState) => void
+}
+
+/**
+ * Run a session with the given configuration.
+ * This is the unified core loop used by both REPL and batch runners.
+ */
+export async function runSession(seed: string, config: RunnerConfig): Promise<void> {
+  const session = createSession({ seed, createWorld })
+  let showSummary = true
+
+  while (session.state.time.sessionRemainingTicks > 0) {
+    const cmd = await config.getNextCommand()
+    if (cmd === null) break
+
+    const trimmedCmd = cmd.trim().toLowerCase()
+
+    // Check meta-commands first
+    if (config.metaCommands && trimmedCmd in config.metaCommands) {
+      const result = config.metaCommands[trimmedCmd](session.state)
+      if (result === "end") break
+      if (result === "quit") {
+        showSummary = false
+        break
+      }
+      continue
+    }
+
+    // Parse the action
+    const action = parseAction(cmd, {
+      knownAreaIds: session.state.exploration.playerState.knownAreaIds,
+    })
+
+    if (!action) {
+      const result = config.onInvalidCommand(cmd)
+      if (result === "exit") break
+      continue
+    }
+
+    // Call beforeAction hook if provided
+    config.beforeAction?.(action, session.state)
+
+    // Execute the action
+    const log = executeAndRecord(session, action, executeAction)
+    config.onActionComplete(log, session.state)
+  }
+
+  config.onSessionEnd(session.state, session.stats, showSummary)
 }

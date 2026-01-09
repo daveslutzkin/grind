@@ -19,23 +19,26 @@ Each step shows:
 ## Commands
 
 ```
-move <location>              Move to a location
-enrol mining|woodcutting     Enrol in a guild
+enrol <skill>                Enrol in guild (exploration, mining, etc)
+survey                       Discover new areas (connections)
+move <area>                  Travel to a known area
+explore                      Discover nodes in current area
 gather <node> focus <mat>    Focus on one material
 gather <node> careful        Carefully extract all
 gather <node> appraise       Inspect node contents
+fight <enemy>                Fight an enemy
+craft <recipe>               Craft at TOWN
+store <item> [qty]           Store items at TOWN
+drop <item> [qty]            Drop items
+accept <contract>            Accept a contract
 ```
-
-## Locations
-
-TOWN, OUTSKIRTS_MINE, COPSE, OLD_QUARRY, DEEP_FOREST, ABANDONED_SHAFT, ANCIENT_GROVE
 
 ## Under the Hood
 
-Uses `src/manualBatch.ts`:
+Uses `src/batch.ts`:
 
 ```bash
-npx tsx src/manualBatch.ts <seed> [action1] [action2] ...
+npx tsx src/batch.ts <seed> [action1] [action2] ...
 ```
 
 Each run replays all actions from scratch with the same seed, ensuring deterministic results.
