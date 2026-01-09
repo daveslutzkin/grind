@@ -234,7 +234,7 @@ export function getNextModeUnlock(skillLevel: number): { mode: GatherMode; level
  * - MID (distance 2): L5
  * - FAR (distance 3+): L9
  */
-function getLocationSkillRequirement(locationId: string): number {
+export function getLocationSkillRequirement(locationId: string): number {
   // TOWN has no gating
   if (locationId === "TOWN") {
     return 1
