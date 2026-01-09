@@ -93,10 +93,12 @@ Gathering: Ore vein
 **Implementation:** Added new failure type `UNKNOWN_LOCATION` to types.ts. Updated `checkTravelToLocationAction` in actionChecks.ts to return `UNKNOWN_LOCATION` when the location doesn't exist in the current area, while keeping `LOCATION_NOT_DISCOVERED` for when the location exists but hasn't been discovered yet.
 
 ### 9. Material ✓ should respect location tier
-**Status:** Pending
+**Status:** ✅ Complete
 **Description:** D2 node shows "COPPER_ORE ✓" but gathering fails with INSUFFICIENT_SKILL because d2 requires Mining L5. The checkmark implies gatherable but doesn't account for location access requirements.
 
 **Decision:** Show node as locked without listing materials: `Ore Vein 🔒 (Mining L5)`. Don't tease with specific materials you can't access yet.
+
+**Implementation:** Modified `formatters.ts` to check location tier skill requirements before displaying materials. When player's skill level is below the area's requirement (L5 for D2, L9 for D3+), node displays as locked with the required skill level instead of listing materials with misleading checkmarks.
 
 ### 10. Require move to node location before gathering
 **Status:** Pending

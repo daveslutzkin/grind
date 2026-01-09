@@ -1,6 +1,11 @@
 import type { WorldState, ActionLog } from "../types.js"
 import { getCurrentAreaId, getCurrentLocationId, ExplorationLocationType } from "../types.js"
-import { getUnlockedModes, getNextModeUnlock, getCurrentLocation } from "../actionChecks.js"
+import {
+  getUnlockedModes,
+  getNextModeUnlock,
+  getCurrentLocation,
+  getLocationSkillRequirement,
+} from "../actionChecks.js"
 import { getLocationDisplayName } from "../world.js"
 import { BASE_TRAVEL_TIME } from "../exploration.js"
 import {
@@ -202,15 +207,21 @@ export function formatWorldState(state: WorldState): string {
           const view = getPlayerNodeView(node, state)
           const nodeName = getNodeTypeName(view.nodeType)
 
+          const skill = getSkillForNodeType(view.nodeType)
+          const skillLevel = state.player.skills[skill]?.level ?? 0
+          const locationRequirement = getLocationSkillRequirement(node.areaId)
+
           if (view.visibilityTier === "none") {
             // No skill - show node type with required skill and guild
             const requiredSkill = getSkillForNodeType(view.nodeType)
             const guildName = getGuildForSkill(requiredSkill)
             lines.push(`Gathering: ${nodeName} (requires ${requiredSkill} - ${guildName})`)
+          } else if (skillLevel < locationRequirement) {
+            // Has skill but not enough for this tier - show as locked
+            lines.push(`Gathering: ${nodeName} 🔒 (${skill} L${locationRequirement})`)
           } else {
-            // Has skill - show materials with requirements
+            // Has sufficient skill - show materials with requirements
             lines.push(`Gathering: ${nodeName}`)
-            const skillLevel = state.player.skills[getSkillForNodeType(view.nodeType)]?.level ?? 0
             // Sort materials by unlock level (lowest first)
             const sortedMaterials = [...view.visibleMaterials].sort(
               (a, b) => a.requiredLevel - b.requiredLevel
