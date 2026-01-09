@@ -3,7 +3,7 @@ import { formatWorldState, formatActionLog } from "./formatters.js"
 import { createWorld, TOWN_LOCATIONS } from "../world.js"
 import { executeAction } from "../engine.js"
 import type { GatherMode, WorldState, AreaID } from "../types.js"
-import { NodeType } from "../types.js"
+import { NodeType, ExplorationLocationType } from "../types.js"
 
 /** Set player to be at a specific location in town */
 function setTownLocation(state: WorldState, locationId: string | null): void {
@@ -362,6 +362,121 @@ describe("Formatters", () => {
         expect(formatted).toContain("partly explored")
         expect(formatted).not.toContain("FULLY EXPLORED")
         expect(formatted).not.toContain("unexplored")
+      })
+    })
+
+    describe("enemy camp display", () => {
+      /** Get an area that has a mob camp */
+      function getAreaWithMobCamp(state: WorldState): AreaID | null {
+        const areas = Array.from(state.exploration.areas.values()).filter((a) => a.distance > 0)
+        for (const area of areas) {
+          const hasMobCamp = area.locations.some(
+            (loc) => loc.type === ExplorationLocationType.MOB_CAMP
+          )
+          if (hasMobCamp) return area.id
+        }
+        return null
+      }
+
+      /** Add a mob camp to an area for testing */
+      function addMobCampToArea(state: WorldState, areaId: AreaID, difficulty: number): string {
+        const area = state.exploration.areas.get(areaId)
+        if (!area) throw new Error(`Area ${areaId} not found`)
+        const locationId = `${areaId}-loc-mobcamp-test`
+        area.locations.push({
+          id: locationId,
+          areaId,
+          type: ExplorationLocationType.MOB_CAMP,
+          creatureType: "creature",
+          difficulty,
+        })
+        return locationId
+      }
+
+      it("should show discovered enemy camp with difficulty", () => {
+        const state = createWorld("mob-camp-1")
+        const areaId = getOreAreaId(state)
+        makeAreaKnown(state, areaId)
+        state.exploration.playerState.currentAreaId = areaId
+
+        // Add a mob camp and discover it
+        const campLocationId = addMobCampToArea(state, areaId, 3)
+        state.exploration.playerState.knownLocationIds.push(campLocationId)
+
+        const formatted = formatWorldState(state)
+
+        expect(formatted).toContain("Enemy camps:")
+        expect(formatted).toContain("enemy camp (difficulty 3)")
+        expect(formatted).toContain("partly explored")
+      })
+
+      it("should not show Gathering line when only enemy camp discovered (no gathering nodes)", () => {
+        const state = createWorld("mob-camp-2")
+        const areaId = getOreAreaId(state)
+        makeAreaKnown(state, areaId)
+        state.exploration.playerState.currentAreaId = areaId
+
+        // Add only a mob camp (don't discover any gathering locations)
+        const campLocationId = addMobCampToArea(state, areaId, 5)
+        state.exploration.playerState.knownLocationIds.push(campLocationId)
+
+        const formatted = formatWorldState(state)
+
+        expect(formatted).toContain("Enemy camps:")
+        expect(formatted).toContain("enemy camp (difficulty 5)")
+        // Should NOT show "Gathering: none visible" since no gathering locations were discovered
+        expect(formatted).not.toContain("Gathering:")
+      })
+
+      it("should show both gathering nodes and enemy camps when both discovered", () => {
+        const state = createWorld("mob-camp-3")
+        const areaId = getOreAreaId(state)
+        makeAreaKnown(state, areaId)
+        state.exploration.playerState.currentAreaId = areaId
+
+        // Discover all locations (including gathering nodes)
+        discoverAllLocations(state, areaId)
+
+        // Add a mob camp and discover it
+        const campLocationId = addMobCampToArea(state, areaId, 2)
+        state.exploration.playerState.knownLocationIds.push(campLocationId)
+
+        const formatted = formatWorldState(state)
+
+        expect(formatted).toContain("Gathering:")
+        expect(formatted).toContain("Enemy camps:")
+        expect(formatted).toContain("enemy camp (difficulty 2)")
+      })
+
+      it("should show enemy camp from procedurally generated world if discovered", () => {
+        // Try multiple seeds to find one that generates a mob camp
+        for (let i = 0; i < 20; i++) {
+          const state = createWorld(`mob-camp-proc-${i}`)
+          const areaWithCamp = getAreaWithMobCamp(state)
+
+          if (areaWithCamp) {
+            makeAreaKnown(state, areaWithCamp)
+            state.exploration.playerState.currentAreaId = areaWithCamp
+
+            // Find and discover the mob camp
+            const area = state.exploration.areas.get(areaWithCamp)!
+            const mobCamp = area.locations.find(
+              (loc) => loc.type === ExplorationLocationType.MOB_CAMP
+            )!
+            state.exploration.playerState.knownLocationIds.push(mobCamp.id)
+
+            const formatted = formatWorldState(state)
+
+            expect(formatted).toContain("Enemy camps:")
+            expect(formatted).toContain("enemy camp")
+            // Difficulty should be shown
+            expect(formatted).toMatch(/enemy camp \(difficulty \d+\)/)
+            return // Test passed
+          }
+        }
+        // If no mob camp was generated in 20 tries, that's unusual but not a failure
+        // since MOB_CAMP_PROBABILITY is 0.25
+        console.log("Note: No mob camp generated in 20 seeds (expected ~25% per area)")
       })
     })
   })
