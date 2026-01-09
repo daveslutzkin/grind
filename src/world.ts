@@ -71,6 +71,26 @@ export function getGuildLocationForSkill(skill: SkillID): string {
   }
 }
 
+/** Get the skill type for a guild hall location ID, or null if not a guild */
+export function getSkillForGuildLocation(locationId: string | null): SkillID | null {
+  switch (locationId) {
+    case TOWN_LOCATIONS.MINERS_GUILD:
+      return "Mining"
+    case TOWN_LOCATIONS.FORESTERS_GUILD:
+      return "Woodcutting"
+    case TOWN_LOCATIONS.COMBAT_GUILD:
+      return "Combat"
+    case TOWN_LOCATIONS.SMITHING_GUILD:
+      return "Smithing"
+    case TOWN_LOCATIONS.WOODCRAFTERS_GUILD:
+      return "Woodcrafting"
+    case TOWN_LOCATIONS.EXPLORERS_GUILD:
+      return "Exploration"
+    default:
+      return null
+  }
+}
+
 import { createRng, rollFloat } from "./rng.js"
 import {
   getAreaCountForDistance,

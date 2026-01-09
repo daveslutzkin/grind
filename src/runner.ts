@@ -11,7 +11,7 @@ import {
   GatherMode,
   ExplorationLocationType,
 } from "./types.js"
-import { LOCATION_DISPLAY_NAMES } from "./world.js"
+import { LOCATION_DISPLAY_NAMES, getSkillForGuildLocation } from "./world.js"
 
 // Re-export agent formatters for unified display
 export { formatWorldState, formatActionLog } from "./agent/formatters.js"
@@ -50,6 +50,8 @@ const SKILL_MAP: Record<string, EnrolSkill> = {
 export interface ParseContext {
   /** Known area IDs for area name matching (optional) */
   knownAreaIds?: string[]
+  /** Current location ID for context-aware commands (optional) */
+  currentLocationId?: string | null
   /** Whether to log parse errors to console */
   logErrors?: boolean
 }
@@ -184,6 +186,11 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
     case "enroll": {
       const skillName = parts[1]
       if (!skillName) {
+        // Auto-detect skill from current guild hall location
+        const guildSkill = getSkillForGuildLocation(context.currentLocationId ?? null)
+        if (guildSkill) {
+          return { type: "Enrol", skill: guildSkill }
+        }
         if (context.logErrors) {
           console.log("Usage: enrol <skill>  (Exploration, Mining, Woodcutting, Combat, Smithing)")
         }
@@ -702,6 +709,7 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
     // Parse the action
     const action = parseAction(cmd, {
       knownAreaIds: session.state.exploration.playerState.knownAreaIds,
+      currentLocationId: session.state.exploration.playerState.currentLocationId,
     })
 
     if (!action) {
