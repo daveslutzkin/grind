@@ -894,7 +894,10 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
   let session: Session
   if (process.stdin.isTTY && saveExists(seed)) {
     const save = loadSave(seed)
+    // Use interactive callbacks to avoid readline conflicts
+    config.onBeforeInteractive?.()
     const shouldResume = await promptResume(save)
+    config.onAfterInteractive?.()
     if (shouldResume) {
       // Resume from save
       session = deserializeSession(save)
