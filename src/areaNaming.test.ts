@@ -714,5 +714,81 @@ describe("Area Naming", () => {
         }
       }
     })
+
+    it("should check uniqueness against loaded area names after save/load", async () => {
+      // This test verifies that uniqueness checking works across save/load cycles
+      const originalEnv = process.env.ANTHROPIC_API_KEY
+      process.env.ANTHROPIC_API_KEY = "test-key"
+
+      try {
+        const { ensureAreaFullyGenerated } = await import("./exploration.js")
+        const { serializeSession, deserializeSession } = await import("./persistence.js")
+        const { createWorld } = await import("./world.js")
+
+        // Create a world with a known seed
+        const state = createWorld("test-seed-uniqueness")
+
+        // Modify the world to have pre-named areas (simulating previously generated state)
+        const existingAreas = Array.from(state.exploration.areas.values()).filter(
+          (a) => a.distance === 1
+        )
+        expect(existingAreas.length).toBeGreaterThanOrEqual(3) // Ensure we have at least 3 areas
+
+        // Name the first two areas
+        existingAreas[0].name = "Existing Area One"
+        existingAreas[0].generated = true
+        existingAreas[1].name = "Existing Area Two"
+        existingAreas[1].generated = true
+
+        // Leave the third area unnamed - we'll name it after load (existingAreas[2])
+
+        // Create a session for serialization
+        const session = {
+          state,
+          stats: {
+            logs: [],
+            startingSkills: { ...state.player.skills },
+            totalSession: state.time.sessionRemainingTicks,
+          },
+        }
+
+        // Serialize and deserialize to simulate save/load
+        const serialized = serializeSession(session, "test-seed-uniqueness")
+        const deserialized = deserializeSession(serialized)
+
+        // Verify loaded areas have their names preserved
+        const loadedExploration = deserialized.state.exploration
+        const loadedAreas = Array.from(loadedExploration.areas.values()).filter(
+          (a) => a.distance === 1
+        )
+        expect(loadedAreas[0].name).toBe("Existing Area One")
+        expect(loadedAreas[1].name).toBe("Existing Area Two")
+        expect(loadedAreas[2].name).toBeUndefined() // Third area should still be unnamed
+
+        // Generate name for the third area after loading
+        const newArea = loadedAreas[2]
+        await ensureAreaFullyGenerated(deserialized.state.rng, loadedExploration, newArea)
+
+        // The new area should get a name
+        expect(newArea.name).toBeDefined()
+
+        // Verify the new name is unique (doesn't match loaded names)
+        const allNames = Array.from(loadedExploration.areas.values())
+          .map((a) => a.name)
+          .filter((n): n is string => n !== undefined)
+
+        expect(new Set(allNames).size).toBe(allNames.length) // All names should be unique
+        expect(allNames).toContain("Existing Area One")
+        expect(allNames).toContain("Existing Area Two")
+        expect(allNames).toContain(newArea.name) // New name should be in the list
+      } finally {
+        // Restore original env
+        if (originalEnv) {
+          process.env.ANTHROPIC_API_KEY = originalEnv
+        } else {
+          delete process.env.ANTHROPIC_API_KEY
+        }
+      }
+    })
   })
 })
