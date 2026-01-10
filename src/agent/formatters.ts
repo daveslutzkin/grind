@@ -141,9 +141,14 @@ export function formatWorldState(state: WorldState): string {
   const area = state.exploration.areas.get(currentArea)
   const knownLocationIds = state.exploration.playerState.knownLocationIds
 
+  // Check if we're at a gathering location (used later for conditional display)
+  const areaLocationObj = area?.locations.find((loc) => loc.id === currentLocationId)
+  const isAtGatheringNode =
+    currentLocationId !== null && areaLocationObj?.type === ExplorationLocationType.GATHERING_NODE
+
   if (currentArea === "TOWN") {
     // TOWN: show current location name and available locations by type
-    const locationName = getLocationDisplayName(currentLocationId, currentArea)
+    const locationName = getLocationDisplayName(currentLocationId, currentArea, state)
     lines.push(`Location: ${locationName} in TOWN`)
     lines.push("")
 
@@ -155,17 +160,21 @@ export function formatWorldState(state: WorldState): string {
       )
 
       if (guilds.length > 0) {
-        const guildNames = guilds.map((loc) => getLocationDisplayName(loc.id)).join(", ")
+        const guildNames = guilds
+          .map((loc) => getLocationDisplayName(loc.id, currentArea, state))
+          .join(", ")
         lines.push(`Guilds: ${guildNames}`)
       }
       if (services.length > 0) {
-        const serviceNames = services.map((loc) => getLocationDisplayName(loc.id)).join(", ")
+        const serviceNames = services
+          .map((loc) => getLocationDisplayName(loc.id, currentArea, state))
+          .join(", ")
         lines.push(`Services: ${serviceNames}`)
       }
     }
   } else {
     // Wilderness: show location name (Clearing when at hub) with status suffix
-    const locationName = getLocationDisplayName(currentLocationId, currentArea)
+    const locationName = getLocationDisplayName(currentLocationId, currentArea, state)
     const knownLocs = area
       ? area.locations.filter((loc) => knownLocationIds.includes(loc.id)).length
       : 0
@@ -219,50 +228,37 @@ export function formatWorldState(state: WorldState): string {
     if (isAtHub) {
       lines.push(`${areaName}${statusSuffix}`)
     } else {
-      lines.push(`${locationName} (${areaName})${statusSuffix}`)
+      // At a sub-location - don't show exploration status
+      lines.push(`${locationName} (${areaName})`)
     }
 
     lines.push("")
 
-    // Count known gathering locations separately from other location types
-    const knownGatheringLocs = area
-      ? area.locations.filter(
-          (loc) =>
-            loc.type === ExplorationLocationType.GATHERING_NODE && knownLocationIds.includes(loc.id)
-        ).length
-      : 0
-
-    // Only show Gathering line if we've discovered at least one gathering location
-    if (knownGatheringLocs > 0) {
-      const nodesHere = state.world.nodes?.filter((n) => {
-        if (n.areaId !== currentArea || n.depleted) return false
-        const match = n.nodeId.match(/-node-(\d+)$/)
-        if (!match) return false
-        const locationId = `${n.areaId}-loc-${match[1]}`
-        return knownLocationIds.includes(locationId)
-      })
-
-      if (nodesHere && nodesHere.length > 0) {
-        for (const node of nodesHere) {
+    if (isAtGatheringNode) {
+      // At a gathering location - show only this location's information
+      // Find the corresponding node
+      const match = currentLocationId!.match(/-loc-(\d+)$/)
+      if (match) {
+        const nodeId = `${currentArea}-node-${match[1]}`
+        const node = state.world.nodes?.find((n) => n.nodeId === nodeId)
+        if (node) {
           const view = getPlayerNodeView(node, state)
-          const nodeName = getNodeTypeName(view.nodeType)
-
           const skill = getSkillForNodeType(view.nodeType)
           const skillLevel = state.player.skills[skill]?.level ?? 0
           const locationRequirement = getLocationSkillRequirement(node.areaId)
 
           if (view.visibilityTier === "none") {
-            // No skill - show node type with required skill and guild
-            const requiredSkill = getSkillForNodeType(view.nodeType)
-            const guildName = getGuildForSkill(requiredSkill)
-            lines.push(`Gathering: ${nodeName} (requires ${requiredSkill} - ${guildName})`)
+            // No skill - show that they need to enroll
+            const guildName = getGuildForSkill(skill)
+            lines.push(
+              `You need to enrol in ${skill} at the ${guildName} to gather resources here.`
+            )
           } else if (skillLevel < locationRequirement) {
-            // Has skill but not enough for this tier - show as locked
-            lines.push(`Gathering: ${nodeName} 🔒 (${skill} L${locationRequirement})`)
+            // Has skill but not enough for this tier
+            lines.push(`This location requires ${skill} level ${locationRequirement}.`)
+            lines.push(`Your current level: ${skillLevel}`)
           } else {
-            // Has sufficient skill - show materials with requirements
-            lines.push(`Gathering: ${nodeName}`)
-            // Sort materials by unlock level (lowest first)
+            // Has sufficient skill - show materials
             const sortedMaterials = [...view.visibleMaterials].sort(
               (a, b) => a.requiredLevel - b.requiredLevel
             )
@@ -271,7 +267,7 @@ export function formatWorldState(state: WorldState): string {
               const suffix = canGather ? " ✓" : ` (L${m.requiredLevel})`
               const materialName = formatMaterialName(m.materialId)
               if (view.visibilityTier === "full") {
-                // Appraised - show quantities
+                // Appraised - show quantities (format: "70/70 Stone ✓")
                 return `${m.remainingUnits}/${m.maxUnitsInitial} ${materialName}${suffix}`
               } else {
                 // Not appraised - just material name
@@ -279,74 +275,147 @@ export function formatWorldState(state: WorldState): string {
               }
             })
             if (matStrings.length > 0) {
-              lines.push(`  ${matStrings.join(", ")}`)
+              lines.push("Resources:")
+              for (const str of matStrings) {
+                lines.push(`  ${str}`)
+              }
+            } else {
+              lines.push("No visible resources at your current skill level.")
             }
           }
         }
-      } else {
-        lines.push("Gathering: none visible")
+      }
+    } else {
+      // At hub - show area-level information
+      // Count known gathering locations separately from other location types
+      const knownGatheringLocs = area
+        ? area.locations.filter(
+            (loc) =>
+              loc.type === ExplorationLocationType.GATHERING_NODE &&
+              knownLocationIds.includes(loc.id)
+          ).length
+        : 0
+
+      // Only show Gathering line if we've discovered at least one gathering location
+      if (knownGatheringLocs > 0) {
+        const nodesHere = state.world.nodes?.filter((n) => {
+          if (n.areaId !== currentArea || n.depleted) return false
+          const match = n.nodeId.match(/-node-(\d+)$/)
+          if (!match) return false
+          const locationId = `${n.areaId}-loc-${match[1]}`
+          return knownLocationIds.includes(locationId)
+        })
+
+        if (nodesHere && nodesHere.length > 0) {
+          for (const node of nodesHere) {
+            const view = getPlayerNodeView(node, state)
+            const nodeName = getNodeTypeName(view.nodeType)
+
+            const skill = getSkillForNodeType(view.nodeType)
+            const skillLevel = state.player.skills[skill]?.level ?? 0
+            const locationRequirement = getLocationSkillRequirement(node.areaId)
+
+            if (view.visibilityTier === "none") {
+              // No skill - show node type with required skill and guild
+              const requiredSkill = getSkillForNodeType(view.nodeType)
+              const guildName = getGuildForSkill(requiredSkill)
+              lines.push(`Gathering: ${nodeName} (requires ${requiredSkill} - ${guildName})`)
+            } else if (skillLevel < locationRequirement) {
+              // Has skill but not enough for this tier - show as locked
+              lines.push(`Gathering: ${nodeName} 🔒 (${skill} L${locationRequirement})`)
+            } else {
+              // Has sufficient skill - show materials with requirements
+              lines.push(`Gathering: ${nodeName}`)
+              // Sort materials by unlock level (lowest first)
+              const sortedMaterials = [...view.visibleMaterials].sort(
+                (a, b) => a.requiredLevel - b.requiredLevel
+              )
+              const matStrings = sortedMaterials.map((m) => {
+                const canGather = m.requiredLevel <= skillLevel
+                const suffix = canGather ? " ✓" : ` (L${m.requiredLevel})`
+                const materialName = formatMaterialName(m.materialId)
+                if (view.visibilityTier === "full") {
+                  // Appraised - show quantities
+                  return `${m.remainingUnits}/${m.maxUnitsInitial} ${materialName}${suffix}`
+                } else {
+                  // Not appraised - just material name
+                  return `${materialName}${suffix}`
+                }
+              })
+              if (matStrings.length > 0) {
+                lines.push(`  ${matStrings.join(", ")}`)
+              }
+            }
+          }
+        } else {
+          lines.push("Gathering: none visible")
+        }
+      }
+
+      // Show discovered enemy camps (separate from gathering nodes)
+      const knownMobCamps = area?.locations.filter(
+        (loc) => loc.type === ExplorationLocationType.MOB_CAMP && knownLocationIds.includes(loc.id)
+      )
+      if (knownMobCamps && knownMobCamps.length > 0) {
+        const campDescriptions = knownMobCamps.map((camp) => {
+          const difficultyStr =
+            camp.difficulty !== undefined ? ` (difficulty ${camp.difficulty})` : ""
+          return `enemy camp${difficultyStr}`
+        })
+        lines.push(`Enemy camps: ${campDescriptions.join(", ")}`)
+      }
+    }
+  }
+
+  // Only show connections and enemies when not at a gathering location
+  // (when at a gathering location, focus is on that specific location)
+  if (!isAtGatheringNode) {
+    // Travel - available connections (bidirectional - can go back the way you came)
+    const knownConnections = state.exploration.playerState.knownConnectionIds
+    const destinations = new Map<string, number>() // dest -> travel time
+
+    for (const connId of knownConnections) {
+      const [from, to] = connId.split("->")
+      let dest: string | null = null
+      let conn
+
+      if (from === currentArea) {
+        // Outgoing connection: currentArea -> somewhere
+        dest = to
+        conn = state.exploration.connections.find(
+          (c) => c.fromAreaId === currentArea && c.toAreaId === to
+        )
+      } else if (to === currentArea) {
+        // Incoming connection: somewhere -> currentArea (can travel back)
+        dest = from
+        conn = state.exploration.connections.find(
+          (c) => c.fromAreaId === from && c.toAreaId === currentArea
+        )
+      }
+
+      if (dest && !destinations.has(dest)) {
+        const actualTravelTime = BASE_TRAVEL_TIME * (conn?.travelTimeMultiplier ?? 1)
+        destinations.set(dest, actualTravelTime)
       }
     }
 
-    // Show discovered enemy camps (separate from gathering nodes)
-    const knownMobCamps = area?.locations.filter(
-      (loc) => loc.type === ExplorationLocationType.MOB_CAMP && knownLocationIds.includes(loc.id)
-    )
-    if (knownMobCamps && knownMobCamps.length > 0) {
-      const campDescriptions = knownMobCamps.map((camp) => {
-        const difficultyStr =
-          camp.difficulty !== undefined ? ` (difficulty ${camp.difficulty})` : ""
-        return `enemy camp${difficultyStr}`
-      })
-      lines.push(`Enemy camps: ${campDescriptions.join(", ")}`)
-    }
-  }
-
-  // Travel - available connections (bidirectional - can go back the way you came)
-  const knownConnections = state.exploration.playerState.knownConnectionIds
-  const destinations = new Map<string, number>() // dest -> travel time
-
-  for (const connId of knownConnections) {
-    const [from, to] = connId.split("->")
-    let dest: string | null = null
-    let conn
-
-    if (from === currentArea) {
-      // Outgoing connection: currentArea -> somewhere
-      dest = to
-      conn = state.exploration.connections.find(
-        (c) => c.fromAreaId === currentArea && c.toAreaId === to
-      )
-    } else if (to === currentArea) {
-      // Incoming connection: somewhere -> currentArea (can travel back)
-      dest = from
-      conn = state.exploration.connections.find(
-        (c) => c.fromAreaId === from && c.toAreaId === currentArea
-      )
+    if (destinations.size > 0) {
+      // Sort by travel time (shortest first)
+      const travelList = Array.from(destinations.entries())
+        .sort((a, b) => a[1] - b[1])
+        .map(([dest, time]) => `${getAreaDisplayName(state, dest)} (${time}t)`)
+        .join(", ")
+      lines.push(`Connections: ${travelList}`)
+    } else {
+      lines.push("Connections: none known")
     }
 
-    if (dest && !destinations.has(dest)) {
-      const actualTravelTime = BASE_TRAVEL_TIME * (conn?.travelTimeMultiplier ?? 1)
-      destinations.set(dest, actualTravelTime)
+    // Enemies at current location
+    const enemies = state.world.enemies.filter((e) => e.areaId === currentArea)
+    if (enemies.length > 0) {
+      const enemyStr = enemies.map((e) => `${e.id} (Combat L${e.requiredSkillLevel})`).join(", ")
+      lines.push(`Enemies: ${enemyStr}`)
     }
-  }
-
-  if (destinations.size > 0) {
-    // Sort by travel time (shortest first)
-    const travelList = Array.from(destinations.entries())
-      .sort((a, b) => a[1] - b[1])
-      .map(([dest, time]) => `${getAreaDisplayName(state, dest)} (${time}t)`)
-      .join(", ")
-    lines.push(`Connections: ${travelList}`)
-  } else {
-    lines.push("Connections: none known")
-  }
-
-  // Enemies at current location
-  const enemies = state.world.enemies.filter((e) => e.areaId === currentArea)
-  if (enemies.length > 0) {
-    const enemyStr = enemies.map((e) => `${e.id} (Combat L${e.requiredSkillLevel})`).join(", ")
-    lines.push(`Enemies: ${enemyStr}`)
   }
 
   // Show enrol hint at guild halls (last, as it's the actionable item)

@@ -23,7 +23,6 @@ import {
   UNKNOWN_CONNECTION_MULTIPLIER,
   BASE_TRAVEL_TIME,
   findPath,
-  getAreaDisplayName,
   isConnectionKnown,
   executeExplorationTravel,
   executeFarTravel,
