@@ -23,7 +23,6 @@ import {
   UNKNOWN_CONNECTION_MULTIPLIER,
   BASE_TRAVEL_TIME,
   findPath,
-  getAreaDisplayName,
   isConnectionKnown,
   executeExplorationTravel,
   executeFarTravel,
@@ -321,6 +320,12 @@ export async function interactiveExplore(state: WorldState): Promise<void> {
 
     // Show discovery result (not full state)
     console.log(formatActionLog(finalLog, state))
+
+    // Check if area is now fully explored
+    if (finalLog.explorationLog?.areaFullyExplored) {
+      console.log("\n✓ Area fully explored - nothing left to discover")
+      return
+    }
 
     // Prompt to continue exploring
     const shouldContinue = await promptYesNo("\nContinue exploring?")
