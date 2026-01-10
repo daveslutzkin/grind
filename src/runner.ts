@@ -953,8 +953,8 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
     // Call beforeAction hook if provided
     config.beforeAction?.(action, session.state)
 
-    // Handle interactive exploration (Explore and Survey)
-    if (action.type === "Explore" || action.type === "Survey") {
+    // Handle interactive exploration (Explore and Survey) - only in TTY mode
+    if ((action.type === "Explore" || action.type === "Survey") && process.stdin.isTTY) {
       // Import interactive functions dynamically
       const { interactiveExplore, interactiveSurvey } = await import("./interactive.js")
 
@@ -970,7 +970,7 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
       continue
     }
 
-    // Execute the action
+    // Execute the action (non-interactive mode or non-Explore/Survey actions)
     const log = await executeAction(session.state, action)
     session.stats.logs.push(log)
     config.onActionComplete(log, session.state)
