@@ -247,10 +247,9 @@ export async function interactiveExplore(state: WorldState): Promise<void> {
       return
     }
 
-    // Update original state RNG counter to match shadow rolls
-    state.rng.counter = shadowRng.counter
-
     // Animate discovery (visual only - does not consume time)
+    // Note: We do NOT update state.rng.counter here. The shadow roll was just a preview.
+    // The real executeExplore will start from the same RNG state and get the same results.
     process.stdout.write("\nExploring")
     const animResult = await animateDiscovery(ticksConsumed)
 
@@ -261,8 +260,8 @@ export async function interactiveExplore(state: WorldState): Promise<void> {
       return
     }
 
-    // Execute once on original state (deterministic due to matching RNG counter)
-    // This will consume the full time
+    // Execute the real action (will use same RNG sequence as shadow roll, so same result)
+    // This will consume the actual time
     const action: ExploreAction = { type: "Explore" }
     const finalLog = await executeExplore(state, action)
 
@@ -316,10 +315,9 @@ export async function interactiveSurvey(state: WorldState): Promise<void> {
       return
     }
 
-    // Update original state RNG counter to match shadow rolls
-    state.rng.counter = shadowRng.counter
-
     // Animate discovery (visual only - does not consume time)
+    // Note: We do NOT update state.rng.counter here. The shadow roll was just a preview.
+    // The real executeSurvey will start from the same RNG state and get the same results.
     process.stdout.write("\nSurveying")
     const animResult = await animateDiscovery(ticksConsumed)
 
@@ -330,8 +328,8 @@ export async function interactiveSurvey(state: WorldState): Promise<void> {
       return
     }
 
-    // Execute once on original state (deterministic due to matching RNG counter)
-    // This will consume the full time
+    // Execute the real action (will use same RNG sequence as shadow roll, so same result)
+    // This will consume the actual time
     const action: SurveyAction = { type: "Survey" }
     const finalLog = await executeSurvey(state, action)
 
