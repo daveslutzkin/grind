@@ -602,12 +602,7 @@ export function checkTravelToLocationAction(
     return { valid: false, failureType: "ALREADY_AT_LOCATION", timeCost: 0, successProbability: 0 }
   }
 
-  // Must be at hub (null) to travel to a location
-  if (currentLocationId !== null) {
-    return { valid: false, failureType: "NOT_AT_HUB", timeCost: 0, successProbability: 0 }
-  }
-
-  // Location must exist in current area
+  // Location must exist in current area (check before hub check for better error message)
   const area = state.exploration.areas.get(currentAreaId)
   const location = area?.locations.find((loc) => loc.id === action.locationId)
   if (!location) {
@@ -617,6 +612,11 @@ export function checkTravelToLocationAction(
       timeCost: 0,
       successProbability: 0,
     }
+  }
+
+  // Must be at hub (null) to travel to a location
+  if (currentLocationId !== null) {
+    return { valid: false, failureType: "NOT_AT_HUB", timeCost: 0, successProbability: 0 }
   }
 
   // Location must be discovered (known)
