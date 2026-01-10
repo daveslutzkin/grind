@@ -894,6 +894,7 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
   let session: Session
   if (process.stdin.isTTY && saveExists(seed)) {
     const save = loadSave(seed)
+    // promptResume uses promptYesNo which handles readline conflicts internally
     const shouldResume = await promptResume(save)
     if (shouldResume) {
       // Resume from save

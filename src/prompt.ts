@@ -1,15 +1,53 @@
 /**
- * Shared prompt utilities using raw mode to avoid readline conflicts
+ * Centralized input manager that owns the readline interface
  *
- * These utilities use raw mode stdin directly instead of readline.createInterface
- * to prevent conflicts with existing readline instances in the REPL.
+ * This module manages all stdin interactions to prevent readline conflicts.
+ * Any code needing user input should use this module instead of creating
+ * its own readline interface.
  */
 
+import * as readline from "readline"
+
+let rl: readline.Interface | null = null
+
 /**
- * Prompt user with y/n question using raw mode to avoid readline conflicts
+ * Initialize the input manager. Must be called before using prompt functions.
+ */
+export function initInput(): void {
+  if (rl) return
+  rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  })
+}
+
+/**
+ * Close the input manager. Call when done with all input.
+ */
+export function closeInput(): void {
+  if (rl) {
+    rl.close()
+    rl = null
+  }
+}
+
+/**
+ * Prompt for a line of text input using readline.
+ */
+export async function promptLine(question: string): Promise<string> {
+  if (!rl) {
+    throw new Error("Input manager not initialized. Call initInput() first.")
+  }
+  return new Promise((resolve) => {
+    rl!.question(question, resolve)
+  })
+}
+
+/**
+ * Prompt user with y/n question.
  *
- * This function is safe to call even when a readline interface is active,
- * as it uses raw mode directly instead of creating a new readline interface.
+ * This automatically handles closing and reopening the readline interface
+ * to use raw mode for single-character input without conflicts.
  *
  * @param question The question to ask (without the "(y/n)" suffix)
  * @returns true if user answered 'y' or 'yes', false otherwise
@@ -21,33 +59,48 @@ export async function promptYesNo(question: string): Promise<boolean> {
     return false
   }
 
-  return new Promise((resolve) => {
-    process.stdout.write(`${question} (y/n): `)
+  // Close readline to release stdin
+  const hadReadline = rl !== null
+  if (hadReadline) {
+    rl!.close()
+    rl = null
+  }
 
-    // Save current raw mode state
-    const wasRaw = process.stdin.isRaw
+  try {
+    return await new Promise((resolve) => {
+      process.stdout.write(`${question} (y/n): `)
 
-    process.stdin.setRawMode(true)
-    process.stdin.resume()
-    process.stdin.setEncoding("utf8")
+      process.stdin.setRawMode(true)
+      process.stdin.resume()
+      process.stdin.setEncoding("utf8")
 
-    const handler = (key: string) => {
-      process.stdin.removeListener("data", handler)
-      process.stdin.setRawMode(wasRaw ?? false)
+      const handler = (key: string) => {
+        process.stdin.removeListener("data", handler)
+        process.stdin.setRawMode(false)
+        process.stdin.pause()
 
-      // Handle Ctrl+C
-      if (key === "\u0003") {
-        process.stdout.write("\n")
-        process.exit(0)
+        // Handle Ctrl+C
+        if (key === "\u0003") {
+          process.stdout.write("\n")
+          process.exit(0)
+        }
+
+        // Echo the key and newline
+        process.stdout.write(key + "\n")
+
+        const normalized = key.toLowerCase()
+        resolve(normalized === "y" || normalized === "yes")
       }
 
-      // Echo the key and newline
-      process.stdout.write(key + "\n")
-
-      const normalized = key.toLowerCase()
-      resolve(normalized === "y" || normalized === "yes")
+      process.stdin.once("data", handler)
+    })
+  } finally {
+    // Reopen readline if it was open before
+    if (hadReadline) {
+      rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+      })
     }
-
-    process.stdin.once("data", handler)
-  })
+  }
 }
