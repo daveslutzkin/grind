@@ -16,47 +16,10 @@ import {
   executeSurvey,
   getRollInterval,
   calculateExpectedTicks,
+  shadowRollExplore,
+  shadowRollSurvey,
 } from "./exploration.js"
 import { formatActionLog } from "./agent/formatters.js"
-
-// ============================================================================
-// State Cloning with Map Support
-// ============================================================================
-
-/**
- * Deep clone WorldState with proper handling of Map objects
- *
- * The execute-on-clone pattern:
- * 1. Clone entire state (including Maps)
- * 2. Execute action on CLONE to find out what happens
- * 3. Capture advanced RNG counter from clone
- * 4. Apply RNG counter to ORIGINAL state
- * 5. Animate on original state
- * 6. Re-execute on original state (deterministic due to RNG counter)
- *
- * This is cleaner than snapshot/restore because:
- * - Works with any future WorldState changes (Maps, Sets, etc.)
- * - No manual tracking of which fields to save/restore
- * - Original state is never mutated until animation completes
- * - Only RNG counter needs to be transferred between states
- */
-function cloneWorldState(state: WorldState): WorldState {
-  // JSON clone handles most of the state but loses Map objects
-  const jsonClone = JSON.parse(JSON.stringify(state)) as WorldState
-
-  // Restore the exploration.areas Map (lost during JSON serialization)
-  if (state.exploration?.areas) {
-    // Deep clone the Map by cloning each area entry
-    const areasMap = new Map()
-    for (const [areaId, area] of state.exploration.areas) {
-      // Clone the area object to avoid shared references
-      areasMap.set(areaId, JSON.parse(JSON.stringify(area)))
-    }
-    jsonClone.exploration!.areas = areasMap
-  }
-
-  return jsonClone
-}
 
 // ============================================================================
 // Hard Discoveries Detection
@@ -367,25 +330,65 @@ export async function interactiveExplore(state: WorldState): Promise<void> {
       }
     }
 
-    // Clone state for test execution
-    const testState = cloneWorldState(state)
+    // Shadow roll to determine tick count without mutating state
+    // Build discoverables list (reuse variables from above, get additional data)
+    const level = state.player.skills.Exploration.level
+    const undiscoveredUnknownConnections = exploration.connections.filter((conn) => {
+      const isFromCurrent = conn.fromAreaId === currentArea.id
+      const isToCurrent = conn.toAreaId === currentArea.id
+      if (!isFromCurrent && !isToCurrent) return false
+      const connId = `${conn.fromAreaId}->${conn.toAreaId}`
+      const targetId = isFromCurrent ? conn.toAreaId : conn.fromAreaId
+      return !knownConnectionIds.has(connId) && !knownAreaIds.has(targetId)
+    })
 
-    // Execute exploration on clone to find out what happens
-    const action: ExploreAction = { type: "Explore" }
-    const log = await executeExplore(testState, action)
+    // Calculate base chance and build discoverables
+    const distance = currentArea.distance
+    const baseRate = 0.05
+    const levelBonus = (level - 1) * 0.05
+    const distancePenalty = (distance - 1) * 0.05
+    const baseChance = Math.max(0.01, baseRate + levelBonus - distancePenalty)
+    const rollInterval = getRollInterval(level)
 
-    // If failed, show failure and exit
-    if (!log.success) {
-      console.log("\n" + formatActionLog(log, state))
+    const getLocationThreshold = (loc: ExplorationLocation): number => {
+      if (loc.type === ExplorationLocationType.GATHERING_NODE && loc.gatheringSkillType) {
+        const skillLevel = state.player.skills[loc.gatheringSkillType]?.level ?? 0
+        if (skillLevel === 0) {
+          return baseChance * 0.05
+        }
+        return baseChance * 0.5
+      }
+      return baseChance * 0.5
+    }
+
+    const discoverables = [
+      ...undiscoveredLocations.map((loc) => ({
+        threshold: getLocationThreshold(loc),
+      })),
+      ...undiscoveredKnownConnections.map(() => ({
+        threshold: baseChance * 1.0,
+      })),
+      ...undiscoveredUnknownConnections.map(() => ({
+        threshold: baseChance * 0.25,
+      })),
+    ]
+
+    // Clone RNG and shadow roll to find tick count
+    const shadowRng = { ...state.rng }
+    const ticksConsumed = shadowRollExplore(
+      shadowRng,
+      discoverables,
+      rollInterval,
+      state.time.sessionRemainingTicks
+    )
+
+    if (ticksConsumed === null) {
+      console.log("\n✗ Session would end before finding anything")
       return
     }
 
-    // Capture what changed
-    const ticksConsumed = log.timeConsumed
-    const advancedRngCounter = testState.rng.counter
-
-    // Apply advanced RNG counter to original state (preserves determinism)
-    state.rng.counter = advancedRngCounter
+    // Update original state RNG counter to match shadow rolls
+    state.rng.counter = shadowRng.counter
 
     // Animate with real-time tick consumption
     process.stdout.write("\nExploring")
@@ -396,7 +399,8 @@ export async function interactiveExplore(state: WorldState): Promise<void> {
       return
     }
 
-    // Re-execute to apply discoveries (RNG counter matches, so same result)
+    // Execute once on original state (deterministic due to matching RNG counter)
+    const action: ExploreAction = { type: "Explore" }
     const finalLog = await executeExplore(state, action)
 
     // Show discovery result (not full state)
@@ -423,25 +427,48 @@ export async function interactiveSurvey(state: WorldState): Promise<void> {
       return
     }
 
-    // Clone state for test execution
-    const testState = cloneWorldState(state)
+    // Shadow roll to determine tick count without mutating state
+    const exploration = state.exploration!
+    const level = state.player.skills.Exploration.level
+    const currentArea = exploration.areas.get(exploration.playerState.currentAreaId)!
+    const distance = currentArea.distance
 
-    // Execute survey on clone to find out what happens
-    const action: SurveyAction = { type: "Survey" }
-    const log = await executeSurvey(testState, action)
+    // Calculate success chance (same logic as executeSurvey)
+    const baseRate = 0.05
+    const levelBonus = (level - 1) * 0.05
+    const distancePenalty = (distance - 1) * 0.05
+    const successChance = Math.max(0.01, baseRate + levelBonus - distancePenalty)
+    const rollInterval = getRollInterval(level)
 
-    // If failed, show failure and exit
-    if (!log.success) {
-      console.log("\n" + formatActionLog(log, state))
+    // Get all connections and known area IDs
+    const allConnections = exploration.connections.filter((conn) => {
+      return (
+        conn.fromAreaId === exploration.playerState.currentAreaId ||
+        conn.toAreaId === exploration.playerState.currentAreaId
+      )
+    })
+    const knownAreaIds = new Set(exploration.playerState.knownAreaIds)
+
+    // Clone RNG and shadow roll to find tick count
+    const shadowRng = { ...state.rng }
+    const ticksConsumed = shadowRollSurvey(
+      shadowRng,
+      successChance,
+      rollInterval,
+      state.time.sessionRemainingTicks,
+      allConnections.length,
+      knownAreaIds,
+      allConnections,
+      exploration.playerState.currentAreaId
+    )
+
+    if (ticksConsumed === null) {
+      console.log("\n✗ Session would end before finding anything")
       return
     }
 
-    // Capture what changed
-    const ticksConsumed = log.timeConsumed
-    const advancedRngCounter = testState.rng.counter
-
-    // Apply advanced RNG counter to original state (preserves determinism)
-    state.rng.counter = advancedRngCounter
+    // Update original state RNG counter to match shadow rolls
+    state.rng.counter = shadowRng.counter
 
     // Animate with real-time tick consumption
     process.stdout.write("\nSurveying")
@@ -452,7 +479,8 @@ export async function interactiveSurvey(state: WorldState): Promise<void> {
       return
     }
 
-    // Re-execute to apply discoveries (RNG counter matches, so same result)
+    // Execute once on original state (deterministic due to matching RNG counter)
+    const action: SurveyAction = { type: "Survey" }
     const finalLog = await executeSurvey(state, action)
 
     // Show discovery result (not full state)
