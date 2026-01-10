@@ -141,10 +141,12 @@ export function formatWorldState(state: WorldState): string {
   const area = state.exploration.areas.get(currentArea)
   const knownLocationIds = state.exploration.playerState.knownLocationIds
 
-  // Check if we're at a gathering location (used later for conditional display)
+  // Check if we're at a special location (used later for conditional display)
   const areaLocationObj = area?.locations.find((loc) => loc.id === currentLocationId)
   const isAtGatheringNode =
     currentLocationId !== null && areaLocationObj?.type === ExplorationLocationType.GATHERING_NODE
+  const isAtMobCamp =
+    currentLocationId !== null && areaLocationObj?.type === ExplorationLocationType.MOB_CAMP
 
   if (currentArea === "TOWN") {
     // TOWN: show current location name and available locations by type
@@ -304,6 +306,17 @@ export function formatWorldState(state: WorldState): string {
           }
         }
       }
+    } else if (isAtMobCamp) {
+      // At an enemy camp - show creature type and difficulty
+      if (areaLocationObj) {
+        const creatureType = areaLocationObj.creatureType || "unknown creature"
+        const difficulty = areaLocationObj.difficulty ?? 0
+
+        lines.push(`Enemy camp: ${creatureType}`)
+        lines.push(`Difficulty: ${difficulty}`)
+        lines.push("")
+        lines.push("Use the 'fight' command to engage enemies here.")
+      }
     } else {
       // At hub - show area-level information
       // Count known gathering locations separately from other location types
@@ -386,9 +399,9 @@ export function formatWorldState(state: WorldState): string {
     }
   }
 
-  // Only show connections and enemies when not at a gathering location
-  // (when at a gathering location, focus is on that specific location)
-  if (!isAtGatheringNode) {
+  // Only show connections and enemies when not at a special location
+  // (when at a special location, focus is on that specific location)
+  if (!isAtGatheringNode && !isAtMobCamp) {
     // Travel - available connections (bidirectional - can go back the way you came)
     const knownConnections = state.exploration.playerState.knownConnectionIds
     const destinations = new Map<string, number>() // dest -> travel time
