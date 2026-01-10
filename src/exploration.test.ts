@@ -19,6 +19,7 @@ import {
   shadowRollSurvey,
   ensureAreaFullyGenerated,
 } from "./exploration.js"
+import { executeToCompletion } from "./engine.js"
 import type {
   Area,
   WorldState,
@@ -1011,7 +1012,7 @@ describe("ExplorationTravel Action", () => {
         destinationAreaId: "area-d1-i0",
       }
 
-      const log = await executeExplorationTravel(state, action)
+      const log = await executeToCompletion(executeExplorationTravel(state, action))
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("NO_PATH_TO_DESTINATION")
@@ -1026,7 +1027,7 @@ describe("ExplorationTravel Action", () => {
         destinationAreaId: "area-d1-i0",
       }
 
-      const log = await executeExplorationTravel(state, action)
+      const log = await executeToCompletion(executeExplorationTravel(state, action))
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("NO_PATH_TO_DESTINATION")
@@ -1039,7 +1040,7 @@ describe("ExplorationTravel Action", () => {
         destinationAreaId: "TOWN",
       }
 
-      const log = await executeExplorationTravel(state, action)
+      const log = await executeToCompletion(executeExplorationTravel(state, action))
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("ALREADY_IN_AREA")
@@ -1058,7 +1059,7 @@ describe("ExplorationTravel Action", () => {
         destinationAreaId: destAreaId,
       }
 
-      const log = await executeExplorationTravel(state, action)
+      const log = await executeToCompletion(executeExplorationTravel(state, action))
 
       expect(log.success).toBe(true)
       expect(state.exploration!.playerState.currentAreaId).toBe(destAreaId)
@@ -1077,7 +1078,7 @@ describe("ExplorationTravel Action", () => {
 
       expect(state.exploration!.playerState.knownAreaIds).not.toContain(destAreaId)
 
-      const log = await executeExplorationTravel(state, action)
+      const log = await executeToCompletion(executeExplorationTravel(state, action))
 
       expect(log.success).toBe(true)
       expect(state.exploration!.playerState.currentAreaId).toBe(destAreaId)
@@ -1097,7 +1098,7 @@ describe("ExplorationTravel Action", () => {
         destinationAreaId: destAreaId,
       }
 
-      const log = await executeExplorationTravel(state, action)
+      const log = await executeToCompletion(executeExplorationTravel(state, action))
 
       // Time = BASE_TRAVEL_TIME * multiplier (10 * 0.5-4.5 = 5-45)
       expect(log.timeConsumed).toBeGreaterThanOrEqual(5)
@@ -1116,7 +1117,7 @@ describe("ExplorationTravel Action", () => {
         scavenge: true,
       }
 
-      const log = await executeExplorationTravel(state, action)
+      const log = await executeToCompletion(executeExplorationTravel(state, action))
 
       // Time = BASE_TRAVEL_TIME * multiplier * 2 (for scavenge, 10 * 0.5-4.5 * 2 = 10-90)
       expect(log.timeConsumed).toBeGreaterThanOrEqual(10)
@@ -1151,7 +1152,7 @@ describe("ExplorationTravel Action", () => {
         destinationAreaId: area1,
       }
 
-      const log = await executeExplorationTravel(state, action)
+      const log = await executeToCompletion(executeExplorationTravel(state, action))
 
       // Multi-hop travel is not allowed - must have direct connection
       expect(log.success).toBe(false)
@@ -1294,7 +1295,7 @@ describe("ExplorationTravel vs FarTravel - Regression Tests", () => {
       destinationAreaId: area1, // Not directly connected to TOWN
     }
 
-    const log = await executeExplorationTravel(state, action)
+    const log = await executeToCompletion(executeExplorationTravel(state, action))
 
     // This should FAIL - ExplorationTravel only allows direct connections
     expect(log.success).toBe(false)
@@ -1347,7 +1348,8 @@ describe("ExplorationTravel vs FarTravel - Regression Tests", () => {
       destinationAreaId: area0,
     }
 
-    const log = await executeExplorationTravel(state, action)
+    // executeExplorationTravel now returns a generator, so we need to consume it
+    const log = await executeToCompletion(executeExplorationTravel(state, action))
 
     // Direct travel should still work
     expect(log.success).toBe(true)
