@@ -798,7 +798,7 @@ function grantExplorationXP(
 /**
  * Get knowledge bonus parameters for success chance calculation
  */
-function getKnowledgeParams(
+export function getKnowledgeParams(
   state: WorldState,
   currentArea: Area
 ): {
