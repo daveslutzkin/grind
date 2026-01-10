@@ -930,7 +930,7 @@ function executeTravelToLocation(state: WorldState, action: TravelToLocationActi
     levelUps: mergeLevelUps([], contractsCompleted),
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: [],
-    stateDeltaSummary: `Traveled to ${getLocationDisplayName(locationId)}`,
+    stateDeltaSummary: `Traveled to ${getLocationDisplayName(locationId, state.exploration.playerState.currentAreaId, state)}`,
   }
 }
 
@@ -969,6 +969,6 @@ function executeLeave(state: WorldState, action: LeaveAction): ActionLog {
     levelUps: mergeLevelUps([], contractsCompleted),
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: [],
-    stateDeltaSummary: `Left ${getLocationDisplayName(previousLocation)} for ${hubName}`,
+    stateDeltaSummary: `Left ${getLocationDisplayName(previousLocation, state.exploration.playerState.currentAreaId, state)} for ${hubName}`,
   }
 }
