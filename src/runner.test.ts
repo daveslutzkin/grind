@@ -2,11 +2,49 @@
  * Tests for the shared runner module
  */
 
+import * as fs from "fs"
+import * as path from "path"
+import * as os from "os"
 import type { ActionLog, WorldState } from "./types.js"
 import type { SessionStats } from "./runner.js"
 import { runSession } from "./runner.js"
+import { setSavesDirectory, deleteSave } from "./persistence.js"
 
 describe("runSession", () => {
+  let TEST_SAVES_DIR: string
+  const TEST_SEEDS = [
+    "test-seed",
+    "time-check-test",
+    "end-test",
+    "error-test",
+    "exit-test",
+    "meta-test",
+    "meta-end-test",
+    "meta-quit-test",
+    "before-test",
+    "complete-test",
+    "start-hook-test",
+    "no-start-hook-test",
+  ]
+
+  // Set up temp directory for test saves
+  beforeAll(() => {
+    TEST_SAVES_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "grind-runner-test-"))
+    setSavesDirectory(TEST_SAVES_DIR)
+  })
+
+  // Clean up test saves directory after all tests
+  afterAll(() => {
+    if (fs.existsSync(TEST_SAVES_DIR)) {
+      fs.rmSync(TEST_SAVES_DIR, { recursive: true, force: true })
+    }
+  })
+
+  // Clean up individual test saves after each test
+  afterEach(() => {
+    TEST_SEEDS.forEach((seed) => deleteSave(seed))
+  })
+
   describe("basic execution", () => {
     it("executes commands from getNextCommand until null", async () => {
       // Must go to Explorers Guild before enrolling (location-based actions)
