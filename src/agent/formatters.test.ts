@@ -500,7 +500,7 @@ describe("Formatters", () => {
         // Should show enemy camp details
         expect(formatted).toContain("Enemy camp: creature")
         expect(formatted).toContain("Difficulty: 5")
-        expect(formatted).toContain("Use the 'fight' command")
+        expect(formatted).toContain("fight / leave")
 
         // Should NOT show the general area information (connections, etc) when at camp
         expect(formatted).not.toContain("Connections:")

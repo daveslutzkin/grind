@@ -193,9 +193,12 @@ export function formatWorldState(state: WorldState): string {
       return knownConnectionIds.has(connId)
     })
 
-    // Determine status suffix for Location line
-    let statusSuffix = ""
-    const hasAnyDiscovery = knownLocs > 0 || discoveredConnectionsFromArea.length > 0
+    // Determine exploration status for Location line
+    let explorationStatus = ""
+
+    // Every area has 1 connection discovered (that's how the player got there)
+    // so only MORE THAN one connection counts as a discovery
+    const hasAnyDiscovery = knownLocs > 0 || discoveredConnectionsFromArea.length > 1
 
     // Check if area is fully explored
     const remainingLocations = area
@@ -234,20 +237,22 @@ export function formatWorldState(state: WorldState): string {
 
     if (!hasAnyDiscovery) {
       // Nothing discovered yet (no locations AND no connections from here)
-      statusSuffix = " — unexplored"
+      explorationStatus = "Unexplored (use explore action to start)"
     } else if (isFullyExplored) {
       // All locations and all connections discovered
-      statusSuffix = " — fully explored"
+      explorationStatus = "Fully explored!"
     } else {
       // Something discovered but not everything
-      statusSuffix = " — partly explored"
+      explorationStatus = "Partly explored"
     }
 
     // Title format: just area name at hub, "Location Name (area)" at a location
     const areaName = getAreaDisplayName(state, currentArea)
     const isAtHub = currentLocationId === null
     if (isAtHub) {
-      lines.push(`${areaName}${statusSuffix}`)
+      lines.push(`** ${areaName} **`)
+      lines.push("")
+      lines.push(explorationStatus)
     } else {
       // At a sub-location - don't show exploration status
       lines.push(`${locationName} (${areaName})`)
@@ -315,7 +320,7 @@ export function formatWorldState(state: WorldState): string {
         lines.push(`Enemy camp: ${creatureType}`)
         lines.push(`Difficulty: ${difficulty}`)
         lines.push("")
-        lines.push("Use the 'fight' command to engage enemies here.")
+        lines.push("fight / leave")
       }
     } else {
       // At hub - show area-level information
@@ -397,6 +402,10 @@ export function formatWorldState(state: WorldState): string {
         })
         lines.push(`Enemy camps: ${campDescriptions.join(", ")}`)
       }
+    }
+
+    if (lines[lines.length - 1] != "") {
+      lines.push("")
     }
   }
 
