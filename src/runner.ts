@@ -354,6 +354,42 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         return null
       }
 
+      // Check for enemy camp aliases (camp, enemy camp, mob camp)
+      const enemyCampAliases = ["enemy camp", "camp", "mob camp"]
+      const baseAlias = enemyCampAliases.find((alias) => inputName.startsWith(alias))
+      if (baseAlias) {
+        // Extract optional index (e.g., "enemy camp 2" -> index 2)
+        const remainder = inputName.slice(baseAlias.length).trim()
+        const index = remainder ? parseInt(remainder, 10) : 1
+
+        const currentAreaId = context.state?.exploration.playerState.currentAreaId
+        const area = context.state?.exploration.areas.get(currentAreaId ?? "")
+        const knownLocationIds = new Set(
+          context.state?.exploration.playerState.knownLocationIds ?? []
+        )
+        const mobCampLocations =
+          area?.locations.filter(
+            (loc: ExplorationLocation) =>
+              loc.type === ExplorationLocationType.MOB_CAMP && knownLocationIds.has(loc.id)
+          ) ?? []
+
+        if (mobCampLocations.length === 0) {
+          if (context.logErrors) {
+            console.log("No discovered enemy camps in current area")
+          }
+          return null
+        }
+
+        if (isNaN(index) || index < 1 || index > mobCampLocations.length) {
+          if (context.logErrors) {
+            console.log(`Invalid camp index. Found ${mobCampLocations.length} enemy camp(s).`)
+          }
+          return null
+        }
+
+        return { type: "TravelToLocation", locationId: mobCampLocations[index - 1].id }
+      }
+
       // Next, try to match against location display names (case-insensitive, partial match)
       const matchedLocation = Object.entries(LOCATION_DISPLAY_NAMES).find(([, displayName]) =>
         displayName.toLowerCase().includes(inputName)

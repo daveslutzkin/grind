@@ -481,6 +481,30 @@ describe("Formatters", () => {
         // since MOB_CAMP_PROBABILITY is 0.25
         console.log("Note: No mob camp generated in 20 seeds (expected ~25% per area)")
       })
+
+      it("should show creature type and difficulty when at enemy camp location", () => {
+        const state = createWorld("mob-camp-at-location")
+        const areaId = getOreAreaId(state)
+        makeAreaKnown(state, areaId)
+        state.exploration.playerState.currentAreaId = areaId
+
+        // Add a mob camp and discover it
+        const campLocationId = addMobCampToArea(state, areaId, 5)
+        state.exploration.playerState.knownLocationIds.push(campLocationId)
+
+        // Move player TO the camp location
+        state.exploration.playerState.currentLocationId = campLocationId
+
+        const formatted = formatWorldState(state)
+
+        // Should show enemy camp details
+        expect(formatted).toContain("Enemy camp: creature")
+        expect(formatted).toContain("Difficulty: 5")
+        expect(formatted).toContain("Use the 'fight' command")
+
+        // Should NOT show the general area information (connections, etc) when at camp
+        expect(formatted).not.toContain("Connections:")
+      })
     })
   })
 
