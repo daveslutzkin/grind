@@ -518,6 +518,8 @@ export interface ExplorationLog {
   connectionToUnknownArea?: boolean // True if connection leads to an unknown area
   // Whether the area is fully explored
   areaFullyExplored?: boolean
+  // Bonus XP for fully discovering an area (equals distance from town)
+  discoveryBonusXP?: number
   // Luck surfacing per RNG canon
   luckInfo?: ExplorationLuckInfo
 }

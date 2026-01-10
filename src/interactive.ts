@@ -286,7 +286,14 @@ export async function interactiveExplore(state: WorldState): Promise<void> {
     const { discoverables: remainingDiscoverables } = buildDiscoverables(state, currentArea)
 
     if (remainingDiscoverables.length === 0) {
-      console.log("\n✓ Area fully explored - nothing left to discover")
+      // Check if bonus XP was awarded
+      const bonusXP = finalLog.explorationLog?.discoveryBonusXP
+      if (bonusXP) {
+        console.log("\n✓ Area fully explored - bonus XP!")
+        console.log(`  +${bonusXP} Exploration XP`)
+      } else {
+        console.log("\n✓ Area fully explored - nothing left to discover")
+      }
       return
     }
 

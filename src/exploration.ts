@@ -1309,8 +1309,8 @@ export async function executeExplore(
   }
 
   // Grant 1 XP on success: 1 discovery (location or connection)
-  const xpGained = 1
-  const { levelUps } = grantExplorationXP(state, xpGained)
+  let xpGained = 1
+  const { levelUps: initialLevelUps } = grantExplorationXP(state, xpGained)
 
   // Calculate luck info based on the SPECIFIC item we found
   // Note: This is an approximation. In the overlaid threshold model, the true
@@ -1339,6 +1339,24 @@ export async function executeExplore(
   // Note: We don't count unknown connections as "remaining" for "fully explored" status
   const areaFullyExplored =
     remainingLocations.length === 0 && remainingKnownConnections.length === 0
+
+  // Grant bonus XP for fully discovering an area (equal to distance from town)
+  let discoveryBonusXP: number | undefined
+  let levelUps = initialLevelUps
+  if (areaFullyExplored) {
+    // Extract distance from area ID (format: area-d{distance}-i{index})
+    const match = currentArea.id.match(/^area-d(\d+)-i\d+$/)
+    if (match) {
+      const distance = parseInt(match[1], 10)
+      discoveryBonusXP = distance
+      const bonusLevelUps = grantExplorationXP(state, discoveryBonusXP)
+      xpGained += discoveryBonusXP
+      // Merge level-ups from both XP grants
+      if (bonusLevelUps.levelUps) {
+        levelUps = levelUps ? [...levelUps, ...bonusLevelUps.levelUps] : bonusLevelUps.levelUps
+      }
+    }
+  }
 
   let discovered: string
   if (discoveredLocationId) {
@@ -1373,6 +1391,7 @@ export async function executeExplore(
       discoveredConnectionId,
       connectionToUnknownArea,
       areaFullyExplored,
+      discoveryBonusXP,
       luckInfo,
     },
   }
