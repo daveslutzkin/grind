@@ -3,17 +3,36 @@
  */
 
 import * as readline from "readline"
-import type { WorldState, ExplorationLocation, ExploreAction, SurveyAction } from "./types.js"
+import type { WorldState, ExplorationLocation, ExploreAction, SurveyAction, Area } from "./types.js"
 import { ExplorationLocationType } from "./types.js"
 import {
   executeExplore,
   executeSurvey,
   getRollInterval,
   calculateExpectedTicks,
+  calculateSuccessChance,
+  getKnowledgeParams,
   shadowRollExplore,
   shadowRollSurvey,
 } from "./exploration.js"
 import { formatActionLog } from "./agent/formatters.js"
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Calculate base success chance for exploration/survey (includes knowledge bonuses)
+ */
+function getBaseSuccessChance(state: WorldState, currentArea: Area): number {
+  const level = state.player.skills.Exploration.level
+  const knowledgeParams = getKnowledgeParams(state, currentArea)
+  return calculateSuccessChance({
+    level,
+    distance: currentArea.distance,
+    ...knowledgeParams,
+  })
+}
 
 // ============================================================================
 // Hard Discoveries Detection
@@ -102,20 +121,11 @@ function analyzeRemainingDiscoveries(state: WorldState): HardDiscoveryAnalysis {
   // Calculate expected ticks for hard discoveries (if any)
   let hardExpectedTicks = Infinity
   if (hardCount > 0) {
-    // Calculate base success chance and roll interval
     const level = state.player.skills.Exploration.level
     const rollInterval = getRollInterval(level)
-
+    const baseChance = getBaseSuccessChance(state, currentArea)
     // For hard nodes, threshold is baseChance * 0.05
-    // We need to calculate baseChance, but that requires knowledge params
-    // For now, use a rough estimate - we'll refine when we actually execute
-    const distance = currentArea.distance
-    const baseRate = 0.05
-    const levelBonus = (level - 1) * 0.05
-    const distancePenalty = (distance - 1) * 0.05
-    const baseChance = Math.max(0.01, baseRate + levelBonus - distancePenalty)
     const hardThreshold = baseChance * 0.05
-
     hardExpectedTicks = calculateExpectedTicks(hardThreshold, rollInterval)
   }
 
@@ -154,13 +164,8 @@ function analyzeRemainingAreas(state: WorldState): {
 
   // Calculate expected ticks
   const level = state.player.skills.Exploration.level
-  const distance = currentArea.distance
   const rollInterval = getRollInterval(level)
-
-  const baseRate = 0.05
-  const levelBonus = (level - 1) * 0.05
-  const distancePenalty = (distance - 1) * 0.05
-  const successChance = Math.max(0.01, baseRate + levelBonus - distancePenalty)
+  const successChance = getBaseSuccessChance(state, currentArea)
   const expectedTicks = calculateExpectedTicks(successChance, rollInterval)
 
   return { hasUndiscovered: hasUndiscoveredAreas, expectedTicks }
@@ -330,12 +335,8 @@ export async function interactiveExplore(state: WorldState): Promise<void> {
     })
 
     // Calculate base chance and build discoverables
-    const distance = currentArea.distance
-    const baseRate = 0.05
-    const levelBonus = (level - 1) * 0.05
-    const distancePenalty = (distance - 1) * 0.05
-    const baseChance = Math.max(0.01, baseRate + levelBonus - distancePenalty)
     const rollInterval = getRollInterval(level)
+    const baseChance = getBaseSuccessChance(state, currentArea)
 
     const getLocationThreshold = (loc: ExplorationLocation): number => {
       if (loc.type === ExplorationLocationType.GATHERING_NODE && loc.gatheringSkillType) {
@@ -418,14 +419,10 @@ export async function interactiveSurvey(state: WorldState): Promise<void> {
     const exploration = state.exploration!
     const level = state.player.skills.Exploration.level
     const currentArea = exploration.areas.get(exploration.playerState.currentAreaId)!
-    const distance = currentArea.distance
 
     // Calculate success chance (same logic as executeSurvey)
-    const baseRate = 0.05
-    const levelBonus = (level - 1) * 0.05
-    const distancePenalty = (distance - 1) * 0.05
-    const successChance = Math.max(0.01, baseRate + levelBonus - distancePenalty)
     const rollInterval = getRollInterval(level)
+    const successChance = getBaseSuccessChance(state, currentArea)
 
     // Get all connections and known area IDs
     const allConnections = exploration.connections.filter((conn) => {
