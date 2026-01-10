@@ -117,6 +117,16 @@ async function main(): Promise<void> {
         console.log(`⚠ Success chance: ${(eval_.successProbability * 100).toFixed(0)}%`)
       }
     },
+
+    onBeforeInteractive: () => {
+      // Pause the REPL's readline to avoid conflicts with interactive prompts
+      rl.pause()
+    },
+
+    onAfterInteractive: () => {
+      // Resume the REPL's readline after interactive mode
+      rl.resume()
+    },
   })
 }
 
