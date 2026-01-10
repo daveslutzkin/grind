@@ -539,6 +539,346 @@ describe("Formatters", () => {
       expect(formatted).toContain("✗")
     })
 
+    it("should show user-friendly error message without action type", async () => {
+      const state = createWorld("error-msg-test")
+
+      // Try to travel to unknown location - should fail with UNKNOWN_LOCATION
+      const log = await executeAction(state, {
+        type: "TravelToLocation",
+        locationId: "nonexistent-location",
+      })
+
+      const formatted = formatActionLog(log)
+
+      // Should show user-friendly message
+      expect(formatted).toContain("✗ Unknown location!")
+      // Should NOT show action type or failure code
+      expect(formatted).not.toContain("TravelToLocation")
+      expect(formatted).not.toContain("UNKNOWN_LOCATION")
+    })
+
+    it("should show 'Inventory full!' error message", async () => {
+      const state = createWorld("inventory-test")
+      state.player.skills.Combat = { level: 1, xp: 0 }
+      state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
+      state.player.equippedWeapon = "CRUDE_WEAPON"
+
+      // Setup a combat area with enemy
+      const areaId = getOreAreaId(state)
+      makeAreaKnown(state, areaId)
+      state.exploration.playerState.currentAreaId = areaId
+      state.world.enemies.push({
+        id: "test-enemy",
+        areaId,
+        fightTime: 3,
+        successProbability: 1,
+        requiredSkillLevel: 1,
+        lootTable: [{ itemId: "TEST_LOOT", quantity: 1, weight: 1 }],
+        failureAreaId: "TOWN",
+      })
+
+      // Fill inventory to exactly 20 slots (max capacity)
+      // Add 19 more items to reach capacity (already have 1 weapon)
+      for (let i = 0; i < 19; i++) {
+        state.player.inventory.push({ itemId: `filler_${i}`, quantity: 1 })
+      }
+
+      const log = await executeAction(state, {
+        type: "Fight",
+        enemyId: "test-enemy",
+      })
+
+      const formatted = formatActionLog(log)
+
+      // Should show user-friendly message
+      expect(formatted).toContain("✗ Inventory full!")
+      // Should NOT show action type or failure code
+      expect(formatted).not.toContain("Fight:")
+      expect(formatted).not.toContain("INVENTORY_FULL")
+    })
+
+    it("should show 'Already in that area!' error message", async () => {
+      const state = createWorld("area-test")
+
+      // Try to travel to current area (already in TOWN)
+      const log = await executeAction(state, {
+        type: "ExplorationTravel",
+        destinationAreaId: "TOWN",
+      })
+
+      const formatted = formatActionLog(log)
+
+      // Should show user-friendly message
+      expect(formatted).toContain("✗ Already in that area!")
+      // Should NOT show action type or failure code
+      expect(formatted).not.toContain("ExplorationTravel")
+      expect(formatted).not.toContain("ALREADY_IN_AREA")
+    })
+
+    it("should show 'Insufficient skill!' error message", async () => {
+      const state = createWorld("skill-test")
+      const areaId = getOreAreaId(state)
+      makeAreaKnown(state, areaId)
+      state.exploration.playerState.currentAreaId = areaId
+      discoverAllLocations(state, areaId)
+
+      const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
+      if (!node) throw new Error("No node found for test")
+      moveToNodeLocation(state, node.nodeId, areaId)
+
+      // Try to gather without enrolling in Mining - should fail with INSUFFICIENT_SKILL
+      const log = await executeAction(state, {
+        type: "Gather",
+        nodeId: node.nodeId,
+        mode: "FOCUS" as GatherMode,
+        focusMaterialId: node.materials[0].materialId,
+      })
+
+      const formatted = formatActionLog(log)
+
+      expect(formatted).toContain("✗ Insufficient skill!")
+      expect(formatted).not.toContain("Gather:")
+      expect(formatted).not.toContain("INSUFFICIENT_SKILL")
+    })
+
+    it("should show 'Missing required items!' error message", async () => {
+      const state = createWorld("craft-test")
+      setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD)
+      state.player.skills.Smithing = { level: 1, xp: 0 }
+      // Don't add IRON_ORE to inventory
+
+      const log = await executeAction(state, {
+        type: "Craft",
+        recipeId: "iron-bar-recipe",
+      })
+
+      const formatted = formatActionLog(log)
+
+      expect(formatted).toContain("✗ Missing required items!")
+      expect(formatted).not.toContain("Craft:")
+      expect(formatted).not.toContain("MISSING_ITEMS")
+    })
+
+    it("should show 'Node depleted!' error message", async () => {
+      const state = createWorld("depleted-test")
+      await executeAction(state, { type: "Enrol", skill: "Mining" })
+      const areaId = getOreAreaId(state)
+      makeAreaKnown(state, areaId)
+      state.exploration.playerState.currentAreaId = areaId
+      discoverAllLocations(state, areaId)
+
+      const node = state.world.nodes?.find((n) => n.areaId === areaId)
+      if (!node) throw new Error("No node found for test")
+      moveToNodeLocation(state, node.nodeId, areaId)
+
+      // Mark node as depleted
+      node.depleted = true
+
+      const log = await executeAction(state, {
+        type: "Gather",
+        nodeId: node.nodeId,
+        mode: "FOCUS" as GatherMode,
+        focusMaterialId: node.materials[0].materialId,
+      })
+
+      const formatted = formatActionLog(log)
+
+      expect(formatted).toContain("✗ Resource depleted!")
+      expect(formatted).not.toContain("NODE_DEPLETED")
+    })
+
+    it("should show 'Already enrolled!' error message", async () => {
+      const state = createWorld("enrol-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
+
+      // Enrol once
+      await executeAction(state, { type: "Enrol", skill: "Mining" })
+
+      // Try to enrol again
+      const log = await executeAction(state, { type: "Enrol", skill: "Mining" })
+
+      const formatted = formatActionLog(log)
+
+      expect(formatted).toContain("✗ Already enrolled!")
+      expect(formatted).not.toContain("Enrol:")
+      expect(formatted).not.toContain("ALREADY_ENROLLED")
+    })
+
+    it("should show 'No weapon equipped!' error message", async () => {
+      const state = createWorld("weapon-test")
+      state.player.skills.Combat = { level: 1, xp: 0 }
+      // Don't equip weapon
+
+      const areaId = getOreAreaId(state)
+      makeAreaKnown(state, areaId)
+      state.exploration.playerState.currentAreaId = areaId
+      state.world.enemies.push({
+        id: "test-enemy-2",
+        areaId,
+        fightTime: 3,
+        successProbability: 1,
+        requiredSkillLevel: 1,
+        lootTable: [{ itemId: "TEST_LOOT", quantity: 1, weight: 1 }],
+        failureAreaId: "TOWN",
+      })
+
+      const log = await executeAction(state, {
+        type: "Fight",
+        enemyId: "test-enemy-2",
+      })
+
+      const formatted = formatActionLog(log)
+
+      expect(formatted).toContain("✗ No weapon equipped!")
+      expect(formatted).not.toContain("Fight:")
+      expect(formatted).not.toContain("MISSING_WEAPON")
+    })
+
+    it("should show 'Wrong location!' error message", async () => {
+      const state = createWorld("location-test")
+      await executeAction(state, { type: "Enrol", skill: "Mining" })
+
+      // Try to gather from a node in a different area
+      const areaId = getOreAreaId(state)
+      const node = state.world.nodes?.find((n) => n.areaId === areaId)
+      if (!node) throw new Error("No node found for test")
+
+      // Player is in TOWN, not in the ore area
+      const log = await executeAction(state, {
+        type: "Gather",
+        nodeId: node.nodeId,
+        mode: "FOCUS" as GatherMode,
+        focusMaterialId: node.materials[0].materialId,
+      })
+
+      const formatted = formatActionLog(log)
+
+      expect(formatted).toContain("✗ Wrong location!")
+      expect(formatted).not.toContain("WRONG_LOCATION")
+    })
+
+    it("should show 'Recipe not found!' error message", async () => {
+      const state = createWorld("recipe-test")
+      setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD)
+      state.player.skills.Smithing = { level: 1, xp: 0 }
+
+      const log = await executeAction(state, {
+        type: "Craft",
+        recipeId: "nonexistent-recipe",
+      })
+
+      const formatted = formatActionLog(log)
+
+      expect(formatted).toContain("✗ Recipe not found!")
+      expect(formatted).not.toContain("RECIPE_NOT_FOUND")
+    })
+
+    it("should show 'Resource node not found!' error message", async () => {
+      const state = createWorld("node-test")
+      await executeAction(state, { type: "Enrol", skill: "Mining" })
+
+      const log = await executeAction(state, {
+        type: "Gather",
+        nodeId: "nonexistent-node",
+        mode: "FOCUS" as GatherMode,
+        focusMaterialId: "COPPER_ORE",
+      })
+
+      const formatted = formatActionLog(log)
+
+      expect(formatted).toContain("✗ Resource node not found!")
+      expect(formatted).not.toContain("NODE_NOT_FOUND")
+    })
+
+    it("should show 'Enemy not found!' error message", async () => {
+      const state = createWorld("enemy-test")
+      state.player.skills.Combat = { level: 1, xp: 0 }
+      state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
+      state.player.equippedWeapon = "CRUDE_WEAPON"
+
+      const log = await executeAction(state, {
+        type: "Fight",
+        enemyId: "nonexistent-enemy",
+      })
+
+      const formatted = formatActionLog(log)
+
+      expect(formatted).toContain("✗ Enemy not found!")
+      expect(formatted).not.toContain("ENEMY_NOT_FOUND")
+    })
+
+    it("should show 'Mode not unlocked!' error message", async () => {
+      const state = createWorld("mode-test")
+      await executeAction(state, { type: "Enrol", skill: "Mining" })
+      // Set player to level 2 - high enough for distance-1 areas but not for APPRAISE (requires L3)
+      state.player.skills.Mining = { level: 2, xp: 0 }
+
+      // Find a distance-1 area with ore (requires L1, player has L2)
+      const areaId = getOreAreaId(state)
+      makeAreaKnown(state, areaId)
+      state.exploration.playerState.currentAreaId = areaId
+      discoverAllLocations(state, areaId)
+
+      const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
+      if (!node) throw new Error("No node found for test")
+      moveToNodeLocation(state, node.nodeId, areaId)
+
+      const log = await executeAction(state, {
+        type: "Gather",
+        nodeId: node.nodeId,
+        mode: "APPRAISE" as GatherMode,
+      })
+
+      const formatted = formatActionLog(log)
+
+      expect(formatted).toContain("✗ Mode not unlocked!")
+      expect(formatted).not.toContain("MODE_NOT_UNLOCKED")
+    })
+
+    it("should show 'Location not discovered!' error message", async () => {
+      const state = createWorld("location-discovery-test")
+      await executeAction(state, { type: "Enrol", skill: "Mining" })
+      const areaId = getOreAreaId(state)
+      makeAreaKnown(state, areaId)
+      state.exploration.playerState.currentAreaId = areaId
+      // Don't discover locations
+
+      const node = state.world.nodes?.find((n) => n.areaId === areaId)
+      if (!node) throw new Error("No node found for test")
+
+      const log = await executeAction(state, {
+        type: "Gather",
+        nodeId: node.nodeId,
+        mode: "FOCUS" as GatherMode,
+        focusMaterialId: node.materials[0].materialId,
+      })
+
+      const formatted = formatActionLog(log)
+
+      expect(formatted).toContain("✗ Location not discovered!")
+      expect(formatted).not.toContain("LOCATION_NOT_DISCOVERED")
+    })
+
+    it("should show 'No path to destination!' error message", async () => {
+      const state = createWorld("path-test")
+
+      // Try to travel to an area without a known connection
+      const unknownArea = Array.from(state.exploration.areas.values()).find(
+        (a) => a.distance > 0 && !state.exploration.playerState.knownAreaIds.includes(a.id)
+      )
+      if (!unknownArea) throw new Error("No unknown area found for test")
+
+      const log = await executeAction(state, {
+        type: "ExplorationTravel",
+        destinationAreaId: unknownArea.id,
+      })
+
+      const formatted = formatActionLog(log)
+
+      expect(formatted).toContain("✗ No path to destination!")
+      expect(formatted).not.toContain("NO_PATH_TO_DESTINATION")
+    })
+
     it("should include XP gain information when present", async () => {
       const state = createWorld("ore-test")
       await executeAction(state, { type: "Enrol", skill: "Mining" })
