@@ -321,8 +321,10 @@ export async function interactiveExplore(state: WorldState): Promise<void> {
     // Show discovery result (not full state)
     console.log(formatActionLog(finalLog, state))
 
-    // Check if area is now fully explored
-    if (finalLog.explorationLog?.areaFullyExplored) {
+    // Check if there are any discoverables left by rebuilding the list
+    const { discoverables: remainingDiscoverables } = buildDiscoverables(state, currentArea)
+
+    if (remainingDiscoverables.length === 0) {
       console.log("\n✓ Area fully explored - nothing left to discover")
       return
     }
