@@ -77,22 +77,58 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
 
   switch (cmd) {
     case "gather": {
-      const nodeId = parts[1]
-      const modeName = parts[2]?.toLowerCase()
+      // Check if first argument is a mode (not a nodeId) - allows omitting nodeId when at a node
+      const firstArg = parts[1]?.toLowerCase()
+      const possibleModes = ["focus", "careful", "appraise"]
+      const isFirstArgMode = possibleModes.includes(firstArg || "")
+
+      let nodeId: string | undefined
+      let modeName: string | undefined
+      let materialIndex = 3
+
+      if (isFirstArgMode) {
+        // Usage: gather <mode> [material] - infer nodeId from current location
+        modeName = firstArg
+        materialIndex = 2
+
+        // Try to infer nodeId from current location
+        const currentLocationId = context.currentLocationId
+        if (currentLocationId && context.state) {
+          const match = currentLocationId.match(/^(.+?)-(TREE_STAND|ORE_VEIN)-loc-(\d+)$/)
+          if (match) {
+            const [, areaId, , locIndex] = match
+            nodeId = `${areaId}-node-${locIndex}`
+          }
+        }
+
+        if (!nodeId) {
+          if (context.logErrors) {
+            console.log("You must be at a gathering node to use 'gather <mode>'.")
+            console.log("Usage: gather <node> <mode> [material]")
+            console.log("  Or use 'mine <mode>' or 'chop <mode>' as shortcuts")
+          }
+          return null
+        }
+      } else {
+        // Usage: gather <node> <mode> [material]
+        nodeId = parts[1]
+        modeName = parts[2]?.toLowerCase()
+      }
 
       if (!nodeId || !modeName) {
         if (context.logErrors) {
           console.log("Usage: gather <node> <mode> [material]")
+          console.log("  Or: gather <mode> [material] (when at a gathering node)")
           console.log("  Modes: focus <material>, careful, appraise")
         }
         return null
       }
 
       if (modeName === "focus") {
-        const focusMaterial = parts[3]?.toUpperCase()
+        const focusMaterial = parts[materialIndex]?.toUpperCase()
         if (!focusMaterial) {
           if (context.logErrors) {
-            console.log("FOCUS mode requires a material: gather <node> focus <material>")
+            console.log("FOCUS mode requires a material: gather focus <material>")
           }
           return null
         }
