@@ -178,7 +178,7 @@ async function animateDiscovery(totalTicks: number): Promise<AnimationResult> {
           cleanup()
           reject(error)
         }
-      }, 250) // 1 dot every 250ms = 4 dots per second
+      }, 100)
     } catch (error) {
       cleanup()
       reject(error)
