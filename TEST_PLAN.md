@@ -1,18 +1,63 @@
 # Test Coverage Improvement Plan
 
-**Date**: 2026-01-09
-**Current Estimated Coverage**: 45-50%
+**Date**: 2026-01-10 (Updated after merge with main)
+**Current Actual Coverage**: 61.17% (Statement Coverage)
+**Previous Estimate**: 45-50%
 **Target Coverage**: 80%+
+
+---
+
+## Actual Coverage Report (as of 2026-01-10)
+
+```
+Overall Coverage: 61.17% Statements | 54.41% Branches | 68.31% Functions | 61.39% Lines
+
+Critical Files:
+- actionChecks.ts:   83.84% ✓ (Much better than estimated!)
+- stateHelpers.ts:   83.51% ✓ (Much better than estimated!)
+- engine.ts:         88.88% ✓ (Good coverage)
+- exploration.ts:    90.21% ✓ (Excellent coverage)
+- evaluate.ts:       74.15% ⚠ (Moderate, needs improvement)
+- runner.ts:         18.51% ❌ (CRITICAL - Very low coverage)
+- rng.ts:            63.26% ⚠ (Needs improvement)
+- config.ts:         50.00% ⚠ (Needs improvement)
+
+New Files (from main merge):
+- persistence.ts:    87.87% ✓ (Good coverage)
+- areaNaming.ts:     100.00% ✓ (Perfect!)
+- visibility.ts:     100.00% ✓ (Perfect!)
+- interactive.ts:    0.00% ❌ (CLI entry point)
+- batch.ts:          0.00% ❌ (CLI entry point)
+- repl.ts:           0.00% ❌ (CLI entry point)
+- prompt.ts:         6.34% ❌ (Needs tests)
+- savePrompt.ts:     0.00% ❌ (Needs tests)
+
+Agent Module:
+- agent/formatters.ts:  72.00% ⚠
+- agent/llm.ts:         32.53% ❌
+- agent/loop.ts:        60.15% ⚠
+- agent/index.ts:       0.00% ❌ (CLI entry point)
+```
+
+**Key Findings:**
+- Core logic (actionChecks, stateHelpers, engine, exploration) has **good coverage** (83-90%)
+- **runner.ts is the biggest gap** with only 18.51% coverage
+- CLI entry points (repl, batch, interactive, agent/index) appropriately have 0% (integration code)
+- Some utility modules need attention (prompt.ts, savePrompt.ts, agent/llm.ts)
 
 ---
 
 ## Priority 1: CRITICAL - Core Validation & State Logic
 
-### 1.1 Create `src/__tests__/actionChecks.test.ts`
+### 1.1 Expand `src/__tests__/actionChecks.test.ts`
 
 **File**: `src/actionChecks.ts` (695 lines, 35+ functions)
-**Current Coverage**: 0% (no direct tests)
-**Estimated Test Cases**: 150-200 tests
+**Current Coverage**: 83.84% statements (UPDATED - Much better than estimated!)
+**Uncovered Lines**: 59-70, 166, 240, 253-261, 365, 395-401, 432, 449, 516, 536-547, 632-634, 642-644
+**Additional Test Cases Needed**: 30-40 tests to reach 95%+
+
+**NOTE**: This file already has indirect coverage from engine.test.ts and integration tests.
+The uncovered lines are mostly edge cases and error paths.
 
 #### Test Groups:
 
@@ -236,11 +281,15 @@
 
 ---
 
-### 1.2 Create `src/__tests__/stateHelpers.test.ts`
+### 1.2 Expand `src/__tests__/stateHelpers.test.ts`
 
 **File**: `src/stateHelpers.ts` (264 lines, 13 functions)
-**Current Coverage**: 0% (no direct tests)
-**Estimated Test Cases**: 80-100 tests
+**Current Coverage**: 83.51% statements (UPDATED - Much better than estimated!)
+**Uncovered Lines**: 59, 69-74, 107, 142, 209-210
+**Additional Test Cases Needed**: 15-20 tests to reach 95%+
+
+**NOTE**: This file already has indirect coverage from engine.test.ts and integration tests.
+The uncovered lines are mostly edge cases and error paths.
 
 #### Test Groups:
 
@@ -726,13 +775,21 @@
 
 ## Verification & Success Metrics
 
-### Test Coverage Goals:
-- **`actionChecks.ts`**: 95%+ coverage (from 0%)
-- **`stateHelpers.ts`**: 95%+ coverage (from 0%)
-- **`engine.ts`**: 85%+ coverage (from ~60%)
-- **`exploration.ts`**: 85%+ coverage (from ~65%)
-- **`runner.ts`**: 70%+ coverage (from ~30%)
-- **Overall codebase**: 80%+ coverage (from ~45-50%)
+### Test Coverage Goals (UPDATED):
+- **`actionChecks.ts`**: 95%+ coverage (from 83.84%)
+- **`stateHelpers.ts`**: 95%+ coverage (from 83.51%)
+- **`engine.ts`**: 95%+ coverage (from 88.88%)
+- **`exploration.ts`**: 95%+ coverage (from 90.21%)
+- **`runner.ts`**: 70%+ coverage (from 18.51%) ⚠️ CRITICAL GAP
+- **`evaluate.ts`**: 85%+ coverage (from 74.15%)
+- **`rng.ts`**: 85%+ coverage (from 63.26%)
+- **`config.ts`**: 90%+ coverage (from 50%)
+- **`prompt.ts`**: 70%+ coverage (from 6.34%)
+- **`savePrompt.ts`**: 70%+ coverage (from 0%)
+- **`agent/llm.ts`**: 70%+ coverage (from 32.53%)
+- **`agent/formatters.ts`**: 85%+ coverage (from 72%)
+- **`agent/loop.ts`**: 80%+ coverage (from 60.15%)
+- **Overall codebase**: 80%+ coverage (from 61.17%)
 
 ### Quality Metrics:
 - All tests pass with `npm test`
@@ -783,16 +840,98 @@ describe('functionName', () => {
 
 ---
 
-## Estimated Total Test Cases
+## Estimated Total Test Cases (UPDATED)
 
-- **Priority 1 (Critical)**: 230-300 tests
-- **Priority 2 (High)**: 165-215 tests
-- **Priority 3 (Medium)**: 8-10 tests
-- **Priority 4 (Low)**: 40-65 tests
+**Original Estimate**: 445-590 new tests
+**Revised Estimate**: 200-300 new tests (actual coverage is much better than estimated!)
 
-**Grand Total**: ~445-590 new tests
+**Current Tests**: 473 passing tests
+**Target Total**: ~650-750 tests
 
-**Current Tests**: ~150 tests (estimated)
-**Target Total**: ~600-750 tests
+This should bring coverage from **61.17%** to **80%+**.
 
-This should bring coverage from **45-50%** to **80%+**.
+---
+
+## REVISED PRIORITIES (Based on Actual Coverage)
+
+### **CRITICAL PRIORITY** - runner.ts (18.51% coverage)
+**Impact**: 🔴 **HIGHEST** - Command parsing is core user interface
+**Effort**: High (~100-150 tests needed)
+**Lines to Cover**: 81-216, 227-328, 336-343, 347-350, 362-363, 371-390, etc.
+
+**Focus Areas**:
+1. Command parsing (`parseAction`) - all branches and aliases
+2. Area name matching (exact, prefix, ambiguous)
+3. Location matching and discovery
+4. Meta commands (help, status, summary)
+5. Error handling for malformed commands
+
+---
+
+### **HIGH PRIORITY** - New/Low Coverage Files
+
+1. **prompt.ts (6.34% coverage)**
+   - Estimated: 30-40 tests
+   - Focus: Prompt building logic, formatting, edge cases
+
+2. **savePrompt.ts (0% coverage)**
+   - Estimated: 15-20 tests
+   - Focus: Save/load prompt generation
+
+3. **agent/llm.ts (32.53% coverage)**
+   - Estimated: 20-30 tests
+   - Focus: LLM API interactions, error handling, retries
+
+4. **config.ts (50% coverage)**
+   - Estimated: 5-10 tests
+   - Focus: Config management and API key fallback
+
+5. **rng.ts (63.26% coverage)**
+   - Estimated: 10-15 tests
+   - Focus: Distribution properties, edge cases
+
+---
+
+### **MEDIUM PRIORITY** - Expand Good Coverage
+
+1. **evaluate.ts (74.15% → 85%+)**
+   - Estimated: 10-15 tests
+   - Focus: Uncovered lines 104, 116-121, 134-170
+
+2. **agent/formatters.ts (72% → 85%+)**
+   - Estimated: 15-20 tests
+   - Focus: Uncovered formatting edge cases
+
+3. **agent/loop.ts (60.15% → 80%+)**
+   - Estimated: 15-20 tests
+   - Focus: Agent loop state transitions, error handling
+
+---
+
+### **LOW PRIORITY** - Polish Excellent Coverage
+
+1. **actionChecks.ts (83.84% → 95%+)**
+   - Estimated: 15-20 tests
+   - Focus: Lines 59-70, 166, 240, 253-261, etc.
+
+2. **stateHelpers.ts (83.51% → 95%+)**
+   - Estimated: 10-15 tests
+   - Focus: Lines 59, 69-74, 107, 142, 209-210
+
+3. **engine.ts (88.88% → 95%+)**
+   - Estimated: 10-15 tests
+   - Focus: Lines 141, 145, 149, 201, 297, etc.
+
+4. **exploration.ts (90.21% → 95%+)**
+   - Estimated: 10-15 tests
+   - Focus: Remaining uncovered edge cases
+
+---
+
+### **SKIP** - CLI Entry Points (Appropriately Untested)
+- batch.ts (0%)
+- repl.ts (0%)
+- interactive.ts (0%)
+- agent/index.ts (0%)
+
+These are integration-level CLI entry points that don't require unit tests.
