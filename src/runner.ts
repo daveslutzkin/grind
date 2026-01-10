@@ -875,6 +875,12 @@ export interface RunnerConfig {
 
   /** Optional hook called before each action is executed */
   beforeAction?: (action: Action, state: WorldState) => void
+
+  /** Optional hook called before entering interactive explore/survey mode */
+  onBeforeInteractive?: () => void
+
+  /** Optional hook called after exiting interactive explore/survey mode */
+  onAfterInteractive?: () => void
 }
 
 /**
@@ -955,13 +961,21 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
 
     // Handle interactive exploration (Explore and Survey) - only in TTY mode
     if ((action.type === "Explore" || action.type === "Survey") && process.stdin.isTTY) {
-      // Import interactive functions dynamically
-      const { interactiveExplore, interactiveSurvey } = await import("./interactive.js")
+      // Pause the main readline to avoid conflicts with interactive prompts
+      config.onBeforeInteractive?.()
 
-      if (action.type === "Explore") {
-        await interactiveExplore(session.state)
-      } else {
-        await interactiveSurvey(session.state)
+      try {
+        // Import interactive functions dynamically
+        const { interactiveExplore, interactiveSurvey } = await import("./interactive.js")
+
+        if (action.type === "Explore") {
+          await interactiveExplore(session.state)
+        } else {
+          await interactiveSurvey(session.state)
+        }
+      } finally {
+        // Resume the main readline
+        config.onAfterInteractive?.()
       }
 
       // Interactive mode handles its own display, just show state after
