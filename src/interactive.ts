@@ -19,8 +19,6 @@ import {
   calculateExpectedTicks,
   buildDiscoverables,
   prepareSurveyData,
-  shadowRollExplore,
-  shadowRollSurvey,
   ensureAreaFullyGenerated,
   GATHERING_NODE_WITHOUT_SKILL_MULTIPLIER,
   UNKNOWN_CONNECTION_MULTIPLIER,
@@ -31,8 +29,6 @@ import {
   executeFarTravel,
 } from "./exploration.js"
 import { formatActionLog, formatTickFeedback } from "./agent/formatters.js"
-import { consumeTime } from "./stateHelpers.js"
-import { executeToCompletion } from "./engine.js"
 
 // ============================================================================
 // Animation Runner Infrastructure
@@ -237,89 +233,6 @@ function analyzeRemainingAreas(state: WorldState): {
 }
 
 // ============================================================================
-// Animation System
-// ============================================================================
-
-interface OldAnimationResult {
-  cancelled: boolean
-  ticksAnimated: number
-}
-
-/**
- * Animate discovery with dots (one per tick) and support cancellation
- * NOTE: This function does NOT consume time - it only provides visual feedback.
- * Time consumption happens in the execute functions or manually on cancellation.
- * @param totalTicks - Total ticks the discovery will take
- * @returns Object with cancellation status and ticks animated
- */
-async function animateDiscovery(totalTicks: number): Promise<OldAnimationResult> {
-  return new Promise((resolve, reject) => {
-    let ticksAnimated = 0
-    let interval: ReturnType<typeof globalThis.setInterval> | null = null
-
-    // Only enable interactive mode if stdin is a TTY
-    const isInteractive = process.stdin.isTTY
-
-    // Cleanup function that ALWAYS runs to restore terminal state
-    const cleanup = () => {
-      if (interval !== null) {
-        globalThis.clearInterval(interval)
-        interval = null
-      }
-      if (isInteractive) {
-        process.stdin.removeListener("data", keyHandler)
-        try {
-          process.stdin.setRawMode(false)
-          process.stdin.pause()
-        } catch {
-          // Ignore errors during cleanup (stdin might be closed)
-        }
-      }
-    }
-
-    const keyHandler = () => {
-      cleanup()
-      process.stdout.write("\n")
-      resolve({ cancelled: true, ticksAnimated })
-    }
-
-    try {
-      if (isInteractive) {
-        process.stdin.setRawMode(true)
-        process.stdin.resume()
-        process.stdin.setEncoding("utf8")
-        process.stdin.on("data", keyHandler)
-      }
-
-      interval = globalThis.setInterval(() => {
-        try {
-          if (ticksAnimated >= totalTicks) {
-            cleanup()
-            process.stdout.write("\n")
-            resolve({ cancelled: false, ticksAnimated })
-            return
-          }
-
-          // Just track animation progress - don't consume time here
-          ticksAnimated++
-
-          // Print dot (in non-interactive mode, print fewer dots to avoid spam)
-          if (isInteractive || ticksAnimated % 10 === 0) {
-            process.stdout.write(".")
-          }
-        } catch (error) {
-          cleanup()
-          reject(error)
-        }
-      }, 100)
-    } catch (error) {
-      cleanup()
-      reject(error)
-    }
-  })
-}
-
-// ============================================================================
 // Interactive Loop
 // ============================================================================
 
@@ -405,44 +318,33 @@ export async function interactiveExplore(state: WorldState): Promise<void> {
       }
     }
 
-    // Shadow roll to determine tick count without mutating state
-    const level = state.player.skills.Exploration.level
-    const rollInterval = getRollInterval(level)
+    // Set up cancellation
+    const { checkCancel, cleanup } = setupCancellation()
 
-    // Clone RNG and shadow roll to find tick count
-    const shadowRng = { ...state.rng }
-    const ticksConsumed = shadowRollExplore(
-      shadowRng,
-      discoverables,
-      rollInterval,
-      state.time.sessionRemainingTicks
-    )
+    try {
+      // Execute with animation (generator yields ticks as RNG rolls happen)
+      const action: ExploreAction = { type: "Explore" }
+      const generator = executeExplore(state, action)
+      const {
+        log: finalLog,
+        cancelled,
+        ticksCompleted,
+      } = await runAnimatedAction(generator, {
+        label: "Exploring",
+        tickDelay: 100,
+        checkCancel,
+      })
 
-    if (ticksConsumed === null) {
-      console.log("\n✗ Session would end before finding anything")
-      return
+      if (cancelled) {
+        console.log(`Exploration cancelled after ${ticksCompleted}t`)
+        return
+      }
+
+      // Show discovery result
+      console.log(formatActionLog(finalLog, state))
+    } finally {
+      cleanup()
     }
-
-    // Animate discovery (visual only - does not consume time)
-    // Note: We do NOT update state.rng.counter here. The shadow roll was just a preview.
-    // The real executeExplore will start from the same RNG state and get the same results.
-    process.stdout.write("\nExploring")
-    const animResult = await animateDiscovery(ticksConsumed)
-
-    if (animResult.cancelled) {
-      // User cancelled - consume only the partial time
-      consumeTime(state, animResult.ticksAnimated)
-      console.log(`Exploration cancelled after ${animResult.ticksAnimated}t`)
-      return
-    }
-
-    // Execute the real action (will use same RNG sequence as shadow roll, so same result)
-    // This will consume the actual time
-    const action: ExploreAction = { type: "Explore" }
-    const finalLog = await executeToCompletion(executeExplore(state, action))
-
-    // Show discovery result (not full state)
-    console.log(formatActionLog(finalLog, state))
 
     // Check if there are any discoverables left by rebuilding the list
     const { discoverables: remainingDiscoverables } = buildDiscoverables(state, currentArea)
@@ -473,52 +375,33 @@ export async function interactiveSurvey(state: WorldState): Promise<void> {
       return
     }
 
-    // Shadow roll to determine tick count without mutating state
-    const exploration = state.exploration!
-    const currentArea = exploration.areas.get(exploration.playerState.currentAreaId)!
+    // Set up cancellation
+    const { checkCancel, cleanup } = setupCancellation()
 
-    // Use shared survey data preparation
-    const { successChance, rollInterval, allConnections } = prepareSurveyData(state, currentArea)
-    const knownAreaIds = new Set(exploration.playerState.knownAreaIds)
+    try {
+      // Execute with animation (generator yields ticks as RNG rolls happen)
+      const action: SurveyAction = { type: "Survey" }
+      const generator = executeSurvey(state, action)
+      const {
+        log: finalLog,
+        cancelled,
+        ticksCompleted,
+      } = await runAnimatedAction(generator, {
+        label: "Surveying",
+        tickDelay: 100,
+        checkCancel,
+      })
 
-    // Clone RNG and shadow roll to find tick count
-    const shadowRng = { ...state.rng }
-    const ticksConsumed = shadowRollSurvey(
-      shadowRng,
-      successChance,
-      rollInterval,
-      state.time.sessionRemainingTicks,
-      allConnections.length,
-      knownAreaIds,
-      allConnections,
-      exploration.playerState.currentAreaId
-    )
+      if (cancelled) {
+        console.log(`Survey cancelled after ${ticksCompleted}t`)
+        return
+      }
 
-    if (ticksConsumed === null) {
-      console.log("\n✗ Session would end before finding anything")
-      return
+      // Show discovery result
+      console.log(formatActionLog(finalLog, state))
+    } finally {
+      cleanup()
     }
-
-    // Animate discovery (visual only - does not consume time)
-    // Note: We do NOT update state.rng.counter here. The shadow roll was just a preview.
-    // The real executeSurvey will start from the same RNG state and get the same results.
-    process.stdout.write("\nSurveying")
-    const animResult = await animateDiscovery(ticksConsumed)
-
-    if (animResult.cancelled) {
-      // User cancelled - consume only the partial time
-      consumeTime(state, animResult.ticksAnimated)
-      console.log(`Survey cancelled after ${animResult.ticksAnimated}t`)
-      return
-    }
-
-    // Execute the real action (will use same RNG sequence as shadow roll, so same result)
-    // This will consume the actual time
-    const action: SurveyAction = { type: "Survey" }
-    const finalLog = await executeToCompletion(executeSurvey(state, action))
-
-    // Show discovery result (not full state)
-    console.log(formatActionLog(finalLog, state))
 
     // Prompt to continue surveying
     const shouldContinue = await promptYesNo("\nContinue surveying?")
@@ -565,10 +448,8 @@ export async function interactiveExplorationTravel(
     return
   }
 
-  // Calculate travel time
-  let travelTime = BASE_TRAVEL_TIME * directConnection.travelTimeMultiplier
-
-  // Double time if scavenging
+  // Calculate travel time (for time check only - generator handles actual time consumption)
+  let travelTime = Math.round(BASE_TRAVEL_TIME * directConnection.travelTimeMultiplier)
   if (scavenge) {
     travelTime *= 2
   }
@@ -579,26 +460,31 @@ export async function interactiveExplorationTravel(
     return
   }
 
-  // Animate travel (visual only - does not consume time)
-  process.stdout.write("\nTraveling")
-  const animResult = await animateDiscovery(travelTime)
+  // Set up cancellation
+  const { checkCancel, cleanup } = setupCancellation()
 
-  if (animResult.cancelled) {
-    // User cancelled - consume only the partial time
-    consumeTime(state, animResult.ticksAnimated)
-    console.log(`Travel cancelled after ${animResult.ticksAnimated}t`)
-    return
+  try {
+    // Execute with animation (generator yields ticks, runAnimatedAction displays them)
+    const generator = executeExplorationTravel(state, action)
+    const {
+      log: finalLog,
+      cancelled,
+      ticksCompleted,
+    } = await runAnimatedAction(generator, {
+      label: "Traveling",
+      tickDelay: 100,
+      checkCancel,
+    })
+
+    if (cancelled) {
+      console.log(`Travel cancelled after ${ticksCompleted}t`)
+      return
+    }
+
+    console.log(formatActionLog(finalLog, state))
+  } finally {
+    cleanup()
   }
-
-  // Execute the real action with animation
-  const generator = executeExplorationTravel(state, action)
-  const { log: finalLog } = await runAnimatedAction(generator, {
-    label: "Traveling",
-    tickDelay: 100,
-  })
-
-  // Show travel result
-  console.log(formatActionLog(finalLog, state))
 }
 
 /**
@@ -637,10 +523,8 @@ export async function interactiveFarTravel(
     return
   }
 
-  // Calculate travel time
-  let travelTime = pathResult.totalTime
-
-  // Double time if scavenging
+  // Calculate travel time (for time check only - generator handles actual time consumption)
+  let travelTime = Math.round(pathResult.totalTime)
   if (scavenge) {
     travelTime *= 2
   }
@@ -651,25 +535,31 @@ export async function interactiveFarTravel(
     return
   }
 
-  // Animate travel (visual only - does not consume time)
   const hops = pathResult.path.length - 1
-  process.stdout.write(`\nTraveling (${hops} hop${hops !== 1 ? "s" : ""})`)
-  const animResult = await animateDiscovery(travelTime)
 
-  if (animResult.cancelled) {
-    // User cancelled - consume only the partial time
-    consumeTime(state, animResult.ticksAnimated)
-    console.log(`Travel cancelled after ${animResult.ticksAnimated}t`)
-    return
+  // Set up cancellation
+  const { checkCancel, cleanup } = setupCancellation()
+
+  try {
+    // Execute with animation (generator yields ticks, runAnimatedAction displays them)
+    const generator = executeFarTravel(state, action)
+    const {
+      log: finalLog,
+      cancelled,
+      ticksCompleted,
+    } = await runAnimatedAction(generator, {
+      label: `Traveling (${hops} hop${hops !== 1 ? "s" : ""})`,
+      tickDelay: 100,
+      checkCancel,
+    })
+
+    if (cancelled) {
+      console.log(`Travel cancelled after ${ticksCompleted}t`)
+      return
+    }
+
+    console.log(formatActionLog(finalLog, state))
+  } finally {
+    cleanup()
   }
-
-  // Execute the real action with animation
-  const generator = executeFarTravel(state, action)
-  const { log: finalLog } = await runAnimatedAction(generator, {
-    label: "Traveling",
-    tickDelay: 100,
-  })
-
-  // Show travel result
-  console.log(formatActionLog(finalLog, state))
 }
