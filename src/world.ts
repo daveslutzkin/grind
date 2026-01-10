@@ -489,7 +489,6 @@ export function createWorld(seed: string): WorldState {
 
     world: {
       nodes: allNodes,
-      enemies: [], // Enemies generated when areas are discovered
       recipes: [
         {
           id: "iron-bar-recipe",

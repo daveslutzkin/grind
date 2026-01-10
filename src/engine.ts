@@ -573,95 +573,19 @@ function executeCarefulAllExtraction(
   }
 }
 
+/**
+ * Execute Fight action
+ * NOTE: Combat is not yet fully implemented - this will always fail with ENEMY_NOT_FOUND
+ */
 function executeFight(state: WorldState, action: FightAction, rolls: RngRoll[]): ActionLog {
-  const tickBefore = state.time.currentTick
-  const enemyId = action.enemyId
-
-  // Use shared precondition check
+  // Use shared precondition check (will always fail - no enemies exist)
   const check = checkFightAction(state, action)
   if (!check.valid) {
     return createFailureLog(state, action, check.failureType!)
   }
 
-  // Check if enough time remaining
-  if (state.time.sessionRemainingTicks < check.timeCost) {
-    return createFailureLog(state, action, "SESSION_ENDED")
-  }
-
-  // Get enemy for additional info
-  const enemy = state.world.enemies.find((e) => e.id === enemyId)!
-
-  // Consume time
-  consumeTime(state, check.timeCost)
-
-  // Roll for success
-  const success = roll(state.rng, check.successProbability, `fight:${enemyId}`, rolls)
-
-  if (!success) {
-    // Per spec: On failure, time is consumed but player is NOT relocated
-    return {
-      tickBefore,
-      actionType: "Fight",
-      parameters: { enemyId },
-      success: false,
-      failureType: "COMBAT_FAILURE",
-      timeConsumed: check.timeCost,
-      rngRolls: rolls,
-      stateDeltaSummary: `Lost fight to ${enemyId}`,
-    }
-  }
-
-  // Track kills for active contracts with kill requirements
-  for (const contractId of state.player.activeContracts) {
-    const contract = state.world.contracts.find((c) => c.id === contractId)
-    if (contract?.killRequirements) {
-      for (const req of contract.killRequirements) {
-        if (req.enemyId === enemyId) {
-          if (!state.player.contractKillProgress[contractId]) {
-            state.player.contractKillProgress[contractId] = {}
-          }
-          const current = state.player.contractKillProgress[contractId][enemyId] || 0
-          state.player.contractKillProgress[contractId][enemyId] = current + 1
-        }
-      }
-    }
-  }
-
-  // Roll on weighted loot table - exactly one item drops
-  const lootWeights = enemy.lootTable.map((entry) => ({
-    label: `loot:${entry.itemId}`,
-    weight: entry.weight,
-  }))
-  const selectedLootIndex = rollLootTable(state.rng, lootWeights, rolls)
-  const selectedLoot = enemy.lootTable[selectedLootIndex]
-
-  // Handle special loot behaviors
-  if (selectedLoot.replacesItem) {
-    removeFromInventory(state, selectedLoot.replacesItem, 1)
-  }
-  addToInventory(state, selectedLoot.itemId, selectedLoot.quantity)
-  if (selectedLoot.autoEquip) {
-    state.player.equippedWeapon = selectedLoot.itemId as "CRUDE_WEAPON" | "IMPROVED_WEAPON"
-  }
-
-  // Grant XP
-  const levelUps = grantXP(state, "Combat", 1)
-
-  // Check for contract completion (after every successful action)
-  const contractsCompleted = checkAndCompleteContracts(state)
-
-  return {
-    tickBefore,
-    actionType: "Fight",
-    parameters: { enemyId },
-    success: true,
-    timeConsumed: check.timeCost,
-    skillGained: { skill: "Combat", amount: 1 },
-    levelUps: mergeLevelUps(levelUps, contractsCompleted),
-    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
-    rngRolls: rolls,
-    stateDeltaSummary: `Defeated ${enemyId}`,
-  }
+  // This code is unreachable until combat is fully implemented
+  throw new Error("Combat execution reached despite no enemies existing - this should not happen")
 }
 
 function executeCraft(state: WorldState, action: CraftAction, rolls: RngRoll[]): ActionLog {

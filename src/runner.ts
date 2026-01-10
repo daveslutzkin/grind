@@ -516,7 +516,6 @@ export function printHelp(state: WorldState, options?: { showHints?: boolean }):
   const currentLocation = area?.locations.find((loc) => loc.id === currentLocationId)
 
   const nodes = state.world.nodes.filter((n) => n.areaId === currentAreaId)
-  const enemies = state.world.enemies.filter((e) => e.areaId === currentAreaId)
 
   // Recipes only shown at guild halls of matching type
   const isAtGuildHall =
@@ -531,7 +530,6 @@ export function printHelp(state: WorldState, options?: { showHints?: boolean }):
   // Only show hints section if there's something relevant
   const hasHints =
     nodes.length > 0 ||
-    enemies.length > 0 ||
     recipes.length > 0 ||
     contracts.length > 0 ||
     currentAreaId === state.world.storageAreaId
@@ -539,7 +537,6 @@ export function printHelp(state: WorldState, options?: { showHints?: boolean }):
   if (hasHints) {
     console.log("\nAvailable here:")
     if (nodes.length > 0) console.log(`  Nodes: ${nodes.map((n) => n.nodeId).join(", ")}`)
-    if (enemies.length > 0) console.log(`  Enemies: ${enemies.map((e) => e.id).join(", ")}`)
     if (recipes.length > 0) console.log(`  Recipes: ${recipes.map((r) => r.id).join(", ")}`)
     if (contracts.length > 0) console.log(`  Contracts: ${contracts.map((c) => c.id).join(", ")}`)
     if (currentAreaId === state.world.storageAreaId) console.log(`  Storage available`)

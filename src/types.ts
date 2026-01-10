@@ -220,7 +220,6 @@ export interface WorldState {
 
   world: {
     nodes: Node[] // Multi-material gathering nodes
-    enemies: Enemy[]
     recipes: Recipe[]
     contracts: Contract[]
     storageAreaId: AreaID // Where storage is located (usually TOWN)

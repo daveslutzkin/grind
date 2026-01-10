@@ -130,15 +130,7 @@ function simulateAction(state: WorldState, action: Action): string | null {
       break
     }
     case "Fight": {
-      const enemy = state.world.enemies.find((e) => e.id === action.enemyId)
-      if (enemy) {
-        // For evaluation, assume the most likely loot (highest weight)
-        const bestLoot = enemy.lootTable.reduce((best, entry) =>
-          entry.weight > best.weight ? entry : best
-        )
-        addToInventory(state, bestLoot.itemId, bestLoot.quantity)
-        state.player.skills.Combat.xp += 1
-      }
+      // Combat not yet fully implemented - no enemies exist
       break
     }
     case "Craft": {
