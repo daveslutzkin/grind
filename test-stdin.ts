@@ -5,10 +5,14 @@
 
 import * as readline from "readline"
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-})
+let rl: readline.Interface
+
+function createReadline() {
+  rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  })
+}
 
 function prompt(question: string): Promise<string> {
   return new Promise((resolve) => {
@@ -16,7 +20,7 @@ function prompt(question: string): Promise<string> {
   })
 }
 
-// Simulates what promptYesNo does with raw mode
+// Approach 1: Raw mode (current broken approach)
 async function promptYesNoRaw(question: string): Promise<boolean> {
   return new Promise((resolve) => {
     process.stdout.write(`${question} (y/n) `)
@@ -44,8 +48,8 @@ async function promptYesNoRaw(question: string): Promise<boolean> {
   })
 }
 
-// Simulates what promptYesNo does with a new readline
-async function promptYesNoReadline(question: string): Promise<boolean> {
+// Approach 2: Create new readline for prompt
+async function promptYesNoNewReadline(question: string): Promise<boolean> {
   const rl2 = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -60,37 +64,38 @@ async function promptYesNoReadline(question: string): Promise<boolean> {
 }
 
 async function main() {
-  console.log("Testing stdin behavior...\n")
+  createReadline()
+  console.log("Testing stdin behavior with CLOSE/RECREATE approach...\n")
 
   // First, get a command like the REPL does
   const cmd1 = await prompt("> ")
   console.log(`Got command: "${cmd1}"`)
 
-  // Now pause the main readline (like our fix does)
-  rl.pause()
+  // CLOSE the readline entirely (not just pause)
+  rl.close()
 
   // Try the raw mode approach
-  console.log("\n--- Testing raw mode promptYesNo ---")
+  console.log("\n--- Testing raw mode promptYesNo (after closing readline) ---")
   const answer1 = await promptYesNoRaw("Continue?")
   console.log(`Answer was: ${answer1}`)
 
-  // Resume main readline
-  rl.resume()
+  // Recreate the readline
+  createReadline()
 
   // Try another command
   const cmd2 = await prompt("\n> ")
   console.log(`Got command: "${cmd2}"`)
 
-  // Pause again
-  rl.pause()
+  // Close again
+  rl.close()
 
-  // Try the readline approach
-  console.log("\n--- Testing readline promptYesNo ---")
-  const answer2 = await promptYesNoReadline("Continue?")
+  // Try the new readline approach
+  console.log("\n--- Testing new readline promptYesNo (after closing main readline) ---")
+  const answer2 = await promptYesNoNewReadline("Continue?")
   console.log(`Answer was: ${answer2}`)
 
-  // Resume
-  rl.resume()
+  // Recreate
+  createReadline()
 
   // Final command
   const cmd3 = await prompt("\n> ")
