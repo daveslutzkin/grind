@@ -10,7 +10,14 @@ import { SAVE_VERSION } from "./types.js"
 import type { Session, SessionStats } from "./runner.js"
 
 // Directory where saves are stored
-const SAVES_DIR = "./saves"
+let SAVES_DIR = "./saves"
+
+/**
+ * Set the saves directory (primarily for testing)
+ */
+export function setSavesDirectory(dir: string): void {
+  SAVES_DIR = dir
+}
 
 /**
  * Serialized WorldState with areas as a plain object instead of Map

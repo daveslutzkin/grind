@@ -1,5 +1,6 @@
 import * as fs from "fs"
 import * as path from "path"
+import * as os from "os"
 import {
   serializeSession,
   deserializeSession,
@@ -8,6 +9,7 @@ import {
   loadSave,
   writeSave,
   deleteSave,
+  setSavesDirectory,
 } from "./persistence.js"
 import { SAVE_VERSION } from "./types.js"
 import { createWorld } from "./world.js"
@@ -15,7 +17,20 @@ import type { Session } from "./runner.js"
 
 describe("Persistence", () => {
   const TEST_SEED = "test-persistence-seed"
-  const SAVES_DIR = "./saves"
+  let TEST_SAVES_DIR: string
+
+  // Set up temp directory for test saves
+  beforeAll(() => {
+    TEST_SAVES_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "grind-test-saves-"))
+    setSavesDirectory(TEST_SAVES_DIR)
+  })
+
+  // Clean up test saves directory after all tests
+  afterAll(() => {
+    if (fs.existsSync(TEST_SAVES_DIR)) {
+      fs.rmSync(TEST_SAVES_DIR, { recursive: true, force: true })
+    }
+  })
 
   // Clean up test saves before and after tests
   beforeEach(() => {
@@ -33,7 +48,7 @@ describe("Persistence", () => {
   describe("getSavePath", () => {
     it("should return correct save path", () => {
       const savePath = getSavePath(TEST_SEED)
-      expect(savePath).toBe(path.join(SAVES_DIR, `${TEST_SEED}.json`))
+      expect(savePath).toBe(path.join(TEST_SAVES_DIR, `${TEST_SEED}.json`))
     })
   })
 
@@ -175,24 +190,31 @@ describe("Persistence", () => {
     })
 
     it("should create saves directory if it does not exist", () => {
-      // Remove saves directory if it exists
-      if (fs.existsSync(SAVES_DIR)) {
-        // Don't actually remove it - just verify writeSave handles it gracefully
-      }
+      // Create a new temp directory that doesn't exist yet
+      const newTempDir = path.join(os.tmpdir(), `grind-test-mkdir-${Date.now()}`)
+      setSavesDirectory(newTempDir)
 
-      const state = createWorld(TEST_SEED)
-      const session: Session = {
-        state,
-        stats: {
-          logs: [],
-          startingSkills: { ...state.player.skills },
-          totalSession: state.time.sessionRemainingTicks,
-        },
-      }
+      try {
+        const state = createWorld(TEST_SEED)
+        const session: Session = {
+          state,
+          stats: {
+            logs: [],
+            startingSkills: { ...state.player.skills },
+            totalSession: state.time.sessionRemainingTicks,
+          },
+        }
 
-      // This should create the directory if needed
-      expect(() => writeSave(TEST_SEED, session)).not.toThrow()
-      expect(saveExists(TEST_SEED)).toBe(true)
+        // This should create the directory if needed
+        expect(() => writeSave(TEST_SEED, session)).not.toThrow()
+        expect(saveExists(TEST_SEED)).toBe(true)
+      } finally {
+        // Clean up and restore original test directory
+        if (fs.existsSync(newTempDir)) {
+          fs.rmSync(newTempDir, { recursive: true, force: true })
+        }
+        setSavesDirectory(TEST_SAVES_DIR)
+      }
     })
 
     it("should use atomic writes (temp file pattern)", () => {
@@ -218,8 +240,8 @@ describe("Persistence", () => {
 
     it("should throw error on corrupted save file", () => {
       // Write invalid JSON to save file
-      if (!fs.existsSync(SAVES_DIR)) {
-        fs.mkdirSync(SAVES_DIR, { recursive: true })
+      if (!fs.existsSync(TEST_SAVES_DIR)) {
+        fs.mkdirSync(TEST_SAVES_DIR, { recursive: true })
       }
       fs.writeFileSync(getSavePath(TEST_SEED), "{ invalid json", "utf-8")
 
@@ -242,8 +264,8 @@ describe("Persistence", () => {
       const saveFile = serializeSession(session, TEST_SEED)
       saveFile.version = 999 // Wrong version
 
-      if (!fs.existsSync(SAVES_DIR)) {
-        fs.mkdirSync(SAVES_DIR, { recursive: true })
+      if (!fs.existsSync(TEST_SAVES_DIR)) {
+        fs.mkdirSync(TEST_SAVES_DIR, { recursive: true })
       }
       fs.writeFileSync(getSavePath(TEST_SEED), JSON.stringify(saveFile), "utf-8")
 
