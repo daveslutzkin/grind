@@ -13,8 +13,11 @@ import {
   prepareSurveyData,
   shadowRollExplore,
   shadowRollSurvey,
+  GATHERING_NODE_WITHOUT_SKILL_MULTIPLIER,
+  UNKNOWN_CONNECTION_MULTIPLIER,
 } from "./exploration.js"
 import { formatActionLog } from "./agent/formatters.js"
+import { consumeTime } from "./stateHelpers.js"
 
 // ============================================================================
 // Hard Discoveries Detection
@@ -48,10 +51,8 @@ function analyzeRemainingDiscoveries(state: WorldState): HardDiscoveryAnalysis {
   const { discoverables, baseChance } = buildDiscoverables(state, currentArea)
 
   // Categorize based on thresholds
-  // Hard discoveries have threshold = baseChance * 0.05 (gathering nodes without skill)
-  // Easy discoveries have threshold >= baseChance * 0.25
-  const hardThreshold = baseChance * 0.05
-  const easyThreshold = baseChance * 0.25
+  const hardThreshold = baseChance * GATHERING_NODE_WITHOUT_SKILL_MULTIPLIER
+  const easyThreshold = baseChance * UNKNOWN_CONNECTION_MULTIPLIER
 
   let easyCount = 0
   let hardCount = 0
@@ -112,11 +113,12 @@ interface AnimationResult {
 
 /**
  * Animate discovery with dots (one per tick) and support cancellation
+ * NOTE: This function does NOT consume time - it only provides visual feedback.
+ * Time consumption happens in the execute functions or manually on cancellation.
  * @param totalTicks - Total ticks the discovery will take
- * @param state - World state to consume time from
  * @returns Object with cancellation status and ticks animated
  */
-async function animateDiscovery(totalTicks: number, state: WorldState): Promise<AnimationResult> {
+async function animateDiscovery(totalTicks: number): Promise<AnimationResult> {
   return new Promise((resolve) => {
     let ticksAnimated = 0
 
@@ -156,16 +158,7 @@ async function animateDiscovery(totalTicks: number, state: WorldState): Promise<
         return
       }
 
-      if (state.time.sessionRemainingTicks <= 0) {
-        cleanup()
-        process.stdout.write("\n")
-        resolve({ cancelled: false, ticksAnimated })
-        return
-      }
-
-      // Consume 1 tick from state
-      state.time.sessionRemainingTicks--
-      state.time.currentTick++
+      // Just track animation progress - don't consume time here
       ticksAnimated++
 
       // Print dot (in non-interactive mode, print fewer dots to avoid spam)
@@ -202,29 +195,13 @@ async function promptYesNo(question: string): Promise<boolean> {
  */
 export async function interactiveExplore(state: WorldState): Promise<void> {
   while (true) {
-    // Check if area is fully explored
+    // Check if area is fully explored using shared logic
     const exploration = state.exploration!
     const currentArea = exploration.areas.get(exploration.playerState.currentAreaId)!
-    const knownLocationIds = new Set(exploration.playerState.knownLocationIds)
-    const knownConnectionIds = new Set(exploration.playerState.knownConnectionIds)
-    const knownAreaIds = new Set(exploration.playerState.knownAreaIds)
 
-    const undiscoveredLocations = currentArea.locations.filter(
-      (loc) => !knownLocationIds.has(loc.id)
-    )
-    const undiscoveredKnownConnections = exploration.connections.filter((conn) => {
-      const isFromCurrent = conn.fromAreaId === currentArea.id
-      const isToCurrent = conn.toAreaId === currentArea.id
-      if (!isFromCurrent && !isToCurrent) return false
-      const connId = `${conn.fromAreaId}->${conn.toAreaId}`
-      const targetId = isFromCurrent ? conn.toAreaId : conn.fromAreaId
-      return !knownConnectionIds.has(connId) && knownAreaIds.has(targetId)
-    })
+    const { discoverables } = buildDiscoverables(state, currentArea)
 
-    const hasDiscoverables =
-      undiscoveredLocations.length > 0 || undiscoveredKnownConnections.length > 0
-
-    if (!hasDiscoverables) {
+    if (discoverables.length === 0) {
       console.log("\n✓ Area fully explored - nothing left to discover")
       return
     }
@@ -253,10 +230,8 @@ export async function interactiveExplore(state: WorldState): Promise<void> {
     }
 
     // Shadow roll to determine tick count without mutating state
-    // Use shared discoverable building logic to ensure consistency with executeExplore
     const level = state.player.skills.Exploration.level
     const rollInterval = getRollInterval(level)
-    const { discoverables } = buildDiscoverables(state, currentArea)
 
     // Clone RNG and shadow roll to find tick count
     const shadowRng = { ...state.rng }
@@ -275,16 +250,19 @@ export async function interactiveExplore(state: WorldState): Promise<void> {
     // Update original state RNG counter to match shadow rolls
     state.rng.counter = shadowRng.counter
 
-    // Animate with real-time tick consumption
+    // Animate discovery (visual only - does not consume time)
     process.stdout.write("\nExploring")
-    const animResult = await animateDiscovery(ticksConsumed, state)
+    const animResult = await animateDiscovery(ticksConsumed)
 
     if (animResult.cancelled) {
+      // User cancelled - consume only the partial time
+      consumeTime(state, animResult.ticksAnimated)
       console.log(`Exploration cancelled after ${animResult.ticksAnimated}t`)
       return
     }
 
     // Execute once on original state (deterministic due to matching RNG counter)
+    // This will consume the full time
     const action: ExploreAction = { type: "Explore" }
     const finalLog = await executeExplore(state, action)
 
@@ -341,16 +319,19 @@ export async function interactiveSurvey(state: WorldState): Promise<void> {
     // Update original state RNG counter to match shadow rolls
     state.rng.counter = shadowRng.counter
 
-    // Animate with real-time tick consumption
+    // Animate discovery (visual only - does not consume time)
     process.stdout.write("\nSurveying")
-    const animResult = await animateDiscovery(ticksConsumed, state)
+    const animResult = await animateDiscovery(ticksConsumed)
 
     if (animResult.cancelled) {
+      // User cancelled - consume only the partial time
+      consumeTime(state, animResult.ticksAnimated)
       console.log(`Survey cancelled after ${animResult.ticksAnimated}t`)
       return
     }
 
     // Execute once on original state (deterministic due to matching RNG counter)
+    // This will consume the full time
     const action: SurveyAction = { type: "Survey" }
     const finalLog = await executeSurvey(state, action)
 

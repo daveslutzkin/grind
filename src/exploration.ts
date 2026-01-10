@@ -58,10 +58,17 @@ export function getAreaDisplayName(areaId: AreaID, area?: Area): string {
 }
 
 /**
- * Probability multiplier for discovering connections to unknown areas
- * during Explore action (relative to known area connections)
+ * Discovery threshold multipliers for Explore action
+ * These multiply the base success chance to determine individual discovery thresholds
  */
-export const UNKNOWN_CONNECTION_DISCOVERY_MULTIPLIER = 0.25
+export const KNOWN_CONNECTION_MULTIPLIER = 1.0 // Connections to known areas (easiest)
+export const MOB_CAMP_MULTIPLIER = 0.5 // Mob camps
+export const GATHERING_NODE_WITH_SKILL_MULTIPLIER = 0.5 // Gathering nodes when player has skill
+export const GATHERING_NODE_WITHOUT_SKILL_MULTIPLIER = 0.05 // Gathering nodes without skill (20× harder)
+export const UNKNOWN_CONNECTION_MULTIPLIER = 0.25 // Connections to unknown areas
+
+/** @deprecated Use UNKNOWN_CONNECTION_MULTIPLIER instead */
+export const UNKNOWN_CONNECTION_DISCOVERY_MULTIPLIER = UNKNOWN_CONNECTION_MULTIPLIER
 
 // ============================================================================
 // Connection ID Helpers
@@ -1124,23 +1131,16 @@ export function buildDiscoverables(
   })
 
   // Build list of discoverables with their individual thresholds
-  // Threshold multipliers per spec:
-  // - Connection to known area: 1.0×
-  // - Mob camp: 0.5×
-  // - Gathering node with skill: 0.5×
-  // - Gathering node without skill: 0.05× (10× lower)
-  // - Connection to unknown area: 0.25×
   const getLocationThreshold = (loc: ExplorationLocation): number => {
     if (loc.type === "GATHERING_NODE" && loc.gatheringSkillType) {
       const skillLevel = state.player.skills[loc.gatheringSkillType]?.level ?? 0
       if (skillLevel === 0) {
-        // 10x lower chance without skill
-        return baseChance * 0.05
+        return baseChance * GATHERING_NODE_WITHOUT_SKILL_MULTIPLIER
       }
-      return baseChance * 0.5
+      return baseChance * GATHERING_NODE_WITH_SKILL_MULTIPLIER
     }
     // Mob camp
-    return baseChance * 0.5
+    return baseChance * MOB_CAMP_MULTIPLIER
   }
 
   const discoverables: Discoverable[] = [
@@ -1153,12 +1153,12 @@ export function buildDiscoverables(
     ...undiscoveredKnownConnections.map((conn) => ({
       type: "knownConnection" as const,
       id: createConnectionId(conn.fromAreaId, conn.toAreaId),
-      threshold: baseChance * 1.0,
+      threshold: baseChance * KNOWN_CONNECTION_MULTIPLIER,
     })),
     ...undiscoveredUnknownConnections.map((conn) => ({
       type: "unknownConnection" as const,
       id: createConnectionId(conn.fromAreaId, conn.toAreaId),
-      threshold: baseChance * UNKNOWN_CONNECTION_DISCOVERY_MULTIPLIER,
+      threshold: baseChance * UNKNOWN_CONNECTION_MULTIPLIER,
     })),
   ]
 
