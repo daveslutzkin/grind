@@ -419,12 +419,49 @@ export function formatWorldState(state: WorldState): string {
     }
 
     if (destinations.size > 0) {
-      // Sort by travel time (shortest first)
-      const travelList = Array.from(destinations.entries())
-        .sort((a, b) => a[1] - b[1])
-        .map(([dest, time]) => `${getAreaDisplayName(state, dest)} (${time}t)`)
-        .join(", ")
-      lines.push(`Connections: ${travelList}`)
+      // Get current area's distance from town
+      const currentAreaDistance = area?.distance ?? 0
+
+      // Group connections by distance relative to current area
+      const closer: [string, number][] = []
+      const same: [string, number][] = []
+      const further: [string, number][] = []
+
+      for (const [dest, time] of destinations.entries()) {
+        const destArea = state.exploration.areas.get(dest)
+        const destDistance = destArea?.distance ?? 0
+
+        if (destDistance < currentAreaDistance) {
+          closer.push([dest, time])
+        } else if (destDistance === currentAreaDistance) {
+          same.push([dest, time])
+        } else {
+          further.push([dest, time])
+        }
+      }
+
+      // Sort each group by travel time (shortest first)
+      const sortByTime = (a: [string, number], b: [string, number]) => a[1] - b[1]
+      closer.sort(sortByTime)
+      same.sort(sortByTime)
+      further.sort(sortByTime)
+
+      // Format each group
+      const formatGroup = (group: [string, number][]) =>
+        group.map(([dest, time]) => `${getAreaDisplayName(state, dest)} (${time}t)`).join(", ")
+
+      // Display groups in order: closer, same, further
+      if (closer.length > 0) {
+        lines.push(`Connections: ${formatGroup(closer)}`)
+      }
+      if (same.length > 0) {
+        const prefix = closer.length > 0 ? "            " : "Connections: "
+        lines.push(`${prefix}${formatGroup(same)}`)
+      }
+      if (further.length > 0) {
+        const prefix = closer.length > 0 || same.length > 0 ? "            " : "Connections: "
+        lines.push(`${prefix}${formatGroup(further)}`)
+      }
     } else {
       lines.push("Connections: none known")
     }
