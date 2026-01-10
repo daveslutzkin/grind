@@ -13,6 +13,7 @@ import {
   prepareSurveyData,
   shadowRollExplore,
   shadowRollSurvey,
+  ensureAreaFullyGenerated,
   GATHERING_NODE_WITHOUT_SKILL_MULTIPLIER,
   UNKNOWN_CONNECTION_MULTIPLIER,
 } from "./exploration.js"
@@ -198,6 +199,9 @@ export async function interactiveExplore(state: WorldState): Promise<void> {
     // Check if area is fully explored using shared logic
     const exploration = state.exploration!
     const currentArea = exploration.areas.get(exploration.playerState.currentAreaId)!
+
+    // Ensure area is fully generated (must happen before buildDiscoverables and shadow rolling)
+    await ensureAreaFullyGenerated(state.rng, exploration, currentArea)
 
     const { discoverables } = buildDiscoverables(state, currentArea)
 
