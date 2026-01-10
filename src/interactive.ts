@@ -120,24 +120,27 @@ interface AnimationResult {
  * @returns Object with cancellation status and ticks animated
  */
 async function animateDiscovery(totalTicks: number): Promise<AnimationResult> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     let ticksAnimated = 0
+    let interval: ReturnType<typeof globalThis.setInterval> | null = null
 
     // Only enable interactive mode if stdin is a TTY
     const isInteractive = process.stdin.isTTY
 
-    if (isInteractive) {
-      process.stdin.setRawMode(true)
-      process.stdin.resume()
-      process.stdin.setEncoding("utf8")
-    }
-
+    // Cleanup function that ALWAYS runs to restore terminal state
     const cleanup = () => {
-      globalThis.clearInterval(interval)
+      if (interval !== null) {
+        globalThis.clearInterval(interval)
+        interval = null
+      }
       if (isInteractive) {
         process.stdin.removeListener("data", keyHandler)
-        process.stdin.setRawMode(false)
-        process.stdin.pause()
+        try {
+          process.stdin.setRawMode(false)
+          process.stdin.pause()
+        } catch {
+          // Ignore errors during cleanup (stdin might be closed)
+        }
       }
     }
 
@@ -147,26 +150,39 @@ async function animateDiscovery(totalTicks: number): Promise<AnimationResult> {
       resolve({ cancelled: true, ticksAnimated })
     }
 
-    if (isInteractive) {
-      process.stdin.on("data", keyHandler)
+    try {
+      if (isInteractive) {
+        process.stdin.setRawMode(true)
+        process.stdin.resume()
+        process.stdin.setEncoding("utf8")
+        process.stdin.on("data", keyHandler)
+      }
+
+      interval = globalThis.setInterval(() => {
+        try {
+          if (ticksAnimated >= totalTicks) {
+            cleanup()
+            process.stdout.write("\n")
+            resolve({ cancelled: false, ticksAnimated })
+            return
+          }
+
+          // Just track animation progress - don't consume time here
+          ticksAnimated++
+
+          // Print dot (in non-interactive mode, print fewer dots to avoid spam)
+          if (isInteractive || ticksAnimated % 10 === 0) {
+            process.stdout.write(".")
+          }
+        } catch (error) {
+          cleanup()
+          reject(error)
+        }
+      }, 250) // 1 dot every 250ms = 4 dots per second
+    } catch (error) {
+      cleanup()
+      reject(error)
     }
-
-    const interval = globalThis.setInterval(() => {
-      if (ticksAnimated >= totalTicks) {
-        cleanup()
-        process.stdout.write("\n")
-        resolve({ cancelled: false, ticksAnimated })
-        return
-      }
-
-      // Just track animation progress - don't consume time here
-      ticksAnimated++
-
-      // Print dot (in non-interactive mode, print fewer dots to avoid spam)
-      if (isInteractive || ticksAnimated % 10 === 0) {
-        process.stdout.write(".")
-      }
-    }, 250) // 1 dot every 250ms = 4 dots per second
   })
 }
 
@@ -178,11 +194,6 @@ async function animateDiscovery(totalTicks: number): Promise<AnimationResult> {
  * Prompt user with y/n question
  */
 async function promptYesNo(question: string): Promise<boolean> {
-  // Ensure stdin is in normal mode (not raw mode) before readline
-  if (process.stdin.isTTY) {
-    process.stdin.setRawMode(false)
-  }
-
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
