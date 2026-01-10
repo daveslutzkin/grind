@@ -32,6 +32,7 @@ import {
 } from "./exploration.js"
 import { formatActionLog, formatTickFeedback } from "./agent/formatters.js"
 import { consumeTime } from "./stateHelpers.js"
+import { executeToCompletion } from "./engine.js"
 
 // ============================================================================
 // Animation Runner Infrastructure
@@ -438,7 +439,7 @@ export async function interactiveExplore(state: WorldState): Promise<void> {
     // Execute the real action (will use same RNG sequence as shadow roll, so same result)
     // This will consume the actual time
     const action: ExploreAction = { type: "Explore" }
-    const finalLog = await executeExplore(state, action)
+    const finalLog = await executeToCompletion(executeExplore(state, action))
 
     // Show discovery result (not full state)
     console.log(formatActionLog(finalLog, state))
@@ -514,7 +515,7 @@ export async function interactiveSurvey(state: WorldState): Promise<void> {
     // Execute the real action (will use same RNG sequence as shadow roll, so same result)
     // This will consume the actual time
     const action: SurveyAction = { type: "Survey" }
-    const finalLog = await executeSurvey(state, action)
+    const finalLog = await executeToCompletion(executeSurvey(state, action))
 
     // Show discovery result (not full state)
     console.log(formatActionLog(finalLog, state))
@@ -662,8 +663,12 @@ export async function interactiveFarTravel(
     return
   }
 
-  // Execute the real action
-  const finalLog = await executeFarTravel(state, action)
+  // Execute the real action with animation
+  const generator = executeFarTravel(state, action)
+  const { log: finalLog } = await runAnimatedAction(generator, {
+    label: "Traveling",
+    tickDelay: 100,
+  })
 
   // Show travel result
   console.log(formatActionLog(finalLog, state))

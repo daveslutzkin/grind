@@ -23,7 +23,7 @@ import type {
 import { ExplorationLocationType } from "./types.js"
 import { rollFloat, roll } from "./rng.js"
 import { consumeTime } from "./stateHelpers.js"
-import { generateNodesForArea } from "./world.js"
+import { generateNodesForArea, getLocationDisplayName } from "./world.js"
 import { generateAreaName, getNeighborNames } from "./areaNaming.js"
 
 // ============================================================================
@@ -925,17 +925,19 @@ export function prepareSurveyData(state: WorldState, currentArea: Area): SurveyI
  * Per spec (lines 76-77): "If the roll hits an already-discovered area, the roll is wasted.
  * Keep rolling until a new area is found (or player abandons)"
  */
-export async function executeSurvey(state: WorldState, _action: SurveyAction): Promise<ActionLog> {
+export async function* executeSurvey(state: WorldState, _action: SurveyAction): ActionGenerator {
   const tickBefore = state.time.currentTick
   const rolls: RngRoll[] = []
 
   // Check preconditions
   if (state.player.skills.Exploration.level === 0) {
-    return createFailureLog(state, "Survey", "NOT_IN_EXPLORATION_GUILD")
+    yield { done: true, log: createFailureLog(state, "Survey", "NOT_IN_EXPLORATION_GUILD") }
+    return
   }
 
   if (state.time.sessionRemainingTicks <= 0) {
-    return createFailureLog(state, "Survey", "SESSION_ENDED")
+    yield { done: true, log: createFailureLog(state, "Survey", "SESSION_ENDED") }
+    return
   }
 
   const exploration = state.exploration!
@@ -946,17 +948,25 @@ export async function executeSurvey(state: WorldState, _action: SurveyAction): P
     prepareSurveyData(state, currentArea)
 
   if (allConnections.length === 0) {
-    return {
-      ...createFailureLog(state, "Survey", "NO_CONNECTIONS"),
-      timeConsumed: 0,
+    yield {
+      done: true,
+      log: {
+        ...createFailureLog(state, "Survey", "NO_CONNECTIONS"),
+        timeConsumed: 0,
+      },
     }
+    return
   }
 
   if (!hasUndiscoveredAreas) {
-    return {
-      ...createFailureLog(state, "Survey", "NO_UNDISCOVERED_AREAS"),
-      timeConsumed: 0,
+    yield {
+      done: true,
+      log: {
+        ...createFailureLog(state, "Survey", "NO_UNDISCOVERED_AREAS"),
+        timeConsumed: 0,
+      },
     }
+    return
   }
 
   const knownAreaIds = new Set(exploration.playerState.knownAreaIds)
@@ -978,12 +988,20 @@ export async function executeSurvey(state: WorldState, _action: SurveyAction): P
     if (ticksThisRoll > 0) {
       if (state.time.sessionRemainingTicks < ticksThisRoll) {
         ticksConsumed += state.time.sessionRemainingTicks
-        consumeTime(state, state.time.sessionRemainingTicks)
+        // Consume remaining ticks and yield them
+        for (let i = 0; i < state.time.sessionRemainingTicks; i++) {
+          consumeTime(state, 1)
+          yield { done: false }
+        }
         break
       }
 
-      consumeTime(state, ticksThisRoll)
-      ticksConsumed += ticksThisRoll
+      // Yield ticks as they're consumed
+      for (let i = 0; i < ticksThisRoll; i++) {
+        consumeTime(state, 1)
+        ticksConsumed++
+        yield { done: false }
+      }
     }
 
     // Roll for success
@@ -1018,21 +1036,32 @@ export async function executeSurvey(state: WorldState, _action: SurveyAction): P
       discoveredAreaId = targetId
       discoveredConnectionId = connId
       succeeded = true
+
+      // Show discovery feedback
+      const areaName = getAreaDisplayName(targetId, targetArea)
+      yield {
+        done: false,
+        feedback: { discovered: { type: "area", name: areaName, id: targetId } },
+      }
     }
   }
 
   if (!succeeded) {
     // No discovery = no XP
-    return {
-      tickBefore,
-      actionType: "Survey",
-      parameters: {},
-      success: false,
-      failureType: "SESSION_ENDED",
-      timeConsumed: ticksConsumed,
-      rngRolls: rolls,
-      stateDeltaSummary: "Survey interrupted - session ended",
+    yield {
+      done: true,
+      log: {
+        tickBefore,
+        actionType: "Survey",
+        parameters: {},
+        success: false,
+        failureType: "SESSION_ENDED",
+        timeConsumed: ticksConsumed,
+        rngRolls: rolls,
+        stateDeltaSummary: "Survey interrupted - session ended",
+      },
     }
+    return
   }
 
   // Grant 2 XP on success: 1 for area discovery + 1 for connection discovery
@@ -1042,20 +1071,23 @@ export async function executeSurvey(state: WorldState, _action: SurveyAction): P
   // Calculate luck info
   const luckInfo = updateLuckTracking(exploration, expectedTicks, ticksConsumed)
 
-  return {
-    tickBefore,
-    actionType: "Survey",
-    parameters: {},
-    success: true,
-    timeConsumed: ticksConsumed,
-    skillGained: { skill: "Exploration", amount: xpGained },
-    levelUps,
-    rngRolls: rolls,
-    stateDeltaSummary: `Discovered ${getAreaDisplayName(discoveredAreaId!, exploration.areas.get(discoveredAreaId!))}`,
-    explorationLog: {
-      discoveredAreaId,
-      discoveredConnectionId,
-      luckInfo,
+  yield {
+    done: true,
+    log: {
+      tickBefore,
+      actionType: "Survey",
+      parameters: {},
+      success: true,
+      timeConsumed: ticksConsumed,
+      skillGained: { skill: "Exploration", amount: xpGained },
+      levelUps,
+      rngRolls: rolls,
+      stateDeltaSummary: `Discovered ${getAreaDisplayName(discoveredAreaId!, exploration.areas.get(discoveredAreaId!))}`,
+      explorationLog: {
+        discoveredAreaId,
+        discoveredConnectionId,
+        luckInfo,
+      },
     },
   }
 }
@@ -1173,20 +1205,19 @@ export function buildDiscoverables(
  * lower probability, but does not reveal the area itself - just that a connection
  * exists to somewhere unknown)"
  */
-export async function executeExplore(
-  state: WorldState,
-  _action: ExploreAction
-): Promise<ActionLog> {
+export async function* executeExplore(state: WorldState, _action: ExploreAction): ActionGenerator {
   const tickBefore = state.time.currentTick
   const rolls: RngRoll[] = []
 
   // Check preconditions
   if (state.player.skills.Exploration.level === 0) {
-    return createFailureLog(state, "Explore", "NOT_IN_EXPLORATION_GUILD")
+    yield { done: true, log: createFailureLog(state, "Explore", "NOT_IN_EXPLORATION_GUILD") }
+    return
   }
 
   if (state.time.sessionRemainingTicks <= 0) {
-    return createFailureLog(state, "Explore", "SESSION_ENDED")
+    yield { done: true, log: createFailureLog(state, "Explore", "SESSION_ENDED") }
+    return
   }
 
   const exploration = state.exploration!
@@ -1200,10 +1231,14 @@ export async function executeExplore(
   const { discoverables } = buildDiscoverables(state, currentArea)
 
   if (discoverables.length === 0) {
-    return {
-      ...createFailureLog(state, "Explore", "AREA_FULLY_EXPLORED"),
-      explorationLog: { areaFullyExplored: true },
+    yield {
+      done: true,
+      log: {
+        ...createFailureLog(state, "Explore", "AREA_FULLY_EXPLORED"),
+        explorationLog: { areaFullyExplored: true },
+      },
     }
+    return
   }
 
   const rollInterval = getRollInterval(level)
@@ -1230,12 +1265,20 @@ export async function executeExplore(
     if (ticksThisRoll > 0) {
       if (state.time.sessionRemainingTicks < ticksThisRoll) {
         ticksConsumed += state.time.sessionRemainingTicks
-        consumeTime(state, state.time.sessionRemainingTicks)
+        // Consume remaining ticks and yield them
+        for (let i = 0; i < state.time.sessionRemainingTicks; i++) {
+          consumeTime(state, 1)
+          yield { done: false }
+        }
         break
       }
 
-      consumeTime(state, ticksThisRoll)
-      ticksConsumed += ticksThisRoll
+      // Yield ticks as they're consumed
+      for (let i = 0; i < ticksThisRoll; i++) {
+        consumeTime(state, 1)
+        ticksConsumed++
+        yield { done: false }
+      }
     }
 
     // Roll 0-1 (equivalent to 0-100%)
@@ -1257,6 +1300,13 @@ export async function executeExplore(
       if (picked.type === "location") {
         exploration.playerState.knownLocationIds.push(picked.id)
         discoveredLocationId = picked.id
+
+        // Show discovery feedback
+        const locationName = getLocationDisplayName(picked.id, currentArea.id, state)
+        yield {
+          done: false,
+          feedback: { discovered: { type: "location", name: locationName, id: picked.id } },
+        }
       } else {
         exploration.playerState.knownConnectionIds.push(picked.id)
         discoveredConnectionId = picked.id
@@ -1271,6 +1321,27 @@ export async function executeExplore(
           const targetArea = exploration.areas.get(targetAreaId)
           if (targetArea) {
             await ensureAreaFullyGenerated(state.rng, exploration, targetArea)
+          }
+
+          // Show discovery feedback
+          const targetName = targetArea
+            ? getAreaDisplayName(targetAreaId, targetArea)
+            : "unknown area"
+          yield {
+            done: false,
+            feedback: {
+              discovered: {
+                type: "connection",
+                name: `connection to ${targetName}`,
+                id: picked.id,
+              },
+            },
+          }
+        } else {
+          // Known connection
+          yield {
+            done: false,
+            feedback: { discovered: { type: "connection", name: "connection", id: picked.id } },
           }
         }
       }
@@ -1297,16 +1368,20 @@ export async function executeExplore(
 
   if (!succeeded) {
     // No discovery = no XP
-    return {
-      tickBefore,
-      actionType: "Explore",
-      parameters: {},
-      success: false,
-      failureType: "SESSION_ENDED",
-      timeConsumed: ticksConsumed,
-      rngRolls: rolls,
-      stateDeltaSummary: "Explore interrupted - session ended",
+    yield {
+      done: true,
+      log: {
+        tickBefore,
+        actionType: "Explore",
+        parameters: {},
+        success: false,
+        failureType: "SESSION_ENDED",
+        timeConsumed: ticksConsumed,
+        rngRolls: rolls,
+        stateDeltaSummary: "Explore interrupted - session ended",
+      },
     }
+    return
   }
 
   // Grant 1 XP on success: 1 discovery (location or connection)
@@ -1359,22 +1434,25 @@ export async function executeExplore(
     discovered = "new connection"
   }
 
-  return {
-    tickBefore,
-    actionType: "Explore",
-    parameters: {},
-    success: true,
-    timeConsumed: ticksConsumed,
-    skillGained: { skill: "Exploration", amount: xpGained },
-    levelUps,
-    rngRolls: rolls,
-    stateDeltaSummary: `Discovered ${discovered}`,
-    explorationLog: {
-      discoveredLocationId,
-      discoveredConnectionId,
-      connectionToUnknownArea,
-      areaFullyExplored,
-      luckInfo,
+  yield {
+    done: true,
+    log: {
+      tickBefore,
+      actionType: "Explore",
+      parameters: {},
+      success: true,
+      timeConsumed: ticksConsumed,
+      skillGained: { skill: "Exploration", amount: xpGained },
+      levelUps,
+      rngRolls: rolls,
+      stateDeltaSummary: `Discovered ${discovered}`,
+      explorationLog: {
+        discoveredLocationId,
+        discoveredConnectionId,
+        connectionToUnknownArea,
+        areaFullyExplored,
+        luckInfo,
+      },
     },
   }
 }
@@ -1580,39 +1658,43 @@ export async function* executeExplorationTravel(
  * Execute FarTravel action - multi-hop travel to any known reachable area.
  * Uses shortest path routing through known connections.
  */
-export async function executeFarTravel(
+export async function* executeFarTravel(
   state: WorldState,
   action: FarTravelAction
-): Promise<ActionLog> {
+): ActionGenerator {
   const tickBefore = state.time.currentTick
   const exploration = state.exploration!
   const { destinationAreaId, scavenge } = action
 
   // Check preconditions
   if (exploration.playerState.currentAreaId === destinationAreaId) {
-    return createFailureLog(state, "FarTravel", "ALREADY_IN_AREA")
+    yield { done: true, log: createFailureLog(state, "FarTravel", "ALREADY_IN_AREA") }
+    return
   }
 
   if (state.time.sessionRemainingTicks <= 0) {
-    return createFailureLog(state, "FarTravel", "SESSION_ENDED")
+    yield { done: true, log: createFailureLog(state, "FarTravel", "SESSION_ENDED") }
+    return
   }
 
   const currentAreaId = exploration.playerState.currentAreaId
 
   // Destination must be known for far travel
   if (!exploration.playerState.knownAreaIds.includes(destinationAreaId)) {
-    return createFailureLog(state, "FarTravel", "AREA_NOT_KNOWN")
+    yield { done: true, log: createFailureLog(state, "FarTravel", "AREA_NOT_KNOWN") }
+    return
   }
 
   // Find shortest path to destination
   const pathResult = findPath(state, currentAreaId, destinationAreaId)
 
   if (!pathResult) {
-    return createFailureLog(state, "FarTravel", "NO_PATH_TO_DESTINATION")
+    yield { done: true, log: createFailureLog(state, "FarTravel", "NO_PATH_TO_DESTINATION") }
+    return
   }
 
   // Calculate travel time
-  let travelTime = pathResult.totalTime
+  let travelTime = Math.round(pathResult.totalTime)
 
   // Double time if scavenging
   if (scavenge) {
@@ -1621,14 +1703,23 @@ export async function executeFarTravel(
 
   // Check if enough time
   if (state.time.sessionRemainingTicks < travelTime) {
-    return {
-      ...createFailureLog(state, "FarTravel", "SESSION_ENDED"),
-      timeConsumed: 0,
+    yield {
+      done: true,
+      log: {
+        ...createFailureLog(state, "FarTravel", "SESSION_ENDED"),
+        timeConsumed: 0,
+      },
     }
+    return
   }
 
-  // Consume time and move
-  consumeTime(state, travelTime)
+  // Yield ticks during travel
+  for (let tick = 0; tick < travelTime; tick++) {
+    consumeTime(state, 1)
+    yield { done: false }
+  }
+
+  // Move to destination
   exploration.playerState.currentAreaId = destinationAreaId
   exploration.playerState.currentLocationId = null // Arrive at hub (clearing)
 
@@ -1642,13 +1733,16 @@ export async function executeFarTravel(
   const hops = pathResult.path.length - 1
   const summary = `Far traveled to ${areaDisplayName} (${hops} hop${hops !== 1 ? "s" : ""})`
 
-  return {
-    tickBefore,
-    actionType: "FarTravel",
-    parameters: { destinationAreaId, scavenge },
-    success: true,
-    timeConsumed: travelTime,
-    rngRolls: [],
-    stateDeltaSummary: summary,
+  yield {
+    done: true,
+    log: {
+      tickBefore,
+      actionType: "FarTravel",
+      parameters: { destinationAreaId, scavenge },
+      success: true,
+      timeConsumed: travelTime,
+      rngRolls: [],
+      stateDeltaSummary: summary,
+    },
   }
 }

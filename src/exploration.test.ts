@@ -697,7 +697,7 @@ describe("Shadow Rolling", () => {
 
       // Execute real action (should use same RNG sequence from same starting point)
       const action: ExploreAction = { type: "Explore" }
-      const log = await executeExplore(state, action)
+      const log = await executeToCompletion(executeExplore(state, action))
 
       // Shadow roll and actual execution should consume same ticks
       expect(log.timeConsumed).toBe(shadowTicks)
@@ -762,7 +762,7 @@ describe("Shadow Rolling", () => {
 
       // Execute real action (should use same RNG sequence from same starting point)
       const action: SurveyAction = { type: "Survey" }
-      const log = await executeSurvey(state, action)
+      const log = await executeToCompletion(executeSurvey(state, action))
 
       // Shadow roll and actual execution should consume same ticks
       expect(log.timeConsumed).toBe(shadowTicks)
@@ -810,7 +810,7 @@ describe("Survey Action", () => {
       state.player.skills.Exploration = { level: 0, xp: 0 }
       const action: SurveyAction = { type: "Survey" }
 
-      const log = await executeSurvey(state, action)
+      const log = await executeToCompletion(executeSurvey(state, action))
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("NOT_IN_EXPLORATION_GUILD")
@@ -822,7 +822,7 @@ describe("Survey Action", () => {
       state.time.sessionRemainingTicks = 0
       const action: SurveyAction = { type: "Survey" }
 
-      const log = await executeSurvey(state, action)
+      const log = await executeToCompletion(executeSurvey(state, action))
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("SESSION_ENDED")
@@ -836,7 +836,7 @@ describe("Survey Action", () => {
       const action: SurveyAction = { type: "Survey" }
       const knownBefore = state.exploration!.playerState.knownAreaIds.length
 
-      const log = await executeSurvey(state, action)
+      const log = await executeToCompletion(executeSurvey(state, action))
 
       // Should eventually succeed (may take multiple internal rolls)
       if (log.success) {
@@ -851,7 +851,7 @@ describe("Survey Action", () => {
       const action: SurveyAction = { type: "Survey" }
       const connsBefore = state.exploration!.playerState.knownConnectionIds.length
 
-      const log = await executeSurvey(state, action)
+      const log = await executeToCompletion(executeSurvey(state, action))
 
       if (log.success) {
         expect(state.exploration!.playerState.knownConnectionIds.length).toBe(connsBefore + 1)
@@ -865,7 +865,7 @@ describe("Survey Action", () => {
       const initialTick = state.time.currentTick
       const action: SurveyAction = { type: "Survey" }
 
-      const log = await executeSurvey(state, action)
+      const log = await executeToCompletion(executeSurvey(state, action))
 
       expect(log.timeConsumed).toBeGreaterThan(0)
       expect(state.time.currentTick).toBe(initialTick + log.timeConsumed)
@@ -877,7 +877,7 @@ describe("Survey Action", () => {
       state.player.skills.Exploration = { level: initialLevel, xp: 0 }
       const action: SurveyAction = { type: "Survey" }
 
-      const log = await executeSurvey(state, action)
+      const log = await executeToCompletion(executeSurvey(state, action))
 
       if (log.success) {
         expect(log.skillGained).toBeDefined()
@@ -898,7 +898,7 @@ describe("Survey Action", () => {
       state.player.skills.Exploration = { level: 1, xp: 0 }
       const action: SurveyAction = { type: "Survey" }
 
-      const log = await executeSurvey(state, action)
+      const log = await executeToCompletion(executeSurvey(state, action))
 
       if (log.success) {
         expect(log.explorationLog?.luckInfo).toBeDefined()
@@ -917,7 +917,7 @@ describe("Explore Action", () => {
       state.player.skills.Exploration = { level: 0, xp: 0 }
       const action: ExploreAction = { type: "Explore" }
 
-      const log = await executeExplore(state, action)
+      const log = await executeToCompletion(executeExplore(state, action))
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("NOT_IN_EXPLORATION_GUILD")
@@ -944,7 +944,7 @@ describe("Explore Action", () => {
       }
       const action: ExploreAction = { type: "Explore" }
 
-      const log = await executeExplore(state, action)
+      const log = await executeToCompletion(executeExplore(state, action))
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("AREA_FULLY_EXPLORED")
@@ -966,7 +966,7 @@ describe("Explore Action", () => {
       }
       const action: ExploreAction = { type: "Explore" }
 
-      const log = await executeExplore(state, action)
+      const log = await executeToCompletion(executeExplore(state, action))
 
       if (log.success) {
         expect(
@@ -981,7 +981,7 @@ describe("Explore Action", () => {
       const initialTick = state.time.currentTick
       const action: ExploreAction = { type: "Explore" }
 
-      const log = await executeExplore(state, action)
+      const log = await executeToCompletion(executeExplore(state, action))
 
       expect(log.timeConsumed).toBeGreaterThan(0)
       expect(state.time.currentTick).toBe(initialTick + log.timeConsumed)
@@ -992,7 +992,7 @@ describe("Explore Action", () => {
       state.player.skills.Exploration = { level: 1, xp: 0 }
       const action: ExploreAction = { type: "Explore" }
 
-      const log = await executeExplore(state, action)
+      const log = await executeToCompletion(executeExplore(state, action))
 
       if (log.success) {
         expect(log.skillGained).toBeDefined()
@@ -1171,7 +1171,7 @@ describe("FarTravel Action", () => {
         destinationAreaId: "area-d1-i0",
       }
 
-      const log = await executeFarTravel(state, action)
+      const log = await executeToCompletion(executeFarTravel(state, action))
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("AREA_NOT_KNOWN")
@@ -1186,7 +1186,7 @@ describe("FarTravel Action", () => {
         destinationAreaId: "area-d1-i0",
       }
 
-      const log = await executeFarTravel(state, action)
+      const log = await executeToCompletion(executeFarTravel(state, action))
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("NO_PATH_TO_DESTINATION")
@@ -1199,7 +1199,7 @@ describe("FarTravel Action", () => {
         destinationAreaId: "TOWN",
       }
 
-      const log = await executeFarTravel(state, action)
+      const log = await executeToCompletion(executeFarTravel(state, action))
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("ALREADY_IN_AREA")
@@ -1234,7 +1234,7 @@ describe("FarTravel Action", () => {
         destinationAreaId: area1,
       }
 
-      const log = await executeFarTravel(state, action)
+      const log = await executeToCompletion(executeFarTravel(state, action))
 
       // Multi-hop travel IS allowed with FarTravel
       expect(log.success).toBe(true)
@@ -1254,7 +1254,7 @@ describe("FarTravel Action", () => {
         destinationAreaId: destAreaId,
       }
 
-      const log = await executeFarTravel(state, action)
+      const log = await executeToCompletion(executeFarTravel(state, action))
 
       expect(log.success).toBe(true)
       expect(state.exploration!.playerState.currentAreaId).toBe(destAreaId)
@@ -1329,7 +1329,7 @@ describe("ExplorationTravel vs FarTravel - Regression Tests", () => {
       destinationAreaId: area1,
     }
 
-    const log = await executeFarTravel(state, action)
+    const log = await executeToCompletion(executeFarTravel(state, action))
 
     // This SHOULD succeed - FarTravel allows multi-hop
     expect(log.success).toBe(true)
@@ -1364,7 +1364,7 @@ describe("XP on Session End", () => {
     state.time.sessionRemainingTicks = 4 // Just enough for 2 rolls
     const action: SurveyAction = { type: "Survey" }
 
-    const log = await executeSurvey(state, action)
+    const log = await executeToCompletion(executeSurvey(state, action))
 
     // XP is only granted on successful discovery, not on failed attempts
     if (!log.success) {
@@ -1382,7 +1382,7 @@ describe("XP on Session End", () => {
     state.time.sessionRemainingTicks = 4
 
     const action: ExploreAction = { type: "Explore" }
-    const log = await executeExplore(state, action)
+    const log = await executeToCompletion(executeExplore(state, action))
 
     // XP is only granted on successful discovery, not on failed attempts
     if (!log.success) {
@@ -1416,7 +1416,7 @@ describe("Lazy Area Generation", () => {
     expect(allUngenerated).toBe(true)
 
     const action: SurveyAction = { type: "Survey" }
-    const log = await executeSurvey(state, action)
+    const log = await executeToCompletion(executeSurvey(state, action))
 
     if (log.success && log.explorationLog?.discoveredAreaId) {
       const discoveredArea = state.exploration!.areas.get(log.explorationLog.discoveredAreaId)!
@@ -1473,7 +1473,7 @@ describe("Explore Discovering Unknown Connections", () => {
     }
 
     const action: ExploreAction = { type: "Explore" }
-    const log = await executeExplore(state, action)
+    const log = await executeToCompletion(executeExplore(state, action))
 
     // If there are unknown connections, the explore should be able to find them
     // (it might find something else, but the option should exist)

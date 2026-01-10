@@ -158,13 +158,13 @@ export async function executeAction(state: WorldState, action: Action): Promise<
     case "TurnInCombatToken":
       return executeToCompletion(executeTurnInCombatToken(state, action))
     case "Survey":
-      return executeSurvey(state, action)
+      return executeToCompletion(executeSurvey(state, action))
     case "Explore":
-      return executeExplore(state, action)
+      return executeToCompletion(executeExplore(state, action))
     case "ExplorationTravel":
       return executeToCompletion(executeExplorationTravel(state, action))
     case "FarTravel":
-      return executeFarTravel(state, action)
+      return executeToCompletion(executeFarTravel(state, action))
     case "TravelToLocation":
       return executeToCompletion(executeTravelToLocation(state, action))
     case "Leave":

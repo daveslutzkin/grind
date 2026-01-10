@@ -7,7 +7,7 @@
  * - "The map is not given; it is earned"
  */
 
-import { executeAction } from "./engine.js"
+import { executeAction, executeToCompletion } from "./engine.js"
 import { createWorld } from "./world.js"
 import { executeExplore } from "./exploration.js"
 import type { WorldState, AreaID, GatherAction, ExploreAction, Node } from "./types.js"
@@ -173,7 +173,7 @@ describe("Location Discovery", () => {
       const initialKnownConnections = state.exploration.playerState.knownConnectionIds.length
       const action: ExploreAction = { type: "Explore" }
 
-      const log = await executeExplore(state, action)
+      const log = await executeToCompletion(executeExplore(state, action))
 
       if (log.success) {
         // Should have discovered either a location or a connection
@@ -202,7 +202,7 @@ describe("Location Discovery", () => {
         if (state.time.sessionRemainingTicks <= 0) break
 
         const exploreAction: ExploreAction = { type: "Explore" }
-        const exploreLog = await executeExplore(state, exploreAction)
+        const exploreLog = await executeToCompletion(executeExplore(state, exploreAction))
 
         if (exploreLog.success && exploreLog.explorationLog?.discoveredLocationId) {
           const locId = exploreLog.explorationLog.discoveredLocationId
