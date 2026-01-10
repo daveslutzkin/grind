@@ -82,7 +82,7 @@ describe("Location Discovery", () => {
 
       // Format state should NOT show resource nodes (shows unexplored instead)
       const formatted = formatWorldState(state)
-      expect(formatted).toContain("unexplored")
+      expect(formatted).toContain("Unexplored")
       expect(formatted).not.toContain("Ore vein")
     })
 

@@ -19,9 +19,11 @@ import {
   ExplorationLocationType,
 } from "./types.js"
 import { LOCATION_DISPLAY_NAMES, getSkillForGuildLocation } from "./world.js"
+import { getReachableAreas, getAreaDisplayName } from "./exploration.js"
+import { formatWorldState, formatActionLog } from "./agent/formatters.js"
 
 // Re-export agent formatters for unified display
-export { formatWorldState, formatActionLog } from "./agent/formatters.js"
+export { formatWorldState, formatActionLog }
 
 // ============================================================================
 // Types
@@ -75,22 +77,58 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
 
   switch (cmd) {
     case "gather": {
-      const nodeId = parts[1]
-      const modeName = parts[2]?.toLowerCase()
+      // Check if first argument is a mode (not a nodeId) - allows omitting nodeId when at a node
+      const firstArg = parts[1]?.toLowerCase()
+      const possibleModes = ["focus", "careful", "appraise"]
+      const isFirstArgMode = possibleModes.includes(firstArg || "")
+
+      let nodeId: string | undefined
+      let modeName: string | undefined
+      let materialIndex = 3
+
+      if (isFirstArgMode) {
+        // Usage: gather <mode> [material] - infer nodeId from current location
+        modeName = firstArg
+        materialIndex = 2
+
+        // Try to infer nodeId from current location
+        const currentLocationId = context.currentLocationId
+        if (currentLocationId && context.state) {
+          const match = currentLocationId.match(/^(.+?)-(TREE_STAND|ORE_VEIN)-loc-(\d+)$/)
+          if (match) {
+            const [, areaId, , locIndex] = match
+            nodeId = `${areaId}-node-${locIndex}`
+          }
+        }
+
+        if (!nodeId) {
+          if (context.logErrors) {
+            console.log("You must be at a gathering node to use 'gather <mode>'.")
+            console.log("Usage: gather <node> <mode> [material]")
+            console.log("  Or use 'mine <mode>' or 'chop <mode>' as shortcuts")
+          }
+          return null
+        }
+      } else {
+        // Usage: gather <node> <mode> [material]
+        nodeId = parts[1]
+        modeName = parts[2]?.toLowerCase()
+      }
 
       if (!nodeId || !modeName) {
         if (context.logErrors) {
           console.log("Usage: gather <node> <mode> [material]")
+          console.log("  Or: gather <mode> [material] (when at a gathering node)")
           console.log("  Modes: focus <material>, careful, appraise")
         }
         return null
       }
 
       if (modeName === "focus") {
-        const focusMaterial = parts[3]?.toUpperCase()
+        const focusMaterial = parts[materialIndex]?.toUpperCase()
         if (!focusMaterial) {
           if (context.logErrors) {
-            console.log("FOCUS mode requires a material: gather <node> focus <material>")
+            console.log("FOCUS mode requires a material: gather focus <material>")
           }
           return null
         }
@@ -181,6 +219,66 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
     case "survey": {
       // Discover new areas (connections)
       return { type: "Survey" }
+    }
+
+    case "fartravel":
+    case "far": {
+      // Far travel - multi-hop travel to any known reachable area
+      const inputName = parts.slice(1).join(" ").toLowerCase()
+      if (!inputName) {
+        // No destination - this will be handled as a meta command to show the list
+        return null
+      }
+
+      // Match against known area names (case-insensitive, prefix match)
+      if (context.state?.exploration) {
+        const knownAreaIds = context.state.exploration.playerState.knownAreaIds
+        const inputWithDashes = inputName.replace(/\s+/g, "-")
+
+        // Collect all matching areas
+        const exactMatches: string[] = []
+        const prefixMatches: string[] = []
+
+        for (const areaId of knownAreaIds) {
+          const area = context.state.exploration.areas.get(areaId)
+          if (area?.name) {
+            const areaNameLower = area.name.toLowerCase()
+            if (areaNameLower === inputName) {
+              exactMatches.push(areaId)
+            } else if (areaNameLower.startsWith(inputName)) {
+              prefixMatches.push(areaId)
+            }
+          }
+          // Also check raw area IDs
+          if (areaId.toLowerCase() === inputName || areaId.toLowerCase() === inputWithDashes) {
+            if (!exactMatches.includes(areaId)) exactMatches.push(areaId)
+          } else if (
+            areaId.toLowerCase().startsWith(inputName) ||
+            areaId.toLowerCase().startsWith(inputWithDashes)
+          ) {
+            if (!prefixMatches.includes(areaId)) prefixMatches.push(areaId)
+          }
+        }
+
+        // Prefer exact matches, then unique prefix matches
+        if (exactMatches.length === 1) {
+          return { type: "FarTravel", destinationAreaId: exactMatches[0] }
+        }
+        if (exactMatches.length === 0 && prefixMatches.length === 1) {
+          return { type: "FarTravel", destinationAreaId: prefixMatches[0] }
+        }
+        if (exactMatches.length > 1 || prefixMatches.length > 1) {
+          if (context.logErrors) {
+            console.log("Ambiguous destination - be more specific")
+          }
+          return null
+        }
+      }
+
+      if (context.logErrors) {
+        console.log("Unknown destination. Use 'fartravel' to see all reachable areas.")
+      }
+      return null
     }
 
     case "fight": {
@@ -292,6 +390,42 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         return null
       }
 
+      // Check for enemy camp aliases (camp, enemy camp, mob camp)
+      const enemyCampAliases = ["enemy camp", "camp", "mob camp"]
+      const baseAlias = enemyCampAliases.find((alias) => inputName.startsWith(alias))
+      if (baseAlias) {
+        // Extract optional index (e.g., "enemy camp 2" -> index 2)
+        const remainder = inputName.slice(baseAlias.length).trim()
+        const index = remainder ? parseInt(remainder, 10) : 1
+
+        const currentAreaId = context.state?.exploration.playerState.currentAreaId
+        const area = context.state?.exploration.areas.get(currentAreaId ?? "")
+        const knownLocationIds = new Set(
+          context.state?.exploration.playerState.knownLocationIds ?? []
+        )
+        const mobCampLocations =
+          area?.locations.filter(
+            (loc: ExplorationLocation) =>
+              loc.type === ExplorationLocationType.MOB_CAMP && knownLocationIds.has(loc.id)
+          ) ?? []
+
+        if (mobCampLocations.length === 0) {
+          if (context.logErrors) {
+            console.log("No discovered enemy camps in current area")
+          }
+          return null
+        }
+
+        if (isNaN(index) || index < 1 || index > mobCampLocations.length) {
+          if (context.logErrors) {
+            console.log(`Invalid camp index. Found ${mobCampLocations.length} enemy camp(s).`)
+          }
+          return null
+        }
+
+        return { type: "TravelToLocation", locationId: mobCampLocations[index - 1].id }
+      }
+
       // Next, try to match against location display names (case-insensitive, partial match)
       const matchedLocation = Object.entries(LOCATION_DISPLAY_NAMES).find(([, displayName]) =>
         displayName.toLowerCase().includes(inputName)
@@ -387,7 +521,8 @@ export function printHelp(state: WorldState, options?: { showHints?: boolean }):
   console.log("├─────────────────────────────────────────────────────────────┤")
   console.log("│ enrol <skill>       - Enrol in guild (Exploration first!)   │")
   console.log("│ survey              - Discover new areas (connections)      │")
-  console.log("│ goto <dest>         - Travel to location or area            │")
+  console.log("│ goto <dest>         - Travel to directly connected area     │")
+  console.log("│ fartravel [dest]    - Multi-hop travel to any known area    │")
   console.log("│ leave               - Leave location, return to hub         │")
   console.log("│ explore             - Discover nodes in current area        │")
   console.log("│ gather <node> focus <mat>  - Focus on one material          │")
@@ -417,7 +552,6 @@ export function printHelp(state: WorldState, options?: { showHints?: boolean }):
   const currentLocation = area?.locations.find((loc) => loc.id === currentLocationId)
 
   const nodes = state.world.nodes.filter((n) => n.areaId === currentAreaId)
-  const enemies = state.world.enemies.filter((e) => e.areaId === currentAreaId)
 
   // Recipes only shown at guild halls of matching type
   const isAtGuildHall =
@@ -432,7 +566,6 @@ export function printHelp(state: WorldState, options?: { showHints?: boolean }):
   // Only show hints section if there's something relevant
   const hasHints =
     nodes.length > 0 ||
-    enemies.length > 0 ||
     recipes.length > 0 ||
     contracts.length > 0 ||
     currentAreaId === state.world.storageAreaId
@@ -440,7 +573,6 @@ export function printHelp(state: WorldState, options?: { showHints?: boolean }):
   if (hasHints) {
     console.log("\nAvailable here:")
     if (nodes.length > 0) console.log(`  Nodes: ${nodes.map((n) => n.nodeId).join(", ")}`)
-    if (enemies.length > 0) console.log(`  Enemies: ${enemies.map((e) => e.id).join(", ")}`)
     if (recipes.length > 0) console.log(`  Recipes: ${recipes.map((r) => r.id).join(", ")}`)
     if (contracts.length > 0) console.log(`  Contracts: ${contracts.map((c) => c.id).join(", ")}`)
     if (currentAreaId === state.world.storageAreaId) console.log(`  Storage available`)
@@ -788,6 +920,8 @@ export async function executeAndRecord(
 
 import { createWorld } from "./world.js"
 import { executeAction } from "./engine.js"
+import { saveExists, loadSave, writeSave, deleteSave, deserializeSession } from "./persistence.js"
+import { promptResume } from "./savePrompt.js"
 
 export type MetaCommandResult = "continue" | "end" | "quit"
 
@@ -812,6 +946,12 @@ export interface RunnerConfig {
 
   /** Optional hook called before each action is executed */
   beforeAction?: (action: Action, state: WorldState) => void
+
+  /** Optional hook called before entering interactive explore/survey mode */
+  onBeforeInteractive?: () => void
+
+  /** Optional hook called after exiting interactive explore/survey mode */
+  onAfterInteractive?: () => void
 }
 
 /**
@@ -819,7 +959,27 @@ export interface RunnerConfig {
  * This is the unified core loop used by both REPL and batch runners.
  */
 export async function runSession(seed: string, config: RunnerConfig): Promise<void> {
-  const session = createSession({ seed, createWorld })
+  // Check if a save exists for this seed (only in interactive/TTY mode)
+  let session: Session
+  if (process.stdin.isTTY && saveExists(seed)) {
+    const save = loadSave(seed)
+    // promptResume uses promptYesNo which handles readline conflicts internally
+    const shouldResume = await promptResume(save)
+    if (shouldResume) {
+      // Resume from save
+      session = deserializeSession(save)
+      console.log("\nResuming saved game...")
+    } else {
+      // Delete save and start fresh
+      deleteSave(seed)
+      console.log("\nStarting new game...")
+      session = createSession({ seed, createWorld })
+    }
+  } else {
+    // No save exists, create new session
+    session = createSession({ seed, createWorld })
+  }
+
   let showSummary = true
 
   // Call onSessionStart hook if provided
@@ -838,6 +998,29 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
       if (result === "quit") {
         showSummary = false
         break
+      }
+      continue
+    }
+
+    // Handle fartravel with no args - show list of reachable areas
+    if (trimmedCmd === "fartravel" || trimmedCmd === "far") {
+      const reachable = getReachableAreas(session.state)
+      if (reachable.length === 0) {
+        console.log("\nNo reachable areas from current location.")
+      } else {
+        console.log("\n┌─────────────────────────────────────────────────────────────┐")
+        console.log("│ FAR TRAVEL - Reachable Areas                                │")
+        console.log("├─────────────────────────────────────────────────────────────┤")
+        for (const { areaId, travelTime, hops } of reachable) {
+          const area = session.state.exploration.areas.get(areaId)
+          const displayName = getAreaDisplayName(areaId, area)
+          const hopStr = hops === 1 ? "1 hop" : `${hops} hops`
+          console.log(
+            `│ ${displayName.padEnd(35)} ${String(travelTime).padStart(4)}t (${hopStr.padStart(7)}) │`
+          )
+        }
+        console.log("└─────────────────────────────────────────────────────────────┘")
+        console.log("\nUsage: fartravel <area name>")
       }
       continue
     }
@@ -867,10 +1050,73 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
     // Call beforeAction hook if provided
     config.beforeAction?.(action, session.state)
 
-    // Execute the action
+    // Handle interactive exploration (Explore and Survey) - only in TTY mode
+    if ((action.type === "Explore" || action.type === "Survey") && process.stdin.isTTY) {
+      // Pause the main readline to avoid conflicts with interactive prompts
+      config.onBeforeInteractive?.()
+
+      try {
+        // Import interactive functions dynamically
+        const { interactiveExplore, interactiveSurvey } = await import("./interactive.js")
+
+        if (action.type === "Explore") {
+          await interactiveExplore(session.state)
+        } else {
+          await interactiveSurvey(session.state)
+        }
+      } finally {
+        // Resume the main readline
+        config.onAfterInteractive?.()
+      }
+
+      // Interactive mode handles its own display, just show state after
+      console.log("")
+      console.log(formatWorldState(session.state))
+
+      // Auto-save after interactive exploration
+      writeSave(seed, session)
+      continue
+    }
+
+    // Handle interactive travel (ExplorationTravel and FarTravel) - only in TTY mode
+    if (
+      (action.type === "ExplorationTravel" || action.type === "FarTravel") &&
+      process.stdin.isTTY
+    ) {
+      // Pause the main readline to avoid conflicts with interactive prompts
+      config.onBeforeInteractive?.()
+
+      try {
+        // Import interactive functions dynamically
+        const { interactiveExplorationTravel, interactiveFarTravel } =
+          await import("./interactive.js")
+
+        if (action.type === "ExplorationTravel") {
+          await interactiveExplorationTravel(session.state, action)
+        } else {
+          await interactiveFarTravel(session.state, action)
+        }
+      } finally {
+        // Resume the main readline
+        config.onAfterInteractive?.()
+      }
+
+      // Interactive mode handles its own display, just show state after
+      console.log("")
+      console.log(formatWorldState(session.state))
+
+      // Auto-save after interactive travel
+      writeSave(seed, session)
+      continue
+    }
+
+    // Execute the action (non-interactive mode or non-Explore/Survey actions)
     const log = await executeAction(session.state, action)
     session.stats.logs.push(log)
     config.onActionComplete(log, session.state)
+
+    // Auto-save after each action
+    writeSave(seed, session)
   }
 
   config.onSessionEnd(session.state, session.stats, showSummary)

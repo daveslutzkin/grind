@@ -35,7 +35,6 @@ function createTestState(overrides: Partial<WorldState> = {}): WorldState {
     },
     world: {
       nodes: [],
-      enemies: [],
       recipes: [],
       contracts: [],
       storageAreaId: "TOWN",

@@ -1,5 +1,7 @@
+.env
 .DS_Store
 node_modules/
 dist/
 .*sw?
 agent-config.json
+saves/

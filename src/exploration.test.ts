@@ -11,7 +11,13 @@ import {
   executeSurvey,
   executeExplore,
   executeExplorationTravel,
+  executeFarTravel,
   grantExplorationGuildBenefits,
+  buildDiscoverables,
+  prepareSurveyData,
+  shadowRollExplore,
+  shadowRollSurvey,
+  ensureAreaFullyGenerated,
 } from "./exploration.js"
 import type {
   Area,
@@ -19,6 +25,7 @@ import type {
   SurveyAction,
   ExploreAction,
   ExplorationTravelAction,
+  FarTravelAction,
 } from "./types.js"
 import { createRng } from "./rng.js"
 import { createWorld } from "./world.js"
@@ -385,6 +392,416 @@ function createExplorationWorld(seed: string): WorldState {
   return state
 }
 
+describe("buildDiscoverables", () => {
+  it("should return all undiscovered locations and connections", () => {
+    const state = createExplorationWorld("build-disc-all")
+    state.player.skills.Exploration = { level: 1, xp: 0 }
+    const currentArea = state.exploration!.areas.get(state.exploration!.playerState.currentAreaId)!
+
+    const { discoverables, baseChance } = buildDiscoverables(state, currentArea)
+
+    expect(discoverables.length).toBeGreaterThan(0)
+    expect(baseChance).toBeGreaterThan(0)
+    expect(baseChance).toBeLessThanOrEqual(1)
+  })
+
+  it("should return empty array if area is fully explored", () => {
+    const state = createExplorationWorld("build-disc-empty")
+    state.player.skills.Exploration = { level: 1, xp: 0 }
+    const currentArea = state.exploration!.areas.get(state.exploration!.playerState.currentAreaId)!
+
+    // Mark all locations as known
+    for (const loc of currentArea.locations) {
+      state.exploration!.playerState.knownLocationIds.push(loc.id)
+    }
+    // Mark all connections as known
+    const connections = state.exploration!.connections.filter(
+      (c) => c.fromAreaId === currentArea.id || c.toAreaId === currentArea.id
+    )
+    for (const conn of connections) {
+      state.exploration!.playerState.knownConnectionIds.push(`${conn.fromAreaId}->${conn.toAreaId}`)
+      // Also mark target areas as known to exclude them
+      const targetId = conn.fromAreaId === currentArea.id ? conn.toAreaId : conn.fromAreaId
+      if (!state.exploration!.playerState.knownAreaIds.includes(targetId)) {
+        state.exploration!.playerState.knownAreaIds.push(targetId)
+      }
+    }
+
+    const { discoverables } = buildDiscoverables(state, currentArea)
+
+    expect(discoverables.length).toBe(0)
+  })
+
+  it("should assign correct threshold multipliers for different discovery types", () => {
+    const state = createExplorationWorld("build-disc-thresh")
+    state.player.skills.Exploration = { level: 1, xp: 0 }
+
+    // Find an area with locations at distance 1
+    const distance1Areas = Array.from(state.exploration!.areas.values()).filter(
+      (a) => a.distance === 1 && a.locations.length > 0
+    )
+    if (distance1Areas.length === 0) {
+      // Skip test if no suitable areas found
+      return
+    }
+    const testArea = distance1Areas[0]
+    state.exploration!.playerState.currentAreaId = testArea.id
+    state.exploration!.playerState.knownAreaIds = [state.exploration!.playerState.currentAreaId]
+
+    const { discoverables, baseChance } = buildDiscoverables(state, testArea)
+
+    // Verify thresholds are within expected ranges
+    for (const d of discoverables) {
+      expect(d.threshold).toBeGreaterThan(0)
+      expect(d.threshold).toBeLessThanOrEqual(baseChance)
+
+      // Check threshold multipliers
+      if (d.type === "knownConnection") {
+        // Known connections should have 1.0× multiplier
+        expect(d.threshold).toBeCloseTo(baseChance * 1.0, 4)
+      } else if (d.type === "unknownConnection") {
+        // Unknown connections should have 0.25× multiplier
+        expect(d.threshold).toBeCloseTo(baseChance * 0.25, 4)
+      } else if (d.type === "location") {
+        // Locations should have either 0.5× or 0.05× depending on skill
+        const ratio = d.threshold / baseChance
+        expect([0.5, 0.05].some((mult) => Math.abs(ratio - mult) < 0.0001)).toBe(true)
+      }
+    }
+  })
+
+  it("should apply 0.05× multiplier for gathering nodes without skill", () => {
+    const state = createExplorationWorld("build-disc-hard")
+    state.player.skills.Exploration = { level: 1, xp: 0 }
+    // Ensure player has no gathering skills
+    state.player.skills.Mining = { level: 0, xp: 0 }
+    state.player.skills.Woodcutting = { level: 0, xp: 0 }
+
+    // Find an area with gathering nodes
+    let areaWithNode: Area | undefined
+    for (const area of state.exploration!.areas.values()) {
+      if (area.locations.some((loc) => loc.type === "GATHERING_NODE")) {
+        areaWithNode = area
+        break
+      }
+    }
+
+    if (!areaWithNode) {
+      // Skip test if no gathering nodes generated
+      return
+    }
+
+    state.exploration!.playerState.currentAreaId = areaWithNode.id
+    state.exploration!.playerState.knownAreaIds = [areaWithNode.id]
+
+    const { discoverables, baseChance } = buildDiscoverables(state, areaWithNode)
+
+    // Find gathering node discoverables
+    const gatheringNodeDiscoverables = discoverables.filter(
+      (d) => d.type === "location" && d.locationType === "GATHERING_NODE"
+    )
+
+    if (gatheringNodeDiscoverables.length > 0) {
+      for (const d of gatheringNodeDiscoverables) {
+        // Should have 0.05× multiplier (hard to find without skill)
+        expect(d.threshold).toBeCloseTo(baseChance * 0.05, 4)
+      }
+    }
+  })
+
+  it("should apply 0.5× multiplier for gathering nodes with skill", () => {
+    const state = createExplorationWorld("build-disc-easy")
+    state.player.skills.Exploration = { level: 1, xp: 0 }
+    // Give player gathering skills
+    state.player.skills.Mining = { level: 1, xp: 0 }
+    state.player.skills.Woodcutting = { level: 1, xp: 0 }
+
+    // Find an area with gathering nodes
+    let areaWithNode: Area | undefined
+    for (const area of state.exploration!.areas.values()) {
+      if (area.locations.some((loc) => loc.type === "GATHERING_NODE")) {
+        areaWithNode = area
+        break
+      }
+    }
+
+    if (!areaWithNode) {
+      // Skip test if no gathering nodes generated
+      return
+    }
+
+    state.exploration!.playerState.currentAreaId = areaWithNode.id
+    state.exploration!.playerState.knownAreaIds = [areaWithNode.id]
+
+    const { discoverables, baseChance } = buildDiscoverables(state, areaWithNode)
+
+    // Find gathering node discoverables
+    const gatheringNodeDiscoverables = discoverables.filter(
+      (d) => d.type === "location" && d.locationType === "GATHERING_NODE"
+    )
+
+    if (gatheringNodeDiscoverables.length > 0) {
+      for (const d of gatheringNodeDiscoverables) {
+        // Should have 0.5× multiplier (easier with skill)
+        expect(d.threshold).toBeCloseTo(baseChance * 0.5, 4)
+      }
+    }
+  })
+})
+
+describe("prepareSurveyData", () => {
+  it("should return survey info with success chance and connections", () => {
+    const state = createExplorationWorld("prep-survey-basic")
+    state.player.skills.Exploration = { level: 1, xp: 0 }
+    const currentArea = state.exploration!.areas.get(state.exploration!.playerState.currentAreaId)!
+
+    const surveyInfo = prepareSurveyData(state, currentArea)
+
+    expect(surveyInfo.successChance).toBeGreaterThan(0)
+    expect(surveyInfo.successChance).toBeLessThanOrEqual(1)
+    expect(surveyInfo.rollInterval).toBeGreaterThan(0)
+    expect(surveyInfo.expectedTicks).toBeGreaterThan(0)
+    expect(surveyInfo.allConnections.length).toBeGreaterThanOrEqual(0)
+    expect(typeof surveyInfo.hasUndiscoveredAreas).toBe("boolean")
+  })
+
+  it("should detect undiscovered areas correctly", () => {
+    const state = createExplorationWorld("prep-survey-undiscovered")
+    state.player.skills.Exploration = { level: 1, xp: 0 }
+    const currentArea = state.exploration!.areas.get(state.exploration!.playerState.currentAreaId)!
+
+    // Start fresh - should have undiscovered areas
+    const surveyInfo = prepareSurveyData(state, currentArea)
+
+    if (surveyInfo.allConnections.length > 0) {
+      // If there are connections, should have undiscovered areas initially
+      expect(surveyInfo.hasUndiscoveredAreas).toBe(true)
+    }
+  })
+
+  it("should return false for undiscovered areas when all are known", () => {
+    const state = createExplorationWorld("prep-survey-all-known")
+    state.player.skills.Exploration = { level: 1, xp: 0 }
+    const currentArea = state.exploration!.areas.get(state.exploration!.playerState.currentAreaId)!
+
+    // Mark all connected areas as known
+    const connections = state.exploration!.connections.filter(
+      (c) => c.fromAreaId === currentArea.id || c.toAreaId === currentArea.id
+    )
+    for (const conn of connections) {
+      const targetId = conn.fromAreaId === currentArea.id ? conn.toAreaId : conn.fromAreaId
+      if (!state.exploration!.playerState.knownAreaIds.includes(targetId)) {
+        state.exploration!.playerState.knownAreaIds.push(targetId)
+      }
+    }
+
+    const surveyInfo = prepareSurveyData(state, currentArea)
+
+    expect(surveyInfo.hasUndiscoveredAreas).toBe(false)
+  })
+
+  it("should include knowledge bonuses in success chance", () => {
+    const state = createExplorationWorld("prep-survey-knowledge")
+    state.player.skills.Exploration = { level: 1, xp: 0 }
+
+    // Find a distance 1 area
+    const distance1Areas = Array.from(state.exploration!.areas.values()).filter(
+      (a) => a.distance === 1
+    )
+    if (distance1Areas.length === 0) {
+      throw new Error("No distance 1 areas found")
+    }
+    const testArea = distance1Areas[0]
+    state.exploration!.playerState.currentAreaId = testArea.id
+    state.exploration!.playerState.knownAreaIds = [testArea.id]
+
+    // Get base success chance with no knowledge
+    const baseInfo = prepareSurveyData(state, testArea)
+
+    // Add a known connected area
+    const connections = state.exploration!.connections.filter(
+      (c) => c.fromAreaId === testArea.id || c.toAreaId === testArea.id
+    )
+    if (connections.length > 0) {
+      const targetId =
+        connections[0].fromAreaId === testArea.id
+          ? connections[0].toAreaId
+          : connections[0].fromAreaId
+      state.exploration!.playerState.knownAreaIds.push(targetId)
+
+      // Get success chance with knowledge bonus
+      const withKnowledgeInfo = prepareSurveyData(state, testArea)
+
+      // Success chance should increase with knowledge
+      expect(withKnowledgeInfo.successChance).toBeGreaterThanOrEqual(baseInfo.successChance)
+    }
+  })
+
+  it("should calculate expected ticks based on success chance", () => {
+    const state = createExplorationWorld("prep-survey-ticks")
+    state.player.skills.Exploration = { level: 1, xp: 0 }
+    const currentArea = state.exploration!.areas.get(state.exploration!.playerState.currentAreaId)!
+
+    const surveyInfo = prepareSurveyData(state, currentArea)
+
+    // Expected ticks should be inversely proportional to success chance
+    const manualExpectedTicks = calculateExpectedTicks(
+      surveyInfo.successChance,
+      surveyInfo.rollInterval
+    )
+    expect(surveyInfo.expectedTicks).toBeCloseTo(manualExpectedTicks, 1)
+  })
+})
+
+describe("Shadow Rolling", () => {
+  describe("shadowRollExplore", () => {
+    it("should return same tick count as actual executeExplore", async () => {
+      const state = createExplorationWorld("shadow-explore-match")
+      state.player.skills.Exploration = { level: 1, xp: 0 }
+
+      // Move to distance 1 area
+      const distance1Areas = Array.from(state.exploration!.areas.values()).filter(
+        (a) => a.distance === 1
+      )
+      if (distance1Areas.length > 0) {
+        state.exploration!.playerState.currentAreaId = distance1Areas[0].id
+        state.exploration!.playerState.knownAreaIds.push(distance1Areas[0].id)
+      }
+
+      const exploration = state.exploration!
+      const currentArea = exploration.areas.get(exploration.playerState.currentAreaId)!
+
+      // Ensure area is fully generated BEFORE shadow rolling and execution
+      // This is critical - both must start from same RNG state
+      await ensureAreaFullyGenerated(state.rng, exploration, currentArea)
+
+      const { discoverables } = buildDiscoverables(state, currentArea)
+
+      if (discoverables.length === 0) {
+        // Skip if no discoverables
+        return
+      }
+
+      const level = state.player.skills.Exploration.level
+      const rollInterval = getRollInterval(level)
+
+      // Clone RNG for shadow roll
+      const shadowRng = { ...state.rng }
+      const shadowTicks = shadowRollExplore(
+        shadowRng,
+        discoverables,
+        rollInterval,
+        state.time.sessionRemainingTicks
+      )
+
+      // Execute real action (should use same RNG sequence from same starting point)
+      const action: ExploreAction = { type: "Explore" }
+      const log = await executeExplore(state, action)
+
+      // Shadow roll and actual execution should consume same ticks
+      expect(log.timeConsumed).toBe(shadowTicks)
+    })
+
+    it("should not mutate the original RNG state", () => {
+      const state = createExplorationWorld("shadow-explore-nomutate")
+      state.player.skills.Exploration = { level: 1, xp: 0 }
+      const currentArea = state.exploration!.areas.get(
+        state.exploration!.playerState.currentAreaId
+      )!
+      const { discoverables } = buildDiscoverables(state, currentArea)
+
+      if (discoverables.length === 0) {
+        return
+      }
+
+      const originalCounter = state.rng.counter
+      const level = state.player.skills.Exploration.level
+      const rollInterval = getRollInterval(level)
+
+      // Clone RNG for shadow roll
+      const shadowRng = { ...state.rng }
+      shadowRollExplore(shadowRng, discoverables, rollInterval, state.time.sessionRemainingTicks)
+
+      // Original RNG should be unchanged
+      expect(state.rng.counter).toBe(originalCounter)
+    })
+  })
+
+  describe("shadowRollSurvey", () => {
+    it("should return same tick count as actual executeSurvey", async () => {
+      const state = createExplorationWorld("shadow-survey-match")
+      state.player.skills.Exploration = { level: 1, xp: 0 }
+      const currentArea = state.exploration!.areas.get(
+        state.exploration!.playerState.currentAreaId
+      )!
+
+      const { successChance, rollInterval, allConnections } = prepareSurveyData(state, currentArea)
+      const knownAreaIds = new Set(state.exploration!.playerState.knownAreaIds)
+
+      if (allConnections.length === 0) {
+        return
+      }
+
+      // Clone RNG for shadow roll
+      const shadowRng = { ...state.rng }
+      const shadowTicks = shadowRollSurvey(
+        shadowRng,
+        successChance,
+        rollInterval,
+        state.time.sessionRemainingTicks,
+        allConnections.length,
+        knownAreaIds,
+        allConnections,
+        state.exploration!.playerState.currentAreaId
+      )
+
+      if (shadowTicks === null) {
+        return
+      }
+
+      // Execute real action (should use same RNG sequence from same starting point)
+      const action: SurveyAction = { type: "Survey" }
+      const log = await executeSurvey(state, action)
+
+      // Shadow roll and actual execution should consume same ticks
+      expect(log.timeConsumed).toBe(shadowTicks)
+    })
+
+    it("should not mutate the original RNG state", () => {
+      const state = createExplorationWorld("shadow-survey-nomutate")
+      state.player.skills.Exploration = { level: 1, xp: 0 }
+      const currentArea = state.exploration!.areas.get(
+        state.exploration!.playerState.currentAreaId
+      )!
+
+      const { successChance, rollInterval, allConnections } = prepareSurveyData(state, currentArea)
+      const knownAreaIds = new Set(state.exploration!.playerState.knownAreaIds)
+
+      if (allConnections.length === 0) {
+        return
+      }
+
+      const originalCounter = state.rng.counter
+
+      // Clone RNG for shadow roll
+      const shadowRng = { ...state.rng }
+      shadowRollSurvey(
+        shadowRng,
+        successChance,
+        rollInterval,
+        state.time.sessionRemainingTicks,
+        allConnections.length,
+        knownAreaIds,
+        allConnections,
+        state.exploration!.playerState.currentAreaId
+      )
+
+      // Original RNG should be unchanged
+      expect(state.rng.counter).toBe(originalCounter)
+    })
+  })
+})
+
 describe("Survey Action", () => {
   describe("preconditions", () => {
     it("should fail if player is not in exploration guild (level 0)", async () => {
@@ -586,7 +1003,7 @@ describe("Explore Action", () => {
 
 describe("ExplorationTravel Action", () => {
   describe("preconditions", () => {
-    it("should fail if destination area is not known and no direct connection exists", async () => {
+    it("should fail if no direct connection exists to destination", async () => {
       const state = createExplorationWorld("travel-test")
       // area-d1-i0 is not known and no connection is known
       const action: ExplorationTravelAction = {
@@ -597,7 +1014,7 @@ describe("ExplorationTravel Action", () => {
       const log = await executeExplorationTravel(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("AREA_NOT_KNOWN")
+      expect(log.failureType).toBe("NO_PATH_TO_DESTINATION")
     })
 
     it("should fail if no path to destination", async () => {
@@ -706,7 +1123,7 @@ describe("ExplorationTravel Action", () => {
       expect(log.timeConsumed).toBeLessThanOrEqual(90)
     })
 
-    it("should support multi-hop pathfinding", async () => {
+    it("should NOT allow multi-hop pathfinding (direct connections only)", async () => {
       const state = createExplorationWorld("travel-multihop")
       // Set up: Know area-d1-i0 and area-d1-i1, and connections
       const area0 = "area-d1-i0"
@@ -727,7 +1144,8 @@ describe("ExplorationTravel Action", () => {
         })
       }
 
-      // Travel from TOWN to area1 (requires going through area0)
+      // Try to travel from TOWN to area1 (would require going through area0)
+      // This should fail because there's no direct connection from TOWN to area1
       const action: ExplorationTravelAction = {
         type: "ExplorationTravel",
         destinationAreaId: area1,
@@ -735,11 +1153,205 @@ describe("ExplorationTravel Action", () => {
 
       const log = await executeExplorationTravel(state, action)
 
+      // Multi-hop travel is not allowed - must have direct connection
+      expect(log.success).toBe(false)
+      expect(log.failureType).toBe("NO_PATH_TO_DESTINATION")
+    })
+  })
+})
+
+describe("FarTravel Action", () => {
+  describe("preconditions", () => {
+    it("should fail if destination area is not known", async () => {
+      const state = createExplorationWorld("fartravel-unknown")
+      // area-d1-i0 is not known
+      const action: FarTravelAction = {
+        type: "FarTravel",
+        destinationAreaId: "area-d1-i0",
+      }
+
+      const log = await executeFarTravel(state, action)
+
+      expect(log.success).toBe(false)
+      expect(log.failureType).toBe("AREA_NOT_KNOWN")
+    })
+
+    it("should fail if no path exists to destination", async () => {
+      const state = createExplorationWorld("fartravel-no-path")
+      // Know an area but don't know any connections to it
+      state.exploration!.playerState.knownAreaIds.push("area-d1-i0")
+      const action: FarTravelAction = {
+        type: "FarTravel",
+        destinationAreaId: "area-d1-i0",
+      }
+
+      const log = await executeFarTravel(state, action)
+
+      expect(log.success).toBe(false)
+      expect(log.failureType).toBe("NO_PATH_TO_DESTINATION")
+    })
+
+    it("should fail if already in destination area", async () => {
+      const state = createExplorationWorld("fartravel-same")
+      const action: FarTravelAction = {
+        type: "FarTravel",
+        destinationAreaId: "TOWN",
+      }
+
+      const log = await executeFarTravel(state, action)
+
+      expect(log.success).toBe(false)
+      expect(log.failureType).toBe("ALREADY_IN_AREA")
+    })
+  })
+
+  describe("successful far travel", () => {
+    it("should support multi-hop pathfinding", async () => {
+      const state = createExplorationWorld("fartravel-multihop")
+      // Set up: Know area-d1-i0 and area-d1-i1, and connections
+      const area0 = "area-d1-i0"
+      const area1 = "area-d1-i1"
+      state.exploration!.playerState.knownAreaIds.push(area0, area1)
+      state.exploration!.playerState.knownConnectionIds.push(`TOWN->${area0}`, `${area0}->${area1}`)
+      // Add a connection between area0 and area1 if it doesn't exist
+      const existingConn = state.exploration!.connections.find(
+        (c) =>
+          (c.fromAreaId === area0 && c.toAreaId === area1) ||
+          (c.fromAreaId === area1 && c.toAreaId === area0)
+      )
+      if (!existingConn) {
+        state.exploration!.connections.push({
+          fromAreaId: area0,
+          toAreaId: area1,
+          travelTimeMultiplier: 2,
+        })
+      }
+
+      // Far travel from TOWN to area1 (requires going through area0)
+      const action: FarTravelAction = {
+        type: "FarTravel",
+        destinationAreaId: area1,
+      }
+
+      const log = await executeFarTravel(state, action)
+
+      // Multi-hop travel IS allowed with FarTravel
       expect(log.success).toBe(true)
       expect(state.exploration!.playerState.currentAreaId).toBe(area1)
       // Should take at least 2 hops worth of time
       expect(log.timeConsumed).toBeGreaterThanOrEqual(20)
     })
+
+    it("should allow direct travel to adjacent known areas", async () => {
+      const state = createExplorationWorld("fartravel-direct")
+      // Know an area and its connection from town
+      const destAreaId = "area-d1-i0"
+      state.exploration!.playerState.knownAreaIds.push(destAreaId)
+      state.exploration!.playerState.knownConnectionIds.push(`TOWN->${destAreaId}`)
+      const action: FarTravelAction = {
+        type: "FarTravel",
+        destinationAreaId: destAreaId,
+      }
+
+      const log = await executeFarTravel(state, action)
+
+      expect(log.success).toBe(true)
+      expect(state.exploration!.playerState.currentAreaId).toBe(destAreaId)
+      expect(log.stateDeltaSummary).toContain("Far traveled")
+      expect(log.stateDeltaSummary).toContain("1 hop")
+    })
+  })
+})
+
+describe("ExplorationTravel vs FarTravel - Regression Tests", () => {
+  it("ExplorationTravel should NOT allow multi-hop travel (bug fix regression)", async () => {
+    const state = createExplorationWorld("regression-no-multihop")
+    // Set up a scenario where multi-hop was previously allowed
+    // User at TOWN, knows area0 connected to TOWN, knows area1 connected to area0
+    // Should NOT be able to use ExplorationTravel to go directly from TOWN to area1
+    const area0 = "area-d1-i0"
+    const area1 = "area-d1-i1"
+    state.exploration!.playerState.knownAreaIds.push(area0, area1)
+    state.exploration!.playerState.knownConnectionIds.push(`TOWN->${area0}`, `${area0}->${area1}`)
+    // Ensure connection exists
+    if (
+      !state.exploration!.connections.find(
+        (c) =>
+          (c.fromAreaId === area0 && c.toAreaId === area1) ||
+          (c.fromAreaId === area1 && c.toAreaId === area0)
+      )
+    ) {
+      state.exploration!.connections.push({
+        fromAreaId: area0,
+        toAreaId: area1,
+        travelTimeMultiplier: 2,
+      })
+    }
+
+    // Try to use ExplorationTravel (the regular move command)
+    const action: ExplorationTravelAction = {
+      type: "ExplorationTravel",
+      destinationAreaId: area1, // Not directly connected to TOWN
+    }
+
+    const log = await executeExplorationTravel(state, action)
+
+    // This should FAIL - ExplorationTravel only allows direct connections
+    expect(log.success).toBe(false)
+    expect(log.failureType).toBe("NO_PATH_TO_DESTINATION")
+  })
+
+  it("FarTravel SHOULD allow multi-hop travel to same destination", async () => {
+    const state = createExplorationWorld("regression-fartravel-works")
+    // Same setup as above
+    const area0 = "area-d1-i0"
+    const area1 = "area-d1-i1"
+    state.exploration!.playerState.knownAreaIds.push(area0, area1)
+    state.exploration!.playerState.knownConnectionIds.push(`TOWN->${area0}`, `${area0}->${area1}`)
+    if (
+      !state.exploration!.connections.find(
+        (c) =>
+          (c.fromAreaId === area0 && c.toAreaId === area1) ||
+          (c.fromAreaId === area1 && c.toAreaId === area0)
+      )
+    ) {
+      state.exploration!.connections.push({
+        fromAreaId: area0,
+        toAreaId: area1,
+        travelTimeMultiplier: 2,
+      })
+    }
+
+    // Use FarTravel instead
+    const action: FarTravelAction = {
+      type: "FarTravel",
+      destinationAreaId: area1,
+    }
+
+    const log = await executeFarTravel(state, action)
+
+    // This SHOULD succeed - FarTravel allows multi-hop
+    expect(log.success).toBe(true)
+    expect(state.exploration!.playerState.currentAreaId).toBe(area1)
+  })
+
+  it("ExplorationTravel should still allow direct connections", async () => {
+    const state = createExplorationWorld("regression-direct-still-works")
+    // User at TOWN, knows area0 connected to TOWN
+    const area0 = "area-d1-i0"
+    state.exploration!.playerState.knownAreaIds.push(area0)
+    state.exploration!.playerState.knownConnectionIds.push(`TOWN->${area0}`)
+
+    const action: ExplorationTravelAction = {
+      type: "ExplorationTravel",
+      destinationAreaId: area0,
+    }
+
+    const log = await executeExplorationTravel(state, action)
+
+    // Direct travel should still work
+    expect(log.success).toBe(true)
+    expect(state.exploration!.playerState.currentAreaId).toBe(area0)
   })
 })
 

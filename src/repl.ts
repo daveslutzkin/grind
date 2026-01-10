@@ -3,7 +3,6 @@
  */
 
 import "dotenv/config"
-import * as readline from "readline"
 import { evaluateAction } from "./evaluate.js"
 import type { WorldState } from "./types.js"
 import {
@@ -15,17 +14,7 @@ import {
   type SessionStats,
   type MetaCommandResult,
 } from "./runner.js"
-
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-})
-
-function prompt(question: string): Promise<string> {
-  return new Promise((resolve) => {
-    rl.question(question, resolve)
-  })
-}
+import { initInput, closeInput, promptLine } from "./prompt.js"
 
 async function main(): Promise<void> {
   console.log("╔═════════════════════════════════════════════════════════════╗")
@@ -39,9 +28,11 @@ async function main(): Promise<void> {
     console.log("🌍 Area naming enabled (ANTHROPIC_API_KEY detected)")
   }
 
+  initInput()
+
   await runSession(seed, {
     getNextCommand: async () => {
-      const input = await prompt("\n> ")
+      const input = await promptLine("\n> ")
       return input.trim() || null
     },
 
@@ -65,7 +56,7 @@ async function main(): Promise<void> {
         }
         printSummary(state, stats)
       }
-      rl.close()
+      closeInput()
     },
 
     onInvalidCommand: (cmd: string) => {
@@ -113,11 +104,19 @@ async function main(): Promise<void> {
 
     beforeAction: (action, state) => {
       const eval_ = evaluateAction(state, action)
-      if (eval_.successProbability === 0) {
-        console.log("⚠ This action will fail (preconditions not met)")
-      } else if (eval_.successProbability < 1) {
+      if (eval_.successProbability > 0 && eval_.successProbability < 1) {
         console.log(`⚠ Success chance: ${(eval_.successProbability * 100).toFixed(0)}%`)
       }
+    },
+
+    onBeforeInteractive: () => {
+      // Close the readline to fully detach from stdin for interactive mode
+      closeInput()
+    },
+
+    onAfterInteractive: () => {
+      // Recreate the readline after interactive mode
+      initInput()
     },
   })
 }

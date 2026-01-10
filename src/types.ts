@@ -220,7 +220,6 @@ export interface WorldState {
 
   world: {
     nodes: Node[] // Multi-material gathering nodes
-    enemies: Enemy[]
     recipes: Recipe[]
     contracts: Contract[]
     storageAreaId: AreaID // Where storage is located (usually TOWN)
@@ -279,6 +278,7 @@ export type ActionType =
   | "Survey"
   | "Explore"
   | "ExplorationTravel"
+  | "FarTravel" // Multi-hop travel to any known reachable area
   | "TravelToLocation"
   | "Leave"
 
@@ -376,6 +376,16 @@ export interface ExplorationTravelAction {
 }
 
 /**
+ * Far travel action - multi-hop travel to any known reachable area
+ * Uses shortest path routing through known connections
+ */
+export interface FarTravelAction {
+  type: "FarTravel"
+  destinationAreaId: AreaID
+  scavenge?: boolean // If true, 2x travel time but chance to find resources
+}
+
+/**
  * Travel to a location within the current area
  */
 export interface TravelToLocationAction {
@@ -406,6 +416,7 @@ export type Action =
   | SurveyAction
   | ExploreAction
   | ExplorationTravelAction
+  | FarTravelAction
   | TravelToLocationAction
   | LeaveAction
 
@@ -506,6 +517,8 @@ export interface ExplorationLog {
   connectionToUnknownArea?: boolean // True if connection leads to an unknown area
   // Whether the area is fully explored
   areaFullyExplored?: boolean
+  // Bonus XP for fully discovering an area (equals distance from town)
+  discoveryBonusXP?: number
   // Luck surfacing per RNG canon
   luckInfo?: ExplorationLuckInfo
 }
@@ -596,3 +609,12 @@ export function getTotalXP(skill: SkillState): number {
   }
   return total
 }
+
+// ============================================================================
+// Save/Resume Constants
+// ============================================================================
+
+/**
+ * Save file version - increment when save format changes
+ */
+export const SAVE_VERSION = 1
