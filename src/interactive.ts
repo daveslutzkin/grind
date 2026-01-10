@@ -8,6 +8,9 @@ import type {
   SurveyAction,
   ExplorationTravelAction,
   FarTravelAction,
+  ActionGenerator,
+  ActionLog,
+  TickFeedback,
 } from "./types.js"
 import {
   executeExplore,
@@ -27,8 +30,134 @@ import {
   executeExplorationTravel,
   executeFarTravel,
 } from "./exploration.js"
-import { formatActionLog } from "./agent/formatters.js"
+import { formatActionLog, formatTickFeedback } from "./agent/formatters.js"
 import { consumeTime } from "./stateHelpers.js"
+
+// ============================================================================
+// Animation Runner Infrastructure
+// ============================================================================
+
+/**
+ * Simple delay helper for animation timing
+ */
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/**
+ * Options for running an animated action
+ */
+export interface AnimationOptions {
+  /** Milliseconds per tick for animation (default: 100) */
+  tickDelay?: number
+  /** Label to show before animation starts (e.g., "Gathering", "Fighting") */
+  label?: string
+  /** Callback to check if user wants to cancel */
+  checkCancel?: () => boolean
+}
+
+/**
+ * Result from running an animated action
+ */
+export interface AnimationResult {
+  log: ActionLog
+  cancelled: boolean
+  ticksCompleted: number
+}
+
+/**
+ * Run an action with animated tick-by-tick display.
+ * Returns the final ActionLog, or null if cancelled.
+ */
+export async function runAnimatedAction(
+  generator: ActionGenerator,
+  options: AnimationOptions = {}
+): Promise<AnimationResult> {
+  const { tickDelay = 100, label, checkCancel } = options
+
+  if (label) {
+    process.stdout.write(`\n${label}`)
+  }
+
+  let ticksCompleted = 0
+  let lastLog: ActionLog | null = null
+
+  for await (const tick of generator) {
+    if (tick.done) {
+      lastLog = tick.log
+      break
+    }
+
+    // Show dot
+    process.stdout.write(".")
+    ticksCompleted++
+
+    // Show feedback if any
+    if (tick.feedback) {
+      const feedbackStr = formatTickFeedback(tick.feedback)
+      if (feedbackStr) {
+        process.stdout.write(` ${feedbackStr}`)
+      }
+    }
+
+    // Check for cancellation
+    if (checkCancel?.()) {
+      process.stdout.write("\n")
+      // Create a cancelled log with minimal info
+      const cancelledLog: ActionLog = {
+        tickBefore: 0,
+        actionType: "Drop", // Placeholder - doesn't matter for cancellation
+        parameters: {},
+        success: false,
+        failureType: "SESSION_ENDED",
+        timeConsumed: ticksCompleted,
+        rngRolls: [],
+        stateDeltaSummary: `Action cancelled after ${ticksCompleted} ticks`,
+      }
+      return { log: cancelledLog, cancelled: true, ticksCompleted }
+    }
+
+    // Animation delay
+    await delay(tickDelay)
+  }
+
+  process.stdout.write("\n")
+
+  return {
+    log: lastLog!,
+    cancelled: false,
+    ticksCompleted,
+  }
+}
+
+/**
+ * Set up cancellation detection (listen for keypress).
+ * Returns a checkCancel function and a cleanup function.
+ */
+export function setupCancellation(): { checkCancel: () => boolean; cleanup: () => void } {
+  let cancelled = false
+
+  const handler = () => {
+    cancelled = true
+  }
+
+  if (process.stdin.isTTY) {
+    process.stdin.setRawMode(true)
+    process.stdin.resume()
+    process.stdin.on("data", handler)
+  }
+
+  return {
+    checkCancel: () => cancelled,
+    cleanup: () => {
+      if (process.stdin.isTTY) {
+        process.stdin.removeListener("data", handler)
+        process.stdin.setRawMode(false)
+        process.stdin.pause()
+      }
+    },
+  }
+}
 
 // ============================================================================
 // Hard Discoveries Detection
