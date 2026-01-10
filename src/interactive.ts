@@ -20,40 +20,42 @@ import {
 import { formatActionLog } from "./agent/formatters.js"
 
 // ============================================================================
-// State Snapshotting
+// State Cloning with Map Support
 // ============================================================================
 
-interface StateSnapshot {
-  currentTick: number
-  sessionRemainingTicks: number
-  playerState: any
-  skills: any
-  inventory: any[]
-}
-
 /**
- * Create a snapshot of mutable state for execute-capture-rewind pattern
- * Saves only the fields that need to be restored (not the entire state)
+ * Deep clone WorldState with proper handling of Map objects
+ *
+ * The execute-on-clone pattern:
+ * 1. Clone entire state (including Maps)
+ * 2. Execute action on CLONE to find out what happens
+ * 3. Capture advanced RNG counter from clone
+ * 4. Apply RNG counter to ORIGINAL state
+ * 5. Animate on original state
+ * 6. Re-execute on original state (deterministic due to RNG counter)
+ *
+ * This is cleaner than snapshot/restore because:
+ * - Works with any future WorldState changes (Maps, Sets, etc.)
+ * - No manual tracking of which fields to save/restore
+ * - Original state is never mutated until animation completes
+ * - Only RNG counter needs to be transferred between states
  */
-function createSnapshot(state: WorldState): StateSnapshot {
-  return {
-    currentTick: state.time.currentTick,
-    sessionRemainingTicks: state.time.sessionRemainingTicks,
-    playerState: JSON.parse(JSON.stringify(state.exploration!.playerState)),
-    skills: JSON.parse(JSON.stringify(state.player.skills)),
-    inventory: JSON.parse(JSON.stringify(state.player.inventory)),
+function cloneWorldState(state: WorldState): WorldState {
+  // JSON clone handles most of the state but loses Map objects
+  const jsonClone = JSON.parse(JSON.stringify(state)) as WorldState
+
+  // Restore the exploration.areas Map (lost during JSON serialization)
+  if (state.exploration?.areas) {
+    // Deep clone the Map by cloning each area entry
+    const areasMap = new Map()
+    for (const [areaId, area] of state.exploration.areas) {
+      // Clone the area object to avoid shared references
+      areasMap.set(areaId, JSON.parse(JSON.stringify(area)))
+    }
+    jsonClone.exploration!.areas = areasMap
   }
-}
 
-/**
- * Restore state from snapshot (except RNG counter which we preserve)
- */
-function restoreSnapshot(state: WorldState, snapshot: StateSnapshot): void {
-  state.time.currentTick = snapshot.currentTick
-  state.time.sessionRemainingTicks = snapshot.sessionRemainingTicks
-  state.exploration!.playerState = snapshot.playerState
-  state.player.skills = snapshot.skills
-  state.player.inventory = snapshot.inventory
+  return jsonClone
 }
 
 // ============================================================================
@@ -365,12 +367,12 @@ export async function interactiveExplore(state: WorldState): Promise<void> {
       }
     }
 
-    // Snapshot state before execution
-    const snapshot = createSnapshot(state)
+    // Clone state for test execution
+    const testState = cloneWorldState(state)
 
-    // Execute exploration fully (advances RNG, mutates state)
+    // Execute exploration on clone to find out what happens
     const action: ExploreAction = { type: "Explore" }
-    const log = await executeExplore(state, action)
+    const log = await executeExplore(testState, action)
 
     // If failed, show failure and exit
     if (!log.success) {
@@ -380,9 +382,10 @@ export async function interactiveExplore(state: WorldState): Promise<void> {
 
     // Capture what changed
     const ticksConsumed = log.timeConsumed
+    const advancedRngCounter = testState.rng.counter
 
-    // Rewind state (except RNG counter which we preserve)
-    restoreSnapshot(state, snapshot)
+    // Apply advanced RNG counter to original state (preserves determinism)
+    state.rng.counter = advancedRngCounter
 
     // Animate with real-time tick consumption
     process.stdout.write("\nExploring")
@@ -420,12 +423,12 @@ export async function interactiveSurvey(state: WorldState): Promise<void> {
       return
     }
 
-    // Snapshot state before execution
-    const snapshot = createSnapshot(state)
+    // Clone state for test execution
+    const testState = cloneWorldState(state)
 
-    // Execute survey fully (advances RNG, mutates state)
+    // Execute survey on clone to find out what happens
     const action: SurveyAction = { type: "Survey" }
-    const log = await executeSurvey(state, action)
+    const log = await executeSurvey(testState, action)
 
     // If failed, show failure and exit
     if (!log.success) {
@@ -435,9 +438,10 @@ export async function interactiveSurvey(state: WorldState): Promise<void> {
 
     // Capture what changed
     const ticksConsumed = log.timeConsumed
+    const advancedRngCounter = testState.rng.counter
 
-    // Rewind state (except RNG counter which we preserve)
-    restoreSnapshot(state, snapshot)
+    // Apply advanced RNG counter to original state (preserves determinism)
+    state.rng.counter = advancedRngCounter
 
     // Animate with real-time tick consumption
     process.stdout.write("\nSurveying")
