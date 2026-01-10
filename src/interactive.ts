@@ -178,6 +178,11 @@ async function animateDiscovery(totalTicks: number): Promise<AnimationResult> {
  * Prompt user with y/n question
  */
 async function promptYesNo(question: string): Promise<boolean> {
+  // Ensure stdin is in normal mode (not raw mode) before readline
+  if (process.stdin.isTTY) {
+    process.stdin.setRawMode(false)
+  }
+
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
