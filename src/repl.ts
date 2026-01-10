@@ -3,7 +3,6 @@
  */
 
 import "dotenv/config"
-import * as readline from "readline"
 import { evaluateAction } from "./evaluate.js"
 import type { WorldState } from "./types.js"
 import {
@@ -15,21 +14,7 @@ import {
   type SessionStats,
   type MetaCommandResult,
 } from "./runner.js"
-
-let rl: readline.Interface
-
-function createReadline(): void {
-  rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  })
-}
-
-function prompt(question: string): Promise<string> {
-  return new Promise((resolve) => {
-    rl.question(question, resolve)
-  })
-}
+import { initInput, closeInput, promptLine } from "./prompt.js"
 
 async function main(): Promise<void> {
   console.log("╔═════════════════════════════════════════════════════════════╗")
@@ -43,11 +28,11 @@ async function main(): Promise<void> {
     console.log("🌍 Area naming enabled (ANTHROPIC_API_KEY detected)")
   }
 
-  createReadline()
+  initInput()
 
   await runSession(seed, {
     getNextCommand: async () => {
-      const input = await prompt("\n> ")
+      const input = await promptLine("\n> ")
       return input.trim() || null
     },
 
@@ -71,7 +56,7 @@ async function main(): Promise<void> {
         }
         printSummary(state, stats)
       }
-      rl.close()
+      closeInput()
     },
 
     onInvalidCommand: (cmd: string) => {
@@ -125,14 +110,13 @@ async function main(): Promise<void> {
     },
 
     onBeforeInteractive: () => {
-      // Close the REPL's readline to fully detach from stdin
-      // (pause() doesn't stop it from capturing input)
-      rl.close()
+      // Close the readline to fully detach from stdin for interactive mode
+      closeInput()
     },
 
     onAfterInteractive: () => {
       // Recreate the readline after interactive mode
-      createReadline()
+      initInput()
     },
   })
 }
