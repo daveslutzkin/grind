@@ -305,6 +305,25 @@ export function formatWorldState(state: WorldState): string {
               for (const str of matStrings) {
                 lines.push(`  ${str}`)
               }
+              lines.push("")
+              // Show available gathering commands when player can actually gather
+              const playerSkill = state.player.skills[skill]
+              if (playerSkill) {
+                const unlockedModes = getUnlockedModes(playerSkill.level)
+                const skillCommands = skill === "Mining" ? "mine" : "chop"
+                const modeExamples = unlockedModes.slice(0, 2).map((mode) => {
+                  const lowerMode = mode.toLowerCase().replace("_all", "")
+                  if (mode === "FOCUS") {
+                    const canGatherMat = sortedMaterials.find((m) => m.requiredLevel <= skillLevel)
+                    const exampleMat = canGatherMat
+                      ? canGatherMat.materialId.toLowerCase()
+                      : "material"
+                    return `${skillCommands} focus ${exampleMat}`
+                  }
+                  return `${skillCommands} ${lowerMode}`
+                })
+                lines.push(`Actions: ${modeExamples.join(", ")}`)
+              }
             } else {
               lines.push("No visible resources at your current skill level.")
             }
