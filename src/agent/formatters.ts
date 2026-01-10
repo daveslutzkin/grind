@@ -156,7 +156,7 @@ export function formatWorldState(state: WorldState): string {
     lines.push("")
 
     // Group TOWN locations by type
-    if (area && area.locations.length > 0) {
+    if (!currentLocationId && area && area.locations.length > 0) {
       const guilds = area.locations.filter((loc) => loc.type === ExplorationLocationType.GUILD_HALL)
       const services = area.locations.filter(
         (loc) => loc.type !== ExplorationLocationType.GUILD_HALL
@@ -324,7 +324,6 @@ export function formatWorldState(state: WorldState): string {
                   return `${skillCommands} ${lowerMode}`
                 })
                 possibleActions.push(...modeExamples)
-                possibleActions.push("leave")
               }
             } else {
               lines.push("No visible resources at your current skill level.")
@@ -341,7 +340,6 @@ export function formatWorldState(state: WorldState): string {
         lines.push(`Enemy camp: ${creatureType}`)
         lines.push(`Difficulty: ${difficulty}`)
         possibleActions.push("fight")
-        possibleActions.push("leave")
       }
     } else {
       // At hub - show area-level information
@@ -432,7 +430,7 @@ export function formatWorldState(state: WorldState): string {
 
   // Only show connections and enemies when not at a special location
   // (when at a special location, focus is on that specific location)
-  if (!isAtGatheringNode && !isAtMobCamp) {
+  if (!currentLocationId) {
     // Travel - available connections (bidirectional - can go back the way you came)
     const knownConnections = state.exploration.playerState.knownConnectionIds
     const destinations = new Map<string, number>() // dest -> travel time
@@ -518,8 +516,11 @@ export function formatWorldState(state: WorldState): string {
     }
   }
 
+  if (currentLocationId) {
+    possibleActions.push("leave")
+  }
+
   if (possibleActions.length > 0) {
-    lines.push("")
     lines.push(`Actions: ${possibleActions.join(" || ")}`)
   }
 
