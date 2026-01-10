@@ -3,36 +3,18 @@
  */
 
 import * as readline from "readline"
-import type { WorldState, ExploreAction, SurveyAction, Area } from "./types.js"
+import type { WorldState, ExploreAction, SurveyAction } from "./types.js"
 import {
   executeExplore,
   executeSurvey,
   getRollInterval,
   calculateExpectedTicks,
-  calculateSuccessChance,
-  getKnowledgeParams,
   buildDiscoverables,
+  prepareSurveyData,
   shadowRollExplore,
   shadowRollSurvey,
 } from "./exploration.js"
 import { formatActionLog } from "./agent/formatters.js"
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Calculate base success chance for exploration/survey (includes knowledge bonuses)
- */
-function getBaseSuccessChance(state: WorldState, currentArea: Area): number {
-  const level = state.player.skills.Exploration.level
-  const knowledgeParams = getKnowledgeParams(state, currentArea)
-  return calculateSuccessChance({
-    level,
-    distance: currentArea.distance,
-    ...knowledgeParams,
-  })
-}
 
 // ============================================================================
 // Hard Discoveries Detection
@@ -113,25 +95,8 @@ function analyzeRemainingAreas(state: WorldState): {
   const exploration = state.exploration!
   const currentArea = exploration.areas.get(exploration.playerState.currentAreaId)!
 
-  const allConnections = exploration.connections.filter((conn) => {
-    return (
-      conn.fromAreaId === exploration.playerState.currentAreaId ||
-      conn.toAreaId === exploration.playerState.currentAreaId
-    )
-  })
-
-  const knownAreaIds = new Set(exploration.playerState.knownAreaIds)
-  const hasUndiscoveredAreas = allConnections.some((conn) => {
-    const targetId =
-      conn.fromAreaId === exploration.playerState.currentAreaId ? conn.toAreaId : conn.fromAreaId
-    return !knownAreaIds.has(targetId)
-  })
-
-  // Calculate expected ticks
-  const level = state.player.skills.Exploration.level
-  const rollInterval = getRollInterval(level)
-  const successChance = getBaseSuccessChance(state, currentArea)
-  const expectedTicks = calculateExpectedTicks(successChance, rollInterval)
+  // Use shared survey data preparation
+  const { hasUndiscoveredAreas, expectedTicks } = prepareSurveyData(state, currentArea)
 
   return { hasUndiscovered: hasUndiscoveredAreas, expectedTicks }
 }
@@ -349,20 +314,10 @@ export async function interactiveSurvey(state: WorldState): Promise<void> {
 
     // Shadow roll to determine tick count without mutating state
     const exploration = state.exploration!
-    const level = state.player.skills.Exploration.level
     const currentArea = exploration.areas.get(exploration.playerState.currentAreaId)!
 
-    // Calculate success chance (same logic as executeSurvey)
-    const rollInterval = getRollInterval(level)
-    const successChance = getBaseSuccessChance(state, currentArea)
-
-    // Get all connections and known area IDs
-    const allConnections = exploration.connections.filter((conn) => {
-      return (
-        conn.fromAreaId === exploration.playerState.currentAreaId ||
-        conn.toAreaId === exploration.playerState.currentAreaId
-      )
-    })
+    // Use shared survey data preparation
+    const { successChance, rollInterval, allConnections } = prepareSurveyData(state, currentArea)
     const knownAreaIds = new Set(exploration.playerState.knownAreaIds)
 
     // Clone RNG and shadow roll to find tick count

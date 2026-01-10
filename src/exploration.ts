@@ -857,26 +857,22 @@ export function getKnowledgeParams(
 // ============================================================================
 
 /**
- * Execute Survey action - discover a new area connected to current area
- *
- * Per spec (lines 76-77): "If the roll hits an already-discovered area, the roll is wasted.
- * Keep rolling until a new area is found (or player abandons)"
+ * Survey information for calculating chances and finding connections
  */
-export async function executeSurvey(state: WorldState, _action: SurveyAction): Promise<ActionLog> {
-  const tickBefore = state.time.currentTick
-  const rolls: RngRoll[] = []
+export type SurveyInfo = {
+  successChance: number
+  rollInterval: number
+  expectedTicks: number
+  allConnections: Array<{ fromAreaId: string; toAreaId: string }>
+  hasUndiscoveredAreas: boolean
+}
 
-  // Check preconditions
-  if (state.player.skills.Exploration.level === 0) {
-    return createFailureLog(state, "Survey", "NOT_IN_EXPLORATION_GUILD")
-  }
-
-  if (state.time.sessionRemainingTicks <= 0) {
-    return createFailureLog(state, "Survey", "SESSION_ENDED")
-  }
-
+/**
+ * Prepare survey data - calculate success chance and get connections
+ * Used by both executeSurvey and interactive survey
+ */
+export function prepareSurveyData(state: WorldState, currentArea: Area): SurveyInfo {
   const exploration = state.exploration!
-  const currentArea = exploration.areas.get(exploration.playerState.currentAreaId)!
   const level = state.player.skills.Exploration.level
 
   // Calculate success chance
@@ -898,13 +894,6 @@ export async function executeSurvey(state: WorldState, _action: SurveyAction): P
     )
   })
 
-  if (allConnections.length === 0) {
-    return {
-      ...createFailureLog(state, "Survey", "NO_CONNECTIONS"),
-      timeConsumed: 0,
-    }
-  }
-
   // Check if there are ANY undiscovered areas connected
   const knownAreaIds = new Set(exploration.playerState.knownAreaIds)
   const hasUndiscoveredAreas = allConnections.some((conn) => {
@@ -913,12 +902,56 @@ export async function executeSurvey(state: WorldState, _action: SurveyAction): P
     return !knownAreaIds.has(targetId)
   })
 
+  return {
+    successChance,
+    rollInterval,
+    expectedTicks,
+    allConnections,
+    hasUndiscoveredAreas,
+  }
+}
+
+/**
+ * Execute Survey action - discover a new area connected to current area
+ *
+ * Per spec (lines 76-77): "If the roll hits an already-discovered area, the roll is wasted.
+ * Keep rolling until a new area is found (or player abandons)"
+ */
+export async function executeSurvey(state: WorldState, _action: SurveyAction): Promise<ActionLog> {
+  const tickBefore = state.time.currentTick
+  const rolls: RngRoll[] = []
+
+  // Check preconditions
+  if (state.player.skills.Exploration.level === 0) {
+    return createFailureLog(state, "Survey", "NOT_IN_EXPLORATION_GUILD")
+  }
+
+  if (state.time.sessionRemainingTicks <= 0) {
+    return createFailureLog(state, "Survey", "SESSION_ENDED")
+  }
+
+  const exploration = state.exploration!
+  const currentArea = exploration.areas.get(exploration.playerState.currentAreaId)!
+
+  // Use shared survey data preparation
+  const { successChance, rollInterval, expectedTicks, allConnections, hasUndiscoveredAreas } =
+    prepareSurveyData(state, currentArea)
+
+  if (allConnections.length === 0) {
+    return {
+      ...createFailureLog(state, "Survey", "NO_CONNECTIONS"),
+      timeConsumed: 0,
+    }
+  }
+
   if (!hasUndiscoveredAreas) {
     return {
       ...createFailureLog(state, "Survey", "NO_UNDISCOVERED_AREAS"),
       timeConsumed: 0,
     }
   }
+
+  const knownAreaIds = new Set(exploration.playerState.knownAreaIds)
 
   // Roll until we find an UNDISCOVERED area or session ends
   // Per spec: hitting a known area wastes the roll
