@@ -509,7 +509,11 @@ export async function ensureAreaFullyGenerated(
   // If no API key is configured, area stays unnamed and uses fallback display
   if (!area.name) {
     const neighborNames = getNeighborNames(area, exploration.areas, exploration.connections)
-    const generatedName = await generateAreaName(area, neighborNames)
+    // Collect all existing area names to ensure uniqueness
+    const existingNames = Array.from(exploration.areas.values())
+      .map((a) => a.name)
+      .filter((name): name is string => name !== undefined)
+    const generatedName = await generateAreaName(area, neighborNames, existingNames)
     if (generatedName) {
       area.name = generatedName
     }
