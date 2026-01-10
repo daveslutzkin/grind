@@ -22,6 +22,8 @@ import type {
   ItemStack,
   Node,
   GatheringSkillID,
+  ActionGenerator,
+  ActionTick,
 } from "./types.js"
 import { isInTown, GatherMode, NodeType, getCurrentAreaId } from "./types.js"
 import { roll, rollLootTable, rollFloat } from "./rng.js"
@@ -55,6 +57,23 @@ import {
   checkAndCompleteContracts,
 } from "./stateHelpers.js"
 import { getLocationDisplayName } from "./world.js"
+
+/**
+ * Helper to consume an action generator and return the final ActionLog.
+ * Used for backward compatibility during transition.
+ */
+export async function executeToCompletion(generator: ActionGenerator): Promise<ActionLog> {
+  let log: ActionLog | null = null
+  for await (const tick of generator) {
+    if (tick.done) {
+      log = tick.log
+    }
+  }
+  if (!log) {
+    throw new Error("Generator completed without producing a final log")
+  }
+  return log
+}
 
 /**
  * Collect all level-ups from contract completions
@@ -120,7 +139,7 @@ export async function executeAction(state: WorldState, action: Action): Promise<
         destinationAreaId: action.destination,
       })
     case "AcceptContract":
-      return executeAcceptContract(state, action, rolls)
+      return executeToCompletion(executeAcceptContract(state, action))
     case "Gather":
       return executeGather(state, action, rolls)
     case "Mine":
@@ -132,13 +151,13 @@ export async function executeAction(state: WorldState, action: Action): Promise<
     case "Craft":
       return executeCraft(state, action, rolls)
     case "Store":
-      return executeStore(state, action, rolls)
+      return executeToCompletion(executeStore(state, action))
     case "Drop":
-      return executeDrop(state, action, rolls)
+      return executeToCompletion(executeDrop(state, action))
     case "Enrol":
-      return executeGuildEnrolment(state, action, rolls)
+      return executeToCompletion(executeGuildEnrolment(state, action))
     case "TurnInCombatToken":
-      return executeTurnInCombatToken(state, action, rolls)
+      return executeToCompletion(executeTurnInCombatToken(state, action))
     case "Survey":
       return executeSurvey(state, action)
     case "Explore":
@@ -148,24 +167,24 @@ export async function executeAction(state: WorldState, action: Action): Promise<
     case "FarTravel":
       return executeFarTravel(state, action)
     case "TravelToLocation":
-      return executeTravelToLocation(state, action)
+      return executeToCompletion(executeTravelToLocation(state, action))
     case "Leave":
-      return executeLeave(state, action)
+      return executeToCompletion(executeLeave(state, action))
   }
 }
 
-function executeAcceptContract(
+async function* executeAcceptContract(
   state: WorldState,
-  action: AcceptContractAction,
-  rolls: RngRoll[]
-): ActionLog {
+  action: AcceptContractAction
+): ActionGenerator {
   const tickBefore = state.time.currentTick
   const contractId = action.contractId
 
   // Use shared precondition check
   const check = checkAcceptContractAction(state, action)
   if (!check.valid) {
-    return createFailureLog(state, action, check.failureType!)
+    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    return
   }
 
   // Accept contract
@@ -174,16 +193,20 @@ function executeAcceptContract(
   // Check for contract completion (after every successful action)
   const contractsCompleted = checkAndCompleteContracts(state)
 
-  return {
-    tickBefore,
-    actionType: "AcceptContract",
-    parameters: { contractId },
-    success: true,
-    timeConsumed: 0,
-    levelUps: mergeLevelUps([], contractsCompleted),
-    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
-    rngRolls: rolls,
-    stateDeltaSummary: `Accepted contract ${contractId}`,
+  // 0-tick action - yield only the final done tick
+  yield {
+    done: true,
+    log: {
+      tickBefore,
+      actionType: "AcceptContract",
+      parameters: { contractId },
+      success: true,
+      timeConsumed: 0,
+      levelUps: mergeLevelUps([], contractsCompleted),
+      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+      rngRolls: [],
+      stateDeltaSummary: `Accepted contract ${contractId}`,
+    },
   }
 }
 
@@ -713,14 +736,15 @@ function executeCraft(state: WorldState, action: CraftAction, rolls: RngRoll[]):
   }
 }
 
-function executeStore(state: WorldState, action: StoreAction, rolls: RngRoll[]): ActionLog {
+async function* executeStore(state: WorldState, action: StoreAction): ActionGenerator {
   const tickBefore = state.time.currentTick
   const { itemId, quantity } = action
 
   // Use shared precondition check
   const check = checkStoreAction(state, action)
   if (!check.valid) {
-    return createFailureLog(state, action, check.failureType!)
+    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    return
   }
 
   // Store is a free action (0 ticks), no time check needed
@@ -732,67 +756,80 @@ function executeStore(state: WorldState, action: StoreAction, rolls: RngRoll[]):
   // Check for contract completion (after every successful action)
   const contractsCompleted = checkAndCompleteContracts(state)
 
-  return {
-    tickBefore,
-    actionType: "Store",
-    parameters: { itemId, quantity },
-    success: true,
-    timeConsumed: 0,
-    levelUps: mergeLevelUps([], contractsCompleted),
-    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
-    rngRolls: rolls,
-    stateDeltaSummary: `Stored ${quantity} ${itemId}`,
+  // 0-tick action - yield only the final done tick
+  yield {
+    done: true,
+    log: {
+      tickBefore,
+      actionType: "Store",
+      parameters: { itemId, quantity },
+      success: true,
+      timeConsumed: 0,
+      levelUps: mergeLevelUps([], contractsCompleted),
+      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+      rngRolls: [],
+      stateDeltaSummary: `Stored ${quantity} ${itemId}`,
+    },
   }
 }
 
-function executeDrop(state: WorldState, action: DropAction, rolls: RngRoll[]): ActionLog {
+async function* executeDrop(state: WorldState, action: DropAction): ActionGenerator {
   const tickBefore = state.time.currentTick
   const { itemId, quantity } = action
 
   // Use shared precondition check
   const check = checkDropAction(state, action)
   if (!check.valid) {
-    return createFailureLog(state, action, check.failureType!)
+    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    return
   }
 
   // Check if enough time remaining
   if (state.time.sessionRemainingTicks < check.timeCost) {
-    return createFailureLog(state, action, "SESSION_ENDED")
+    yield { done: true, log: createFailureLog(state, action, "SESSION_ENDED") }
+    return
   }
 
-  // Consume time
-  consumeTime(state, check.timeCost)
+  // Consume time (1 tick)
+  consumeTime(state, 1)
 
   // Remove item from inventory
   removeFromInventory(state, itemId, quantity)
 
+  // Yield tick with feedback
+  yield { done: false, feedback: { message: `Dropped ${quantity}x ${itemId}` } }
+
   // Check for contract completion (after every successful action)
   const contractsCompleted = checkAndCompleteContracts(state)
 
-  return {
-    tickBefore,
-    actionType: "Drop",
-    parameters: { itemId, quantity },
-    success: true,
-    timeConsumed: check.timeCost,
-    levelUps: mergeLevelUps([], contractsCompleted),
-    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
-    rngRolls: rolls,
-    stateDeltaSummary: `Dropped ${quantity} ${itemId}`,
+  // Final yield with log
+  yield {
+    done: true,
+    log: {
+      tickBefore,
+      actionType: "Drop",
+      parameters: { itemId, quantity },
+      success: true,
+      timeConsumed: check.timeCost,
+      levelUps: mergeLevelUps([], contractsCompleted),
+      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+      rngRolls: [],
+      stateDeltaSummary: `Dropped ${quantity} ${itemId}`,
+    },
   }
 }
 
-function executeTurnInCombatToken(
+async function* executeTurnInCombatToken(
   state: WorldState,
-  action: TurnInCombatTokenAction,
-  rolls: RngRoll[]
-): ActionLog {
+  action: TurnInCombatTokenAction
+): ActionGenerator {
   const tickBefore = state.time.currentTick
 
   // Use shared precondition check
   const check = checkTurnInCombatTokenAction(state, action)
   if (!check.valid) {
-    return createFailureLog(state, action, check.failureType!)
+    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    return
   }
 
   // Consume the token
@@ -816,40 +853,48 @@ function executeTurnInCombatToken(
   // Check for contract completion (after every successful action)
   const contractsCompleted = checkAndCompleteContracts(state)
 
-  return {
-    tickBefore,
-    actionType: "TurnInCombatToken",
-    parameters: {},
-    success: true,
-    timeConsumed: 0,
-    levelUps: mergeLevelUps([], contractsCompleted),
-    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
-    rngRolls: rolls,
-    stateDeltaSummary: "Turned in Combat Guild Token, unlocked combat-guild-1 contract",
+  // 0-tick action - yield only the final done tick
+  yield {
+    done: true,
+    log: {
+      tickBefore,
+      actionType: "TurnInCombatToken",
+      parameters: {},
+      success: true,
+      timeConsumed: 0,
+      levelUps: mergeLevelUps([], contractsCompleted),
+      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+      rngRolls: [],
+      stateDeltaSummary: "Turned in Combat Guild Token, unlocked combat-guild-1 contract",
+    },
   }
 }
 
-async function executeGuildEnrolment(
+async function* executeGuildEnrolment(
   state: WorldState,
-  action: GuildEnrolmentAction,
-  rolls: RngRoll[]
-): Promise<ActionLog> {
+  action: GuildEnrolmentAction
+): ActionGenerator {
   const tickBefore = state.time.currentTick
   const { skill } = action
 
   // Use shared precondition check
   const check = checkGuildEnrolmentAction(state, action)
   if (!check.valid) {
-    return createFailureLog(state, action, check.failureType!)
+    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    return
   }
 
   // Check if enough time remaining
   if (state.time.sessionRemainingTicks < check.timeCost) {
-    return createFailureLog(state, action, "SESSION_ENDED")
+    yield { done: true, log: createFailureLog(state, action, "SESSION_ENDED") }
+    return
   }
 
-  // Consume time
-  consumeTime(state, check.timeCost)
+  // Enrol takes 3 ticks
+  for (let tick = 0; tick < 3; tick++) {
+    consumeTime(state, 1)
+    yield { done: false }
+  }
 
   // Set skill to level 1 (unlock it)
   state.player.skills[skill] = { level: 1, xp: 0 }
@@ -878,42 +923,58 @@ async function executeGuildEnrolment(
       ? `Enrolled in ${skill} guild, discovered ${getAreaDisplayName(discoveredAreaId, discoveredArea)}`
       : `Enrolled in ${skill} guild`
 
-  return {
-    tickBefore,
-    actionType: "Enrol",
-    parameters: { skill },
-    success: true,
-    timeConsumed: check.timeCost,
-    levelUps: mergeLevelUps([], contractsCompleted),
-    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
-    rngRolls: rolls,
-    stateDeltaSummary: summary,
-    explorationLog: explorationBenefits
-      ? {
-          discoveredAreaId: explorationBenefits.discoveredAreaId,
-          discoveredConnectionId: explorationBenefits.discoveredConnectionId,
-        }
-      : undefined,
+  // Feedback after enrolment completes
+  yield { done: false, feedback: { message: `Enrolled in ${skill} guild!` } }
+
+  yield {
+    done: true,
+    log: {
+      tickBefore,
+      actionType: "Enrol",
+      parameters: { skill },
+      success: true,
+      timeConsumed: check.timeCost,
+      levelUps: mergeLevelUps([], contractsCompleted),
+      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+      rngRolls: [],
+      stateDeltaSummary: summary,
+      explorationLog: explorationBenefits
+        ? {
+            discoveredAreaId: explorationBenefits.discoveredAreaId,
+            discoveredConnectionId: explorationBenefits.discoveredConnectionId,
+          }
+        : undefined,
+    },
   }
 }
 
-function executeTravelToLocation(state: WorldState, action: TravelToLocationAction): ActionLog {
+async function* executeTravelToLocation(
+  state: WorldState,
+  action: TravelToLocationAction
+): ActionGenerator {
   const tickBefore = state.time.currentTick
   const { locationId } = action
 
   // Use shared precondition check
   const check = checkTravelToLocationAction(state, action)
   if (!check.valid) {
-    return createFailureLog(state, action, check.failureType!)
+    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    return
   }
 
   // Check if enough time remaining
   if (state.time.sessionRemainingTicks < check.timeCost) {
-    return createFailureLog(state, action, "SESSION_ENDED")
+    yield { done: true, log: createFailureLog(state, action, "SESSION_ENDED") }
+    return
   }
 
-  // Consume time
-  consumeTime(state, check.timeCost)
+  const ticks = check.timeCost
+
+  // Yield a tick if > 0
+  if (ticks > 0) {
+    consumeTime(state, 1)
+    yield { done: false }
+  }
 
   // Move to location
   state.exploration.playerState.currentLocationId = locationId
@@ -921,36 +982,46 @@ function executeTravelToLocation(state: WorldState, action: TravelToLocationActi
   // Check for contract completion (after every successful action)
   const contractsCompleted = checkAndCompleteContracts(state)
 
-  return {
-    tickBefore,
-    actionType: "TravelToLocation",
-    parameters: { locationId },
-    success: true,
-    timeConsumed: check.timeCost,
-    levelUps: mergeLevelUps([], contractsCompleted),
-    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
-    rngRolls: [],
-    stateDeltaSummary: `Traveled to ${getLocationDisplayName(locationId, state.exploration.playerState.currentAreaId, state)}`,
+  yield {
+    done: true,
+    log: {
+      tickBefore,
+      actionType: "TravelToLocation",
+      parameters: { locationId },
+      success: true,
+      timeConsumed: check.timeCost,
+      levelUps: mergeLevelUps([], contractsCompleted),
+      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+      rngRolls: [],
+      stateDeltaSummary: `Traveled to ${getLocationDisplayName(locationId, state.exploration.playerState.currentAreaId, state)}`,
+    },
   }
 }
 
-function executeLeave(state: WorldState, action: LeaveAction): ActionLog {
+async function* executeLeave(state: WorldState, action: LeaveAction): ActionGenerator {
   const tickBefore = state.time.currentTick
   const previousLocation = state.exploration.playerState.currentLocationId
 
   // Use shared precondition check
   const check = checkLeaveAction(state, action)
   if (!check.valid) {
-    return createFailureLog(state, action, check.failureType!)
+    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    return
   }
 
   // Check if enough time remaining
   if (state.time.sessionRemainingTicks < check.timeCost) {
-    return createFailureLog(state, action, "SESSION_ENDED")
+    yield { done: true, log: createFailureLog(state, action, "SESSION_ENDED") }
+    return
   }
 
-  // Consume time
-  consumeTime(state, check.timeCost)
+  const ticks = check.timeCost
+
+  // Yield a tick if > 0
+  if (ticks > 0) {
+    consumeTime(state, 1)
+    yield { done: false }
+  }
 
   // Return to hub (null)
   state.exploration.playerState.currentLocationId = null
@@ -960,15 +1031,18 @@ function executeLeave(state: WorldState, action: LeaveAction): ActionLog {
 
   const hubName = isInTown(state) ? "Town Square" : "clearing"
 
-  return {
-    tickBefore,
-    actionType: "Leave",
-    parameters: {},
-    success: true,
-    timeConsumed: check.timeCost,
-    levelUps: mergeLevelUps([], contractsCompleted),
-    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
-    rngRolls: [],
-    stateDeltaSummary: `Left ${getLocationDisplayName(previousLocation, state.exploration.playerState.currentAreaId, state)} for ${hubName}`,
+  yield {
+    done: true,
+    log: {
+      tickBefore,
+      actionType: "Leave",
+      parameters: {},
+      success: true,
+      timeConsumed: check.timeCost,
+      levelUps: mergeLevelUps([], contractsCompleted),
+      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+      rngRolls: [],
+      stateDeltaSummary: `Left ${getLocationDisplayName(previousLocation, state.exploration.playerState.currentAreaId, state)} for ${hubName}`,
+    },
   }
 }
