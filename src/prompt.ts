@@ -7,17 +7,96 @@
  */
 
 import * as readline from "readline"
+import * as fs from "fs"
+import * as path from "path"
+import * as os from "os"
 
 let rl: readline.Interface | null = null
+
+// History configuration
+const HISTORY_SIZE = 100
+const HISTORY_FILE = path.join(os.homedir(), ".grind_history")
+
+// In-memory history that persists across readline restarts
+let commandHistory: string[] = []
+
+/**
+ * Load history from file on startup
+ */
+function loadHistory(): string[] {
+  try {
+    if (fs.existsSync(HISTORY_FILE)) {
+      const content = fs.readFileSync(HISTORY_FILE, "utf8")
+      return content
+        .split("\n")
+        .filter((line) => line.trim())
+        .slice(-HISTORY_SIZE)
+    }
+  } catch {
+    // Silently ignore history load errors
+  }
+  return []
+}
+
+/**
+ * Save history to file
+ */
+function saveHistory(): void {
+  try {
+    fs.writeFileSync(HISTORY_FILE, commandHistory.join("\n") + "\n", "utf8")
+  } catch {
+    // Silently ignore history save errors
+  }
+}
+
+/**
+ * Add a command to history (avoiding duplicates of the last entry)
+ */
+export function addToHistory(command: string): void {
+  const trimmed = command.trim()
+  if (!trimmed) return
+
+  // Don't add if it's the same as the last command
+  if (commandHistory.length > 0 && commandHistory[commandHistory.length - 1] === trimmed) {
+    return
+  }
+
+  commandHistory.push(trimmed)
+
+  // Trim to max size
+  if (commandHistory.length > HISTORY_SIZE) {
+    commandHistory = commandHistory.slice(-HISTORY_SIZE)
+  }
+
+  // Save to file after each addition
+  saveHistory()
+}
 
 /**
  * Initialize the input manager. Must be called before using prompt functions.
  */
 export function initInput(): void {
   if (rl) return
+
+  // Load history from file on first init
+  if (commandHistory.length === 0) {
+    commandHistory = loadHistory()
+  }
+
   rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
+    history: [...commandHistory],
+    historySize: HISTORY_SIZE,
+    removeHistoryDuplicates: true,
+  })
+
+  // Capture history additions from readline
+  rl.on("history", (history: string[]) => {
+    if (history.length > 0) {
+      const latest = history[0] // Most recent is at index 0
+      addToHistory(latest)
+    }
   })
 }
 
@@ -95,12 +174,9 @@ export async function promptYesNo(question: string): Promise<boolean> {
       process.stdin.once("data", handler)
     })
   } finally {
-    // Reopen readline if it was open before
+    // Reopen readline if it was open before (use initInput to get history)
     if (hadReadline) {
-      rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout,
-      })
+      initInput()
     }
   }
 }
