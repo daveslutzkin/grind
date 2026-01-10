@@ -1372,6 +1372,13 @@ export async function executeExplore(
     const targetArea = exploration.areas.get(discoveredUnknownAreaId)
     const areaName = getAreaDisplayName(discoveredUnknownAreaId, targetArea)
     discovered = `connection to ${areaName}`
+  } else if (discoveredConnectionId) {
+    // Connection to a known area - parse the connection ID to find destination
+    const [areaId1, areaId2] = discoveredConnectionId.split("->")
+    const destinationAreaId = areaId1 === currentArea.id ? areaId2 : areaId1
+    const destinationArea = exploration.areas.get(destinationAreaId)
+    const areaName = getAreaDisplayName(destinationAreaId, destinationArea)
+    discovered = `connection to ${areaName}`
   } else {
     discovered = "new connection"
   }
