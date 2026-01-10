@@ -203,21 +203,27 @@ export function formatWorldState(state: WorldState): string {
       const isFromCurrent = conn.fromAreaId === currentArea
       const isToCurrent = conn.toAreaId === currentArea
       if (!isFromCurrent && !isToCurrent) return false
+      // Check both forward and reverse connection IDs
       const connId = `${conn.fromAreaId}->${conn.toAreaId}`
+      const reverseConnId = `${conn.toAreaId}->${conn.fromAreaId}`
+      const isDiscovered = knownConnectionIds.has(connId) || knownConnectionIds.has(reverseConnId)
       const targetId = isFromCurrent ? conn.toAreaId : conn.fromAreaId
       const targetIsKnown = state.exploration.playerState.knownAreaIds.includes(targetId)
-      return !knownConnectionIds.has(connId) && targetIsKnown
+      return !isDiscovered && targetIsKnown
     })
     // Also check for undiscovered connections to UNKNOWN areas
     const remainingUnknownConnections = state.exploration.connections.filter((conn) => {
       const isFromCurrent = conn.fromAreaId === currentArea
       const isToCurrent = conn.toAreaId === currentArea
       if (!isFromCurrent && !isToCurrent) return false
+      // Check both forward and reverse connection IDs
       const connId = `${conn.fromAreaId}->${conn.toAreaId}`
+      const reverseConnId = `${conn.toAreaId}->${conn.fromAreaId}`
+      const isDiscovered = knownConnectionIds.has(connId) || knownConnectionIds.has(reverseConnId)
       const targetId = isFromCurrent ? conn.toAreaId : conn.fromAreaId
       const targetIsKnown = state.exploration.playerState.knownAreaIds.includes(targetId)
       // Connection to unknown area that hasn't been discovered yet
-      return !knownConnectionIds.has(connId) && !targetIsKnown
+      return !isDiscovered && !targetIsKnown
     })
     const isFullyExplored =
       remainingLocations.length === 0 &&

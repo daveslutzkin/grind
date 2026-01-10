@@ -367,5 +367,62 @@ describe("Persistence", () => {
       expect(loaded.state.player.skills.Mining.xp).toBe(50)
       expect(loaded.state.player.guildReputation).toBe(100)
     })
+
+    it("should preserve exploration connections", () => {
+      const state = createWorld(TEST_SEED)
+
+      // Verify we have connections in the original state
+      expect(state.exploration.connections.length).toBeGreaterThan(0)
+      const originalConnections = [...state.exploration.connections]
+
+      const session: Session = {
+        state,
+        stats: {
+          logs: [],
+          startingSkills: { ...state.player.skills },
+          totalSession: state.time.sessionRemainingTicks,
+        },
+      }
+
+      writeSave(TEST_SEED, session)
+      const loaded = deserializeSession(loadSave(TEST_SEED))
+
+      // Connections should be preserved exactly
+      expect(loaded.state.exploration.connections).toEqual(originalConnections)
+      expect(loaded.state.exploration.connections.length).toBe(originalConnections.length)
+    })
+
+    it("should preserve area locations", () => {
+      const state = createWorld(TEST_SEED)
+
+      // Find an area with locations
+      const areasWithLocations = Array.from(state.exploration.areas.values()).filter(
+        (area) => area.locations.length > 0
+      )
+      expect(areasWithLocations.length).toBeGreaterThan(0)
+
+      const testArea = areasWithLocations[0]
+      const originalLocations = [...testArea.locations]
+
+      const session: Session = {
+        state,
+        stats: {
+          logs: [],
+          startingSkills: { ...state.player.skills },
+          totalSession: state.time.sessionRemainingTicks,
+        },
+      }
+
+      writeSave(TEST_SEED, session)
+      const loaded = deserializeSession(loadSave(TEST_SEED))
+
+      // Area should exist in loaded state
+      const loadedArea = loaded.state.exploration.areas.get(testArea.id)
+      expect(loadedArea).toBeDefined()
+
+      // Locations should be preserved
+      expect(loadedArea!.locations).toEqual(originalLocations)
+      expect(loadedArea!.locations.length).toBe(originalLocations.length)
+    })
   })
 })
