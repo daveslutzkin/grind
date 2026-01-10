@@ -20,14 +20,40 @@ import {
 import { formatActionLog } from "./agent/formatters.js"
 
 // ============================================================================
-// State Cloning
+// State Snapshotting
 // ============================================================================
 
+interface StateSnapshot {
+  currentTick: number
+  sessionRemainingTicks: number
+  playerState: any
+  skills: any
+  inventory: any[]
+}
+
 /**
- * Deep clone world state for execute-capture-rewind pattern
+ * Create a snapshot of mutable state for execute-capture-rewind pattern
+ * Saves only the fields that need to be restored (not the entire state)
  */
-function cloneWorldState(state: WorldState): WorldState {
-  return JSON.parse(JSON.stringify(state))
+function createSnapshot(state: WorldState): StateSnapshot {
+  return {
+    currentTick: state.time.currentTick,
+    sessionRemainingTicks: state.time.sessionRemainingTicks,
+    playerState: JSON.parse(JSON.stringify(state.exploration!.playerState)),
+    skills: JSON.parse(JSON.stringify(state.player.skills)),
+    inventory: JSON.parse(JSON.stringify(state.player.inventory)),
+  }
+}
+
+/**
+ * Restore state from snapshot (except RNG counter which we preserve)
+ */
+function restoreSnapshot(state: WorldState, snapshot: StateSnapshot): void {
+  state.time.currentTick = snapshot.currentTick
+  state.time.sessionRemainingTicks = snapshot.sessionRemainingTicks
+  state.exploration!.playerState = snapshot.playerState
+  state.player.skills = snapshot.skills
+  state.player.inventory = snapshot.inventory
 }
 
 // ============================================================================
@@ -339,8 +365,8 @@ export async function interactiveExplore(state: WorldState): Promise<void> {
       }
     }
 
-    // Clone state for execution
-    const stateBeforeExecution = cloneWorldState(state)
+    // Snapshot state before execution
+    const snapshot = createSnapshot(state)
 
     // Execute exploration fully (advances RNG, mutates state)
     const action: ExploreAction = { type: "Explore" }
@@ -355,10 +381,8 @@ export async function interactiveExplore(state: WorldState): Promise<void> {
     // Capture what changed
     const ticksConsumed = log.timeConsumed
 
-    // Rewind state (except RNG counter)
-    const rngCounter = state.rng.counter
-    Object.assign(state, stateBeforeExecution)
-    state.rng.counter = rngCounter
+    // Rewind state (except RNG counter which we preserve)
+    restoreSnapshot(state, snapshot)
 
     // Animate with real-time tick consumption
     process.stdout.write("\nExploring")
@@ -396,8 +420,8 @@ export async function interactiveSurvey(state: WorldState): Promise<void> {
       return
     }
 
-    // Clone state for execution
-    const stateBeforeExecution = cloneWorldState(state)
+    // Snapshot state before execution
+    const snapshot = createSnapshot(state)
 
     // Execute survey fully (advances RNG, mutates state)
     const action: SurveyAction = { type: "Survey" }
@@ -412,10 +436,8 @@ export async function interactiveSurvey(state: WorldState): Promise<void> {
     // Capture what changed
     const ticksConsumed = log.timeConsumed
 
-    // Rewind state (except RNG counter)
-    const rngCounter = state.rng.counter
-    Object.assign(state, stateBeforeExecution)
-    state.rng.counter = rngCounter
+    // Rewind state (except RNG counter which we preserve)
+    restoreSnapshot(state, snapshot)
 
     // Animate with real-time tick consumption
     process.stdout.write("\nSurveying")
