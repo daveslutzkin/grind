@@ -1508,7 +1508,10 @@ export async function* executeExplorationTravel(
 
   if (!directConnection) {
     // No direct connection - cannot travel (must have a known connection from current area)
-    yield { done: true, log: createFailureLog(state, "ExplorationTravel", "NO_PATH_TO_DESTINATION") }
+    yield {
+      done: true,
+      log: createFailureLog(state, "ExplorationTravel", "NO_PATH_TO_DESTINATION"),
+    }
     return
   }
 

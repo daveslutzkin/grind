@@ -10,8 +10,8 @@ import type {
   FarTravelAction,
   ActionGenerator,
   ActionLog,
-  TickFeedback,
 } from "./types.js"
+import { setTimeout } from "timers/promises"
 import {
   executeExplore,
   executeSurvey,
@@ -36,13 +36,6 @@ import { consumeTime } from "./stateHelpers.js"
 // ============================================================================
 // Animation Runner Infrastructure
 // ============================================================================
-
-/**
- * Simple delay helper for animation timing
- */
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
 
 /**
  * Options for running an animated action
@@ -118,7 +111,7 @@ export async function runAnimatedAction(
     }
 
     // Animation delay
-    await delay(tickDelay)
+    await setTimeout(tickDelay)
   }
 
   process.stdout.write("\n")
@@ -246,7 +239,7 @@ function analyzeRemainingAreas(state: WorldState): {
 // Animation System
 // ============================================================================
 
-interface AnimationResult {
+interface OldAnimationResult {
   cancelled: boolean
   ticksAnimated: number
 }
@@ -258,7 +251,7 @@ interface AnimationResult {
  * @param totalTicks - Total ticks the discovery will take
  * @returns Object with cancellation status and ticks animated
  */
-async function animateDiscovery(totalTicks: number): Promise<AnimationResult> {
+async function animateDiscovery(totalTicks: number): Promise<OldAnimationResult> {
   return new Promise((resolve, reject) => {
     let ticksAnimated = 0
     let interval: ReturnType<typeof globalThis.setInterval> | null = null
@@ -596,8 +589,12 @@ export async function interactiveExplorationTravel(
     return
   }
 
-  // Execute the real action
-  const finalLog = await executeExplorationTravel(state, action)
+  // Execute the real action with animation
+  const generator = executeExplorationTravel(state, action)
+  const { log: finalLog } = await runAnimatedAction(generator, {
+    label: "Traveling",
+    tickDelay: 100,
+  })
 
   // Show travel result
   console.log(formatActionLog(finalLog, state))

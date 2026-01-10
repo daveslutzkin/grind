@@ -23,7 +23,6 @@ import type {
   Node,
   GatheringSkillID,
   ActionGenerator,
-  ActionTick,
 } from "./types.js"
 import { isInTown, GatherMode, NodeType, getCurrentAreaId } from "./types.js"
 import { roll, rollLootTable, rollFloat } from "./rng.js"
@@ -436,108 +435,6 @@ function getVarianceRange(locationId: string): [number, number] {
     return [0.7, 1.3] // FAR: ±30%
   }
   return [0.95, 1.05] // Default minimal variance
-}
-
-/**
- * Execute multi-material node gather with modes
- */
-function executeMultiMaterialGather(
-  state: WorldState,
-  action: GatherAction,
-  rolls: RngRoll[],
-  tickBefore: number,
-  timeCost: number
-): ActionLog {
-  const mode = action.mode!
-  const node = state.world.nodes!.find((n) => n.nodeId === action.nodeId)!
-  const skill = getNodeSkill(node)
-  const skillLevel = state.player.skills[skill].level
-
-  // Consume time
-  consumeTime(state, timeCost)
-
-  const parameters: Record<string, unknown> = {
-    nodeId: action.nodeId,
-    mode,
-  }
-  if (action.focusMaterialId) {
-    parameters.focusMaterialId = action.focusMaterialId
-  }
-
-  // APPRAISE mode - just inspect, no extraction
-  if (mode === GatherMode.APPRAISE) {
-    const extraction: ExtractionLog = {
-      mode: GatherMode.APPRAISE,
-      extracted: [],
-      focusWaste: 0,
-      collateralDamage: {},
-      appraisal: {
-        nodeId: node.nodeId,
-        nodeType: node.nodeType,
-        materials: node.materials.map((m) => ({
-          materialId: m.materialId,
-          remaining: m.remainingUnits,
-          max: m.maxUnitsInitial,
-          requiredLevel: m.requiredLevel,
-          requiresSkill: m.requiresSkill,
-          tier: m.tier,
-        })),
-      },
-    }
-
-    // Track that this node has been appraised
-    if (!state.player.appraisedNodeIds.includes(node.nodeId)) {
-      state.player.appraisedNodeIds.push(node.nodeId)
-    }
-
-    // Check for contract completion
-    const contractsCompleted = checkAndCompleteContracts(state)
-
-    return {
-      tickBefore,
-      actionType: "Gather",
-      parameters,
-      success: true,
-      timeConsumed: timeCost,
-      rngRolls: rolls,
-      extraction,
-      stateDeltaSummary: `Appraised node ${action.nodeId}`,
-      levelUps: mergeLevelUps([], contractsCompleted),
-      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
-    }
-  }
-
-  // FOCUS mode - extract one material with variance and collateral
-  if (mode === GatherMode.FOCUS) {
-    return executeFocusExtraction(
-      state,
-      node,
-      action.focusMaterialId!,
-      skill,
-      skillLevel,
-      rolls,
-      tickBefore,
-      timeCost,
-      parameters
-    )
-  }
-
-  // CAREFUL_ALL mode - extract all materials slowly, no collateral
-  if (mode === GatherMode.CAREFUL_ALL) {
-    return executeCarefulAllExtraction(
-      state,
-      node,
-      skill,
-      skillLevel,
-      rolls,
-      tickBefore,
-      timeCost,
-      parameters
-    )
-  }
-
-  // Should not reach here
-  return createFailureLog(state, action, "NODE_NOT_FOUND")
 }
 
 /**

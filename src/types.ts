@@ -468,9 +468,7 @@ export interface TickFeedback {
  * A single tick yielded by an action generator.
  * Discriminated union: either an in-progress tick or the final done tick.
  */
-export type ActionTick =
-  | { done: false; feedback?: TickFeedback }
-  | { done: true; log: ActionLog }
+export type ActionTick = { done: false; feedback?: TickFeedback } | { done: true; log: ActionLog }
 
 /**
  * The generator type returned by action executors.
