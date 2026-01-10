@@ -452,15 +452,13 @@ export function formatWorldState(state: WorldState): string {
 
       // Display groups in order: closer, same, further
       if (closer.length > 0) {
-        lines.push(`Connections: ${formatGroup(closer)}`)
+        lines.push(`Connections closer to Town: ${formatGroup(closer)}`)
       }
       if (same.length > 0) {
-        const prefix = closer.length > 0 ? "            " : "Connections: "
-        lines.push(`${prefix}${formatGroup(same)}`)
+        lines.push(`Connections at this distance: ${formatGroup(same)}`)
       }
       if (further.length > 0) {
-        const prefix = closer.length > 0 || same.length > 0 ? "            " : "Connections: "
-        lines.push(`${prefix}${formatGroup(further)}`)
+        lines.push(`Connections further from Town: ${formatGroup(further)}`)
       }
     } else {
       lines.push("Connections: none known")
