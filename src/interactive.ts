@@ -3,13 +3,7 @@
  */
 
 import * as readline from "readline"
-import type {
-  WorldState,
-  ExplorationLocation,
-  ActionLog,
-  ExploreAction,
-  SurveyAction,
-} from "./types.js"
+import type { WorldState, ExplorationLocation, ExploreAction, SurveyAction } from "./types.js"
 import { ExplorationLocationType } from "./types.js"
 import {
   executeExplore,
@@ -84,7 +78,6 @@ function analyzeRemainingDiscoveries(state: WorldState): HardDiscoveryAnalysis {
   // Categorize locations as easy or hard
   let easyCount = 0
   let hardCount = 0
-  let hardestThreshold = 0
 
   for (const loc of undiscoveredLocations) {
     if (loc.type === ExplorationLocationType.GATHERING_NODE && loc.gatheringSkillType) {
@@ -191,7 +184,6 @@ interface AnimationResult {
 async function animateDiscovery(totalTicks: number, state: WorldState): Promise<AnimationResult> {
   return new Promise((resolve) => {
     let ticksAnimated = 0
-    let cancelled = false
 
     // Only enable interactive mode if stdin is a TTY
     const isInteractive = process.stdin.isTTY
@@ -203,7 +195,7 @@ async function animateDiscovery(totalTicks: number, state: WorldState): Promise<
     }
 
     const cleanup = () => {
-      clearInterval(interval)
+      globalThis.clearInterval(interval)
       if (isInteractive) {
         process.stdin.removeListener("data", keyHandler)
         process.stdin.setRawMode(false)
@@ -212,7 +204,6 @@ async function animateDiscovery(totalTicks: number, state: WorldState): Promise<
     }
 
     const keyHandler = () => {
-      cancelled = true
       cleanup()
       process.stdout.write("\n")
       resolve({ cancelled: true, ticksAnimated })
@@ -222,7 +213,7 @@ async function animateDiscovery(totalTicks: number, state: WorldState): Promise<
       process.stdin.on("data", keyHandler)
     }
 
-    const interval = setInterval(() => {
+    const interval = globalThis.setInterval(() => {
       if (ticksAnimated >= totalTicks) {
         cleanup()
         process.stdout.write("\n")
@@ -253,10 +244,6 @@ async function animateDiscovery(totalTicks: number, state: WorldState): Promise<
 // ============================================================================
 // Interactive Loop
 // ============================================================================
-
-interface PromptResult {
-  continue: boolean
-}
 
 /**
  * Prompt user with y/n question

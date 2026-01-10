@@ -315,7 +315,9 @@ export function shadowRollSurvey(
 
     if (success) {
       // Shadow pick a connection
-      const connIndex = Math.floor(rollFloat(rng, 0, totalConnections, `shadow_pick_${ticksConsumed}`))
+      const connIndex = Math.floor(
+        rollFloat(rng, 0, totalConnections, `shadow_pick_${ticksConsumed}`)
+      )
       const selectedConn = allConnections[connIndex]
       const targetId =
         selectedConn.fromAreaId === currentAreaId ? selectedConn.toAreaId : selectedConn.fromAreaId
