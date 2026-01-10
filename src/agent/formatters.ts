@@ -195,7 +195,7 @@ export function formatWorldState(state: WorldState): string {
     let statusSuffix = ""
     const hasAnyDiscovery = knownLocs > 0 || discoveredConnectionsFromArea.length > 0
 
-    // Check if area is fully explored (same logic as in exploration.ts)
+    // Check if area is fully explored
     const remainingLocations = area
       ? area.locations.filter((loc) => !knownLocationIds.includes(loc.id))
       : []
@@ -203,19 +203,38 @@ export function formatWorldState(state: WorldState): string {
       const isFromCurrent = conn.fromAreaId === currentArea
       const isToCurrent = conn.toAreaId === currentArea
       if (!isFromCurrent && !isToCurrent) return false
+      // Check both forward and reverse connection IDs
       const connId = `${conn.fromAreaId}->${conn.toAreaId}`
+      const reverseConnId = `${conn.toAreaId}->${conn.fromAreaId}`
+      const isDiscovered = knownConnectionIds.has(connId) || knownConnectionIds.has(reverseConnId)
       const targetId = isFromCurrent ? conn.toAreaId : conn.fromAreaId
       const targetIsKnown = state.exploration.playerState.knownAreaIds.includes(targetId)
-      return !knownConnectionIds.has(connId) && targetIsKnown
+      return !isDiscovered && targetIsKnown
+    })
+    // Also check for undiscovered connections to UNKNOWN areas
+    const remainingUnknownConnections = state.exploration.connections.filter((conn) => {
+      const isFromCurrent = conn.fromAreaId === currentArea
+      const isToCurrent = conn.toAreaId === currentArea
+      if (!isFromCurrent && !isToCurrent) return false
+      // Check both forward and reverse connection IDs
+      const connId = `${conn.fromAreaId}->${conn.toAreaId}`
+      const reverseConnId = `${conn.toAreaId}->${conn.fromAreaId}`
+      const isDiscovered = knownConnectionIds.has(connId) || knownConnectionIds.has(reverseConnId)
+      const targetId = isFromCurrent ? conn.toAreaId : conn.fromAreaId
+      const targetIsKnown = state.exploration.playerState.knownAreaIds.includes(targetId)
+      // Connection to unknown area that hasn't been discovered yet
+      return !isDiscovered && !targetIsKnown
     })
     const isFullyExplored =
-      remainingLocations.length === 0 && remainingKnownConnections.length === 0
+      remainingLocations.length === 0 &&
+      remainingKnownConnections.length === 0 &&
+      remainingUnknownConnections.length === 0
 
     if (!hasAnyDiscovery) {
       // Nothing discovered yet (no locations AND no connections from here)
       statusSuffix = " — unexplored"
     } else if (isFullyExplored) {
-      // All locations and connections to known areas discovered
+      // All locations and all connections discovered
       statusSuffix = " — fully explored"
     } else {
       // Something discovered but not everything
