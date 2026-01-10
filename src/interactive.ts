@@ -3,8 +3,7 @@
  */
 
 import * as readline from "readline"
-import type { WorldState, ExplorationLocation, ExploreAction, SurveyAction, Area } from "./types.js"
-import { ExplorationLocationType } from "./types.js"
+import type { WorldState, ExploreAction, SurveyAction, Area } from "./types.js"
 import {
   executeExplore,
   executeSurvey,
@@ -12,6 +11,7 @@ import {
   calculateExpectedTicks,
   calculateSuccessChance,
   getKnowledgeParams,
+  buildDiscoverables,
   shadowRollExplore,
   shadowRollSurvey,
 } from "./exploration.js"
@@ -62,70 +62,35 @@ function analyzeRemainingDiscoveries(state: WorldState): HardDiscoveryAnalysis {
   const exploration = state.exploration!
   const currentArea = exploration.areas.get(exploration.playerState.currentAreaId)!
 
-  const knownLocationIds = new Set(exploration.playerState.knownLocationIds)
-  const knownConnectionIds = new Set(exploration.playerState.knownConnectionIds)
-  const knownAreaIds = new Set(exploration.playerState.knownAreaIds)
+  // Use shared discoverable building logic
+  const { discoverables, baseChance } = buildDiscoverables(state, currentArea)
 
-  const undiscoveredLocations = currentArea.locations.filter((loc) => !knownLocationIds.has(loc.id))
+  // Categorize based on thresholds
+  // Hard discoveries have threshold = baseChance * 0.05 (gathering nodes without skill)
+  // Easy discoveries have threshold >= baseChance * 0.25
+  const hardThreshold = baseChance * 0.05
+  const easyThreshold = baseChance * 0.25
 
-  const undiscoveredKnownConnections = exploration.connections.filter((conn) => {
-    const isFromCurrent = conn.fromAreaId === currentArea.id
-    const isToCurrent = conn.toAreaId === currentArea.id
-    if (!isFromCurrent && !isToCurrent) return false
-
-    const connId = `${conn.fromAreaId}->${conn.toAreaId}`
-    const reverseConnId = `${conn.toAreaId}->${conn.fromAreaId}`
-    if (knownConnectionIds.has(connId) || knownConnectionIds.has(reverseConnId)) return false
-
-    const targetId = isFromCurrent ? conn.toAreaId : conn.fromAreaId
-    return knownAreaIds.has(targetId)
-  })
-
-  const undiscoveredUnknownConnections = exploration.connections.filter((conn) => {
-    const isFromCurrent = conn.fromAreaId === currentArea.id
-    const isToCurrent = conn.toAreaId === currentArea.id
-    if (!isFromCurrent && !isToCurrent) return false
-
-    const connId = `${conn.fromAreaId}->${conn.toAreaId}`
-    const reverseConnId = `${conn.toAreaId}->${conn.fromAreaId}`
-    if (knownConnectionIds.has(connId) || knownConnectionIds.has(reverseConnId)) return false
-
-    const targetId = isFromCurrent ? conn.toAreaId : conn.fromAreaId
-    return !knownAreaIds.has(targetId)
-  })
-
-  // Categorize locations as easy or hard
   let easyCount = 0
   let hardCount = 0
 
-  for (const loc of undiscoveredLocations) {
-    if (loc.type === ExplorationLocationType.GATHERING_NODE && loc.gatheringSkillType) {
-      const skillLevel = state.player.skills[loc.gatheringSkillType]?.level ?? 0
-      if (skillLevel === 0) {
-        // Hard: gathering node without skill
-        hardCount++
-        // Will need to calculate actual threshold later
-      } else {
-        // Easy: gathering node with skill
-        easyCount++
-      }
+  for (const discoverable of discoverables) {
+    // Check if this is a hard discovery (threshold very close to hardThreshold)
+    if (Math.abs(discoverable.threshold - hardThreshold) < 0.0001) {
+      hardCount++
+    } else if (discoverable.threshold >= easyThreshold) {
+      easyCount++
     } else {
-      // Easy: mob camp
+      // Anything else (0.25× to 0.5×) is treated as easy
       easyCount++
     }
   }
-
-  // All connections (both known and unknown) count as "easy"
-  easyCount += undiscoveredKnownConnections.length + undiscoveredUnknownConnections.length
 
   // Calculate expected ticks for hard discoveries (if any)
   let hardExpectedTicks = Infinity
   if (hardCount > 0) {
     const level = state.player.skills.Exploration.level
     const rollInterval = getRollInterval(level)
-    const baseChance = getBaseSuccessChance(state, currentArea)
-    // For hard nodes, threshold is baseChance * 0.05
-    const hardThreshold = baseChance * 0.05
     hardExpectedTicks = calculateExpectedTicks(hardThreshold, rollInterval)
   }
 
@@ -323,43 +288,10 @@ export async function interactiveExplore(state: WorldState): Promise<void> {
     }
 
     // Shadow roll to determine tick count without mutating state
-    // Build discoverables list (reuse variables from above, get additional data)
+    // Use shared discoverable building logic to ensure consistency with executeExplore
     const level = state.player.skills.Exploration.level
-    const undiscoveredUnknownConnections = exploration.connections.filter((conn) => {
-      const isFromCurrent = conn.fromAreaId === currentArea.id
-      const isToCurrent = conn.toAreaId === currentArea.id
-      if (!isFromCurrent && !isToCurrent) return false
-      const connId = `${conn.fromAreaId}->${conn.toAreaId}`
-      const targetId = isFromCurrent ? conn.toAreaId : conn.fromAreaId
-      return !knownConnectionIds.has(connId) && !knownAreaIds.has(targetId)
-    })
-
-    // Calculate base chance and build discoverables
     const rollInterval = getRollInterval(level)
-    const baseChance = getBaseSuccessChance(state, currentArea)
-
-    const getLocationThreshold = (loc: ExplorationLocation): number => {
-      if (loc.type === ExplorationLocationType.GATHERING_NODE && loc.gatheringSkillType) {
-        const skillLevel = state.player.skills[loc.gatheringSkillType]?.level ?? 0
-        if (skillLevel === 0) {
-          return baseChance * 0.05
-        }
-        return baseChance * 0.5
-      }
-      return baseChance * 0.5
-    }
-
-    const discoverables = [
-      ...undiscoveredLocations.map((loc) => ({
-        threshold: getLocationThreshold(loc),
-      })),
-      ...undiscoveredKnownConnections.map(() => ({
-        threshold: baseChance * 1.0,
-      })),
-      ...undiscoveredUnknownConnections.map(() => ({
-        threshold: baseChance * 0.25,
-      })),
-    ]
+    const { discoverables } = buildDiscoverables(state, currentArea)
 
     // Clone RNG and shadow roll to find tick count
     const shadowRng = { ...state.rng }

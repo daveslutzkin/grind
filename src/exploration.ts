@@ -1024,34 +1024,25 @@ export async function executeSurvey(state: WorldState, _action: SurveyAction): P
 // ============================================================================
 
 /**
- * Execute Explore action - discover a location or connection within current area
- *
- * Per spec (line 60): "Exploring (can also discover connections to *new* areas with
- * lower probability, but does not reveal the area itself - just that a connection
- * exists to somewhere unknown)"
+ * Discoverable item for exploration
  */
-export async function executeExplore(
+export type Discoverable = {
+  type: "location" | "knownConnection" | "unknownConnection"
+  id: string
+  threshold: number // % chance per roll (0-1)
+  locationType?: string
+}
+
+/**
+ * Build list of discoverable items with their thresholds
+ * Used by both executeExplore and interactive exploration
+ */
+export function buildDiscoverables(
   state: WorldState,
-  _action: ExploreAction
-): Promise<ActionLog> {
-  const tickBefore = state.time.currentTick
-  const rolls: RngRoll[] = []
-
-  // Check preconditions
-  if (state.player.skills.Exploration.level === 0) {
-    return createFailureLog(state, "Explore", "NOT_IN_EXPLORATION_GUILD")
-  }
-
-  if (state.time.sessionRemainingTicks <= 0) {
-    return createFailureLog(state, "Explore", "SESSION_ENDED")
-  }
-
+  currentArea: Area
+): { discoverables: Discoverable[]; baseChance: number } {
   const exploration = state.exploration!
-  const currentArea = exploration.areas.get(exploration.playerState.currentAreaId)!
   const level = state.player.skills.Exploration.level
-
-  // Ensure area is fully generated (content + connections + name)
-  await ensureAreaFullyGenerated(state.rng, exploration, currentArea)
 
   // Find undiscovered locations in current area
   const knownLocationIds = new Set(exploration.playerState.knownLocationIds)
@@ -1091,18 +1082,6 @@ export async function executeExplore(
     return !knownAreaIds.has(targetId)
   })
 
-  const hasDiscoverables =
-    undiscoveredLocations.length > 0 ||
-    undiscoveredKnownConnections.length > 0 ||
-    undiscoveredUnknownConnections.length > 0
-
-  if (!hasDiscoverables) {
-    return {
-      ...createFailureLog(state, "Explore", "AREA_FULLY_EXPLORED"),
-      explorationLog: { areaFullyExplored: true },
-    }
-  }
-
   // Calculate base success chance (used to derive individual thresholds)
   const knowledgeParams = getKnowledgeParams(state, currentArea)
   const baseChance = calculateSuccessChance({
@@ -1111,8 +1090,6 @@ export async function executeExplore(
     ...knowledgeParams,
   })
 
-  const rollInterval = getRollInterval(level)
-
   // Build list of discoverables with their individual thresholds
   // Threshold multipliers per spec:
   // - Connection to known area: 1.0×
@@ -1120,13 +1097,6 @@ export async function executeExplore(
   // - Gathering node with skill: 0.5×
   // - Gathering node without skill: 0.05× (10× lower)
   // - Connection to unknown area: 0.25×
-  type Discoverable = {
-    type: "location" | "knownConnection" | "unknownConnection"
-    id: string
-    threshold: number // % chance per roll (0-1)
-    locationType?: string
-  }
-
   const getLocationThreshold = (loc: ExplorationLocation): number => {
     if (loc.type === "GATHERING_NODE" && loc.gatheringSkillType) {
       const skillLevel = state.player.skills[loc.gatheringSkillType]?.level ?? 0
@@ -1158,6 +1128,51 @@ export async function executeExplore(
       threshold: baseChance * UNKNOWN_CONNECTION_DISCOVERY_MULTIPLIER,
     })),
   ]
+
+  return { discoverables, baseChance }
+}
+
+/**
+ * Execute Explore action - discover a location or connection within current area
+ *
+ * Per spec (line 60): "Exploring (can also discover connections to *new* areas with
+ * lower probability, but does not reveal the area itself - just that a connection
+ * exists to somewhere unknown)"
+ */
+export async function executeExplore(
+  state: WorldState,
+  _action: ExploreAction
+): Promise<ActionLog> {
+  const tickBefore = state.time.currentTick
+  const rolls: RngRoll[] = []
+
+  // Check preconditions
+  if (state.player.skills.Exploration.level === 0) {
+    return createFailureLog(state, "Explore", "NOT_IN_EXPLORATION_GUILD")
+  }
+
+  if (state.time.sessionRemainingTicks <= 0) {
+    return createFailureLog(state, "Explore", "SESSION_ENDED")
+  }
+
+  const exploration = state.exploration!
+  const currentArea = exploration.areas.get(exploration.playerState.currentAreaId)!
+  const level = state.player.skills.Exploration.level
+
+  // Ensure area is fully generated (content + connections + name)
+  await ensureAreaFullyGenerated(state.rng, exploration, currentArea)
+
+  // Build discoverables list using shared logic
+  const { discoverables } = buildDiscoverables(state, currentArea)
+
+  if (discoverables.length === 0) {
+    return {
+      ...createFailureLog(state, "Explore", "AREA_FULLY_EXPLORED"),
+      explorationLog: { areaFullyExplored: true },
+    }
+  }
+
+  const rollInterval = getRollInterval(level)
 
   // Max threshold determines expected ticks to find anything
   const maxThreshold = Math.max(...discoverables.map((d) => d.threshold))
@@ -1268,6 +1283,7 @@ export async function executeExplore(
   const remainingLocations = currentArea.locations.filter(
     (loc) => !exploration.playerState.knownLocationIds.includes(loc.id)
   )
+  const knownAreaIds = new Set(exploration.playerState.knownAreaIds)
   const remainingKnownConnections = exploration.connections.filter((conn) => {
     const isFromCurrent = conn.fromAreaId === currentArea.id
     const isToCurrent = conn.toAreaId === currentArea.id
