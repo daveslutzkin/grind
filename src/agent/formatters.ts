@@ -145,6 +145,7 @@ export function formatWorldState(state: WorldState): string {
     // TOWN: show current location name and available locations by type
     const locationName = getLocationDisplayName(currentLocationId, currentArea)
     lines.push(`Location: ${locationName} in TOWN`)
+    lines.push("")
 
     // Group TOWN locations by type
     if (area && area.locations.length > 0) {
