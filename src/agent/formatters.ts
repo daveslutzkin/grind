@@ -221,6 +221,8 @@ export function formatWorldState(state: WorldState): string {
       lines.push(`${locationName} (${areaName})${statusSuffix}`)
     }
 
+    lines.push("")
+
     // Count known gathering locations separately from other location types
     const knownGatheringLocs = area
       ? area.locations.filter(
