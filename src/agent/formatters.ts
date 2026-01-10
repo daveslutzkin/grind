@@ -486,13 +486,6 @@ export function formatWorldState(state: WorldState): string {
     } else {
       lines.push("Connections: none known")
     }
-
-    // Enemies at current location
-    const enemies = state.world.enemies.filter((e) => e.areaId === currentArea)
-    if (enemies.length > 0) {
-      const enemyStr = enemies.map((e) => `${e.id} (Combat L${e.requiredSkillLevel})`).join(", ")
-      lines.push(`Enemies: ${enemyStr}`)
-    }
   }
 
   // Show enrol hint at guild halls (last, as it's the actionable item)
