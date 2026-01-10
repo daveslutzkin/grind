@@ -406,7 +406,7 @@ export function getWeaponParameters(
  * Check Fight action preconditions
  * NOTE: Combat is not yet fully implemented - enemies are not generated in the world
  */
-export function checkFightAction(state: WorldState, action: FightAction): ActionCheckResult {
+export function checkFightAction(_state: WorldState, _action: FightAction): ActionCheckResult {
   // Combat not yet implemented - no enemies exist in the world
   return { valid: false, failureType: "ENEMY_NOT_FOUND", timeCost: 0, successProbability: 0 }
 }

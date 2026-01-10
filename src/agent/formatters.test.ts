@@ -277,12 +277,12 @@ describe("Formatters", () => {
         // No locations or connections from this area discovered
         const formatted = formatWorldState(state)
 
-        expect(formatted).toContain("unexplored")
-        expect(formatted).not.toContain("FULLY EXPLORED")
+        expect(formatted).toContain("Unexplored")
+        expect(formatted).not.toContain("Fully explored")
         expect(formatted).not.toContain("Gathering:")
       })
 
-      it("should show 'partly explored' when connection discovered but no locations", () => {
+      it("should show 'unexplored' when only one connection is discovered", () => {
         const state = createWorld("explore-status-2")
         const areaId = getOreAreaId(state)
         makeAreaKnown(state, areaId)
@@ -302,9 +302,9 @@ describe("Formatters", () => {
 
         const formatted = formatWorldState(state)
 
-        expect(formatted).toContain("partly explored")
-        expect(formatted).not.toContain("unexplored")
-        expect(formatted).not.toContain("FULLY EXPLORED")
+        expect(formatted).toContain("Unexplored")
+        expect(formatted).not.toContain("Partly explored")
+        expect(formatted).not.toContain("Fully explored")
       })
 
       it("should show 'partly explored' when locations done but unknown-area connections remain", () => {
@@ -328,9 +328,9 @@ describe("Formatters", () => {
         const formatted = formatWorldState(state)
 
         // Should show "partly explored" because there's still an unknown-area connection to discover
-        expect(formatted).toContain("partly explored")
-        expect(formatted).not.toContain("unexplored")
-        expect(formatted).not.toContain("fully explored")
+        expect(formatted).toContain("Partly explored")
+        expect(formatted).not.toContain("Unexplored")
+        expect(formatted).not.toContain("Fully explored")
         expect(formatted).toContain("Gathering:")
       })
 
@@ -362,9 +362,9 @@ describe("Formatters", () => {
         const formatted = formatWorldState(state)
 
         // Should show "fully explored" when all locations and known-area connections are discovered
-        expect(formatted).toContain("fully explored")
-        expect(formatted).not.toContain("partly explored")
-        expect(formatted).not.toContain("unexplored")
+        expect(formatted).toContain("Fully explored")
+        expect(formatted).not.toContain("Partly explored")
+        expect(formatted).not.toContain("Unexplored")
       })
     })
 
@@ -410,7 +410,7 @@ describe("Formatters", () => {
 
         expect(formatted).toContain("Enemy camps:")
         expect(formatted).toContain("enemy camp (difficulty 3)")
-        expect(formatted).toContain("partly explored")
+        expect(formatted).toContain("Partly explored")
       })
 
       it("should not show Gathering line when only enemy camp discovered (no gathering nodes)", () => {
@@ -500,7 +500,7 @@ describe("Formatters", () => {
         // Should show enemy camp details
         expect(formatted).toContain("Enemy camp: creature")
         expect(formatted).toContain("Difficulty: 5")
-        expect(formatted).toContain("fight / leave")
+        expect(formatted).toContain("fight || leave")
 
         // Should NOT show the general area information (connections, etc) when at camp
         expect(formatted).not.toContain("Connections:")

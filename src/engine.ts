@@ -24,7 +24,7 @@ import type {
   GatheringSkillID,
 } from "./types.js"
 import { isInTown, GatherMode, NodeType, getCurrentAreaId } from "./types.js"
-import { roll, rollLootTable, rollFloat } from "./rng.js"
+import { rollFloat } from "./rng.js"
 import {
   executeSurvey,
   executeExplore,
@@ -577,7 +577,7 @@ function executeCarefulAllExtraction(
  * Execute Fight action
  * NOTE: Combat is not yet fully implemented - this will always fail with ENEMY_NOT_FOUND
  */
-function executeFight(state: WorldState, action: FightAction, rolls: RngRoll[]): ActionLog {
+function executeFight(state: WorldState, action: FightAction, _rolls: RngRoll[]): ActionLog {
   // Use shared precondition check (will always fail - no enemies exist)
   const check = checkFightAction(state, action)
   if (!check.valid) {

@@ -50,6 +50,7 @@ function getAreaDisplayName(state: WorldState, areaId: string): string {
 export function formatWorldState(state: WorldState): string {
   const lines: string[] = []
   const currentArea = getCurrentAreaId(state)
+  const possibleActions: string[] = []
 
   // ========== PLAYER SECTION (separated by blank line) ==========
 
@@ -322,7 +323,8 @@ export function formatWorldState(state: WorldState): string {
                   }
                   return `${skillCommands} ${lowerMode}`
                 })
-                lines.push(`Actions: ${modeExamples.join(" || ")}`)
+                possibleActions.push(...modeExamples)
+                possibleActions.push("leave")
               }
             } else {
               lines.push("No visible resources at your current skill level.")
@@ -338,8 +340,8 @@ export function formatWorldState(state: WorldState): string {
 
         lines.push(`Enemy camp: ${creatureType}`)
         lines.push(`Difficulty: ${difficulty}`)
-        lines.push("")
-        lines.push("Actions: fight || leave")
+        possibleActions.push("fight")
+        possibleActions.push("leave")
       }
     } else {
       // At hub - show area-level information
@@ -512,9 +514,13 @@ export function formatWorldState(state: WorldState): string {
     const skill = currentLocation.guildType
     const playerSkill = state.player.skills[skill]
     if (!playerSkill || playerSkill.level === 0) {
-      lines.push("")
-      lines.push(`Can enrol in: ${skill}`)
+      possibleActions.push("enrol")
     }
+  }
+
+  if (possibleActions.length > 0) {
+    lines.push("")
+    lines.push(`Actions: ${possibleActions.join(" || ")}`)
   }
 
   return lines.join("\n")

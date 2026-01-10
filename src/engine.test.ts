@@ -540,7 +540,7 @@ describe("Engine", () => {
 
     it("should fail if not at enemy location", async () => {
       const state = createWorld("ore-test")
-      const areaId = getDistance1AreaId(state)
+      const _areaId = getDistance1AreaId(state)
       // Player starts at TOWN, enemy is at areaId
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
       state.player.equippedWeapon = "CRUDE_WEAPON"
