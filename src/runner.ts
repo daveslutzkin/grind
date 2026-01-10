@@ -20,9 +20,10 @@ import {
 } from "./types.js"
 import { LOCATION_DISPLAY_NAMES, getSkillForGuildLocation } from "./world.js"
 import { getReachableAreas, getAreaDisplayName } from "./exploration.js"
+import { formatWorldState, formatActionLog } from "./agent/formatters.js"
 
 // Re-export agent formatters for unified display
-export { formatWorldState, formatActionLog } from "./agent/formatters.js"
+export { formatWorldState, formatActionLog }
 
 // ============================================================================
 // Types
@@ -951,6 +952,23 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
 
     // Call beforeAction hook if provided
     config.beforeAction?.(action, session.state)
+
+    // Handle interactive exploration (Explore and Survey)
+    if (action.type === "Explore" || action.type === "Survey") {
+      // Import interactive functions dynamically
+      const { interactiveExplore, interactiveSurvey } = await import("./interactive.js")
+
+      if (action.type === "Explore") {
+        await interactiveExplore(session.state)
+      } else {
+        await interactiveSurvey(session.state)
+      }
+
+      // Interactive mode handles its own display, just show state after
+      console.log("")
+      console.log(formatWorldState(session.state))
+      continue
+    }
 
     // Execute the action
     const log = await executeAction(session.state, action)
