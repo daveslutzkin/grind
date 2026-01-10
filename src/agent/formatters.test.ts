@@ -119,7 +119,8 @@ describe("Formatters", () => {
         const formatted = formatWorldState(state)
 
         // Should show node type but NO material details
-        expect(formatted).toContain("Gathering: Ore vein")
+        expect(formatted).toContain("Gathering:")
+        expect(formatted).toContain("  Ore vein")
         expect(formatted).not.toContain("✓")
         expect(formatted).not.toMatch(/\(L\d+\)/)
       })
@@ -138,8 +139,9 @@ describe("Formatters", () => {
 
         const formatted = formatWorldState(state)
 
-        // Should show node type on one line, materials on next
-        expect(formatted).toContain("Gathering: Ore vein")
+        // Should show node type and materials on same line with dash separator
+        expect(formatted).toContain("Gathering:")
+        expect(formatted).toContain("  Ore vein -")
         // Should have at least one material with ✓ (L1 gatherable) - human readable names
         expect(formatted).toMatch(/[A-Z][a-z]+( [A-Z][a-z]+)? ✓/)
       })

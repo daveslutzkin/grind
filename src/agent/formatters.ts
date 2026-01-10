@@ -326,6 +326,7 @@ export function formatWorldState(state: WorldState): string {
         })
 
         if (nodesHere && nodesHere.length > 0) {
+          lines.push("Gathering:")
           for (const node of nodesHere) {
             const view = getPlayerNodeView(node, state)
             const nodeName = getNodeTypeName(view.nodeType)
@@ -338,13 +339,12 @@ export function formatWorldState(state: WorldState): string {
               // No skill - show node type with required skill and guild
               const requiredSkill = getSkillForNodeType(view.nodeType)
               const guildName = getGuildForSkill(requiredSkill)
-              lines.push(`Gathering: ${nodeName} (requires ${requiredSkill} - ${guildName})`)
+              lines.push(`  ${nodeName} (requires ${requiredSkill} - ${guildName})`)
             } else if (skillLevel < locationRequirement) {
               // Has skill but not enough for this tier - show as locked
-              lines.push(`Gathering: ${nodeName} 🔒 (${skill} L${locationRequirement})`)
+              lines.push(`  ${nodeName} 🔒 (${skill} L${locationRequirement})`)
             } else {
               // Has sufficient skill - show materials with requirements
-              lines.push(`Gathering: ${nodeName}`)
               // Sort materials by unlock level (lowest first)
               const sortedMaterials = [...view.visibleMaterials].sort(
                 (a, b) => a.requiredLevel - b.requiredLevel
@@ -362,12 +362,13 @@ export function formatWorldState(state: WorldState): string {
                 }
               })
               if (matStrings.length > 0) {
-                lines.push(`  ${matStrings.join(", ")}`)
+                lines.push(`  ${nodeName} - ${matStrings.join(", ")}`)
               }
             }
           }
         } else {
-          lines.push("Gathering: none visible")
+          lines.push("Gathering:")
+          lines.push("  none visible")
         }
       }
 
