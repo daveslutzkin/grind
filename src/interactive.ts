@@ -29,6 +29,7 @@ import {
   executeFarTravel,
 } from "./exploration.js"
 import { formatActionLog, formatTickFeedback } from "./agent/formatters.js"
+import { promptYesNo } from "./prompt.js"
 
 // ============================================================================
 // Animation Runner Infrastructure
@@ -237,46 +238,6 @@ function analyzeRemainingAreas(state: WorldState): {
 // ============================================================================
 
 /**
- * Prompt user with y/n question using raw mode to avoid readline conflicts
- */
-async function promptYesNo(question: string): Promise<boolean> {
-  if (!process.stdin.isTTY) {
-    // Non-interactive mode: default to no
-    console.log(`${question} (y/n) [auto: n]`)
-    return false
-  }
-
-  return new Promise((resolve) => {
-    process.stdout.write(`${question} (y/n) `)
-
-    // Save current raw mode state
-    const wasRaw = process.stdin.isRaw
-
-    process.stdin.setRawMode(true)
-    process.stdin.resume()
-    process.stdin.setEncoding("utf8")
-
-    const handler = (key: string) => {
-      process.stdin.removeListener("data", handler)
-      process.stdin.setRawMode(wasRaw ?? false)
-
-      // Handle Ctrl+C
-      if (key === "\u0003") {
-        process.stdout.write("\n")
-        process.exit(0)
-      }
-
-      // Echo the key and newline
-      process.stdout.write(key + "\n")
-
-      resolve(key.toLowerCase() === "y")
-    }
-
-    process.stdin.once("data", handler)
-  })
-}
-
-/**
  * Interactive exploration loop - continuously explores until user stops or area exhausted
  */
 export async function interactiveExplore(state: WorldState): Promise<void> {
@@ -342,16 +303,23 @@ export async function interactiveExplore(state: WorldState): Promise<void> {
 
       // Show discovery result
       console.log(formatActionLog(finalLog, state))
+
+      // Check if there are any discoverables left by rebuilding the list
+      const { discoverables: remainingDiscoverables } = buildDiscoverables(state, currentArea)
+
+      if (remainingDiscoverables.length === 0) {
+        // Check if bonus XP was awarded
+        const bonusXP = finalLog.explorationLog?.discoveryBonusXP
+        if (bonusXP) {
+          console.log("\n✓ Area fully explored - bonus XP!")
+          console.log(`  +${bonusXP} Exploration XP`)
+        } else {
+          console.log("\n✓ Area fully explored - nothing left to discover")
+        }
+        return
+      }
     } finally {
       cleanup()
-    }
-
-    // Check if there are any discoverables left by rebuilding the list
-    const { discoverables: remainingDiscoverables } = buildDiscoverables(state, currentArea)
-
-    if (remainingDiscoverables.length === 0) {
-      console.log("\n✓ Area fully explored - nothing left to discover")
-      return
     }
 
     // Prompt to continue exploring

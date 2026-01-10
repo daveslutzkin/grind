@@ -330,12 +330,5 @@ export function formatDynamicState(state: WorldState): string {
     }
   }
 
-  // Enemies at current location
-  const enemiesHere = state.world.enemies.filter((e) => e.areaId === currentArea)
-  if (enemiesHere.length > 0) {
-    const enemyList = enemiesHere.map((e) => `${e.id}[Combat L${e.requiredSkillLevel}]`).join(", ")
-    lines.push(`Enemies here: ${enemyList}`)
-  }
-
   return lines.join("\n")
 }

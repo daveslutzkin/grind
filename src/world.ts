@@ -87,6 +87,11 @@ export function getLocationDisplayName(
           if (node) {
             return getNodeTypeName(node.nodeType)
           }
+        } else if (location && location.type === ExplorationLocationType.MOB_CAMP) {
+          // For mob camps, use the creature type to generate a display name
+          const creatureType = location.creatureType || "creature"
+          const capitalizedType = creatureType.charAt(0).toUpperCase() + creatureType.slice(1)
+          return `${capitalizedType} Camp`
         }
       }
     }
@@ -489,7 +494,6 @@ export function createWorld(seed: string): WorldState {
 
     world: {
       nodes: allNodes,
-      enemies: [], // Enemies generated when areas are discovered
       recipes: [
         {
           id: "iron-bar-recipe",

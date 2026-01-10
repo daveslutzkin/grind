@@ -177,6 +177,37 @@ describe("Area Naming", () => {
 
       expect(prompt.toLowerCase()).toMatch(/place|location|name|evocative/)
     })
+
+    it("should include exclude names when provided", () => {
+      const area: Area = {
+        id: "area-d2-i0",
+        distance: 2,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
+      }
+
+      const excludeNames = ["Slate Ridge", "Iron Valley"]
+      const prompt = buildAreaNamingPrompt(area, [], excludeNames)
+
+      expect(prompt).toContain("Slate Ridge")
+      expect(prompt).toContain("Iron Valley")
+      expect(prompt.toLowerCase()).toMatch(/don't use|already taken|avoid/)
+    })
+
+    it("should not include exclusion section when no exclude names", () => {
+      const area: Area = {
+        id: "area-d2-i0",
+        distance: 2,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
+      }
+
+      const prompt = buildAreaNamingPrompt(area, [], [])
+
+      expect(prompt.toLowerCase()).not.toMatch(/don't use|already taken/)
+    })
   })
 
   describe("getNeighborNames", () => {
@@ -320,7 +351,7 @@ describe("Area Naming", () => {
         indexInDistance: 0,
       }
 
-      const name = await generateAreaName(area, [], "test-api-key", mockClient)
+      const name = await generateAreaName(area, [], [], "test-api-key", mockClient)
 
       expect(name).toBe("Thornwood Vale")
       expect(createCallArgs).toHaveLength(1)
@@ -339,7 +370,7 @@ describe("Area Naming", () => {
         indexInDistance: 0,
       }
 
-      const name = await generateAreaName(area, [], "test-api-key", mockClient)
+      const name = await generateAreaName(area, [], [], "test-api-key", mockClient)
 
       expect(name).toBe("The Scarred Basin")
     })
@@ -354,7 +385,7 @@ describe("Area Naming", () => {
       }
 
       const neighborNames = ["Whispering Hollow", "The Iron Ridge"]
-      await generateAreaName(area, neighborNames, "test-api-key", mockClient)
+      await generateAreaName(area, neighborNames, [], "test-api-key", mockClient)
 
       // Check that the prompt contains neighbor names
       const callArgs = createCallArgs[0] as { messages: Array<{ content: string }> }
@@ -376,7 +407,7 @@ describe("Area Naming", () => {
         indexInDistance: 0,
       }
 
-      const name = await generateAreaName(area, [], "test-api-key", mockClient)
+      const name = await generateAreaName(area, [], [], "test-api-key", mockClient)
 
       // Should return a fallback based on area ID
       expect(name).toBe("Unnamed Wilds")
@@ -395,7 +426,7 @@ describe("Area Naming", () => {
         indexInDistance: 0,
       }
 
-      const name = await generateAreaName(area, [], "test-api-key", mockClient)
+      const name = await generateAreaName(area, [], [], "test-api-key", mockClient)
 
       expect(name).toBe("Unnamed Wilds")
     })
@@ -409,7 +440,7 @@ describe("Area Naming", () => {
         indexInDistance: 0,
       }
 
-      await generateAreaName(area, [], "test-api-key", mockClient)
+      await generateAreaName(area, [], [], "test-api-key", mockClient)
 
       const callArgs = createCallArgs[0] as { model: string }
       // Should use haiku for speed/cost efficiency
@@ -425,7 +456,7 @@ describe("Area Naming", () => {
         indexInDistance: 0,
       }
 
-      await generateAreaName(area, [], "test-api-key", mockClient)
+      await generateAreaName(area, [], [], "test-api-key", mockClient)
 
       const callArgs = createCallArgs[0] as { max_tokens: number }
       expect(callArgs.max_tokens).toBeLessThanOrEqual(50)
@@ -454,6 +485,101 @@ describe("Area Naming", () => {
           process.env.ANTHROPIC_API_KEY = originalEnv
         }
       }
+    })
+
+    it("should retry when generated name is a duplicate", async () => {
+      const callCount = { value: 0 }
+      mockClient.create = async () => {
+        callCount.value++
+        // First call returns a duplicate, second returns unique
+        if (callCount.value === 1) {
+          return { content: [{ type: "text", text: "Duplicate Name" }] }
+        }
+        return { content: [{ type: "text", text: "Unique Name" }] }
+      }
+
+      const area: Area = {
+        id: "area-d1-i0",
+        distance: 1,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
+      }
+
+      const existingNames = ["Duplicate Name", "Another Name"]
+      const name = await generateAreaName(area, [], existingNames, "test-api-key", mockClient)
+
+      expect(name).toBe("Unique Name")
+      expect(callCount.value).toBe(2)
+    })
+
+    it("should include duplicate name in exclusion list on retry", async () => {
+      const calls: string[] = []
+      mockClient.create = async (params) => {
+        calls.push(params.messages[0].content)
+        if (calls.length === 1) {
+          return { content: [{ type: "text", text: "Duplicate Name" }] }
+        }
+        return { content: [{ type: "text", text: "Unique Name" }] }
+      }
+
+      const area: Area = {
+        id: "area-d1-i0",
+        distance: 1,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
+      }
+
+      const existingNames = ["Duplicate Name"]
+      await generateAreaName(area, [], existingNames, "test-api-key", mockClient)
+
+      // Second call should include "Duplicate Name" in exclusion list
+      expect(calls[1]).toContain("Duplicate Name")
+      expect(calls[1].toLowerCase()).toMatch(/don't use|already taken/)
+    })
+
+    it("should return fallback after max retries with duplicates", async () => {
+      // Always return a duplicate name
+      mockClient.create = async () => ({
+        content: [{ type: "text", text: "Always Duplicate" }],
+      })
+
+      const area: Area = {
+        id: "area-d1-i0",
+        distance: 1,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
+      }
+
+      const existingNames = ["Always Duplicate"]
+      const name = await generateAreaName(area, [], existingNames, "test-api-key", mockClient)
+
+      // Should fall back after exhausting retries
+      expect(name).toBe("Unnamed Wilds")
+    })
+
+    it("should accept unique name immediately without retrying", async () => {
+      const callCount = { value: 0 }
+      mockClient.create = async () => {
+        callCount.value++
+        return { content: [{ type: "text", text: "Unique Name" }] }
+      }
+
+      const area: Area = {
+        id: "area-d1-i0",
+        distance: 1,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
+      }
+
+      const existingNames = ["Different Name", "Another Name"]
+      const name = await generateAreaName(area, [], existingNames, "test-api-key", mockClient)
+
+      expect(name).toBe("Unique Name")
+      expect(callCount.value).toBe(1) // Only one call needed
     })
   })
 
@@ -585,6 +711,82 @@ describe("Area Naming", () => {
         // Restore original env
         if (originalEnv) {
           process.env.ANTHROPIC_API_KEY = originalEnv
+        }
+      }
+    })
+
+    it("should check uniqueness against loaded area names after save/load", async () => {
+      // This test verifies that uniqueness checking works across save/load cycles
+      const originalEnv = process.env.ANTHROPIC_API_KEY
+      process.env.ANTHROPIC_API_KEY = "test-key"
+
+      try {
+        const { ensureAreaFullyGenerated } = await import("./exploration.js")
+        const { serializeSession, deserializeSession } = await import("./persistence.js")
+        const { createWorld } = await import("./world.js")
+
+        // Create a world with a known seed
+        const state = createWorld("test-seed-uniqueness")
+
+        // Modify the world to have pre-named areas (simulating previously generated state)
+        const existingAreas = Array.from(state.exploration.areas.values()).filter(
+          (a) => a.distance === 1
+        )
+        expect(existingAreas.length).toBeGreaterThanOrEqual(3) // Ensure we have at least 3 areas
+
+        // Name the first two areas
+        existingAreas[0].name = "Existing Area One"
+        existingAreas[0].generated = true
+        existingAreas[1].name = "Existing Area Two"
+        existingAreas[1].generated = true
+
+        // Leave the third area unnamed - we'll name it after load (existingAreas[2])
+
+        // Create a session for serialization
+        const session = {
+          state,
+          stats: {
+            logs: [],
+            startingSkills: { ...state.player.skills },
+            totalSession: state.time.sessionRemainingTicks,
+          },
+        }
+
+        // Serialize and deserialize to simulate save/load
+        const serialized = serializeSession(session, "test-seed-uniqueness")
+        const deserialized = deserializeSession(serialized)
+
+        // Verify loaded areas have their names preserved
+        const loadedExploration = deserialized.state.exploration
+        const loadedAreas = Array.from(loadedExploration.areas.values()).filter(
+          (a) => a.distance === 1
+        )
+        expect(loadedAreas[0].name).toBe("Existing Area One")
+        expect(loadedAreas[1].name).toBe("Existing Area Two")
+        expect(loadedAreas[2].name).toBeUndefined() // Third area should still be unnamed
+
+        // Generate name for the third area after loading
+        const newArea = loadedAreas[2]
+        await ensureAreaFullyGenerated(deserialized.state.rng, loadedExploration, newArea)
+
+        // The new area should get a name
+        expect(newArea.name).toBeDefined()
+
+        // Verify the new name is unique (doesn't match loaded names)
+        const allNames = Array.from(loadedExploration.areas.values())
+          .map((a) => a.name)
+          .filter((n): n is string => n !== undefined)
+
+        expect(new Set(allNames).size).toBe(allNames.length) // All names should be unique
+        expect(allNames).toContain("Existing Area One")
+        expect(allNames).toContain("Existing Area Two")
+        expect(allNames).toContain(newArea.name) // New name should be in the list
+      } finally {
+        // Restore original env
+        if (originalEnv) {
+          process.env.ANTHROPIC_API_KEY = originalEnv
+        } else {
+          delete process.env.ANTHROPIC_API_KEY
         }
       }
     })

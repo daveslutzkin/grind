@@ -77,22 +77,58 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
 
   switch (cmd) {
     case "gather": {
-      const nodeId = parts[1]
-      const modeName = parts[2]?.toLowerCase()
+      // Check if first argument is a mode (not a nodeId) - allows omitting nodeId when at a node
+      const firstArg = parts[1]?.toLowerCase()
+      const possibleModes = ["focus", "careful", "appraise"]
+      const isFirstArgMode = possibleModes.includes(firstArg || "")
+
+      let nodeId: string | undefined
+      let modeName: string | undefined
+      let materialIndex = 3
+
+      if (isFirstArgMode) {
+        // Usage: gather <mode> [material] - infer nodeId from current location
+        modeName = firstArg
+        materialIndex = 2
+
+        // Try to infer nodeId from current location
+        const currentLocationId = context.currentLocationId
+        if (currentLocationId && context.state) {
+          const match = currentLocationId.match(/^(.+?)-(TREE_STAND|ORE_VEIN)-loc-(\d+)$/)
+          if (match) {
+            const [, areaId, , locIndex] = match
+            nodeId = `${areaId}-node-${locIndex}`
+          }
+        }
+
+        if (!nodeId) {
+          if (context.logErrors) {
+            console.log("You must be at a gathering node to use 'gather <mode>'.")
+            console.log("Usage: gather <node> <mode> [material]")
+            console.log("  Or use 'mine <mode>' or 'chop <mode>' as shortcuts")
+          }
+          return null
+        }
+      } else {
+        // Usage: gather <node> <mode> [material]
+        nodeId = parts[1]
+        modeName = parts[2]?.toLowerCase()
+      }
 
       if (!nodeId || !modeName) {
         if (context.logErrors) {
           console.log("Usage: gather <node> <mode> [material]")
+          console.log("  Or: gather <mode> [material] (when at a gathering node)")
           console.log("  Modes: focus <material>, careful, appraise")
         }
         return null
       }
 
       if (modeName === "focus") {
-        const focusMaterial = parts[3]?.toUpperCase()
+        const focusMaterial = parts[materialIndex]?.toUpperCase()
         if (!focusMaterial) {
           if (context.logErrors) {
-            console.log("FOCUS mode requires a material: gather <node> focus <material>")
+            console.log("FOCUS mode requires a material: gather focus <material>")
           }
           return null
         }
@@ -354,6 +390,42 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         return null
       }
 
+      // Check for enemy camp aliases (camp, enemy camp, mob camp)
+      const enemyCampAliases = ["enemy camp", "camp", "mob camp"]
+      const baseAlias = enemyCampAliases.find((alias) => inputName.startsWith(alias))
+      if (baseAlias) {
+        // Extract optional index (e.g., "enemy camp 2" -> index 2)
+        const remainder = inputName.slice(baseAlias.length).trim()
+        const index = remainder ? parseInt(remainder, 10) : 1
+
+        const currentAreaId = context.state?.exploration.playerState.currentAreaId
+        const area = context.state?.exploration.areas.get(currentAreaId ?? "")
+        const knownLocationIds = new Set(
+          context.state?.exploration.playerState.knownLocationIds ?? []
+        )
+        const mobCampLocations =
+          area?.locations.filter(
+            (loc: ExplorationLocation) =>
+              loc.type === ExplorationLocationType.MOB_CAMP && knownLocationIds.has(loc.id)
+          ) ?? []
+
+        if (mobCampLocations.length === 0) {
+          if (context.logErrors) {
+            console.log("No discovered enemy camps in current area")
+          }
+          return null
+        }
+
+        if (isNaN(index) || index < 1 || index > mobCampLocations.length) {
+          if (context.logErrors) {
+            console.log(`Invalid camp index. Found ${mobCampLocations.length} enemy camp(s).`)
+          }
+          return null
+        }
+
+        return { type: "TravelToLocation", locationId: mobCampLocations[index - 1].id }
+      }
+
       // Next, try to match against location display names (case-insensitive, partial match)
       const matchedLocation = Object.entries(LOCATION_DISPLAY_NAMES).find(([, displayName]) =>
         displayName.toLowerCase().includes(inputName)
@@ -480,7 +552,6 @@ export function printHelp(state: WorldState, options?: { showHints?: boolean }):
   const currentLocation = area?.locations.find((loc) => loc.id === currentLocationId)
 
   const nodes = state.world.nodes.filter((n) => n.areaId === currentAreaId)
-  const enemies = state.world.enemies.filter((e) => e.areaId === currentAreaId)
 
   // Recipes only shown at guild halls of matching type
   const isAtGuildHall =
@@ -495,7 +566,6 @@ export function printHelp(state: WorldState, options?: { showHints?: boolean }):
   // Only show hints section if there's something relevant
   const hasHints =
     nodes.length > 0 ||
-    enemies.length > 0 ||
     recipes.length > 0 ||
     contracts.length > 0 ||
     currentAreaId === state.world.storageAreaId
@@ -503,7 +573,6 @@ export function printHelp(state: WorldState, options?: { showHints?: boolean }):
   if (hasHints) {
     console.log("\nAvailable here:")
     if (nodes.length > 0) console.log(`  Nodes: ${nodes.map((n) => n.nodeId).join(", ")}`)
-    if (enemies.length > 0) console.log(`  Enemies: ${enemies.map((e) => e.id).join(", ")}`)
     if (recipes.length > 0) console.log(`  Recipes: ${recipes.map((r) => r.id).join(", ")}`)
     if (contracts.length > 0) console.log(`  Contracts: ${contracts.map((c) => c.id).join(", ")}`)
     if (currentAreaId === state.world.storageAreaId) console.log(`  Storage available`)
@@ -894,6 +963,7 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
   let session: Session
   if (process.stdin.isTTY && saveExists(seed)) {
     const save = loadSave(seed)
+    // promptResume uses promptYesNo which handles readline conflicts internally
     const shouldResume = await promptResume(save)
     if (shouldResume) {
       // Resume from save

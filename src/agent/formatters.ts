@@ -111,6 +111,7 @@ export function formatTickFeedback(feedback: TickFeedback): string | null {
 export function formatWorldState(state: WorldState): string {
   const lines: string[] = []
   const currentArea = getCurrentAreaId(state)
+  const possibleActions: string[] = []
 
   // ========== PLAYER SECTION (separated by blank line) ==========
 
@@ -202,10 +203,12 @@ export function formatWorldState(state: WorldState): string {
   const area = state.exploration.areas.get(currentArea)
   const knownLocationIds = state.exploration.playerState.knownLocationIds
 
-  // Check if we're at a gathering location (used later for conditional display)
+  // Check if we're at a special location (used later for conditional display)
   const areaLocationObj = area?.locations.find((loc) => loc.id === currentLocationId)
   const isAtGatheringNode =
     currentLocationId !== null && areaLocationObj?.type === ExplorationLocationType.GATHERING_NODE
+  const isAtMobCamp =
+    currentLocationId !== null && areaLocationObj?.type === ExplorationLocationType.MOB_CAMP
 
   if (currentArea === "TOWN") {
     // TOWN: show current location name and available locations by type
@@ -214,7 +217,7 @@ export function formatWorldState(state: WorldState): string {
     lines.push("")
 
     // Group TOWN locations by type
-    if (area && area.locations.length > 0) {
+    if (!currentLocationId && area && area.locations.length > 0) {
       const guilds = area.locations.filter((loc) => loc.type === ExplorationLocationType.GUILD_HALL)
       const services = area.locations.filter(
         (loc) => loc.type !== ExplorationLocationType.GUILD_HALL
@@ -252,11 +255,14 @@ export function formatWorldState(state: WorldState): string {
       return knownConnectionIds.has(connId)
     })
 
-    // Determine status suffix for Location line
-    let statusSuffix = ""
-    const hasAnyDiscovery = knownLocs > 0 || discoveredConnectionsFromArea.length > 0
+    // Determine exploration status for Location line
+    let explorationStatus = ""
 
-    // Check if area is fully explored (same logic as in exploration.ts)
+    // Every area has 1 connection discovered (that's how the player got there)
+    // so only MORE THAN one connection counts as a discovery
+    const hasAnyDiscovery = knownLocs > 0 || discoveredConnectionsFromArea.length > 1
+
+    // Check if area is fully explored
     const remainingLocations = area
       ? area.locations.filter((loc) => !knownLocationIds.includes(loc.id))
       : []
@@ -264,30 +270,51 @@ export function formatWorldState(state: WorldState): string {
       const isFromCurrent = conn.fromAreaId === currentArea
       const isToCurrent = conn.toAreaId === currentArea
       if (!isFromCurrent && !isToCurrent) return false
+      // Check both forward and reverse connection IDs
       const connId = `${conn.fromAreaId}->${conn.toAreaId}`
+      const reverseConnId = `${conn.toAreaId}->${conn.fromAreaId}`
+      const isDiscovered = knownConnectionIds.has(connId) || knownConnectionIds.has(reverseConnId)
       const targetId = isFromCurrent ? conn.toAreaId : conn.fromAreaId
       const targetIsKnown = state.exploration.playerState.knownAreaIds.includes(targetId)
-      return !knownConnectionIds.has(connId) && targetIsKnown
+      return !isDiscovered && targetIsKnown
+    })
+    // Also check for undiscovered connections to UNKNOWN areas
+    const remainingUnknownConnections = state.exploration.connections.filter((conn) => {
+      const isFromCurrent = conn.fromAreaId === currentArea
+      const isToCurrent = conn.toAreaId === currentArea
+      if (!isFromCurrent && !isToCurrent) return false
+      // Check both forward and reverse connection IDs
+      const connId = `${conn.fromAreaId}->${conn.toAreaId}`
+      const reverseConnId = `${conn.toAreaId}->${conn.fromAreaId}`
+      const isDiscovered = knownConnectionIds.has(connId) || knownConnectionIds.has(reverseConnId)
+      const targetId = isFromCurrent ? conn.toAreaId : conn.fromAreaId
+      const targetIsKnown = state.exploration.playerState.knownAreaIds.includes(targetId)
+      // Connection to unknown area that hasn't been discovered yet
+      return !isDiscovered && !targetIsKnown
     })
     const isFullyExplored =
-      remainingLocations.length === 0 && remainingKnownConnections.length === 0
+      remainingLocations.length === 0 &&
+      remainingKnownConnections.length === 0 &&
+      remainingUnknownConnections.length === 0
 
     if (!hasAnyDiscovery) {
       // Nothing discovered yet (no locations AND no connections from here)
-      statusSuffix = " — unexplored"
+      explorationStatus = "Unexplored (use explore action to start)"
     } else if (isFullyExplored) {
-      // All locations and connections to known areas discovered
-      statusSuffix = " — fully explored"
+      // All locations and all connections discovered
+      explorationStatus = "Fully explored!"
     } else {
       // Something discovered but not everything
-      statusSuffix = " — partly explored"
+      explorationStatus = "Partly explored"
     }
 
     // Title format: just area name at hub, "Location Name (area)" at a location
     const areaName = getAreaDisplayName(state, currentArea)
     const isAtHub = currentLocationId === null
     if (isAtHub) {
-      lines.push(`${areaName}${statusSuffix}`)
+      lines.push(`** ${areaName} **`)
+      lines.push("")
+      lines.push(explorationStatus)
     } else {
       // At a sub-location - don't show exploration status
       lines.push(`${locationName} (${areaName})`)
@@ -340,11 +367,40 @@ export function formatWorldState(state: WorldState): string {
               for (const str of matStrings) {
                 lines.push(`  ${str}`)
               }
+              lines.push("")
+              // Show available gathering commands when player can actually gather
+              const playerSkill = state.player.skills[skill]
+              if (playerSkill) {
+                const unlockedModes = getUnlockedModes(playerSkill.level)
+                const skillCommands = skill === "Mining" ? "mine" : "chop"
+                const modeExamples = unlockedModes.slice(0, 2).map((mode) => {
+                  const lowerMode = mode.toLowerCase().replace("_all", "")
+                  if (mode === "FOCUS") {
+                    const canGatherMat = sortedMaterials.find((m) => m.requiredLevel <= skillLevel)
+                    const exampleMat = canGatherMat
+                      ? canGatherMat.materialId.toLowerCase()
+                      : "material"
+                    return `${skillCommands} focus ${exampleMat}`
+                  }
+                  return `${skillCommands} ${lowerMode}`
+                })
+                possibleActions.push(...modeExamples)
+              }
             } else {
               lines.push("No visible resources at your current skill level.")
             }
           }
         }
+      }
+    } else if (isAtMobCamp) {
+      // At an enemy camp - show creature type and difficulty
+      if (areaLocationObj) {
+        const creatureType = areaLocationObj.creatureType || "unknown creature"
+        const difficulty = areaLocationObj.difficulty ?? 0
+
+        lines.push(`Enemy camp: ${creatureType}`)
+        lines.push(`Difficulty: ${difficulty}`)
+        possibleActions.push("fight")
       }
     } else {
       // At hub - show area-level information
@@ -368,6 +424,7 @@ export function formatWorldState(state: WorldState): string {
         })
 
         if (nodesHere && nodesHere.length > 0) {
+          lines.push("Gathering:")
           for (const node of nodesHere) {
             const view = getPlayerNodeView(node, state)
             const nodeName = getNodeTypeName(view.nodeType)
@@ -380,13 +437,12 @@ export function formatWorldState(state: WorldState): string {
               // No skill - show node type with required skill and guild
               const requiredSkill = getSkillForNodeType(view.nodeType)
               const guildName = getGuildForSkill(requiredSkill)
-              lines.push(`Gathering: ${nodeName} (requires ${requiredSkill} - ${guildName})`)
+              lines.push(`  ${nodeName} (requires ${requiredSkill} - ${guildName})`)
             } else if (skillLevel < locationRequirement) {
               // Has skill but not enough for this tier - show as locked
-              lines.push(`Gathering: ${nodeName} 🔒 (${skill} L${locationRequirement})`)
+              lines.push(`  ${nodeName} 🔒 (${skill} L${locationRequirement})`)
             } else {
               // Has sufficient skill - show materials with requirements
-              lines.push(`Gathering: ${nodeName}`)
               // Sort materials by unlock level (lowest first)
               const sortedMaterials = [...view.visibleMaterials].sort(
                 (a, b) => a.requiredLevel - b.requiredLevel
@@ -404,12 +460,13 @@ export function formatWorldState(state: WorldState): string {
                 }
               })
               if (matStrings.length > 0) {
-                lines.push(`  ${matStrings.join(", ")}`)
+                lines.push(`  ${nodeName} - ${matStrings.join(", ")}`)
               }
             }
           }
         } else {
-          lines.push("Gathering: none visible")
+          lines.push("Gathering:")
+          lines.push("  none visible")
         }
       }
 
@@ -426,11 +483,15 @@ export function formatWorldState(state: WorldState): string {
         lines.push(`Enemy camps: ${campDescriptions.join(", ")}`)
       }
     }
+
+    if (lines[lines.length - 1] != "") {
+      lines.push("")
+    }
   }
 
-  // Only show connections and enemies when not at a gathering location
-  // (when at a gathering location, focus is on that specific location)
-  if (!isAtGatheringNode) {
+  // Only show connections and enemies when not at a special location
+  // (when at a special location, focus is on that specific location)
+  if (!currentLocationId) {
     // Travel - available connections (bidirectional - can go back the way you came)
     const knownConnections = state.exploration.playerState.knownConnectionIds
     const destinations = new Map<string, number>() // dest -> travel time
@@ -461,21 +522,49 @@ export function formatWorldState(state: WorldState): string {
     }
 
     if (destinations.size > 0) {
-      // Sort by travel time (shortest first)
-      const travelList = Array.from(destinations.entries())
-        .sort((a, b) => a[1] - b[1])
-        .map(([dest, time]) => `${getAreaDisplayName(state, dest)} (${time}t)`)
-        .join(", ")
-      lines.push(`Connections: ${travelList}`)
+      // Get current area's distance from town
+      const currentAreaDistance = area?.distance ?? 0
+
+      // Group connections by distance relative to current area
+      const closer: [string, number][] = []
+      const same: [string, number][] = []
+      const further: [string, number][] = []
+
+      for (const [dest, time] of destinations.entries()) {
+        const destArea = state.exploration.areas.get(dest)
+        const destDistance = destArea?.distance ?? 0
+
+        if (destDistance < currentAreaDistance) {
+          closer.push([dest, time])
+        } else if (destDistance === currentAreaDistance) {
+          same.push([dest, time])
+        } else {
+          further.push([dest, time])
+        }
+      }
+
+      // Sort each group by travel time (shortest first)
+      const sortByTime = (a: [string, number], b: [string, number]) => a[1] - b[1]
+      closer.sort(sortByTime)
+      same.sort(sortByTime)
+      further.sort(sortByTime)
+
+      // Format each group
+      const formatGroup = (group: [string, number][]) =>
+        group.map(([dest, time]) => `${getAreaDisplayName(state, dest)} (${time}t)`).join(", ")
+
+      // Display groups in order: closer, same, further
+      if (closer.length > 0) {
+        lines.push(`Connections closer to Town: ${formatGroup(closer)}`)
+      }
+      if (same.length > 0) {
+        lines.push(`Connections at this distance: ${formatGroup(same)}`)
+      }
+      if (further.length > 0) {
+        lines.push(`Connections further from Town: ${formatGroup(further)}`)
+      }
     } else {
       lines.push("Connections: none known")
-    }
-
-    // Enemies at current location
-    const enemies = state.world.enemies.filter((e) => e.areaId === currentArea)
-    if (enemies.length > 0) {
-      const enemyStr = enemies.map((e) => `${e.id} (Combat L${e.requiredSkillLevel})`).join(", ")
-      lines.push(`Enemies: ${enemyStr}`)
     }
   }
 
@@ -484,9 +573,16 @@ export function formatWorldState(state: WorldState): string {
     const skill = currentLocation.guildType
     const playerSkill = state.player.skills[skill]
     if (!playerSkill || playerSkill.level === 0) {
-      lines.push("")
-      lines.push(`Can enrol in: ${skill}`)
+      possibleActions.push("enrol")
     }
+  }
+
+  if (currentLocationId) {
+    possibleActions.push("leave")
+  }
+
+  if (possibleActions.length > 0) {
+    lines.push(`Actions: ${possibleActions.join(" || ")}`)
   }
 
   return lines.join("\n")

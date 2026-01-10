@@ -1,5 +1,6 @@
 import * as fs from "fs"
 import * as path from "path"
+import * as os from "os"
 import {
   serializeSession,
   deserializeSession,
@@ -8,6 +9,7 @@ import {
   loadSave,
   writeSave,
   deleteSave,
+  setSavesDirectory,
 } from "./persistence.js"
 import { SAVE_VERSION } from "./types.js"
 import { createWorld } from "./world.js"
@@ -15,7 +17,20 @@ import type { Session } from "./runner.js"
 
 describe("Persistence", () => {
   const TEST_SEED = "test-persistence-seed"
-  const SAVES_DIR = "./saves"
+  let TEST_SAVES_DIR: string
+
+  // Set up temp directory for test saves
+  beforeAll(() => {
+    TEST_SAVES_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "grind-test-saves-"))
+    setSavesDirectory(TEST_SAVES_DIR)
+  })
+
+  // Clean up test saves directory after all tests
+  afterAll(() => {
+    if (fs.existsSync(TEST_SAVES_DIR)) {
+      fs.rmSync(TEST_SAVES_DIR, { recursive: true, force: true })
+    }
+  })
 
   // Clean up test saves before and after tests
   beforeEach(() => {
@@ -33,7 +48,7 @@ describe("Persistence", () => {
   describe("getSavePath", () => {
     it("should return correct save path", () => {
       const savePath = getSavePath(TEST_SEED)
-      expect(savePath).toBe(path.join(SAVES_DIR, `${TEST_SEED}.json`))
+      expect(savePath).toBe(path.join(TEST_SAVES_DIR, `${TEST_SEED}.json`))
     })
   })
 
@@ -175,24 +190,31 @@ describe("Persistence", () => {
     })
 
     it("should create saves directory if it does not exist", () => {
-      // Remove saves directory if it exists
-      if (fs.existsSync(SAVES_DIR)) {
-        // Don't actually remove it - just verify writeSave handles it gracefully
-      }
+      // Create a new temp directory that doesn't exist yet
+      const newTempDir = path.join(os.tmpdir(), `grind-test-mkdir-${Date.now()}`)
+      setSavesDirectory(newTempDir)
 
-      const state = createWorld(TEST_SEED)
-      const session: Session = {
-        state,
-        stats: {
-          logs: [],
-          startingSkills: { ...state.player.skills },
-          totalSession: state.time.sessionRemainingTicks,
-        },
-      }
+      try {
+        const state = createWorld(TEST_SEED)
+        const session: Session = {
+          state,
+          stats: {
+            logs: [],
+            startingSkills: { ...state.player.skills },
+            totalSession: state.time.sessionRemainingTicks,
+          },
+        }
 
-      // This should create the directory if needed
-      expect(() => writeSave(TEST_SEED, session)).not.toThrow()
-      expect(saveExists(TEST_SEED)).toBe(true)
+        // This should create the directory if needed
+        expect(() => writeSave(TEST_SEED, session)).not.toThrow()
+        expect(saveExists(TEST_SEED)).toBe(true)
+      } finally {
+        // Clean up and restore original test directory
+        if (fs.existsSync(newTempDir)) {
+          fs.rmSync(newTempDir, { recursive: true, force: true })
+        }
+        setSavesDirectory(TEST_SAVES_DIR)
+      }
     })
 
     it("should use atomic writes (temp file pattern)", () => {
@@ -218,8 +240,8 @@ describe("Persistence", () => {
 
     it("should throw error on corrupted save file", () => {
       // Write invalid JSON to save file
-      if (!fs.existsSync(SAVES_DIR)) {
-        fs.mkdirSync(SAVES_DIR, { recursive: true })
+      if (!fs.existsSync(TEST_SAVES_DIR)) {
+        fs.mkdirSync(TEST_SAVES_DIR, { recursive: true })
       }
       fs.writeFileSync(getSavePath(TEST_SEED), "{ invalid json", "utf-8")
 
@@ -242,8 +264,8 @@ describe("Persistence", () => {
       const saveFile = serializeSession(session, TEST_SEED)
       saveFile.version = 999 // Wrong version
 
-      if (!fs.existsSync(SAVES_DIR)) {
-        fs.mkdirSync(SAVES_DIR, { recursive: true })
+      if (!fs.existsSync(TEST_SAVES_DIR)) {
+        fs.mkdirSync(TEST_SAVES_DIR, { recursive: true })
       }
       fs.writeFileSync(getSavePath(TEST_SEED), JSON.stringify(saveFile), "utf-8")
 
@@ -366,6 +388,194 @@ describe("Persistence", () => {
       expect(loaded.state.player.skills.Mining.level).toBe(10)
       expect(loaded.state.player.skills.Mining.xp).toBe(50)
       expect(loaded.state.player.guildReputation).toBe(100)
+    })
+
+    it("should preserve exploration connections", () => {
+      const state = createWorld(TEST_SEED)
+
+      // Verify we have connections in the original state
+      expect(state.exploration.connections.length).toBeGreaterThan(0)
+      const originalConnections = [...state.exploration.connections]
+
+      const session: Session = {
+        state,
+        stats: {
+          logs: [],
+          startingSkills: { ...state.player.skills },
+          totalSession: state.time.sessionRemainingTicks,
+        },
+      }
+
+      writeSave(TEST_SEED, session)
+      const loaded = deserializeSession(loadSave(TEST_SEED))
+
+      // Connections should be preserved exactly
+      expect(loaded.state.exploration.connections).toEqual(originalConnections)
+      expect(loaded.state.exploration.connections.length).toBe(originalConnections.length)
+    })
+
+    it("should preserve area locations", () => {
+      const state = createWorld(TEST_SEED)
+
+      // Find an area with locations
+      const areasWithLocations = Array.from(state.exploration.areas.values()).filter(
+        (area) => area.locations.length > 0
+      )
+      expect(areasWithLocations.length).toBeGreaterThan(0)
+
+      const testArea = areasWithLocations[0]
+      const originalLocations = [...testArea.locations]
+
+      const session: Session = {
+        state,
+        stats: {
+          logs: [],
+          startingSkills: { ...state.player.skills },
+          totalSession: state.time.sessionRemainingTicks,
+        },
+      }
+
+      writeSave(TEST_SEED, session)
+      const loaded = deserializeSession(loadSave(TEST_SEED))
+
+      // Area should exist in loaded state
+      const loadedArea = loaded.state.exploration.areas.get(testArea.id)
+      expect(loadedArea).toBeDefined()
+
+      // Locations should be preserved
+      expect(loadedArea!.locations).toEqual(originalLocations)
+      expect(loadedArea!.locations.length).toBe(originalLocations.length)
+    })
+
+    it("should preserve exploration state after traveling to an area", async () => {
+      const { executeExplorationTravel } = await import("./exploration.js")
+      const state = createWorld(TEST_SEED)
+
+      // Enroll in exploration guild first
+      state.player.skills.Exploration.level = 1
+
+      // Find a distance 1 area to travel to
+      const distance1Areas = Array.from(state.exploration.areas.values()).filter(
+        (area) => area.distance === 1
+      )
+      expect(distance1Areas.length).toBeGreaterThan(0)
+      const targetArea = distance1Areas[0]
+
+      // Make the area known and add connection
+      state.exploration.playerState.knownAreaIds.push(targetArea.id)
+      state.exploration.playerState.knownConnectionIds.push(`TOWN->${targetArea.id}`)
+      state.exploration.connections.push({
+        fromAreaId: "TOWN",
+        toAreaId: targetArea.id,
+        travelTimeMultiplier: 1,
+      })
+
+      // Travel to the area
+      await executeExplorationTravel(state, {
+        type: "ExplorationTravel",
+        destinationAreaId: targetArea.id,
+      })
+
+      // Count connections and undiscovered connections before save
+      const currentAreaId = state.exploration.playerState.currentAreaId
+      const knownConnIds = new Set(state.exploration.playerState.knownConnectionIds)
+      const connectionsBefore = state.exploration.connections.filter(
+        (conn) => conn.fromAreaId === currentAreaId || conn.toAreaId === currentAreaId
+      )
+      const undiscoveredBefore = connectionsBefore.filter((conn) => {
+        const connId = `${conn.fromAreaId}->${conn.toAreaId}`
+        const reverseId = `${conn.toAreaId}->${conn.fromAreaId}`
+        return !knownConnIds.has(connId) && !knownConnIds.has(reverseId)
+      })
+
+      // Save and load
+      const session: Session = {
+        state,
+        stats: {
+          logs: [],
+          startingSkills: { ...state.player.skills },
+          totalSession: state.time.sessionRemainingTicks,
+        },
+      }
+      writeSave(TEST_SEED, session)
+      const loaded = deserializeSession(loadSave(TEST_SEED))
+
+      // Same checks after load
+      const loadedKnownConnIds = new Set(loaded.state.exploration.playerState.knownConnectionIds)
+      const connectionsAfter = loaded.state.exploration.connections.filter(
+        (conn) => conn.fromAreaId === currentAreaId || conn.toAreaId === currentAreaId
+      )
+      const undiscoveredAfter = connectionsAfter.filter((conn) => {
+        const connId = `${conn.fromAreaId}->${conn.toAreaId}`
+        const reverseId = `${conn.toAreaId}->${conn.fromAreaId}`
+        return !loadedKnownConnIds.has(connId) && !loadedKnownConnIds.has(reverseId)
+      })
+
+      // Should have same number of connections
+      expect(connectionsAfter.length).toBe(connectionsBefore.length)
+      // Should have same number of undiscovered connections
+      expect(undiscoveredAfter.length).toBe(undiscoveredBefore.length)
+      // Current area should be same
+      expect(loaded.state.exploration.playerState.currentAreaId).toBe(currentAreaId)
+    })
+
+    it("should show same exploration status before and after save/load", async () => {
+      const { executeExplorationTravel } = await import("./exploration.js")
+      const { formatWorldState } = await import("./agent/formatters.js")
+      const state = createWorld(TEST_SEED)
+
+      // Enroll in exploration guild first
+      state.player.skills.Exploration.level = 1
+
+      // Find a distance 1 area to travel to
+      const distance1Areas = Array.from(state.exploration.areas.values()).filter(
+        (area) => area.distance === 1
+      )
+      const targetArea = distance1Areas[0]
+
+      // Make the area known and add connection
+      state.exploration.playerState.knownAreaIds.push(targetArea.id)
+      state.exploration.playerState.knownConnectionIds.push(`TOWN->${targetArea.id}`)
+      state.exploration.connections.push({
+        fromAreaId: "TOWN",
+        toAreaId: targetArea.id,
+        travelTimeMultiplier: 1,
+      })
+
+      // Travel to the area
+      await executeExplorationTravel(state, {
+        type: "ExplorationTravel",
+        destinationAreaId: targetArea.id,
+      })
+
+      // Get exploration status before save
+      const outputBefore = formatWorldState(state)
+      const hasFullyExploredBefore = outputBefore.includes("fully explored")
+      const hasPartlyExploredBefore = outputBefore.includes("partly explored")
+      const hasUnexploredBefore = outputBefore.includes("unexplored")
+
+      // Save and load
+      const session: Session = {
+        state,
+        stats: {
+          logs: [],
+          startingSkills: { ...state.player.skills },
+          totalSession: state.time.sessionRemainingTicks,
+        },
+      }
+      writeSave(TEST_SEED, session)
+      const loaded = deserializeSession(loadSave(TEST_SEED))
+
+      // Get exploration status after load
+      const outputAfter = formatWorldState(loaded.state)
+      const hasFullyExploredAfter = outputAfter.includes("fully explored")
+      const hasPartlyExploredAfter = outputAfter.includes("partly explored")
+      const hasUnexploredAfter = outputAfter.includes("unexplored")
+
+      // Status should be the same
+      expect(hasFullyExploredAfter).toBe(hasFullyExploredBefore)
+      expect(hasPartlyExploredAfter).toBe(hasPartlyExploredBefore)
+      expect(hasUnexploredAfter).toBe(hasUnexploredBefore)
     })
   })
 })

@@ -404,49 +404,11 @@ export function getWeaponParameters(
 
 /**
  * Check Fight action preconditions
+ * NOTE: Combat is not yet fully implemented - enemies are not generated in the world
  */
-export function checkFightAction(state: WorldState, action: FightAction): ActionCheckResult {
-  const enemy = state.world.enemies.find((e) => e.id === action.enemyId)
-
-  if (!enemy) {
-    return { valid: false, failureType: "ENEMY_NOT_FOUND", timeCost: 0, successProbability: 0 }
-  }
-
-  if (getCurrentAreaId(state) !== enemy.areaId) {
-    return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
-  }
-
-  if (state.player.skills.Combat.level < enemy.requiredSkillLevel) {
-    return { valid: false, failureType: "INSUFFICIENT_SKILL", timeCost: 0, successProbability: 0 }
-  }
-
-  // Check for equipped weapon
-  const weaponParams = getWeaponParameters(state.player.equippedWeapon)
-  if (!weaponParams) {
-    return { valid: false, failureType: "MISSING_WEAPON", timeCost: 0, successProbability: 0 }
-  }
-
-  // Verify the equipped weapon actually exists in inventory
-  const weaponInInventory = state.player.inventory.find(
-    (i) => i.itemId === state.player.equippedWeapon && i.quantity >= 1
-  )
-  if (!weaponInInventory) {
-    return { valid: false, failureType: "MISSING_WEAPON", timeCost: 0, successProbability: 0 }
-  }
-
-  // Check if loot will fit in inventory (at least 1 slot for the single drop from loot table)
-  const maxLootQuantity = Math.max(...enemy.lootTable.map((l) => l.quantity))
-  const lootItems = [{ itemId: enemy.lootTable[0].itemId, quantity: maxLootQuantity }]
-  if (!canFitItems(state, lootItems)) {
-    return { valid: false, failureType: "INVENTORY_FULL", timeCost: 0, successProbability: 0 }
-  }
-
-  // Use weapon parameters instead of enemy parameters
-  return {
-    valid: true,
-    timeCost: weaponParams.timeCost,
-    successProbability: weaponParams.successProbability,
-  }
+export function checkFightAction(_state: WorldState, _action: FightAction): ActionCheckResult {
+  // Combat not yet implemented - no enemies exist in the world
+  return { valid: false, failureType: "ENEMY_NOT_FOUND", timeCost: 0, successProbability: 0 }
 }
 
 /**

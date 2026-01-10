@@ -27,7 +27,6 @@ describe("Types", () => {
       },
       world: {
         nodes: [],
-        enemies: [],
         recipes: [],
         contracts: [],
         storageAreaId: "TOWN",
