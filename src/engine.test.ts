@@ -1214,6 +1214,19 @@ describe("Engine", () => {
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("NOT_AT_HUB")
     })
+
+    it("should fail with UNKNOWN_LOCATION for invalid location even when not at hub", async () => {
+      const state = createWorld("ore-test")
+      state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD // Not at hub
+
+      const log = await executeAction(state, {
+        type: "TravelToLocation",
+        locationId: "INVALID_LOCATION",
+      })
+
+      expect(log.success).toBe(false)
+      expect(log.failureType).toBe("UNKNOWN_LOCATION")
+    })
   })
 
   describe("Leave action", () => {
