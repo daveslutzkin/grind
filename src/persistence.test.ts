@@ -424,5 +424,136 @@ describe("Persistence", () => {
       expect(loadedArea!.locations).toEqual(originalLocations)
       expect(loadedArea!.locations.length).toBe(originalLocations.length)
     })
+
+    it("should preserve exploration state after traveling to an area", async () => {
+      const { executeExplorationTravel } = await import("./exploration.js")
+      const state = createWorld(TEST_SEED)
+
+      // Enroll in exploration guild first
+      state.player.skills.Exploration.level = 1
+
+      // Find a distance 1 area to travel to
+      const distance1Areas = Array.from(state.exploration.areas.values()).filter(
+        (area) => area.distance === 1
+      )
+      expect(distance1Areas.length).toBeGreaterThan(0)
+      const targetArea = distance1Areas[0]
+
+      // Make the area known and add connection
+      state.exploration.playerState.knownAreaIds.push(targetArea.id)
+      state.exploration.playerState.knownConnectionIds.push(`TOWN->${targetArea.id}`)
+      state.exploration.connections.push({
+        fromAreaId: "TOWN",
+        toAreaId: targetArea.id,
+        travelTimeMultiplier: 1,
+      })
+
+      // Travel to the area
+      await executeExplorationTravel(state, {
+        type: "ExplorationTravel",
+        destinationAreaId: targetArea.id,
+      })
+
+      // Count connections and undiscovered connections before save
+      const currentAreaId = state.exploration.playerState.currentAreaId
+      const knownConnIds = new Set(state.exploration.playerState.knownConnectionIds)
+      const connectionsBefore = state.exploration.connections.filter(
+        (conn) => conn.fromAreaId === currentAreaId || conn.toAreaId === currentAreaId
+      )
+      const undiscoveredBefore = connectionsBefore.filter((conn) => {
+        const connId = `${conn.fromAreaId}->${conn.toAreaId}`
+        const reverseId = `${conn.toAreaId}->${conn.fromAreaId}`
+        return !knownConnIds.has(connId) && !knownConnIds.has(reverseId)
+      })
+
+      // Save and load
+      const session: Session = {
+        state,
+        stats: {
+          logs: [],
+          startingSkills: { ...state.player.skills },
+          totalSession: state.time.sessionRemainingTicks,
+        },
+      }
+      writeSave(TEST_SEED, session)
+      const loaded = deserializeSession(loadSave(TEST_SEED))
+
+      // Same checks after load
+      const loadedKnownConnIds = new Set(loaded.state.exploration.playerState.knownConnectionIds)
+      const connectionsAfter = loaded.state.exploration.connections.filter(
+        (conn) => conn.fromAreaId === currentAreaId || conn.toAreaId === currentAreaId
+      )
+      const undiscoveredAfter = connectionsAfter.filter((conn) => {
+        const connId = `${conn.fromAreaId}->${conn.toAreaId}`
+        const reverseId = `${conn.toAreaId}->${conn.fromAreaId}`
+        return !loadedKnownConnIds.has(connId) && !loadedKnownConnIds.has(reverseId)
+      })
+
+      // Should have same number of connections
+      expect(connectionsAfter.length).toBe(connectionsBefore.length)
+      // Should have same number of undiscovered connections
+      expect(undiscoveredAfter.length).toBe(undiscoveredBefore.length)
+      // Current area should be same
+      expect(loaded.state.exploration.playerState.currentAreaId).toBe(currentAreaId)
+    })
+
+    it("should show same exploration status before and after save/load", async () => {
+      const { executeExplorationTravel } = await import("./exploration.js")
+      const { formatWorldState } = await import("./agent/formatters.js")
+      const state = createWorld(TEST_SEED)
+
+      // Enroll in exploration guild first
+      state.player.skills.Exploration.level = 1
+
+      // Find a distance 1 area to travel to
+      const distance1Areas = Array.from(state.exploration.areas.values()).filter(
+        (area) => area.distance === 1
+      )
+      const targetArea = distance1Areas[0]
+
+      // Make the area known and add connection
+      state.exploration.playerState.knownAreaIds.push(targetArea.id)
+      state.exploration.playerState.knownConnectionIds.push(`TOWN->${targetArea.id}`)
+      state.exploration.connections.push({
+        fromAreaId: "TOWN",
+        toAreaId: targetArea.id,
+        travelTimeMultiplier: 1,
+      })
+
+      // Travel to the area
+      await executeExplorationTravel(state, {
+        type: "ExplorationTravel",
+        destinationAreaId: targetArea.id,
+      })
+
+      // Get exploration status before save
+      const outputBefore = formatWorldState(state)
+      const hasFullyExploredBefore = outputBefore.includes("fully explored")
+      const hasPartlyExploredBefore = outputBefore.includes("partly explored")
+      const hasUnexploredBefore = outputBefore.includes("unexplored")
+
+      // Save and load
+      const session: Session = {
+        state,
+        stats: {
+          logs: [],
+          startingSkills: { ...state.player.skills },
+          totalSession: state.time.sessionRemainingTicks,
+        },
+      }
+      writeSave(TEST_SEED, session)
+      const loaded = deserializeSession(loadSave(TEST_SEED))
+
+      // Get exploration status after load
+      const outputAfter = formatWorldState(loaded.state)
+      const hasFullyExploredAfter = outputAfter.includes("fully explored")
+      const hasPartlyExploredAfter = outputAfter.includes("partly explored")
+      const hasUnexploredAfter = outputAfter.includes("unexplored")
+
+      // Status should be the same
+      expect(hasFullyExploredAfter).toBe(hasFullyExploredBefore)
+      expect(hasPartlyExploredAfter).toBe(hasPartlyExploredBefore)
+      expect(hasUnexploredAfter).toBe(hasUnexploredBefore)
+    })
   })
 })
