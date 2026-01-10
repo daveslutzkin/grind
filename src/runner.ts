@@ -984,6 +984,35 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
       continue
     }
 
+    // Handle interactive travel (ExplorationTravel and FarTravel) - only in TTY mode
+    if (
+      (action.type === "ExplorationTravel" || action.type === "FarTravel") &&
+      process.stdin.isTTY
+    ) {
+      // Pause the main readline to avoid conflicts with interactive prompts
+      config.onBeforeInteractive?.()
+
+      try {
+        // Import interactive functions dynamically
+        const { interactiveExplorationTravel, interactiveFarTravel } =
+          await import("./interactive.js")
+
+        if (action.type === "ExplorationTravel") {
+          await interactiveExplorationTravel(session.state, action)
+        } else {
+          await interactiveFarTravel(session.state, action)
+        }
+      } finally {
+        // Resume the main readline
+        config.onAfterInteractive?.()
+      }
+
+      // Interactive mode handles its own display, just show state after
+      console.log("")
+      console.log(formatWorldState(session.state))
+      continue
+    }
+
     // Execute the action (non-interactive mode or non-Explore/Survey actions)
     const log = await executeAction(session.state, action)
     session.stats.logs.push(log)
