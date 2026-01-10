@@ -2,7 +2,6 @@
  * Interactive exploration system with animated discovery and cancelation support
  */
 
-import * as readline from "readline"
 import type { WorldState, ExploreAction, SurveyAction } from "./types.js"
 import {
   executeExplore,
@@ -191,19 +190,42 @@ async function animateDiscovery(totalTicks: number): Promise<AnimationResult> {
 // ============================================================================
 
 /**
- * Prompt user with y/n question
+ * Prompt user with y/n question using raw mode to avoid readline conflicts
  */
 async function promptYesNo(question: string): Promise<boolean> {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  })
+  if (!process.stdin.isTTY) {
+    // Non-interactive mode: default to no
+    console.log(`${question} (y/n) [auto: n]`)
+    return false
+  }
 
   return new Promise((resolve) => {
-    rl.question(`${question} (y/n) `, (answer) => {
-      rl.close()
-      resolve(answer.trim().toLowerCase() === "y")
-    })
+    process.stdout.write(`${question} (y/n) `)
+
+    // Save current raw mode state
+    const wasRaw = process.stdin.isRaw
+
+    process.stdin.setRawMode(true)
+    process.stdin.resume()
+    process.stdin.setEncoding("utf8")
+
+    const handler = (key: string) => {
+      process.stdin.removeListener("data", handler)
+      process.stdin.setRawMode(wasRaw ?? false)
+
+      // Handle Ctrl+C
+      if (key === "\u0003") {
+        process.stdout.write("\n")
+        process.exit(0)
+      }
+
+      // Echo the key and newline
+      process.stdout.write(key + "\n")
+
+      resolve(key.toLowerCase() === "y")
+    }
+
+    process.stdin.once("data", handler)
   })
 }
 
