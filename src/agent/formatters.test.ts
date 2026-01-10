@@ -305,7 +305,7 @@ describe("Formatters", () => {
         expect(formatted).not.toContain("FULLY EXPLORED")
       })
 
-      it("should show 'fully explored' when locations done and only unknown-area connections remain", () => {
+      it("should show 'partly explored' when locations done but unknown-area connections remain", () => {
         const state = createWorld("explore-status-3")
         const areaId = getOreAreaId(state)
         makeAreaKnown(state, areaId)
@@ -315,7 +315,7 @@ describe("Formatters", () => {
         discoverAllLocations(state, areaId)
 
         // Add an undiscovered connection from this area to an UNKNOWN area
-        // Per exploration.ts line 1166: "We don't count unknown connections as 'remaining' for 'fully explored' status"
+        // Unknown-area connections can still be discovered via explore, so they count
         const fakeTargetAreaId = "fake-undiscovered-area"
         state.exploration.connections.push({
           fromAreaId: areaId,
@@ -325,10 +325,10 @@ describe("Formatters", () => {
 
         const formatted = formatWorldState(state)
 
-        // Should show "fully explored" because unknown-area connections don't count
-        expect(formatted).toContain("fully explored")
+        // Should show "partly explored" because there's still an unknown-area connection to discover
+        expect(formatted).toContain("partly explored")
         expect(formatted).not.toContain("unexplored")
-        expect(formatted).not.toContain("partly explored")
+        expect(formatted).not.toContain("fully explored")
         expect(formatted).toContain("Gathering:")
       })
 
