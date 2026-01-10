@@ -608,3 +608,12 @@ export function getTotalXP(skill: SkillState): number {
   }
   return total
 }
+
+// ============================================================================
+// Save/Resume Constants
+// ============================================================================
+
+/**
+ * Save file version - increment when save format changes
+ */
+export const SAVE_VERSION = 1

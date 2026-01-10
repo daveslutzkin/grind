@@ -851,6 +851,8 @@ export async function executeAndRecord(
 
 import { createWorld } from "./world.js"
 import { executeAction } from "./engine.js"
+import { saveExists, loadSave, writeSave, deleteSave, deserializeSession } from "./persistence.js"
+import { promptResume } from "./savePrompt.js"
 
 export type MetaCommandResult = "continue" | "end" | "quit"
 
@@ -888,7 +890,26 @@ export interface RunnerConfig {
  * This is the unified core loop used by both REPL and batch runners.
  */
 export async function runSession(seed: string, config: RunnerConfig): Promise<void> {
-  const session = createSession({ seed, createWorld })
+  // Check if a save exists for this seed (only in interactive/TTY mode)
+  let session: Session
+  if (process.stdin.isTTY && saveExists(seed)) {
+    const save = loadSave(seed)
+    const shouldResume = await promptResume(save)
+    if (shouldResume) {
+      // Resume from save
+      session = deserializeSession(save)
+      console.log("\nResuming saved game...")
+    } else {
+      // Delete save and start fresh
+      deleteSave(seed)
+      console.log("\nStarting new game...")
+      session = createSession({ seed, createWorld })
+    }
+  } else {
+    // No save exists, create new session
+    session = createSession({ seed, createWorld })
+  }
+
   let showSummary = true
 
   // Call onSessionStart hook if provided
@@ -981,6 +1002,9 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
       // Interactive mode handles its own display, just show state after
       console.log("")
       console.log(formatWorldState(session.state))
+
+      // Auto-save after interactive exploration
+      writeSave(seed, session)
       continue
     }
 
@@ -1010,6 +1034,9 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
       // Interactive mode handles its own display, just show state after
       console.log("")
       console.log(formatWorldState(session.state))
+
+      // Auto-save after interactive travel
+      writeSave(seed, session)
       continue
     }
 
@@ -1017,6 +1044,9 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
     const log = await executeAction(session.state, action)
     session.stats.logs.push(log)
     config.onActionComplete(log, session.state)
+
+    // Auto-save after each action
+    writeSave(seed, session)
   }
 
   config.onSessionEnd(session.state, session.stats, showSummary)
