@@ -29,6 +29,7 @@ import {
 } from "./exploration.js"
 import { formatActionLog } from "./agent/formatters.js"
 import { consumeTime } from "./stateHelpers.js"
+import { promptYesNo } from "./prompt.js"
 
 // ============================================================================
 // Hard Discoveries Detection
@@ -199,46 +200,6 @@ async function animateDiscovery(totalTicks: number): Promise<AnimationResult> {
 // ============================================================================
 // Interactive Loop
 // ============================================================================
-
-/**
- * Prompt user with y/n question using raw mode to avoid readline conflicts
- */
-async function promptYesNo(question: string): Promise<boolean> {
-  if (!process.stdin.isTTY) {
-    // Non-interactive mode: default to no
-    console.log(`${question} (y/n) [auto: n]`)
-    return false
-  }
-
-  return new Promise((resolve) => {
-    process.stdout.write(`${question} (y/n) `)
-
-    // Save current raw mode state
-    const wasRaw = process.stdin.isRaw
-
-    process.stdin.setRawMode(true)
-    process.stdin.resume()
-    process.stdin.setEncoding("utf8")
-
-    const handler = (key: string) => {
-      process.stdin.removeListener("data", handler)
-      process.stdin.setRawMode(wasRaw ?? false)
-
-      // Handle Ctrl+C
-      if (key === "\u0003") {
-        process.stdout.write("\n")
-        process.exit(0)
-      }
-
-      // Echo the key and newline
-      process.stdout.write(key + "\n")
-
-      resolve(key.toLowerCase() === "y")
-    }
-
-    process.stdin.once("data", handler)
-  })
-}
 
 /**
  * Interactive exploration loop - continuously explores until user stops or area exhausted

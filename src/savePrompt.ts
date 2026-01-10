@@ -2,9 +2,9 @@
  * User interaction for save/resume prompts
  */
 
-import * as readline from "readline/promises"
 import type { SaveFile } from "./persistence.js"
 import { getAreaDisplayName } from "./exploration.js"
+import { promptYesNo } from "./prompt.js"
 
 /**
  * Format a detailed summary of a save file for user review
@@ -66,17 +66,5 @@ export async function promptResume(save: SaveFile): Promise<boolean> {
   const summary = formatSaveSummary(save)
   console.log(summary)
 
-  // Create readline interface for prompt
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  })
-
-  try {
-    const answer = await rl.question("Resume this game? (y/n): ")
-    const normalized = answer.trim().toLowerCase()
-    return normalized === "y" || normalized === "yes"
-  } finally {
-    rl.close()
-  }
+  return promptYesNo("Resume this game?")
 }
