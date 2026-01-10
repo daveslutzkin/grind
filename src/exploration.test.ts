@@ -13,6 +13,8 @@ import {
   executeExplorationTravel,
   executeFarTravel,
   grantExplorationGuildBenefits,
+  buildDiscoverables,
+  prepareSurveyData,
 } from "./exploration.js"
 import type {
   Area,
@@ -386,6 +388,267 @@ function createExplorationWorld(seed: string): WorldState {
   }
   return state
 }
+
+describe("buildDiscoverables", () => {
+  it("should return all undiscovered locations and connections", () => {
+    const state = createExplorationWorld("build-disc-all")
+    state.player.skills.Exploration = { level: 1, xp: 0 }
+    const currentArea = state.exploration!.areas.get(state.exploration!.playerState.currentAreaId)!
+
+    const { discoverables, baseChance } = buildDiscoverables(state, currentArea)
+
+    expect(discoverables.length).toBeGreaterThan(0)
+    expect(baseChance).toBeGreaterThan(0)
+    expect(baseChance).toBeLessThanOrEqual(1)
+  })
+
+  it("should return empty array if area is fully explored", () => {
+    const state = createExplorationWorld("build-disc-empty")
+    state.player.skills.Exploration = { level: 1, xp: 0 }
+    const currentArea = state.exploration!.areas.get(state.exploration!.playerState.currentAreaId)!
+
+    // Mark all locations as known
+    for (const loc of currentArea.locations) {
+      state.exploration!.playerState.knownLocationIds.push(loc.id)
+    }
+    // Mark all connections as known
+    const connections = state.exploration!.connections.filter(
+      (c) => c.fromAreaId === currentArea.id || c.toAreaId === currentArea.id
+    )
+    for (const conn of connections) {
+      state.exploration!.playerState.knownConnectionIds.push(`${conn.fromAreaId}->${conn.toAreaId}`)
+      // Also mark target areas as known to exclude them
+      const targetId = conn.fromAreaId === currentArea.id ? conn.toAreaId : conn.fromAreaId
+      if (!state.exploration!.playerState.knownAreaIds.includes(targetId)) {
+        state.exploration!.playerState.knownAreaIds.push(targetId)
+      }
+    }
+
+    const { discoverables } = buildDiscoverables(state, currentArea)
+
+    expect(discoverables.length).toBe(0)
+  })
+
+  it("should assign correct threshold multipliers for different discovery types", () => {
+    const state = createExplorationWorld("build-disc-thresh")
+    state.player.skills.Exploration = { level: 1, xp: 0 }
+
+    // Find an area with locations at distance 1
+    const distance1Areas = Array.from(state.exploration!.areas.values()).filter(
+      (a) => a.distance === 1 && a.locations.length > 0
+    )
+    if (distance1Areas.length === 0) {
+      // Skip test if no suitable areas found
+      return
+    }
+    const testArea = distance1Areas[0]
+    state.exploration!.playerState.currentAreaId = testArea.id
+    state.exploration!.playerState.knownAreaIds = [state.exploration!.playerState.currentAreaId]
+
+    const { discoverables, baseChance } = buildDiscoverables(state, testArea)
+
+    // Verify thresholds are within expected ranges
+    for (const d of discoverables) {
+      expect(d.threshold).toBeGreaterThan(0)
+      expect(d.threshold).toBeLessThanOrEqual(baseChance)
+
+      // Check threshold multipliers
+      if (d.type === "knownConnection") {
+        // Known connections should have 1.0× multiplier
+        expect(d.threshold).toBeCloseTo(baseChance * 1.0, 4)
+      } else if (d.type === "unknownConnection") {
+        // Unknown connections should have 0.25× multiplier
+        expect(d.threshold).toBeCloseTo(baseChance * 0.25, 4)
+      } else if (d.type === "location") {
+        // Locations should have either 0.5× or 0.05× depending on skill
+        const ratio = d.threshold / baseChance
+        expect([0.5, 0.05].some((mult) => Math.abs(ratio - mult) < 0.0001)).toBe(true)
+      }
+    }
+  })
+
+  it("should apply 0.05× multiplier for gathering nodes without skill", () => {
+    const state = createExplorationWorld("build-disc-hard")
+    state.player.skills.Exploration = { level: 1, xp: 0 }
+    // Ensure player has no gathering skills
+    state.player.skills.Mining = { level: 0, xp: 0 }
+    state.player.skills.Woodcutting = { level: 0, xp: 0 }
+
+    // Find an area with gathering nodes
+    let areaWithNode: Area | undefined
+    for (const area of state.exploration!.areas.values()) {
+      if (area.locations.some((loc) => loc.type === "GATHERING_NODE")) {
+        areaWithNode = area
+        break
+      }
+    }
+
+    if (!areaWithNode) {
+      // Skip test if no gathering nodes generated
+      return
+    }
+
+    state.exploration!.playerState.currentAreaId = areaWithNode.id
+    state.exploration!.playerState.knownAreaIds = [areaWithNode.id]
+
+    const { discoverables, baseChance } = buildDiscoverables(state, areaWithNode)
+
+    // Find gathering node discoverables
+    const gatheringNodeDiscoverables = discoverables.filter(
+      (d) => d.type === "location" && d.locationType === "GATHERING_NODE"
+    )
+
+    if (gatheringNodeDiscoverables.length > 0) {
+      for (const d of gatheringNodeDiscoverables) {
+        // Should have 0.05× multiplier (hard to find without skill)
+        expect(d.threshold).toBeCloseTo(baseChance * 0.05, 4)
+      }
+    }
+  })
+
+  it("should apply 0.5× multiplier for gathering nodes with skill", () => {
+    const state = createExplorationWorld("build-disc-easy")
+    state.player.skills.Exploration = { level: 1, xp: 0 }
+    // Give player gathering skills
+    state.player.skills.Mining = { level: 1, xp: 0 }
+    state.player.skills.Woodcutting = { level: 1, xp: 0 }
+
+    // Find an area with gathering nodes
+    let areaWithNode: Area | undefined
+    for (const area of state.exploration!.areas.values()) {
+      if (area.locations.some((loc) => loc.type === "GATHERING_NODE")) {
+        areaWithNode = area
+        break
+      }
+    }
+
+    if (!areaWithNode) {
+      // Skip test if no gathering nodes generated
+      return
+    }
+
+    state.exploration!.playerState.currentAreaId = areaWithNode.id
+    state.exploration!.playerState.knownAreaIds = [areaWithNode.id]
+
+    const { discoverables, baseChance } = buildDiscoverables(state, areaWithNode)
+
+    // Find gathering node discoverables
+    const gatheringNodeDiscoverables = discoverables.filter(
+      (d) => d.type === "location" && d.locationType === "GATHERING_NODE"
+    )
+
+    if (gatheringNodeDiscoverables.length > 0) {
+      for (const d of gatheringNodeDiscoverables) {
+        // Should have 0.5× multiplier (easier with skill)
+        expect(d.threshold).toBeCloseTo(baseChance * 0.5, 4)
+      }
+    }
+  })
+})
+
+describe("prepareSurveyData", () => {
+  it("should return survey info with success chance and connections", () => {
+    const state = createExplorationWorld("prep-survey-basic")
+    state.player.skills.Exploration = { level: 1, xp: 0 }
+    const currentArea = state.exploration!.areas.get(state.exploration!.playerState.currentAreaId)!
+
+    const surveyInfo = prepareSurveyData(state, currentArea)
+
+    expect(surveyInfo.successChance).toBeGreaterThan(0)
+    expect(surveyInfo.successChance).toBeLessThanOrEqual(1)
+    expect(surveyInfo.rollInterval).toBeGreaterThan(0)
+    expect(surveyInfo.expectedTicks).toBeGreaterThan(0)
+    expect(surveyInfo.allConnections.length).toBeGreaterThanOrEqual(0)
+    expect(typeof surveyInfo.hasUndiscoveredAreas).toBe("boolean")
+  })
+
+  it("should detect undiscovered areas correctly", () => {
+    const state = createExplorationWorld("prep-survey-undiscovered")
+    state.player.skills.Exploration = { level: 1, xp: 0 }
+    const currentArea = state.exploration!.areas.get(state.exploration!.playerState.currentAreaId)!
+
+    // Start fresh - should have undiscovered areas
+    const surveyInfo = prepareSurveyData(state, currentArea)
+
+    if (surveyInfo.allConnections.length > 0) {
+      // If there are connections, should have undiscovered areas initially
+      expect(surveyInfo.hasUndiscoveredAreas).toBe(true)
+    }
+  })
+
+  it("should return false for undiscovered areas when all are known", () => {
+    const state = createExplorationWorld("prep-survey-all-known")
+    state.player.skills.Exploration = { level: 1, xp: 0 }
+    const currentArea = state.exploration!.areas.get(state.exploration!.playerState.currentAreaId)!
+
+    // Mark all connected areas as known
+    const connections = state.exploration!.connections.filter(
+      (c) => c.fromAreaId === currentArea.id || c.toAreaId === currentArea.id
+    )
+    for (const conn of connections) {
+      const targetId = conn.fromAreaId === currentArea.id ? conn.toAreaId : conn.fromAreaId
+      if (!state.exploration!.playerState.knownAreaIds.includes(targetId)) {
+        state.exploration!.playerState.knownAreaIds.push(targetId)
+      }
+    }
+
+    const surveyInfo = prepareSurveyData(state, currentArea)
+
+    expect(surveyInfo.hasUndiscoveredAreas).toBe(false)
+  })
+
+  it("should include knowledge bonuses in success chance", () => {
+    const state = createExplorationWorld("prep-survey-knowledge")
+    state.player.skills.Exploration = { level: 1, xp: 0 }
+
+    // Find a distance 1 area
+    const distance1Areas = Array.from(state.exploration!.areas.values()).filter(
+      (a) => a.distance === 1
+    )
+    if (distance1Areas.length === 0) {
+      throw new Error("No distance 1 areas found")
+    }
+    const testArea = distance1Areas[0]
+    state.exploration!.playerState.currentAreaId = testArea.id
+    state.exploration!.playerState.knownAreaIds = [testArea.id]
+
+    // Get base success chance with no knowledge
+    const baseInfo = prepareSurveyData(state, testArea)
+
+    // Add a known connected area
+    const connections = state.exploration!.connections.filter(
+      (c) => c.fromAreaId === testArea.id || c.toAreaId === testArea.id
+    )
+    if (connections.length > 0) {
+      const targetId =
+        connections[0].fromAreaId === testArea.id
+          ? connections[0].toAreaId
+          : connections[0].fromAreaId
+      state.exploration!.playerState.knownAreaIds.push(targetId)
+
+      // Get success chance with knowledge bonus
+      const withKnowledgeInfo = prepareSurveyData(state, testArea)
+
+      // Success chance should increase with knowledge
+      expect(withKnowledgeInfo.successChance).toBeGreaterThanOrEqual(baseInfo.successChance)
+    }
+  })
+
+  it("should calculate expected ticks based on success chance", () => {
+    const state = createExplorationWorld("prep-survey-ticks")
+    state.player.skills.Exploration = { level: 1, xp: 0 }
+    const currentArea = state.exploration!.areas.get(state.exploration!.playerState.currentAreaId)!
+
+    const surveyInfo = prepareSurveyData(state, currentArea)
+
+    // Expected ticks should be inversely proportional to success chance
+    const manualExpectedTicks = calculateExpectedTicks(
+      surveyInfo.successChance,
+      surveyInfo.rollInterval
+    )
+    expect(surveyInfo.expectedTicks).toBeCloseTo(manualExpectedTicks, 1)
+  })
+})
 
 describe("Survey Action", () => {
   describe("preconditions", () => {
