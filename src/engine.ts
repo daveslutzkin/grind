@@ -132,10 +132,12 @@ export async function executeAction(state: WorldState, action: Action): Promise<
   switch (action.type) {
     case "Move":
       // Move is an alias for ExplorationTravel
-      return executeExplorationTravel(state, {
-        type: "ExplorationTravel",
-        destinationAreaId: action.destination,
-      })
+      return executeToCompletion(
+        executeExplorationTravel(state, {
+          type: "ExplorationTravel",
+          destinationAreaId: action.destination,
+        })
+      )
     case "AcceptContract":
       return executeToCompletion(executeAcceptContract(state, action))
     case "Gather":
@@ -161,7 +163,7 @@ export async function executeAction(state: WorldState, action: Action): Promise<
     case "Explore":
       return executeExplore(state, action)
     case "ExplorationTravel":
-      return executeExplorationTravel(state, action)
+      return executeToCompletion(executeExplorationTravel(state, action))
     case "FarTravel":
       return executeFarTravel(state, action)
     case "TravelToLocation":

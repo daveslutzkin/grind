@@ -18,6 +18,7 @@ import type {
   RngRoll,
   ExplorationLuckInfo,
   LevelUp,
+  ActionGenerator,
 } from "./types.js"
 import { ExplorationLocationType } from "./types.js"
 import { rollFloat, roll } from "./rng.js"
@@ -1473,21 +1474,23 @@ export function getReachableAreas(
  * Only allows travel to directly connected areas with known connections.
  * For multi-hop travel, use executeFarTravel instead.
  */
-export async function executeExplorationTravel(
+export async function* executeExplorationTravel(
   state: WorldState,
   action: ExplorationTravelAction
-): Promise<ActionLog> {
+): ActionGenerator {
   const tickBefore = state.time.currentTick
   const exploration = state.exploration!
   const { destinationAreaId, scavenge } = action
 
   // Check preconditions
   if (exploration.playerState.currentAreaId === destinationAreaId) {
-    return createFailureLog(state, "ExplorationTravel", "ALREADY_IN_AREA")
+    yield { done: true, log: createFailureLog(state, "ExplorationTravel", "ALREADY_IN_AREA") }
+    return
   }
 
   if (state.time.sessionRemainingTicks <= 0) {
-    return createFailureLog(state, "ExplorationTravel", "SESSION_ENDED")
+    yield { done: true, log: createFailureLog(state, "ExplorationTravel", "SESSION_ENDED") }
+    return
   }
 
   const currentAreaId = exploration.playerState.currentAreaId
@@ -1505,20 +1508,12 @@ export async function executeExplorationTravel(
 
   if (!directConnection) {
     // No direct connection - cannot travel (must have a known connection from current area)
-    return createFailureLog(state, "ExplorationTravel", "NO_PATH_TO_DESTINATION")
-  }
-
-  // Build path using direct connection
-  const pathResult = {
-    path: [currentAreaId, destinationAreaId],
-    connections: [directConnection],
+    yield { done: true, log: createFailureLog(state, "ExplorationTravel", "NO_PATH_TO_DESTINATION") }
+    return
   }
 
   // Calculate travel time
-  let travelTime = 0
-  for (const conn of pathResult.connections) {
-    travelTime += BASE_TRAVEL_TIME * conn.travelTimeMultiplier
-  }
+  let travelTime = Math.round(BASE_TRAVEL_TIME * directConnection.travelTimeMultiplier)
 
   // Double time if scavenging
   if (scavenge) {
@@ -1527,14 +1522,23 @@ export async function executeExplorationTravel(
 
   // Check if enough time
   if (state.time.sessionRemainingTicks < travelTime) {
-    return {
-      ...createFailureLog(state, "ExplorationTravel", "SESSION_ENDED"),
-      timeConsumed: 0,
+    yield {
+      done: true,
+      log: {
+        ...createFailureLog(state, "ExplorationTravel", "SESSION_ENDED"),
+        timeConsumed: 0,
+      },
     }
+    return
   }
 
-  // Consume time and move
-  consumeTime(state, travelTime)
+  // Yield ticks during travel
+  for (let tick = 0; tick < travelTime; tick++) {
+    consumeTime(state, 1)
+    yield { done: false }
+  }
+
+  // Move to destination
   exploration.playerState.currentAreaId = destinationAreaId
   exploration.playerState.currentLocationId = null // Arrive at hub (clearing)
 
@@ -1555,14 +1559,17 @@ export async function executeExplorationTravel(
     ? `Traveled to ${areaDisplayName} (discovered)`
     : `Traveled to ${areaDisplayName}`
 
-  return {
-    tickBefore,
-    actionType: "ExplorationTravel",
-    parameters: { destinationAreaId, scavenge },
-    success: true,
-    timeConsumed: travelTime,
-    rngRolls: [],
-    stateDeltaSummary: summary,
+  yield {
+    done: true,
+    log: {
+      tickBefore,
+      actionType: "ExplorationTravel",
+      parameters: { destinationAreaId, scavenge },
+      success: true,
+      timeConsumed: travelTime,
+      rngRolls: [],
+      stateDeltaSummary: summary,
+    },
   }
 }
 
