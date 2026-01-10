@@ -124,8 +124,6 @@ function extractParameters(action: Action): Record<string, unknown> {
 }
 
 export async function executeAction(state: WorldState, action: Action): Promise<ActionLog> {
-  const rolls: RngRoll[] = []
-
   // Check if session has ended
   if (state.time.sessionRemainingTicks <= 0) {
     return createFailureLog(state, action, "SESSION_ENDED")
@@ -141,15 +139,15 @@ export async function executeAction(state: WorldState, action: Action): Promise<
     case "AcceptContract":
       return executeToCompletion(executeAcceptContract(state, action))
     case "Gather":
-      return executeGather(state, action, rolls)
+      return executeToCompletion(executeGather(state, action))
     case "Mine":
-      return executeMine(state, action, rolls)
+      return executeToCompletion(executeMine(state, action))
     case "Chop":
-      return executeChop(state, action, rolls)
+      return executeToCompletion(executeChop(state, action))
     case "Fight":
-      return executeFight(state, action, rolls)
+      return executeToCompletion(executeFight(state, action))
     case "Craft":
-      return executeCraft(state, action, rolls)
+      return executeToCompletion(executeCraft(state, action))
     case "Store":
       return executeToCompletion(executeStore(state, action))
     case "Drop":
@@ -210,22 +208,132 @@ async function* executeAcceptContract(
   }
 }
 
-function executeGather(state: WorldState, action: GatherAction, rolls: RngRoll[]): ActionLog {
+async function* executeGather(state: WorldState, action: GatherAction): ActionGenerator {
   const tickBefore = state.time.currentTick
+  const rolls: RngRoll[] = []
 
   // Use shared precondition check
   const check = checkGatherAction(state, action)
   if (!check.valid) {
-    return createFailureLog(state, action, check.failureType!)
+    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    return
   }
 
   // Check if enough time remaining
   if (state.time.sessionRemainingTicks < check.timeCost) {
-    return createFailureLog(state, action, "SESSION_ENDED")
+    yield { done: true, log: createFailureLog(state, action, "SESSION_ENDED") }
+    return
   }
 
-  // Execute multi-material node gather
-  return executeMultiMaterialGather(state, action, rolls, tickBefore, check.timeCost)
+  const totalTicks = check.timeCost
+
+  // Yield ticks during gathering
+  for (let tick = 0; tick < totalTicks; tick++) {
+    consumeTime(state, 1)
+    yield { done: false }
+  }
+
+  // Execute multi-material node gather (keep existing logic)
+  const log = executeMultiMaterialGatherInternal(state, action, rolls, tickBefore, check.timeCost)
+
+  yield { done: true, log }
+}
+
+// Renamed from executeMultiMaterialGather to avoid confusion
+function executeMultiMaterialGatherInternal(
+  state: WorldState,
+  action: GatherAction,
+  rolls: RngRoll[],
+  tickBefore: number,
+  timeCost: number
+): ActionLog {
+  const mode = action.mode!
+  const node = state.world.nodes!.find((n) => n.nodeId === action.nodeId)!
+  const skill = getNodeSkill(node)
+  const skillLevel = state.player.skills[skill].level
+
+  const parameters: Record<string, unknown> = {
+    nodeId: action.nodeId,
+    mode,
+  }
+  if (action.focusMaterialId) {
+    parameters.focusMaterialId = action.focusMaterialId
+  }
+
+  // APPRAISE mode - just inspect, no extraction
+  if (mode === GatherMode.APPRAISE) {
+    const extraction: ExtractionLog = {
+      mode: GatherMode.APPRAISE,
+      extracted: [],
+      focusWaste: 0,
+      collateralDamage: {},
+      appraisal: {
+        nodeId: node.nodeId,
+        nodeType: node.nodeType,
+        materials: node.materials.map((m) => ({
+          materialId: m.materialId,
+          remaining: m.remainingUnits,
+          max: m.maxUnitsInitial,
+          requiredLevel: m.requiredLevel,
+          requiresSkill: m.requiresSkill,
+          tier: m.tier,
+        })),
+      },
+    }
+
+    // Track that this node has been appraised
+    if (!state.player.appraisedNodeIds.includes(node.nodeId)) {
+      state.player.appraisedNodeIds.push(node.nodeId)
+    }
+
+    // Check for contract completion
+    const contractsCompleted = checkAndCompleteContracts(state)
+
+    return {
+      tickBefore,
+      actionType: "Gather",
+      parameters,
+      success: true,
+      timeConsumed: timeCost,
+      rngRolls: rolls,
+      extraction,
+      stateDeltaSummary: `Appraised node ${action.nodeId}`,
+      levelUps: mergeLevelUps([], contractsCompleted),
+      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+    }
+  }
+
+  // FOCUS mode - extract one material with variance and collateral
+  if (mode === GatherMode.FOCUS) {
+    return executeFocusExtraction(
+      state,
+      node,
+      action.focusMaterialId!,
+      skill,
+      skillLevel,
+      rolls,
+      tickBefore,
+      timeCost,
+      parameters
+    )
+  }
+
+  // CAREFUL_ALL mode - extract all materials slowly, no collateral
+  if (mode === GatherMode.CAREFUL_ALL) {
+    return executeCarefulAllExtraction(
+      state,
+      node,
+      skill,
+      skillLevel,
+      rolls,
+      tickBefore,
+      timeCost,
+      parameters
+    )
+  }
+
+  // Should not reach here
+  return createFailureLog(state, action, "NODE_NOT_FOUND")
 }
 
 /**
@@ -242,12 +350,13 @@ function findNodeByTypeInCurrentArea(state: WorldState, nodeType: NodeType): Nod
  * Execute Mine action - alias for Gather at ORE_VEIN
  * Finds the ore vein node in the current area and executes gather
  */
-function executeMine(state: WorldState, action: MineAction, rolls: RngRoll[]): ActionLog {
+async function* executeMine(state: WorldState, action: MineAction): ActionGenerator {
   // Find ORE_VEIN node in current area
   const node = findNodeByTypeInCurrentArea(state, NodeType.ORE_VEIN)
 
   if (!node) {
-    return createFailureLog(state, action, "NODE_NOT_FOUND")
+    yield { done: true, log: createFailureLog(state, action, "NODE_NOT_FOUND") }
+    return
   }
 
   // Convert to GatherAction and execute
@@ -258,19 +367,20 @@ function executeMine(state: WorldState, action: MineAction, rolls: RngRoll[]): A
     focusMaterialId: action.focusMaterialId,
   }
 
-  return executeGather(state, gatherAction, rolls)
+  yield* executeGather(state, gatherAction)
 }
 
 /**
  * Execute Chop action - alias for Gather at TREE_STAND
  * Finds the tree stand node in the current area and executes gather
  */
-function executeChop(state: WorldState, action: ChopAction, rolls: RngRoll[]): ActionLog {
+async function* executeChop(state: WorldState, action: ChopAction): ActionGenerator {
   // Find TREE_STAND node in current area
   const node = findNodeByTypeInCurrentArea(state, NodeType.TREE_STAND)
 
   if (!node) {
-    return createFailureLog(state, action, "NODE_NOT_FOUND")
+    yield { done: true, log: createFailureLog(state, action, "NODE_NOT_FOUND") }
+    return
   }
 
   // Convert to GatherAction and execute
@@ -281,7 +391,7 @@ function executeChop(state: WorldState, action: ChopAction, rolls: RngRoll[]): A
     focusMaterialId: action.focusMaterialId,
   }
 
-  return executeGather(state, gatherAction, rolls)
+  yield* executeGather(state, gatherAction)
 }
 
 /**
@@ -596,42 +706,56 @@ function executeCarefulAllExtraction(
   }
 }
 
-function executeFight(state: WorldState, action: FightAction, rolls: RngRoll[]): ActionLog {
+async function* executeFight(state: WorldState, action: FightAction): ActionGenerator {
   const tickBefore = state.time.currentTick
   const enemyId = action.enemyId
+  const rolls: RngRoll[] = []
 
   // Use shared precondition check
   const check = checkFightAction(state, action)
   if (!check.valid) {
-    return createFailureLog(state, action, check.failureType!)
+    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    return
   }
 
   // Check if enough time remaining
   if (state.time.sessionRemainingTicks < check.timeCost) {
-    return createFailureLog(state, action, "SESSION_ENDED")
+    yield { done: true, log: createFailureLog(state, action, "SESSION_ENDED") }
+    return
   }
 
   // Get enemy for additional info
   const enemy = state.world.enemies.find((e) => e.id === enemyId)!
+  const totalTicks = check.timeCost
 
-  // Consume time
-  consumeTime(state, check.timeCost)
+  // Yield ticks during combat
+  for (let tick = 0; tick < totalTicks; tick++) {
+    consumeTime(state, 1)
+    yield { done: false }
+  }
 
   // Roll for success
   const success = roll(state.rng, check.successProbability, `fight:${enemyId}`, rolls)
 
   if (!success) {
+    // Combat failure feedback
+    yield { done: false, feedback: { combatDefeat: { enemyId } } }
+
     // Per spec: On failure, time is consumed but player is NOT relocated
-    return {
-      tickBefore,
-      actionType: "Fight",
-      parameters: { enemyId },
-      success: false,
-      failureType: "COMBAT_FAILURE",
-      timeConsumed: check.timeCost,
-      rngRolls: rolls,
-      stateDeltaSummary: `Lost fight to ${enemyId}`,
+    yield {
+      done: true,
+      log: {
+        tickBefore,
+        actionType: "Fight",
+        parameters: { enemyId },
+        success: false,
+        failureType: "COMBAT_FAILURE",
+        timeConsumed: check.timeCost,
+        rngRolls: rolls,
+        stateDeltaSummary: `Lost fight to ${enemyId}`,
+      },
     }
+    return
   }
 
   // Track kills for active contracts with kill requirements
@@ -673,48 +797,76 @@ function executeFight(state: WorldState, action: FightAction, rolls: RngRoll[]):
   // Check for contract completion (after every successful action)
   const contractsCompleted = checkAndCompleteContracts(state)
 
-  return {
-    tickBefore,
-    actionType: "Fight",
-    parameters: { enemyId },
-    success: true,
-    timeConsumed: check.timeCost,
-    skillGained: { skill: "Combat", amount: 1 },
-    levelUps: mergeLevelUps(levelUps, contractsCompleted),
-    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
-    rngRolls: rolls,
-    stateDeltaSummary: `Defeated ${enemyId}`,
+  // Victory feedback
+  yield { done: false, feedback: { combatVictory: { enemyId } } }
+
+  yield {
+    done: true,
+    log: {
+      tickBefore,
+      actionType: "Fight",
+      parameters: { enemyId },
+      success: true,
+      timeConsumed: check.timeCost,
+      skillGained: { skill: "Combat", amount: 1 },
+      levelUps: mergeLevelUps(levelUps, contractsCompleted),
+      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+      rngRolls: rolls,
+      stateDeltaSummary: `Defeated ${enemyId}`,
+    },
   }
 }
 
-function executeCraft(state: WorldState, action: CraftAction, rolls: RngRoll[]): ActionLog {
+async function* executeCraft(state: WorldState, action: CraftAction): ActionGenerator {
   const tickBefore = state.time.currentTick
   const recipeId = action.recipeId
 
   // Use shared precondition check
   const check = checkCraftAction(state, action)
   if (!check.valid) {
-    return createFailureLog(state, action, check.failureType!)
+    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    return
   }
 
   // Check if enough time remaining
   if (state.time.sessionRemainingTicks < check.timeCost) {
-    return createFailureLog(state, action, "SESSION_ENDED")
+    yield { done: true, log: createFailureLog(state, action, "SESSION_ENDED") }
+    return
   }
 
   // Get recipe for additional info
   const recipe = state.world.recipes.find((r) => r.id === recipeId)!
+  const totalTicks = recipe.craftTime
 
-  // Consume inputs
+  // Consume materials on first tick
   for (const input of recipe.inputs) {
     removeFromInventory(state, input.itemId, input.quantity)
   }
 
-  // Consume time
-  consumeTime(state, check.timeCost)
+  // Yield ticks
+  for (let tick = 0; tick < totalTicks; tick++) {
+    consumeTime(state, 1)
 
-  // Produce output
-  addToInventory(state, recipe.output.itemId, recipe.output.quantity)
+    if (tick === 0) {
+      // Show materials consumed on first tick
+      yield {
+        done: false,
+        feedback: {
+          materialsConsumed: recipe.inputs.map((i) => ({ itemId: i.itemId, quantity: i.quantity })),
+        },
+      }
+    } else if (tick === totalTicks - 1) {
+      // Produce output on last tick
+      addToInventory(state, recipe.output.itemId, recipe.output.quantity)
+      yield {
+        done: false,
+        feedback: { crafted: { itemId: recipe.output.itemId, quantity: recipe.output.quantity } },
+      }
+    } else {
+      // Intermediate ticks
+      yield { done: false }
+    }
+  }
 
   // Grant XP to the skill matching the recipe's guild type
   const levelUps = grantXP(state, recipe.guildType, 1)
@@ -722,17 +874,20 @@ function executeCraft(state: WorldState, action: CraftAction, rolls: RngRoll[]):
   // Check for contract completion (after every successful action)
   const contractsCompleted = checkAndCompleteContracts(state)
 
-  return {
-    tickBefore,
-    actionType: "Craft",
-    parameters: { recipeId },
-    success: true,
-    timeConsumed: check.timeCost,
-    skillGained: { skill: recipe.guildType, amount: 1 },
-    levelUps: mergeLevelUps(levelUps, contractsCompleted),
-    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
-    rngRolls: rolls,
-    stateDeltaSummary: `Crafted ${recipe.output.quantity} ${recipe.output.itemId}`,
+  yield {
+    done: true,
+    log: {
+      tickBefore,
+      actionType: "Craft",
+      parameters: { recipeId },
+      success: true,
+      timeConsumed: check.timeCost,
+      skillGained: { skill: recipe.guildType, amount: 1 },
+      levelUps: mergeLevelUps(levelUps, contractsCompleted),
+      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+      rngRolls: [],
+      stateDeltaSummary: `Crafted ${recipe.output.quantity} ${recipe.output.itemId}`,
+    },
   }
 }
 
