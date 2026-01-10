@@ -16,10 +16,14 @@ import {
   type MetaCommandResult,
 } from "./runner.js"
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-})
+let rl: readline.Interface
+
+function createReadline(): void {
+  rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  })
+}
 
 function prompt(question: string): Promise<string> {
   return new Promise((resolve) => {
@@ -38,6 +42,8 @@ async function main(): Promise<void> {
   if (hasApiKey) {
     console.log("🌍 Area naming enabled (ANTHROPIC_API_KEY detected)")
   }
+
+  createReadline()
 
   await runSession(seed, {
     getNextCommand: async () => {
@@ -119,13 +125,14 @@ async function main(): Promise<void> {
     },
 
     onBeforeInteractive: () => {
-      // Pause the REPL's readline to avoid conflicts with interactive prompts
-      rl.pause()
+      // Close the REPL's readline to fully detach from stdin
+      // (pause() doesn't stop it from capturing input)
+      rl.close()
     },
 
     onAfterInteractive: () => {
-      // Resume the REPL's readline after interactive mode
-      rl.resume()
+      // Recreate the readline after interactive mode
+      createReadline()
     },
   })
 }

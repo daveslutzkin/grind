@@ -19,6 +19,7 @@ import type {
   SkillID,
 } from "./types.js"
 import { NodeType, ExplorationLocationType } from "./types.js"
+import { getNodeTypeName } from "./visibility.js"
 
 // ============================================================================
 // Location Generation Constants
@@ -56,11 +57,43 @@ export const LOCATION_DISPLAY_NAMES: Record<string, string> = {
 }
 
 /** Get display name for a location ID, or the ID itself if not found */
-export function getLocationDisplayName(locationId: string | null, areaId?: string): string {
+export function getLocationDisplayName(
+  locationId: string | null,
+  areaId?: string,
+  state?: { exploration?: { areas: Map<string, Area> }; world?: { nodes?: Node[] } }
+): string {
   if (locationId === null) {
     return areaId === "TOWN" ? "Town Square" : "Clearing"
   }
-  return LOCATION_DISPLAY_NAMES[locationId] ?? locationId
+
+  // Check static location names first (town locations)
+  if (LOCATION_DISPLAY_NAMES[locationId]) {
+    return LOCATION_DISPLAY_NAMES[locationId]
+  }
+
+  // For gathering locations, try to find the corresponding node and use its type name
+  if (state?.exploration && state?.world?.nodes) {
+    // Extract area and location index from ID (e.g., "area-d1-i0-loc-0" -> ["area-d1-i0", "0"])
+    const match = locationId.match(/^(.+)-loc-(\d+)$/)
+    if (match) {
+      const [, extractedAreaId, locIndex] = match
+      const area = state.exploration.areas.get(extractedAreaId)
+      if (area) {
+        const location = area.locations.find((loc) => loc.id === locationId)
+        if (location && location.type === ExplorationLocationType.GATHERING_NODE) {
+          // Find the corresponding node
+          const nodeId = `${extractedAreaId}-node-${locIndex}`
+          const node = state.world.nodes.find((n) => n.nodeId === nodeId)
+          if (node) {
+            return getNodeTypeName(node.nodeType)
+          }
+        }
+      }
+    }
+  }
+
+  // Fallback to raw ID
+  return locationId
 }
 
 /** Get the guild hall location ID for a skill type */

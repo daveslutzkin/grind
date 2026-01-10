@@ -2,7 +2,13 @@
  * Interactive exploration system with animated discovery and cancelation support
  */
 
-import type { WorldState, ExploreAction, SurveyAction } from "./types.js"
+import type {
+  WorldState,
+  ExploreAction,
+  SurveyAction,
+  ExplorationTravelAction,
+  FarTravelAction,
+} from "./types.js"
 import {
   executeExplore,
   executeSurvey,
@@ -15,9 +21,15 @@ import {
   ensureAreaFullyGenerated,
   GATHERING_NODE_WITHOUT_SKILL_MULTIPLIER,
   UNKNOWN_CONNECTION_MULTIPLIER,
+  BASE_TRAVEL_TIME,
+  findPath,
+  isConnectionKnown,
+  executeExplorationTravel,
+  executeFarTravel,
 } from "./exploration.js"
 import { formatActionLog } from "./agent/formatters.js"
 import { consumeTime } from "./stateHelpers.js"
+import { promptYesNo } from "./prompt.js"
 
 // ============================================================================
 // Hard Discoveries Detection
@@ -190,46 +202,6 @@ async function animateDiscovery(totalTicks: number): Promise<AnimationResult> {
 // ============================================================================
 
 /**
- * Prompt user with y/n question using raw mode to avoid readline conflicts
- */
-async function promptYesNo(question: string): Promise<boolean> {
-  if (!process.stdin.isTTY) {
-    // Non-interactive mode: default to no
-    console.log(`${question} (y/n) [auto: n]`)
-    return false
-  }
-
-  return new Promise((resolve) => {
-    process.stdout.write(`${question} (y/n) `)
-
-    // Save current raw mode state
-    const wasRaw = process.stdin.isRaw
-
-    process.stdin.setRawMode(true)
-    process.stdin.resume()
-    process.stdin.setEncoding("utf8")
-
-    const handler = (key: string) => {
-      process.stdin.removeListener("data", handler)
-      process.stdin.setRawMode(wasRaw ?? false)
-
-      // Handle Ctrl+C
-      if (key === "\u0003") {
-        process.stdout.write("\n")
-        process.exit(0)
-      }
-
-      // Echo the key and newline
-      process.stdout.write(key + "\n")
-
-      resolve(key.toLowerCase() === "y")
-    }
-
-    process.stdin.once("data", handler)
-  })
-}
-
-/**
  * Interactive exploration loop - continuously explores until user stops or area exhausted
  */
 export async function interactiveExplore(state: WorldState): Promise<void> {
@@ -310,6 +282,14 @@ export async function interactiveExplore(state: WorldState): Promise<void> {
     // Show discovery result (not full state)
     console.log(formatActionLog(finalLog, state))
 
+    // Check if there are any discoverables left by rebuilding the list
+    const { discoverables: remainingDiscoverables } = buildDiscoverables(state, currentArea)
+
+    if (remainingDiscoverables.length === 0) {
+      console.log("\n✓ Area fully explored - nothing left to discover")
+      return
+    }
+
     // Prompt to continue exploring
     const shouldContinue = await promptYesNo("\nContinue exploring?")
     if (!shouldContinue) {
@@ -384,4 +364,142 @@ export async function interactiveSurvey(state: WorldState): Promise<void> {
       return
     }
   }
+}
+
+/**
+ * Interactive exploration travel - travel between directly connected areas with animation
+ */
+export async function interactiveExplorationTravel(
+  state: WorldState,
+  action: ExplorationTravelAction
+): Promise<void> {
+  const exploration = state.exploration!
+  const { destinationAreaId, scavenge } = action
+  const currentAreaId = exploration.playerState.currentAreaId
+
+  // Check preconditions
+  if (exploration.playerState.currentAreaId === destinationAreaId) {
+    console.log("\n✗ Already in that area")
+    return
+  }
+
+  if (state.time.sessionRemainingTicks <= 0) {
+    console.log("\n✗ Session ended")
+    return
+  }
+
+  const knownConnectionIds = new Set(exploration.playerState.knownConnectionIds)
+
+  // Check for direct known connection from current area to destination
+  const directConnection = exploration.connections.find(
+    (conn) =>
+      isConnectionKnown(knownConnectionIds, conn.fromAreaId, conn.toAreaId) &&
+      ((conn.fromAreaId === currentAreaId && conn.toAreaId === destinationAreaId) ||
+        (conn.toAreaId === currentAreaId && conn.fromAreaId === destinationAreaId))
+  )
+
+  if (!directConnection) {
+    console.log("\n✗ No direct connection to that area")
+    return
+  }
+
+  // Calculate travel time
+  let travelTime = BASE_TRAVEL_TIME * directConnection.travelTimeMultiplier
+
+  // Double time if scavenging
+  if (scavenge) {
+    travelTime *= 2
+  }
+
+  // Check if enough time
+  if (state.time.sessionRemainingTicks < travelTime) {
+    console.log("\n✗ Not enough time remaining")
+    return
+  }
+
+  // Animate travel (visual only - does not consume time)
+  process.stdout.write("\nTraveling")
+  const animResult = await animateDiscovery(travelTime)
+
+  if (animResult.cancelled) {
+    // User cancelled - consume only the partial time
+    consumeTime(state, animResult.ticksAnimated)
+    console.log(`Travel cancelled after ${animResult.ticksAnimated}t`)
+    return
+  }
+
+  // Execute the real action
+  const finalLog = await executeExplorationTravel(state, action)
+
+  // Show travel result
+  console.log(formatActionLog(finalLog, state))
+}
+
+/**
+ * Interactive far travel - multi-hop travel to any known reachable area with animation
+ */
+export async function interactiveFarTravel(
+  state: WorldState,
+  action: FarTravelAction
+): Promise<void> {
+  const exploration = state.exploration!
+  const { destinationAreaId, scavenge } = action
+  const currentAreaId = exploration.playerState.currentAreaId
+
+  // Check preconditions
+  if (exploration.playerState.currentAreaId === destinationAreaId) {
+    console.log("\n✗ Already in that area")
+    return
+  }
+
+  if (state.time.sessionRemainingTicks <= 0) {
+    console.log("\n✗ Session ended")
+    return
+  }
+
+  // Destination must be known for far travel
+  if (!exploration.playerState.knownAreaIds.includes(destinationAreaId)) {
+    console.log("\n✗ Area not known")
+    return
+  }
+
+  // Find shortest path to destination
+  const pathResult = findPath(state, currentAreaId, destinationAreaId)
+
+  if (!pathResult) {
+    console.log("\n✗ No path to destination")
+    return
+  }
+
+  // Calculate travel time
+  let travelTime = pathResult.totalTime
+
+  // Double time if scavenging
+  if (scavenge) {
+    travelTime *= 2
+  }
+
+  // Check if enough time
+  if (state.time.sessionRemainingTicks < travelTime) {
+    console.log("\n✗ Not enough time remaining")
+    return
+  }
+
+  // Animate travel (visual only - does not consume time)
+  const hops = pathResult.path.length - 1
+  process.stdout.write(`\nTraveling (${hops} hop${hops !== 1 ? "s" : ""})`)
+  const animResult = await animateDiscovery(travelTime)
+
+  if (animResult.cancelled) {
+    // User cancelled - consume only the partial time
+    consumeTime(state, animResult.ticksAnimated)
+    console.log(`Travel cancelled after ${animResult.ticksAnimated}t`)
+    return
+  }
+
+  // Execute the real action
+  const finalLog = await executeFarTravel(state, action)
+
+  // Show travel result
+  console.log(formatActionLog(finalLog, state))
 }

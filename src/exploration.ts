@@ -1209,7 +1209,6 @@ export async function executeExplore(
 
   // Max threshold determines expected ticks to find anything
   const maxThreshold = Math.max(...discoverables.map((d) => d.threshold))
-  const expectedTicks = calculateExpectedTicks(maxThreshold, rollInterval)
 
   // Roll until success or session ends
   // Overlaid threshold model: roll 0-100, check which thresholds are hit
@@ -1220,6 +1219,7 @@ export async function executeExplore(
   let discoveredUnknownAreaId: string | undefined
   let succeeded = false
   let accumulatedTicks = 0
+  let pickedThreshold = 0 // Will store the threshold of the specific item found
 
   while (!succeeded && state.time.sessionRemainingTicks > 0) {
     accumulatedTicks += rollInterval
@@ -1249,6 +1249,9 @@ export async function executeExplore(
         rollFloat(state.rng, 0, hits.length, `explore_pick_${ticksConsumed}`)
       )
       const picked = hits[pickIndex]
+
+      // Store the threshold of the specific item we found for luck calculation
+      pickedThreshold = picked.threshold
 
       if (picked.type === "location") {
         exploration.playerState.knownLocationIds.push(picked.id)
@@ -1309,8 +1312,14 @@ export async function executeExplore(
   const xpGained = 1
   const { levelUps } = grantExplorationXP(state, xpGained)
 
-  // Calculate luck info
-  const luckInfo = updateLuckTracking(exploration, expectedTicks, ticksConsumed)
+  // Calculate luck info based on the SPECIFIC item we found
+  // Note: This is an approximation. In the overlaid threshold model, the true
+  // probability of finding a specific item depends on how many other thresholds
+  // overlap with it. However, using the item's individual threshold provides
+  // more meaningful feedback to the user about how lucky they were to find
+  // that particular item, rather than just "anything".
+  const specificExpectedTicks = calculateExpectedTicks(pickedThreshold, rollInterval)
+  const luckInfo = updateLuckTracking(exploration, specificExpectedTicks, ticksConsumed)
 
   // Check if area is now fully explored
   const remainingLocations = currentArea.locations.filter(
