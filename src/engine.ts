@@ -22,6 +22,7 @@ import type {
   ItemStack,
   Node,
   GatheringSkillID,
+  ActionGenerator,
 } from "./types.js"
 import { isInTown, GatherMode, NodeType, getCurrentAreaId } from "./types.js"
 import { rollFloat } from "./rng.js"
@@ -55,6 +56,23 @@ import {
   checkAndCompleteContracts,
 } from "./stateHelpers.js"
 import { getLocationDisplayName } from "./world.js"
+
+/**
+ * Helper to consume an action generator and return the final ActionLog.
+ * Used for backward compatibility during transition.
+ */
+export async function executeToCompletion(generator: ActionGenerator): Promise<ActionLog> {
+  let log: ActionLog | null = null
+  for await (const tick of generator) {
+    if (tick.done) {
+      log = tick.log
+    }
+  }
+  if (!log) {
+    throw new Error("Generator completed without producing a final log")
+  }
+  return log
+}
 
 /**
  * Collect all level-ups from contract completions
@@ -105,8 +123,6 @@ function extractParameters(action: Action): Record<string, unknown> {
 }
 
 export async function executeAction(state: WorldState, action: Action): Promise<ActionLog> {
-  const rolls: RngRoll[] = []
-
   // Check if session has ended
   if (state.time.sessionRemainingTicks <= 0) {
     return createFailureLog(state, action, "SESSION_ENDED")
@@ -115,57 +131,59 @@ export async function executeAction(state: WorldState, action: Action): Promise<
   switch (action.type) {
     case "Move":
       // Move is an alias for ExplorationTravel
-      return executeExplorationTravel(state, {
-        type: "ExplorationTravel",
-        destinationAreaId: action.destination,
-      })
+      return executeToCompletion(
+        executeExplorationTravel(state, {
+          type: "ExplorationTravel",
+          destinationAreaId: action.destination,
+        })
+      )
     case "AcceptContract":
-      return executeAcceptContract(state, action, rolls)
+      return executeToCompletion(executeAcceptContract(state, action))
     case "Gather":
-      return executeGather(state, action, rolls)
+      return executeToCompletion(executeGather(state, action))
     case "Mine":
-      return executeMine(state, action, rolls)
+      return executeToCompletion(executeMine(state, action))
     case "Chop":
-      return executeChop(state, action, rolls)
+      return executeToCompletion(executeChop(state, action))
     case "Fight":
-      return executeFight(state, action, rolls)
+      return executeToCompletion(executeFight(state, action))
     case "Craft":
-      return executeCraft(state, action, rolls)
+      return executeToCompletion(executeCraft(state, action))
     case "Store":
-      return executeStore(state, action, rolls)
+      return executeToCompletion(executeStore(state, action))
     case "Drop":
-      return executeDrop(state, action, rolls)
+      return executeToCompletion(executeDrop(state, action))
     case "Enrol":
-      return executeGuildEnrolment(state, action, rolls)
+      return executeToCompletion(executeGuildEnrolment(state, action))
     case "TurnInCombatToken":
-      return executeTurnInCombatToken(state, action, rolls)
+      return executeToCompletion(executeTurnInCombatToken(state, action))
     case "Survey":
-      return executeSurvey(state, action)
+      return executeToCompletion(executeSurvey(state, action))
     case "Explore":
-      return executeExplore(state, action)
+      return executeToCompletion(executeExplore(state, action))
     case "ExplorationTravel":
-      return executeExplorationTravel(state, action)
+      return executeToCompletion(executeExplorationTravel(state, action))
     case "FarTravel":
-      return executeFarTravel(state, action)
+      return executeToCompletion(executeFarTravel(state, action))
     case "TravelToLocation":
-      return executeTravelToLocation(state, action)
+      return executeToCompletion(executeTravelToLocation(state, action))
     case "Leave":
-      return executeLeave(state, action)
+      return executeToCompletion(executeLeave(state, action))
   }
 }
 
-function executeAcceptContract(
+async function* executeAcceptContract(
   state: WorldState,
-  action: AcceptContractAction,
-  rolls: RngRoll[]
-): ActionLog {
+  action: AcceptContractAction
+): ActionGenerator {
   const tickBefore = state.time.currentTick
   const contractId = action.contractId
 
   // Use shared precondition check
   const check = checkAcceptContractAction(state, action)
   if (!check.valid) {
-    return createFailureLog(state, action, check.failureType!)
+    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    return
   }
 
   // Accept contract
@@ -174,139 +192,56 @@ function executeAcceptContract(
   // Check for contract completion (after every successful action)
   const contractsCompleted = checkAndCompleteContracts(state)
 
-  return {
-    tickBefore,
-    actionType: "AcceptContract",
-    parameters: { contractId },
-    success: true,
-    timeConsumed: 0,
-    levelUps: mergeLevelUps([], contractsCompleted),
-    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
-    rngRolls: rolls,
-    stateDeltaSummary: `Accepted contract ${contractId}`,
+  // 0-tick action - yield only the final done tick
+  yield {
+    done: true,
+    log: {
+      tickBefore,
+      actionType: "AcceptContract",
+      parameters: { contractId },
+      success: true,
+      timeConsumed: 0,
+      levelUps: mergeLevelUps([], contractsCompleted),
+      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+      rngRolls: [],
+      stateDeltaSummary: `Accepted contract ${contractId}`,
+    },
   }
 }
 
-function executeGather(state: WorldState, action: GatherAction, rolls: RngRoll[]): ActionLog {
+async function* executeGather(state: WorldState, action: GatherAction): ActionGenerator {
   const tickBefore = state.time.currentTick
+  const rolls: RngRoll[] = []
 
   // Use shared precondition check
   const check = checkGatherAction(state, action)
   if (!check.valid) {
-    return createFailureLog(state, action, check.failureType!)
+    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    return
   }
 
   // Check if enough time remaining
   if (state.time.sessionRemainingTicks < check.timeCost) {
-    return createFailureLog(state, action, "SESSION_ENDED")
+    yield { done: true, log: createFailureLog(state, action, "SESSION_ENDED") }
+    return
   }
 
-  // Execute multi-material node gather
-  return executeMultiMaterialGather(state, action, rolls, tickBefore, check.timeCost)
-}
+  const totalTicks = check.timeCost
 
-/**
- * Find a node by type in the player's current area
- */
-function findNodeByTypeInCurrentArea(state: WorldState, nodeType: NodeType): Node | undefined {
-  const currentAreaId = getCurrentAreaId(state)
-  return state.world.nodes?.find(
-    (n) => n.areaId === currentAreaId && n.nodeType === nodeType && !n.depleted
-  )
-}
-
-/**
- * Execute Mine action - alias for Gather at ORE_VEIN
- * Finds the ore vein node in the current area and executes gather
- */
-function executeMine(state: WorldState, action: MineAction, rolls: RngRoll[]): ActionLog {
-  // Find ORE_VEIN node in current area
-  const node = findNodeByTypeInCurrentArea(state, NodeType.ORE_VEIN)
-
-  if (!node) {
-    return createFailureLog(state, action, "NODE_NOT_FOUND")
+  // Yield ticks during gathering
+  for (let tick = 0; tick < totalTicks; tick++) {
+    consumeTime(state, 1)
+    yield { done: false }
   }
 
-  // Convert to GatherAction and execute
-  const gatherAction: GatherAction = {
-    type: "Gather",
-    nodeId: node.nodeId,
-    mode: action.mode,
-    focusMaterialId: action.focusMaterialId,
-  }
+  // Execute multi-material node gather (keep existing logic)
+  const log = executeMultiMaterialGatherInternal(state, action, rolls, tickBefore, check.timeCost)
 
-  return executeGather(state, gatherAction, rolls)
+  yield { done: true, log }
 }
 
-/**
- * Execute Chop action - alias for Gather at TREE_STAND
- * Finds the tree stand node in the current area and executes gather
- */
-function executeChop(state: WorldState, action: ChopAction, rolls: RngRoll[]): ActionLog {
-  // Find TREE_STAND node in current area
-  const node = findNodeByTypeInCurrentArea(state, NodeType.TREE_STAND)
-
-  if (!node) {
-    return createFailureLog(state, action, "NODE_NOT_FOUND")
-  }
-
-  // Convert to GatherAction and execute
-  const gatherAction: GatherAction = {
-    type: "Gather",
-    nodeId: node.nodeId,
-    mode: action.mode,
-    focusMaterialId: action.focusMaterialId,
-  }
-
-  return executeGather(state, gatherAction, rolls)
-}
-
-/**
- * Calculate focus yield percentage based on skill level and material required level
- * At unlock level (matching required level): ~40%
- * At level 10 (max level): 100%
- */
-function calculateFocusYieldPercent(skillLevel: number, requiredLevel: number): number {
-  // Levels above required determine efficiency
-  const levelsAboveRequired = Math.max(0, skillLevel - requiredLevel)
-  // Base yield at unlock level is 40%
-  // Each level above adds ~7% (60% spread over ~9 levels = ~6.67% per level)
-  const yieldPercent = 0.4 + levelsAboveRequired * 0.0667
-  return Math.min(1.0, yieldPercent) // Cap at 100%
-}
-
-/**
- * Calculate collateral damage percentage based on skill level
- * High levels still have a 20% floor
- */
-function calculateCollateralPercent(skillLevel: number): number {
-  // At level 1: 60% collateral
-  // At level 10: 20% collateral (floor)
-  const reduction = (skillLevel - 1) * 0.0444 // ~4.44% per level above 1
-  const collateral = 0.6 - reduction
-  return Math.max(0.2, collateral) // Floor at 20%
-}
-
-/**
- * Calculate yield variance range based on distance band
- * NEAR: ±10%, MID: ±20%, FAR: ±30%
- */
-function getVarianceRange(locationId: string): [number, number] {
-  // Determine band from location ID prefix
-  if (locationId.includes("OUTSKIRTS") || locationId.includes("COPSE")) {
-    return [0.9, 1.1] // NEAR: ±10%
-  } else if (locationId.includes("QUARRY") || locationId.includes("DEEP_FOREST")) {
-    return [0.8, 1.2] // MID: ±20%
-  } else if (locationId.includes("SHAFT") || locationId.includes("GROVE")) {
-    return [0.7, 1.3] // FAR: ±30%
-  }
-  return [0.95, 1.05] // Default minimal variance
-}
-
-/**
- * Execute multi-material node gather with modes
- */
-function executeMultiMaterialGather(
+// Renamed from executeMultiMaterialGather to avoid confusion
+function executeMultiMaterialGatherInternal(
   state: WorldState,
   action: GatherAction,
   rolls: RngRoll[],
@@ -317,9 +252,6 @@ function executeMultiMaterialGather(
   const node = state.world.nodes!.find((n) => n.nodeId === action.nodeId)!
   const skill = getNodeSkill(node)
   const skillLevel = state.player.skills[skill].level
-
-  // Consume time
-  consumeTime(state, timeCost)
 
   const parameters: Record<string, unknown> = {
     nodeId: action.nodeId,
@@ -403,6 +335,106 @@ function executeMultiMaterialGather(
 
   // Should not reach here
   return createFailureLog(state, action, "NODE_NOT_FOUND")
+}
+
+/**
+ * Find a node by type in the player's current area
+ */
+function findNodeByTypeInCurrentArea(state: WorldState, nodeType: NodeType): Node | undefined {
+  const currentAreaId = getCurrentAreaId(state)
+  return state.world.nodes?.find(
+    (n) => n.areaId === currentAreaId && n.nodeType === nodeType && !n.depleted
+  )
+}
+
+/**
+ * Execute Mine action - alias for Gather at ORE_VEIN
+ * Finds the ore vein node in the current area and executes gather
+ */
+async function* executeMine(state: WorldState, action: MineAction): ActionGenerator {
+  // Find ORE_VEIN node in current area
+  const node = findNodeByTypeInCurrentArea(state, NodeType.ORE_VEIN)
+
+  if (!node) {
+    yield { done: true, log: createFailureLog(state, action, "NODE_NOT_FOUND") }
+    return
+  }
+
+  // Convert to GatherAction and execute
+  const gatherAction: GatherAction = {
+    type: "Gather",
+    nodeId: node.nodeId,
+    mode: action.mode,
+    focusMaterialId: action.focusMaterialId,
+  }
+
+  yield* executeGather(state, gatherAction)
+}
+
+/**
+ * Execute Chop action - alias for Gather at TREE_STAND
+ * Finds the tree stand node in the current area and executes gather
+ */
+async function* executeChop(state: WorldState, action: ChopAction): ActionGenerator {
+  // Find TREE_STAND node in current area
+  const node = findNodeByTypeInCurrentArea(state, NodeType.TREE_STAND)
+
+  if (!node) {
+    yield { done: true, log: createFailureLog(state, action, "NODE_NOT_FOUND") }
+    return
+  }
+
+  // Convert to GatherAction and execute
+  const gatherAction: GatherAction = {
+    type: "Gather",
+    nodeId: node.nodeId,
+    mode: action.mode,
+    focusMaterialId: action.focusMaterialId,
+  }
+
+  yield* executeGather(state, gatherAction)
+}
+
+/**
+ * Calculate focus yield percentage based on skill level and material required level
+ * At unlock level (matching required level): ~40%
+ * At level 10 (max level): 100%
+ */
+function calculateFocusYieldPercent(skillLevel: number, requiredLevel: number): number {
+  // Levels above required determine efficiency
+  const levelsAboveRequired = Math.max(0, skillLevel - requiredLevel)
+  // Base yield at unlock level is 40%
+  // Each level above adds ~7% (60% spread over ~9 levels = ~6.67% per level)
+  const yieldPercent = 0.4 + levelsAboveRequired * 0.0667
+  return Math.min(1.0, yieldPercent) // Cap at 100%
+}
+
+/**
+ * Calculate collateral damage percentage based on skill level
+ * High levels still have a 20% floor
+ */
+function calculateCollateralPercent(skillLevel: number): number {
+  // At level 1: 60% collateral
+  // At level 10: 20% collateral (floor)
+  const reduction = (skillLevel - 1) * 0.0444 // ~4.44% per level above 1
+  const collateral = 0.6 - reduction
+  return Math.max(0.2, collateral) // Floor at 20%
+}
+
+/**
+ * Calculate yield variance range based on distance band
+ * NEAR: ±10%, MID: ±20%, FAR: ±30%
+ */
+function getVarianceRange(locationId: string): [number, number] {
+  // Determine band from location ID prefix
+  if (locationId.includes("OUTSKIRTS") || locationId.includes("COPSE")) {
+    return [0.9, 1.1] // NEAR: ±10%
+  } else if (locationId.includes("QUARRY") || locationId.includes("DEEP_FOREST")) {
+    return [0.8, 1.2] // MID: ±20%
+  } else if (locationId.includes("SHAFT") || locationId.includes("GROVE")) {
+    return [0.7, 1.3] // FAR: ±30%
+  }
+  return [0.95, 1.05] // Default minimal variance
 }
 
 /**
@@ -577,45 +609,68 @@ function executeCarefulAllExtraction(
  * Execute Fight action
  * NOTE: Combat is not yet fully implemented - this will always fail with ENEMY_NOT_FOUND
  */
-function executeFight(state: WorldState, action: FightAction, _rolls: RngRoll[]): ActionLog {
+async function* executeFight(state: WorldState, action: FightAction): ActionGenerator {
   // Use shared precondition check (will always fail - no enemies exist)
   const check = checkFightAction(state, action)
   if (!check.valid) {
-    return createFailureLog(state, action, check.failureType!)
+    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    return
   }
 
   // This code is unreachable until combat is fully implemented
   throw new Error("Combat execution reached despite no enemies existing - this should not happen")
 }
 
-function executeCraft(state: WorldState, action: CraftAction, rolls: RngRoll[]): ActionLog {
+async function* executeCraft(state: WorldState, action: CraftAction): ActionGenerator {
   const tickBefore = state.time.currentTick
   const recipeId = action.recipeId
 
   // Use shared precondition check
   const check = checkCraftAction(state, action)
   if (!check.valid) {
-    return createFailureLog(state, action, check.failureType!)
+    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    return
   }
 
   // Check if enough time remaining
   if (state.time.sessionRemainingTicks < check.timeCost) {
-    return createFailureLog(state, action, "SESSION_ENDED")
+    yield { done: true, log: createFailureLog(state, action, "SESSION_ENDED") }
+    return
   }
 
   // Get recipe for additional info
   const recipe = state.world.recipes.find((r) => r.id === recipeId)!
+  const totalTicks = recipe.craftTime
 
-  // Consume inputs
+  // Consume materials on first tick
   for (const input of recipe.inputs) {
     removeFromInventory(state, input.itemId, input.quantity)
   }
 
-  // Consume time
-  consumeTime(state, check.timeCost)
+  // Yield ticks
+  for (let tick = 0; tick < totalTicks; tick++) {
+    consumeTime(state, 1)
 
-  // Produce output
-  addToInventory(state, recipe.output.itemId, recipe.output.quantity)
+    if (tick === 0) {
+      // Show materials consumed on first tick
+      yield {
+        done: false,
+        feedback: {
+          materialsConsumed: recipe.inputs.map((i) => ({ itemId: i.itemId, quantity: i.quantity })),
+        },
+      }
+    } else if (tick === totalTicks - 1) {
+      // Produce output on last tick
+      addToInventory(state, recipe.output.itemId, recipe.output.quantity)
+      yield {
+        done: false,
+        feedback: { crafted: { itemId: recipe.output.itemId, quantity: recipe.output.quantity } },
+      }
+    } else {
+      // Intermediate ticks
+      yield { done: false }
+    }
+  }
 
   // Grant XP to the skill matching the recipe's guild type
   const levelUps = grantXP(state, recipe.guildType, 1)
@@ -623,28 +678,32 @@ function executeCraft(state: WorldState, action: CraftAction, rolls: RngRoll[]):
   // Check for contract completion (after every successful action)
   const contractsCompleted = checkAndCompleteContracts(state)
 
-  return {
-    tickBefore,
-    actionType: "Craft",
-    parameters: { recipeId },
-    success: true,
-    timeConsumed: check.timeCost,
-    skillGained: { skill: recipe.guildType, amount: 1 },
-    levelUps: mergeLevelUps(levelUps, contractsCompleted),
-    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
-    rngRolls: rolls,
-    stateDeltaSummary: `Crafted ${recipe.output.quantity} ${recipe.output.itemId}`,
+  yield {
+    done: true,
+    log: {
+      tickBefore,
+      actionType: "Craft",
+      parameters: { recipeId },
+      success: true,
+      timeConsumed: check.timeCost,
+      skillGained: { skill: recipe.guildType, amount: 1 },
+      levelUps: mergeLevelUps(levelUps, contractsCompleted),
+      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+      rngRolls: [],
+      stateDeltaSummary: `Crafted ${recipe.output.quantity} ${recipe.output.itemId}`,
+    },
   }
 }
 
-function executeStore(state: WorldState, action: StoreAction, rolls: RngRoll[]): ActionLog {
+async function* executeStore(state: WorldState, action: StoreAction): ActionGenerator {
   const tickBefore = state.time.currentTick
   const { itemId, quantity } = action
 
   // Use shared precondition check
   const check = checkStoreAction(state, action)
   if (!check.valid) {
-    return createFailureLog(state, action, check.failureType!)
+    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    return
   }
 
   // Store is a free action (0 ticks), no time check needed
@@ -656,67 +715,80 @@ function executeStore(state: WorldState, action: StoreAction, rolls: RngRoll[]):
   // Check for contract completion (after every successful action)
   const contractsCompleted = checkAndCompleteContracts(state)
 
-  return {
-    tickBefore,
-    actionType: "Store",
-    parameters: { itemId, quantity },
-    success: true,
-    timeConsumed: 0,
-    levelUps: mergeLevelUps([], contractsCompleted),
-    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
-    rngRolls: rolls,
-    stateDeltaSummary: `Stored ${quantity} ${itemId}`,
+  // 0-tick action - yield only the final done tick
+  yield {
+    done: true,
+    log: {
+      tickBefore,
+      actionType: "Store",
+      parameters: { itemId, quantity },
+      success: true,
+      timeConsumed: 0,
+      levelUps: mergeLevelUps([], contractsCompleted),
+      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+      rngRolls: [],
+      stateDeltaSummary: `Stored ${quantity} ${itemId}`,
+    },
   }
 }
 
-function executeDrop(state: WorldState, action: DropAction, rolls: RngRoll[]): ActionLog {
+async function* executeDrop(state: WorldState, action: DropAction): ActionGenerator {
   const tickBefore = state.time.currentTick
   const { itemId, quantity } = action
 
   // Use shared precondition check
   const check = checkDropAction(state, action)
   if (!check.valid) {
-    return createFailureLog(state, action, check.failureType!)
+    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    return
   }
 
   // Check if enough time remaining
   if (state.time.sessionRemainingTicks < check.timeCost) {
-    return createFailureLog(state, action, "SESSION_ENDED")
+    yield { done: true, log: createFailureLog(state, action, "SESSION_ENDED") }
+    return
   }
 
-  // Consume time
-  consumeTime(state, check.timeCost)
+  // Consume time (1 tick)
+  consumeTime(state, 1)
 
   // Remove item from inventory
   removeFromInventory(state, itemId, quantity)
 
+  // Yield tick with feedback
+  yield { done: false, feedback: { message: `Dropped ${quantity}x ${itemId}` } }
+
   // Check for contract completion (after every successful action)
   const contractsCompleted = checkAndCompleteContracts(state)
 
-  return {
-    tickBefore,
-    actionType: "Drop",
-    parameters: { itemId, quantity },
-    success: true,
-    timeConsumed: check.timeCost,
-    levelUps: mergeLevelUps([], contractsCompleted),
-    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
-    rngRolls: rolls,
-    stateDeltaSummary: `Dropped ${quantity} ${itemId}`,
+  // Final yield with log
+  yield {
+    done: true,
+    log: {
+      tickBefore,
+      actionType: "Drop",
+      parameters: { itemId, quantity },
+      success: true,
+      timeConsumed: check.timeCost,
+      levelUps: mergeLevelUps([], contractsCompleted),
+      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+      rngRolls: [],
+      stateDeltaSummary: `Dropped ${quantity} ${itemId}`,
+    },
   }
 }
 
-function executeTurnInCombatToken(
+async function* executeTurnInCombatToken(
   state: WorldState,
-  action: TurnInCombatTokenAction,
-  rolls: RngRoll[]
-): ActionLog {
+  action: TurnInCombatTokenAction
+): ActionGenerator {
   const tickBefore = state.time.currentTick
 
   // Use shared precondition check
   const check = checkTurnInCombatTokenAction(state, action)
   if (!check.valid) {
-    return createFailureLog(state, action, check.failureType!)
+    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    return
   }
 
   // Consume the token
@@ -740,40 +812,48 @@ function executeTurnInCombatToken(
   // Check for contract completion (after every successful action)
   const contractsCompleted = checkAndCompleteContracts(state)
 
-  return {
-    tickBefore,
-    actionType: "TurnInCombatToken",
-    parameters: {},
-    success: true,
-    timeConsumed: 0,
-    levelUps: mergeLevelUps([], contractsCompleted),
-    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
-    rngRolls: rolls,
-    stateDeltaSummary: "Turned in Combat Guild Token, unlocked combat-guild-1 contract",
+  // 0-tick action - yield only the final done tick
+  yield {
+    done: true,
+    log: {
+      tickBefore,
+      actionType: "TurnInCombatToken",
+      parameters: {},
+      success: true,
+      timeConsumed: 0,
+      levelUps: mergeLevelUps([], contractsCompleted),
+      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+      rngRolls: [],
+      stateDeltaSummary: "Turned in Combat Guild Token, unlocked combat-guild-1 contract",
+    },
   }
 }
 
-async function executeGuildEnrolment(
+async function* executeGuildEnrolment(
   state: WorldState,
-  action: GuildEnrolmentAction,
-  rolls: RngRoll[]
-): Promise<ActionLog> {
+  action: GuildEnrolmentAction
+): ActionGenerator {
   const tickBefore = state.time.currentTick
   const { skill } = action
 
   // Use shared precondition check
   const check = checkGuildEnrolmentAction(state, action)
   if (!check.valid) {
-    return createFailureLog(state, action, check.failureType!)
+    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    return
   }
 
   // Check if enough time remaining
   if (state.time.sessionRemainingTicks < check.timeCost) {
-    return createFailureLog(state, action, "SESSION_ENDED")
+    yield { done: true, log: createFailureLog(state, action, "SESSION_ENDED") }
+    return
   }
 
-  // Consume time
-  consumeTime(state, check.timeCost)
+  // Enrol takes 3 ticks
+  for (let tick = 0; tick < 3; tick++) {
+    consumeTime(state, 1)
+    yield { done: false }
+  }
 
   // Set skill to level 1 (unlock it)
   state.player.skills[skill] = { level: 1, xp: 0 }
@@ -802,42 +882,58 @@ async function executeGuildEnrolment(
       ? `Enrolled in ${skill} guild, discovered ${getAreaDisplayName(discoveredAreaId, discoveredArea)}`
       : `Enrolled in ${skill} guild`
 
-  return {
-    tickBefore,
-    actionType: "Enrol",
-    parameters: { skill },
-    success: true,
-    timeConsumed: check.timeCost,
-    levelUps: mergeLevelUps([], contractsCompleted),
-    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
-    rngRolls: rolls,
-    stateDeltaSummary: summary,
-    explorationLog: explorationBenefits
-      ? {
-          discoveredAreaId: explorationBenefits.discoveredAreaId,
-          discoveredConnectionId: explorationBenefits.discoveredConnectionId,
-        }
-      : undefined,
+  // Feedback after enrolment completes
+  yield { done: false, feedback: { message: `Enrolled in ${skill} guild!` } }
+
+  yield {
+    done: true,
+    log: {
+      tickBefore,
+      actionType: "Enrol",
+      parameters: { skill },
+      success: true,
+      timeConsumed: check.timeCost,
+      levelUps: mergeLevelUps([], contractsCompleted),
+      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+      rngRolls: [],
+      stateDeltaSummary: summary,
+      explorationLog: explorationBenefits
+        ? {
+            discoveredAreaId: explorationBenefits.discoveredAreaId,
+            discoveredConnectionId: explorationBenefits.discoveredConnectionId,
+          }
+        : undefined,
+    },
   }
 }
 
-function executeTravelToLocation(state: WorldState, action: TravelToLocationAction): ActionLog {
+async function* executeTravelToLocation(
+  state: WorldState,
+  action: TravelToLocationAction
+): ActionGenerator {
   const tickBefore = state.time.currentTick
   const { locationId } = action
 
   // Use shared precondition check
   const check = checkTravelToLocationAction(state, action)
   if (!check.valid) {
-    return createFailureLog(state, action, check.failureType!)
+    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    return
   }
 
   // Check if enough time remaining
   if (state.time.sessionRemainingTicks < check.timeCost) {
-    return createFailureLog(state, action, "SESSION_ENDED")
+    yield { done: true, log: createFailureLog(state, action, "SESSION_ENDED") }
+    return
   }
 
-  // Consume time
-  consumeTime(state, check.timeCost)
+  const ticks = check.timeCost
+
+  // Yield a tick if > 0
+  if (ticks > 0) {
+    consumeTime(state, 1)
+    yield { done: false }
+  }
 
   // Move to location
   state.exploration.playerState.currentLocationId = locationId
@@ -845,36 +941,46 @@ function executeTravelToLocation(state: WorldState, action: TravelToLocationActi
   // Check for contract completion (after every successful action)
   const contractsCompleted = checkAndCompleteContracts(state)
 
-  return {
-    tickBefore,
-    actionType: "TravelToLocation",
-    parameters: { locationId },
-    success: true,
-    timeConsumed: check.timeCost,
-    levelUps: mergeLevelUps([], contractsCompleted),
-    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
-    rngRolls: [],
-    stateDeltaSummary: `Traveled to ${getLocationDisplayName(locationId, state.exploration.playerState.currentAreaId, state)}`,
+  yield {
+    done: true,
+    log: {
+      tickBefore,
+      actionType: "TravelToLocation",
+      parameters: { locationId },
+      success: true,
+      timeConsumed: check.timeCost,
+      levelUps: mergeLevelUps([], contractsCompleted),
+      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+      rngRolls: [],
+      stateDeltaSummary: `Traveled to ${getLocationDisplayName(locationId, state.exploration.playerState.currentAreaId, state)}`,
+    },
   }
 }
 
-function executeLeave(state: WorldState, action: LeaveAction): ActionLog {
+async function* executeLeave(state: WorldState, action: LeaveAction): ActionGenerator {
   const tickBefore = state.time.currentTick
   const previousLocation = state.exploration.playerState.currentLocationId
 
   // Use shared precondition check
   const check = checkLeaveAction(state, action)
   if (!check.valid) {
-    return createFailureLog(state, action, check.failureType!)
+    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    return
   }
 
   // Check if enough time remaining
   if (state.time.sessionRemainingTicks < check.timeCost) {
-    return createFailureLog(state, action, "SESSION_ENDED")
+    yield { done: true, log: createFailureLog(state, action, "SESSION_ENDED") }
+    return
   }
 
-  // Consume time
-  consumeTime(state, check.timeCost)
+  const ticks = check.timeCost
+
+  // Yield a tick if > 0
+  if (ticks > 0) {
+    consumeTime(state, 1)
+    yield { done: false }
+  }
 
   // Return to hub (null)
   state.exploration.playerState.currentLocationId = null
@@ -884,15 +990,18 @@ function executeLeave(state: WorldState, action: LeaveAction): ActionLog {
 
   const hubName = isInTown(state) ? "Town Square" : "clearing"
 
-  return {
-    tickBefore,
-    actionType: "Leave",
-    parameters: {},
-    success: true,
-    timeConsumed: check.timeCost,
-    levelUps: mergeLevelUps([], contractsCompleted),
-    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
-    rngRolls: [],
-    stateDeltaSummary: `Left ${getLocationDisplayName(previousLocation, state.exploration.playerState.currentAreaId, state)} for ${hubName}`,
+  yield {
+    done: true,
+    log: {
+      tickBefore,
+      actionType: "Leave",
+      parameters: {},
+      success: true,
+      timeConsumed: check.timeCost,
+      levelUps: mergeLevelUps([], contractsCompleted),
+      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+      rngRolls: [],
+      stateDeltaSummary: `Left ${getLocationDisplayName(previousLocation, state.exploration.playerState.currentAreaId, state)} for ${hubName}`,
+    },
   }
 }

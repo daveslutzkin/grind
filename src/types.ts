@@ -420,6 +420,60 @@ export type Action =
   | TravelToLocationAction
   | LeaveAction
 
+// ============================================================================
+// Action Tick Types (for generator-based execution)
+// ============================================================================
+
+/**
+ * Structured feedback that can occur during a tick.
+ * UI layer formats these for display.
+ */
+export interface TickFeedback {
+  // Combat feedback
+  damage?: {
+    target: "player" | "enemy"
+    amount: number
+    enemyHpRemaining?: number
+    playerHpRemaining?: number
+  }
+  combatMiss?: { attacker: "player" | "enemy" }
+  combatVictory?: { enemyId: string }
+  combatDefeat?: { enemyId: string }
+
+  // Gathering feedback
+  gathered?: { itemId: string; quantity: number }
+  gatheringComplete?: {
+    nodeId: string
+    totalItems: Array<{ itemId: string; quantity: number }>
+  }
+
+  // Exploration feedback (migrate from current system)
+  discovered?: {
+    type: "location" | "connection" | "area"
+    name: string
+    id: string
+  }
+
+  // Crafting feedback
+  crafted?: { itemId: string; quantity: number }
+  materialsConsumed?: Array<{ itemId: string; quantity: number }>
+
+  // General feedback
+  xpGained?: { skill: SkillID; amount: number }
+  message?: string // Fallback for simple messages
+}
+
+/**
+ * A single tick yielded by an action generator.
+ * Discriminated union: either an in-progress tick or the final done tick.
+ */
+export type ActionTick = { done: false; feedback?: TickFeedback } | { done: true; log: ActionLog }
+
+/**
+ * The generator type returned by action executors.
+ */
+export type ActionGenerator = AsyncGenerator<ActionTick, void, undefined>
+
 // Failure types
 export type FailureType =
   | "INSUFFICIENT_SKILL"

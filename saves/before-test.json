@@ -1,0 +1,1106 @@
+{
+  "version": 1,
+  "savedAt": "2026-01-10T22:36:29.598Z",
+  "seed": "before-test",
+  "state": {
+    "time": {
+      "currentTick": 47,
+      "sessionRemainingTicks": 19953
+    },
+    "player": {
+      "inventory": [],
+      "inventoryCapacity": 20,
+      "storage": [],
+      "skills": {
+        "Mining": {
+          "level": 0,
+          "xp": 0
+        },
+        "Woodcutting": {
+          "level": 0,
+          "xp": 0
+        },
+        "Combat": {
+          "level": 0,
+          "xp": 0
+        },
+        "Smithing": {
+          "level": 0,
+          "xp": 0
+        },
+        "Woodcrafting": {
+          "level": 0,
+          "xp": 0
+        },
+        "Exploration": {
+          "level": 1,
+          "xp": 2
+        }
+      },
+      "guildReputation": 0,
+      "activeContracts": [],
+      "equippedWeapon": null,
+      "contractKillProgress": {},
+      "appraisedNodeIds": []
+    },
+    "world": {
+      "nodes": [
+        {
+          "nodeId": "area-d1-i0-node-0",
+          "nodeType": "ORE_VEIN",
+          "areaId": "area-d1-i0",
+          "materials": [
+            {
+              "materialId": "STONE",
+              "remainingUnits": 91,
+              "maxUnitsInitial": 91,
+              "requiresSkill": "Mining",
+              "requiredLevel": 1,
+              "tier": 1
+            },
+            {
+              "materialId": "COPPER_ORE",
+              "remainingUnits": 103,
+              "maxUnitsInitial": 103,
+              "requiresSkill": "Mining",
+              "requiredLevel": 1,
+              "tier": 1
+            },
+            {
+              "materialId": "TIN_ORE",
+              "remainingUnits": 69,
+              "maxUnitsInitial": 69,
+              "requiresSkill": "Mining",
+              "requiredLevel": 2,
+              "tier": 2
+            }
+          ],
+          "depleted": false
+        },
+        {
+          "nodeId": "area-d1-i1-node-0",
+          "nodeType": "TREE_STAND",
+          "areaId": "area-d1-i1",
+          "materials": [
+            {
+              "materialId": "GREEN_WOOD",
+              "remainingUnits": 123,
+              "maxUnitsInitial": 123,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 1,
+              "tier": 1
+            },
+            {
+              "materialId": "HARDWOOD",
+              "remainingUnits": 72,
+              "maxUnitsInitial": 72,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 2,
+              "tier": 2
+            },
+            {
+              "materialId": "SOFTWOOD",
+              "remainingUnits": 75,
+              "maxUnitsInitial": 75,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 1,
+              "tier": 1
+            }
+          ],
+          "depleted": false
+        },
+        {
+          "nodeId": "area-d2-i0-node-0",
+          "nodeType": "ORE_VEIN",
+          "areaId": "area-d2-i0",
+          "materials": [
+            {
+              "materialId": "STONE",
+              "remainingUnits": 81,
+              "maxUnitsInitial": 81,
+              "requiresSkill": "Mining",
+              "requiredLevel": 1,
+              "tier": 1
+            },
+            {
+              "materialId": "COPPER_ORE",
+              "remainingUnits": 91,
+              "maxUnitsInitial": 91,
+              "requiresSkill": "Mining",
+              "requiredLevel": 1,
+              "tier": 1
+            }
+          ],
+          "depleted": false
+        },
+        {
+          "nodeId": "area-d2-i0-node-1",
+          "nodeType": "TREE_STAND",
+          "areaId": "area-d2-i0",
+          "materials": [
+            {
+              "materialId": "HARDWOOD",
+              "remainingUnits": 75,
+              "maxUnitsInitial": 75,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 2,
+              "tier": 2
+            },
+            {
+              "materialId": "SOFTWOOD",
+              "remainingUnits": 89,
+              "maxUnitsInitial": 89,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 1,
+              "tier": 1
+            }
+          ],
+          "depleted": false
+        },
+        {
+          "nodeId": "area-d2-i2-node-0",
+          "nodeType": "TREE_STAND",
+          "areaId": "area-d2-i2",
+          "materials": [
+            {
+              "materialId": "OAK_WOOD",
+              "remainingUnits": 42,
+              "maxUnitsInitial": 42,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 5,
+              "tier": 3
+            },
+            {
+              "materialId": "HARDWOOD",
+              "remainingUnits": 52,
+              "maxUnitsInitial": 52,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 2,
+              "tier": 2
+            },
+            {
+              "materialId": "SOFTWOOD",
+              "remainingUnits": 84,
+              "maxUnitsInitial": 84,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 1,
+              "tier": 1
+            }
+          ],
+          "depleted": false
+        },
+        {
+          "nodeId": "area-d2-i5-node-0",
+          "nodeType": "TREE_STAND",
+          "areaId": "area-d2-i5",
+          "materials": [
+            {
+              "materialId": "GREEN_WOOD",
+              "remainingUnits": 97,
+              "maxUnitsInitial": 97,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 1,
+              "tier": 1
+            },
+            {
+              "materialId": "OAK_WOOD",
+              "remainingUnits": 43,
+              "maxUnitsInitial": 43,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 5,
+              "tier": 3
+            },
+            {
+              "materialId": "SOFTWOOD",
+              "remainingUnits": 64,
+              "maxUnitsInitial": 64,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 1,
+              "tier": 1
+            },
+            {
+              "materialId": "HARDWOOD",
+              "remainingUnits": 69,
+              "maxUnitsInitial": 69,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 2,
+              "tier": 2
+            }
+          ],
+          "depleted": false
+        },
+        {
+          "nodeId": "area-d2-i6-node-0",
+          "nodeType": "TREE_STAND",
+          "areaId": "area-d2-i6",
+          "materials": [
+            {
+              "materialId": "HARDWOOD",
+              "remainingUnits": 65,
+              "maxUnitsInitial": 65,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 2,
+              "tier": 2
+            },
+            {
+              "materialId": "SOFTWOOD",
+              "remainingUnits": 80,
+              "maxUnitsInitial": 80,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 1,
+              "tier": 1
+            },
+            {
+              "materialId": "OAK_WOOD",
+              "remainingUnits": 52,
+              "maxUnitsInitial": 52,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 5,
+              "tier": 3
+            }
+          ],
+          "depleted": false
+        },
+        {
+          "nodeId": "area-d3-i5-node-0",
+          "nodeType": "TREE_STAND",
+          "areaId": "area-d3-i5",
+          "materials": [
+            {
+              "materialId": "SPIRITWOOD",
+              "remainingUnits": 18,
+              "maxUnitsInitial": 18,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 10,
+              "tier": 5
+            },
+            {
+              "materialId": "ANCIENT_WOOD",
+              "remainingUnits": 44,
+              "maxUnitsInitial": 44,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 9,
+              "tier": 5
+            },
+            {
+              "materialId": "IRONWOOD",
+              "remainingUnits": 38,
+              "maxUnitsInitial": 38,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 8,
+              "tier": 4
+            }
+          ],
+          "depleted": false
+        },
+        {
+          "nodeId": "area-d3-i7-node-0",
+          "nodeType": "ORE_VEIN",
+          "areaId": "area-d3-i7",
+          "materials": [
+            {
+              "materialId": "IRON_ORE",
+              "remainingUnits": 41,
+              "maxUnitsInitial": 41,
+              "requiresSkill": "Mining",
+              "requiredLevel": 5,
+              "tier": 3
+            },
+            {
+              "materialId": "SILVER_ORE",
+              "remainingUnits": 37,
+              "maxUnitsInitial": 37,
+              "requiresSkill": "Mining",
+              "requiredLevel": 8,
+              "tier": 4
+            },
+            {
+              "materialId": "MITHRIL_ORE",
+              "remainingUnits": 19,
+              "maxUnitsInitial": 19,
+              "requiresSkill": "Mining",
+              "requiredLevel": 10,
+              "tier": 5
+            },
+            {
+              "materialId": "DEEP_ORE",
+              "remainingUnits": 30,
+              "maxUnitsInitial": 30,
+              "requiresSkill": "Mining",
+              "requiredLevel": 9,
+              "tier": 5
+            }
+          ],
+          "depleted": false
+        },
+        {
+          "nodeId": "area-d3-i8-node-0",
+          "nodeType": "ORE_VEIN",
+          "areaId": "area-d3-i8",
+          "materials": [
+            {
+              "materialId": "DEEP_ORE",
+              "remainingUnits": 41,
+              "maxUnitsInitial": 41,
+              "requiresSkill": "Mining",
+              "requiredLevel": 9,
+              "tier": 5
+            },
+            {
+              "materialId": "MITHRIL_ORE",
+              "remainingUnits": 20,
+              "maxUnitsInitial": 20,
+              "requiresSkill": "Mining",
+              "requiredLevel": 10,
+              "tier": 5
+            }
+          ],
+          "depleted": false
+        },
+        {
+          "nodeId": "area-d3-i8-node-1",
+          "nodeType": "TREE_STAND",
+          "areaId": "area-d3-i8",
+          "materials": [
+            {
+              "materialId": "SPIRITWOOD",
+              "remainingUnits": 23,
+              "maxUnitsInitial": 23,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 10,
+              "tier": 5
+            },
+            {
+              "materialId": "ANCIENT_WOOD",
+              "remainingUnits": 50,
+              "maxUnitsInitial": 50,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 9,
+              "tier": 5
+            }
+          ],
+          "depleted": false
+        }
+      ],
+      "enemies": [],
+      "recipes": [
+        {
+          "id": "iron-bar-recipe",
+          "inputs": [
+            {
+              "itemId": "IRON_ORE",
+              "quantity": 2
+            }
+          ],
+          "output": {
+            "itemId": "IRON_BAR",
+            "quantity": 1
+          },
+          "craftTime": 3,
+          "guildType": "Smithing",
+          "requiredSkillLevel": 1
+        },
+        {
+          "id": "copper-bar-recipe",
+          "inputs": [
+            {
+              "itemId": "COPPER_ORE",
+              "quantity": 2
+            }
+          ],
+          "output": {
+            "itemId": "COPPER_BAR",
+            "quantity": 1
+          },
+          "craftTime": 2,
+          "guildType": "Smithing",
+          "requiredSkillLevel": 1
+        }
+      ],
+      "contracts": [
+        {
+          "id": "miners-guild-1",
+          "level": 1,
+          "acceptLocationId": "TOWN_MINERS_GUILD",
+          "guildType": "Mining",
+          "requirements": [
+            {
+              "itemId": "COPPER_BAR",
+              "quantity": 2
+            }
+          ],
+          "rewards": [
+            {
+              "itemId": "COPPER_ORE",
+              "quantity": 5
+            }
+          ],
+          "reputationReward": 10,
+          "xpReward": {
+            "skill": "Mining",
+            "amount": 2
+          }
+        }
+      ],
+      "storageAreaId": "TOWN"
+    },
+    "exploration": {
+      "areas": {
+        "TOWN": {
+          "id": "TOWN",
+          "name": "Town",
+          "distance": 0,
+          "generated": true,
+          "locations": [
+            {
+              "id": "TOWN_MINERS_GUILD",
+              "areaId": "TOWN",
+              "type": "GUILD_HALL",
+              "guildType": "Mining",
+              "guildLevel": 100
+            },
+            {
+              "id": "TOWN_FORESTERS_GUILD",
+              "areaId": "TOWN",
+              "type": "GUILD_HALL",
+              "guildType": "Woodcutting",
+              "guildLevel": 100
+            },
+            {
+              "id": "TOWN_COMBAT_GUILD",
+              "areaId": "TOWN",
+              "type": "GUILD_HALL",
+              "guildType": "Combat",
+              "guildLevel": 100
+            },
+            {
+              "id": "TOWN_SMITHING_GUILD",
+              "areaId": "TOWN",
+              "type": "GUILD_HALL",
+              "guildType": "Smithing",
+              "guildLevel": 100
+            },
+            {
+              "id": "TOWN_WOODCRAFTERS_GUILD",
+              "areaId": "TOWN",
+              "type": "GUILD_HALL",
+              "guildType": "Woodcrafting",
+              "guildLevel": 100
+            },
+            {
+              "id": "TOWN_EXPLORERS_GUILD",
+              "areaId": "TOWN",
+              "type": "GUILD_HALL",
+              "guildType": "Exploration",
+              "guildLevel": 100
+            },
+            {
+              "id": "TOWN_WAREHOUSE",
+              "areaId": "TOWN",
+              "type": "WAREHOUSE"
+            }
+          ],
+          "indexInDistance": 0
+        },
+        "area-d1-i0": {
+          "id": "area-d1-i0",
+          "distance": 1,
+          "generated": true,
+          "locations": [
+            {
+              "id": "area-d1-i0-loc-0",
+              "areaId": "area-d1-i0",
+              "type": "GATHERING_NODE",
+              "gatheringSkillType": "Mining"
+            }
+          ],
+          "indexInDistance": 0
+        },
+        "area-d1-i1": {
+          "id": "area-d1-i1",
+          "distance": 1,
+          "generated": false,
+          "locations": [
+            {
+              "id": "area-d1-i1-loc-0",
+              "areaId": "area-d1-i1",
+              "type": "GATHERING_NODE",
+              "gatheringSkillType": "Woodcutting"
+            }
+          ],
+          "indexInDistance": 1
+        },
+        "area-d1-i2": {
+          "id": "area-d1-i2",
+          "distance": 1,
+          "generated": true,
+          "locations": [],
+          "indexInDistance": 2
+        },
+        "area-d1-i3": {
+          "id": "area-d1-i3",
+          "distance": 1,
+          "generated": false,
+          "locations": [],
+          "indexInDistance": 3
+        },
+        "area-d1-i4": {
+          "id": "area-d1-i4",
+          "distance": 1,
+          "generated": false,
+          "locations": [],
+          "indexInDistance": 4
+        },
+        "area-d2-i0": {
+          "id": "area-d2-i0",
+          "distance": 2,
+          "generated": false,
+          "locations": [
+            {
+              "id": "area-d2-i0-loc-0",
+              "areaId": "area-d2-i0",
+              "type": "GATHERING_NODE",
+              "gatheringSkillType": "Mining"
+            },
+            {
+              "id": "area-d2-i0-loc-1",
+              "areaId": "area-d2-i0",
+              "type": "GATHERING_NODE",
+              "gatheringSkillType": "Woodcutting"
+            }
+          ],
+          "indexInDistance": 0
+        },
+        "area-d2-i1": {
+          "id": "area-d2-i1",
+          "distance": 2,
+          "generated": false,
+          "locations": [],
+          "indexInDistance": 1
+        },
+        "area-d2-i2": {
+          "id": "area-d2-i2",
+          "distance": 2,
+          "generated": false,
+          "locations": [
+            {
+              "id": "area-d2-i2-loc-0",
+              "areaId": "area-d2-i2",
+              "type": "GATHERING_NODE",
+              "gatheringSkillType": "Woodcutting"
+            }
+          ],
+          "indexInDistance": 2
+        },
+        "area-d2-i3": {
+          "id": "area-d2-i3",
+          "distance": 2,
+          "generated": false,
+          "locations": [],
+          "indexInDistance": 3
+        },
+        "area-d2-i4": {
+          "id": "area-d2-i4",
+          "distance": 2,
+          "generated": false,
+          "locations": [
+            {
+              "id": "area-d2-i4-loc-0",
+              "areaId": "area-d2-i4",
+              "type": "MOB_CAMP",
+              "creatureType": "creature",
+              "difficulty": 4
+            }
+          ],
+          "indexInDistance": 4
+        },
+        "area-d2-i5": {
+          "id": "area-d2-i5",
+          "distance": 2,
+          "generated": false,
+          "locations": [
+            {
+              "id": "area-d2-i5-loc-0",
+              "areaId": "area-d2-i5",
+              "type": "GATHERING_NODE",
+              "gatheringSkillType": "Woodcutting"
+            },
+            {
+              "id": "area-d2-i5-loc-1",
+              "areaId": "area-d2-i5",
+              "type": "MOB_CAMP",
+              "creatureType": "creature",
+              "difficulty": 1
+            }
+          ],
+          "indexInDistance": 5
+        },
+        "area-d2-i6": {
+          "id": "area-d2-i6",
+          "distance": 2,
+          "generated": false,
+          "locations": [
+            {
+              "id": "area-d2-i6-loc-0",
+              "areaId": "area-d2-i6",
+              "type": "GATHERING_NODE",
+              "gatheringSkillType": "Woodcutting"
+            }
+          ],
+          "indexInDistance": 6
+        },
+        "area-d2-i7": {
+          "id": "area-d2-i7",
+          "distance": 2,
+          "generated": false,
+          "locations": [],
+          "indexInDistance": 7
+        },
+        "area-d3-i0": {
+          "id": "area-d3-i0",
+          "distance": 3,
+          "generated": false,
+          "locations": [
+            {
+              "id": "area-d3-i0-loc-0",
+              "areaId": "area-d3-i0",
+              "type": "MOB_CAMP",
+              "creatureType": "creature",
+              "difficulty": 2
+            }
+          ],
+          "indexInDistance": 0
+        },
+        "area-d3-i1": {
+          "id": "area-d3-i1",
+          "distance": 3,
+          "generated": false,
+          "locations": [],
+          "indexInDistance": 1
+        },
+        "area-d3-i2": {
+          "id": "area-d3-i2",
+          "distance": 3,
+          "generated": false,
+          "locations": [
+            {
+              "id": "area-d3-i2-loc-0",
+              "areaId": "area-d3-i2",
+              "type": "MOB_CAMP",
+              "creatureType": "creature",
+              "difficulty": 5
+            }
+          ],
+          "indexInDistance": 2
+        },
+        "area-d3-i3": {
+          "id": "area-d3-i3",
+          "distance": 3,
+          "generated": false,
+          "locations": [],
+          "indexInDistance": 3
+        },
+        "area-d3-i4": {
+          "id": "area-d3-i4",
+          "distance": 3,
+          "generated": false,
+          "locations": [],
+          "indexInDistance": 4
+        },
+        "area-d3-i5": {
+          "id": "area-d3-i5",
+          "distance": 3,
+          "generated": false,
+          "locations": [
+            {
+              "id": "area-d3-i5-loc-0",
+              "areaId": "area-d3-i5",
+              "type": "GATHERING_NODE",
+              "gatheringSkillType": "Woodcutting"
+            },
+            {
+              "id": "area-d3-i5-loc-1",
+              "areaId": "area-d3-i5",
+              "type": "MOB_CAMP",
+              "creatureType": "creature",
+              "difficulty": 1
+            }
+          ],
+          "indexInDistance": 5
+        },
+        "area-d3-i6": {
+          "id": "area-d3-i6",
+          "distance": 3,
+          "generated": false,
+          "locations": [],
+          "indexInDistance": 6
+        },
+        "area-d3-i7": {
+          "id": "area-d3-i7",
+          "distance": 3,
+          "generated": false,
+          "locations": [
+            {
+              "id": "area-d3-i7-loc-0",
+              "areaId": "area-d3-i7",
+              "type": "GATHERING_NODE",
+              "gatheringSkillType": "Mining"
+            }
+          ],
+          "indexInDistance": 7
+        },
+        "area-d3-i8": {
+          "id": "area-d3-i8",
+          "distance": 3,
+          "generated": false,
+          "locations": [
+            {
+              "id": "area-d3-i8-loc-0",
+              "areaId": "area-d3-i8",
+              "type": "GATHERING_NODE",
+              "gatheringSkillType": "Mining"
+            },
+            {
+              "id": "area-d3-i8-loc-1",
+              "areaId": "area-d3-i8",
+              "type": "GATHERING_NODE",
+              "gatheringSkillType": "Woodcutting"
+            }
+          ],
+          "indexInDistance": 8
+        },
+        "area-d3-i9": {
+          "id": "area-d3-i9",
+          "distance": 3,
+          "generated": false,
+          "locations": [],
+          "indexInDistance": 9
+        },
+        "area-d3-i10": {
+          "id": "area-d3-i10",
+          "distance": 3,
+          "generated": false,
+          "locations": [],
+          "indexInDistance": 10
+        },
+        "area-d3-i11": {
+          "id": "area-d3-i11",
+          "distance": 3,
+          "generated": false,
+          "locations": [],
+          "indexInDistance": 11
+        },
+        "area-d3-i12": {
+          "id": "area-d3-i12",
+          "distance": 3,
+          "generated": false,
+          "locations": [],
+          "indexInDistance": 12
+        }
+      },
+      "connections": [
+        {
+          "fromAreaId": "TOWN",
+          "toAreaId": "area-d1-i0",
+          "travelTimeMultiplier": 0.9
+        },
+        {
+          "fromAreaId": "TOWN",
+          "toAreaId": "area-d1-i1",
+          "travelTimeMultiplier": 2.8
+        },
+        {
+          "fromAreaId": "TOWN",
+          "toAreaId": "area-d1-i2",
+          "travelTimeMultiplier": 1
+        },
+        {
+          "fromAreaId": "TOWN",
+          "toAreaId": "area-d1-i3",
+          "travelTimeMultiplier": 2.3
+        },
+        {
+          "fromAreaId": "TOWN",
+          "toAreaId": "area-d1-i4",
+          "travelTimeMultiplier": 1.6
+        },
+        {
+          "fromAreaId": "area-d1-i0",
+          "toAreaId": "area-d1-i2",
+          "travelTimeMultiplier": 2.9
+        },
+        {
+          "fromAreaId": "area-d1-i0",
+          "toAreaId": "area-d2-i4",
+          "travelTimeMultiplier": 3.4
+        },
+        {
+          "fromAreaId": "area-d1-i0",
+          "toAreaId": "area-d2-i6",
+          "travelTimeMultiplier": 3.7
+        },
+        {
+          "fromAreaId": "area-d1-i2",
+          "toAreaId": "area-d1-i1",
+          "travelTimeMultiplier": 1.1
+        },
+        {
+          "fromAreaId": "area-d1-i2",
+          "toAreaId": "area-d2-i7",
+          "travelTimeMultiplier": 2.8
+        }
+      ],
+      "playerState": {
+        "currentAreaId": "TOWN",
+        "currentLocationId": null,
+        "knownAreaIds": [
+          "TOWN",
+          "area-d1-i0",
+          "area-d1-i2"
+        ],
+        "knownLocationIds": [
+          "TOWN_MINERS_GUILD",
+          "TOWN_FORESTERS_GUILD",
+          "TOWN_COMBAT_GUILD",
+          "TOWN_SMITHING_GUILD",
+          "TOWN_WOODCRAFTERS_GUILD",
+          "TOWN_EXPLORERS_GUILD",
+          "TOWN_WAREHOUSE"
+        ],
+        "knownConnectionIds": [
+          "TOWN->area-d1-i0",
+          "TOWN->area-d1-i2"
+        ],
+        "totalLuckDelta": -31,
+        "currentStreak": -1
+      }
+    },
+    "rng": {
+      "seed": "before-test",
+      "counter": 245
+    }
+  },
+  "stats": {
+    "logs": [
+      {
+        "tickBefore": 0,
+        "actionType": "TravelToLocation",
+        "parameters": {
+          "locationId": "TOWN_EXPLORERS_GUILD"
+        },
+        "success": true,
+        "timeConsumed": 0,
+        "rngRolls": [],
+        "stateDeltaSummary": "Traveled to Explorers Guild"
+      },
+      {
+        "tickBefore": 0,
+        "actionType": "Enrol",
+        "parameters": {
+          "skill": "Exploration"
+        },
+        "success": true,
+        "timeConsumed": 3,
+        "rngRolls": [],
+        "stateDeltaSummary": "Enrolled in Exploration guild, discovered a nearby area",
+        "explorationLog": {
+          "discoveredAreaId": "area-d1-i0",
+          "discoveredConnectionId": "TOWN->area-d1-i0"
+        }
+      },
+      {
+        "tickBefore": 3,
+        "actionType": "Leave",
+        "parameters": {},
+        "success": true,
+        "timeConsumed": 0,
+        "rngRolls": [],
+        "stateDeltaSummary": "Left Explorers Guild for Town Square"
+      },
+      {
+        "tickBefore": 3,
+        "actionType": "Survey",
+        "parameters": {},
+        "success": true,
+        "timeConsumed": 44,
+        "skillGained": {
+          "skill": "Exploration",
+          "amount": 2
+        },
+        "rngRolls": [
+          {
+            "label": "survey_roll_2",
+            "probability": 0.15000000000000002,
+            "result": false,
+            "rngCounter": 208
+          },
+          {
+            "label": "survey_roll_4",
+            "probability": 0.15000000000000002,
+            "result": false,
+            "rngCounter": 209
+          },
+          {
+            "label": "survey_roll_6",
+            "probability": 0.15000000000000002,
+            "result": false,
+            "rngCounter": 210
+          },
+          {
+            "label": "survey_roll_8",
+            "probability": 0.15000000000000002,
+            "result": false,
+            "rngCounter": 211
+          },
+          {
+            "label": "survey_roll_10",
+            "probability": 0.15000000000000002,
+            "result": false,
+            "rngCounter": 212
+          },
+          {
+            "label": "survey_roll_12",
+            "probability": 0.15000000000000002,
+            "result": false,
+            "rngCounter": 213
+          },
+          {
+            "label": "survey_roll_14",
+            "probability": 0.15000000000000002,
+            "result": false,
+            "rngCounter": 214
+          },
+          {
+            "label": "survey_roll_16",
+            "probability": 0.15000000000000002,
+            "result": false,
+            "rngCounter": 215
+          },
+          {
+            "label": "survey_roll_18",
+            "probability": 0.15000000000000002,
+            "result": false,
+            "rngCounter": 216
+          },
+          {
+            "label": "survey_roll_20",
+            "probability": 0.15000000000000002,
+            "result": false,
+            "rngCounter": 217
+          },
+          {
+            "label": "survey_roll_22",
+            "probability": 0.15000000000000002,
+            "result": false,
+            "rngCounter": 218
+          },
+          {
+            "label": "survey_roll_24",
+            "probability": 0.15000000000000002,
+            "result": false,
+            "rngCounter": 219
+          },
+          {
+            "label": "survey_roll_26",
+            "probability": 0.15000000000000002,
+            "result": false,
+            "rngCounter": 220
+          },
+          {
+            "label": "survey_roll_28",
+            "probability": 0.15000000000000002,
+            "result": false,
+            "rngCounter": 221
+          },
+          {
+            "label": "survey_roll_30",
+            "probability": 0.15000000000000002,
+            "result": false,
+            "rngCounter": 222
+          },
+          {
+            "label": "survey_roll_32",
+            "probability": 0.15000000000000002,
+            "result": false,
+            "rngCounter": 223
+          },
+          {
+            "label": "survey_roll_34",
+            "probability": 0.15000000000000002,
+            "result": false,
+            "rngCounter": 224
+          },
+          {
+            "label": "survey_roll_36",
+            "probability": 0.15000000000000002,
+            "result": false,
+            "rngCounter": 225
+          },
+          {
+            "label": "survey_roll_38",
+            "probability": 0.15000000000000002,
+            "result": false,
+            "rngCounter": 226
+          },
+          {
+            "label": "survey_roll_40",
+            "probability": 0.15000000000000002,
+            "result": false,
+            "rngCounter": 227
+          },
+          {
+            "label": "survey_roll_42",
+            "probability": 0.15000000000000002,
+            "result": false,
+            "rngCounter": 228
+          },
+          {
+            "label": "survey_roll_44",
+            "probability": 0.15000000000000002,
+            "result": true,
+            "rngCounter": 229
+          }
+        ],
+        "stateDeltaSummary": "Discovered a nearby area",
+        "explorationLog": {
+          "discoveredAreaId": "area-d1-i2",
+          "discoveredConnectionId": "TOWN->area-d1-i2",
+          "luckInfo": {
+            "actualTicks": 44,
+            "expectedTicks": 13,
+            "luckDelta": -31,
+            "totalLuckDelta": -31,
+            "currentStreak": -1
+          }
+        }
+      }
+    ],
+    "startingSkills": {
+      "Mining": {
+        "level": 0,
+        "xp": 0
+      },
+      "Woodcutting": {
+        "level": 0,
+        "xp": 0
+      },
+      "Combat": {
+        "level": 0,
+        "xp": 0
+      },
+      "Smithing": {
+        "level": 0,
+        "xp": 0
+      },
+      "Woodcrafting": {
+        "level": 0,
+        "xp": 0
+      },
+      "Exploration": {
+        "level": 0,
+        "xp": 0
+      }
+    },
+    "totalSession": 20000
+  }
+}

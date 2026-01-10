@@ -1,4 +1,4 @@
-import type { WorldState, ActionLog, FailureType } from "../types.js"
+import type { WorldState, ActionLog, FailureType, TickFeedback } from "../types.js"
 import { getCurrentAreaId, getCurrentLocationId, ExplorationLocationType } from "../types.js"
 import {
   getUnlockedModes,
@@ -42,6 +42,67 @@ function formatMaterialName(materialId: string): string {
 function getAreaDisplayName(state: WorldState, areaId: string): string {
   const area = state.exploration?.areas.get(areaId)
   return getAreaDisplayNameBase(areaId, area)
+}
+
+/**
+ * Format tick feedback for display during animated actions
+ * Returns a string to show after the dot, or null if no display needed
+ */
+export function formatTickFeedback(feedback: TickFeedback): string | null {
+  if (feedback.damage) {
+    const { target, amount, enemyHpRemaining, playerHpRemaining } = feedback.damage
+    if (target === "enemy") {
+      return `(-${amount} enemy${enemyHpRemaining !== undefined ? `, ${enemyHpRemaining} HP left` : ""})`
+    } else {
+      return `(-${amount} you${playerHpRemaining !== undefined ? `, ${playerHpRemaining} HP left` : ""})`
+    }
+  }
+
+  if (feedback.combatMiss) {
+    return feedback.combatMiss.attacker === "player" ? "(miss)" : "(dodged)"
+  }
+
+  if (feedback.combatVictory) {
+    return `Victory!`
+  }
+
+  if (feedback.combatDefeat) {
+    return `Defeated!`
+  }
+
+  if (feedback.gathered) {
+    return `(+${feedback.gathered.quantity} ${feedback.gathered.itemId})`
+  }
+
+  if (feedback.gatheringComplete) {
+    const items = feedback.gatheringComplete.totalItems
+    const itemStr = items.map((i) => `${i.quantity} ${i.itemId}`).join(", ")
+    return `(gathered: ${itemStr})`
+  }
+
+  if (feedback.crafted) {
+    return `(+${feedback.crafted.quantity} ${feedback.crafted.itemId})`
+  }
+
+  if (feedback.materialsConsumed) {
+    const items = feedback.materialsConsumed
+    const itemStr = items.map((i) => `${i.quantity} ${i.itemId}`).join(", ")
+    return `(consumed: ${itemStr})`
+  }
+
+  if (feedback.discovered) {
+    return `Found ${feedback.discovered.name}!`
+  }
+
+  if (feedback.xpGained) {
+    return `(+${feedback.xpGained.amount} ${feedback.xpGained.skill} XP)`
+  }
+
+  if (feedback.message) {
+    return feedback.message
+  }
+
+  return null
 }
 
 /**
