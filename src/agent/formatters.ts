@@ -322,7 +322,7 @@ export function formatWorldState(state: WorldState): string {
                   }
                   return `${skillCommands} ${lowerMode}`
                 })
-                lines.push(`Actions: ${modeExamples.join(", ")}`)
+                lines.push(`Actions: ${modeExamples.join(" || ")}`)
               }
             } else {
               lines.push("No visible resources at your current skill level.")
@@ -339,7 +339,7 @@ export function formatWorldState(state: WorldState): string {
         lines.push(`Enemy camp: ${creatureType}`)
         lines.push(`Difficulty: ${difficulty}`)
         lines.push("")
-        lines.push("fight / leave")
+        lines.push("Actions: fight || leave")
       }
     } else {
       // At hub - show area-level information
