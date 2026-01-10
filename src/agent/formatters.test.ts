@@ -208,7 +208,7 @@ describe("Formatters", () => {
         expect(formatted).toMatch(/\d+\/\d+ [A-Z][a-z]+( [A-Z][a-z]+)? ✓/)
       })
 
-      it("should show locked node when skill level is insufficient for location tier", () => {
+      it("should show locked node when skill level is insufficient for location tier", async () => {
         const state = createWorld("mat-vis-5")
 
         // Find a D2 area (distance 2, requires L5) specifically with ORE_VEIN nodes
@@ -221,7 +221,7 @@ describe("Formatters", () => {
 
         // Enrol in Mining first (must be at guild)
         setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-        executeAction(state, { type: "Enrol", skill: "Mining" })
+        await executeAction(state, { type: "Enrol", skill: "Mining" })
 
         // Now move to D2 area (at hub, not at a specific location)
         makeAreaKnown(state, d2Area.id)
@@ -237,7 +237,7 @@ describe("Formatters", () => {
         expect(formatted).not.toMatch(/[A-Z_]+ ✓/)
       })
 
-      it("should show materials normally when skill level meets location tier requirement", () => {
+      it("should show materials normally when skill level meets location tier requirement", async () => {
         const state = createWorld("mat-vis-6")
 
         // Find a D2 area (distance 2, requires L5) specifically with ORE_VEIN nodes
@@ -250,7 +250,7 @@ describe("Formatters", () => {
 
         // Enrol in Mining and set to L5 (meets D2 requirement)
         setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-        executeAction(state, { type: "Enrol", skill: "Mining" })
+        await executeAction(state, { type: "Enrol", skill: "Mining" })
         state.player.skills.Mining = { level: 5, xp: 0 }
 
         // Now move to D2 area (at hub, not at a specific location)
