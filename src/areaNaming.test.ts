@@ -177,6 +177,37 @@ describe("Area Naming", () => {
 
       expect(prompt.toLowerCase()).toMatch(/place|location|name|evocative/)
     })
+
+    it("should include exclude names when provided", () => {
+      const area: Area = {
+        id: "area-d2-i0",
+        distance: 2,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
+      }
+
+      const excludeNames = ["Slate Ridge", "Iron Valley"]
+      const prompt = buildAreaNamingPrompt(area, [], excludeNames)
+
+      expect(prompt).toContain("Slate Ridge")
+      expect(prompt).toContain("Iron Valley")
+      expect(prompt.toLowerCase()).toMatch(/don't use|already taken|avoid/)
+    })
+
+    it("should not include exclusion section when no exclude names", () => {
+      const area: Area = {
+        id: "area-d2-i0",
+        distance: 2,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
+      }
+
+      const prompt = buildAreaNamingPrompt(area, [], [])
+
+      expect(prompt.toLowerCase()).not.toMatch(/don't use|already taken/)
+    })
   })
 
   describe("getNeighborNames", () => {
@@ -320,7 +351,7 @@ describe("Area Naming", () => {
         indexInDistance: 0,
       }
 
-      const name = await generateAreaName(area, [], "test-api-key", mockClient)
+      const name = await generateAreaName(area, [], [], "test-api-key", mockClient)
 
       expect(name).toBe("Thornwood Vale")
       expect(createCallArgs).toHaveLength(1)
@@ -339,7 +370,7 @@ describe("Area Naming", () => {
         indexInDistance: 0,
       }
 
-      const name = await generateAreaName(area, [], "test-api-key", mockClient)
+      const name = await generateAreaName(area, [], [], "test-api-key", mockClient)
 
       expect(name).toBe("The Scarred Basin")
     })
@@ -354,7 +385,7 @@ describe("Area Naming", () => {
       }
 
       const neighborNames = ["Whispering Hollow", "The Iron Ridge"]
-      await generateAreaName(area, neighborNames, "test-api-key", mockClient)
+      await generateAreaName(area, neighborNames, [], "test-api-key", mockClient)
 
       // Check that the prompt contains neighbor names
       const callArgs = createCallArgs[0] as { messages: Array<{ content: string }> }
@@ -376,7 +407,7 @@ describe("Area Naming", () => {
         indexInDistance: 0,
       }
 
-      const name = await generateAreaName(area, [], "test-api-key", mockClient)
+      const name = await generateAreaName(area, [], [], "test-api-key", mockClient)
 
       // Should return a fallback based on area ID
       expect(name).toBe("Unnamed Wilds")
@@ -395,7 +426,7 @@ describe("Area Naming", () => {
         indexInDistance: 0,
       }
 
-      const name = await generateAreaName(area, [], "test-api-key", mockClient)
+      const name = await generateAreaName(area, [], [], "test-api-key", mockClient)
 
       expect(name).toBe("Unnamed Wilds")
     })
@@ -409,7 +440,7 @@ describe("Area Naming", () => {
         indexInDistance: 0,
       }
 
-      await generateAreaName(area, [], "test-api-key", mockClient)
+      await generateAreaName(area, [], [], "test-api-key", mockClient)
 
       const callArgs = createCallArgs[0] as { model: string }
       // Should use haiku for speed/cost efficiency
@@ -425,7 +456,7 @@ describe("Area Naming", () => {
         indexInDistance: 0,
       }
 
-      await generateAreaName(area, [], "test-api-key", mockClient)
+      await generateAreaName(area, [], [], "test-api-key", mockClient)
 
       const callArgs = createCallArgs[0] as { max_tokens: number }
       expect(callArgs.max_tokens).toBeLessThanOrEqual(50)
@@ -454,6 +485,101 @@ describe("Area Naming", () => {
           process.env.ANTHROPIC_API_KEY = originalEnv
         }
       }
+    })
+
+    it("should retry when generated name is a duplicate", async () => {
+      const callCount = { value: 0 }
+      mockClient.create = async () => {
+        callCount.value++
+        // First call returns a duplicate, second returns unique
+        if (callCount.value === 1) {
+          return { content: [{ type: "text", text: "Duplicate Name" }] }
+        }
+        return { content: [{ type: "text", text: "Unique Name" }] }
+      }
+
+      const area: Area = {
+        id: "area-d1-i0",
+        distance: 1,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
+      }
+
+      const existingNames = ["Duplicate Name", "Another Name"]
+      const name = await generateAreaName(area, [], existingNames, "test-api-key", mockClient)
+
+      expect(name).toBe("Unique Name")
+      expect(callCount.value).toBe(2)
+    })
+
+    it("should include duplicate name in exclusion list on retry", async () => {
+      const calls: string[] = []
+      mockClient.create = async (params) => {
+        calls.push(params.messages[0].content)
+        if (calls.length === 1) {
+          return { content: [{ type: "text", text: "Duplicate Name" }] }
+        }
+        return { content: [{ type: "text", text: "Unique Name" }] }
+      }
+
+      const area: Area = {
+        id: "area-d1-i0",
+        distance: 1,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
+      }
+
+      const existingNames = ["Duplicate Name"]
+      await generateAreaName(area, [], existingNames, "test-api-key", mockClient)
+
+      // Second call should include "Duplicate Name" in exclusion list
+      expect(calls[1]).toContain("Duplicate Name")
+      expect(calls[1].toLowerCase()).toMatch(/don't use|already taken/)
+    })
+
+    it("should return fallback after max retries with duplicates", async () => {
+      // Always return a duplicate name
+      mockClient.create = async () => ({
+        content: [{ type: "text", text: "Always Duplicate" }],
+      })
+
+      const area: Area = {
+        id: "area-d1-i0",
+        distance: 1,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
+      }
+
+      const existingNames = ["Always Duplicate"]
+      const name = await generateAreaName(area, [], existingNames, "test-api-key", mockClient)
+
+      // Should fall back after exhausting retries
+      expect(name).toBe("Unnamed Wilds")
+    })
+
+    it("should accept unique name immediately without retrying", async () => {
+      const callCount = { value: 0 }
+      mockClient.create = async () => {
+        callCount.value++
+        return { content: [{ type: "text", text: "Unique Name" }] }
+      }
+
+      const area: Area = {
+        id: "area-d1-i0",
+        distance: 1,
+        generated: true,
+        locations: [],
+        indexInDistance: 0,
+      }
+
+      const existingNames = ["Different Name", "Another Name"]
+      const name = await generateAreaName(area, [], existingNames, "test-api-key", mockClient)
+
+      expect(name).toBe("Unique Name")
+      expect(callCount.value).toBe(1) // Only one call needed
     })
   })
 

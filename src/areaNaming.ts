@@ -17,8 +17,16 @@ const FALLBACK_NAME = "Unnamed Wilds"
  * Build a prompt for the LLM to generate an area name.
  * The prompt includes context about the area's distance from town,
  * what locations it contains, and the names of neighboring areas.
+ *
+ * @param area - The area to name
+ * @param neighborNames - Names of neighboring areas for thematic context
+ * @param excludeNames - Names to explicitly exclude (used when retrying after duplicates)
  */
-export function buildAreaNamingPrompt(area: Area, neighborNames: string[]): string {
+export function buildAreaNamingPrompt(
+  area: Area,
+  neighborNames: string[],
+  excludeNames: string[] = []
+): string {
   // Build distance description
   const distanceDesc =
     area.distance === 1
@@ -70,6 +78,13 @@ export function buildAreaNamingPrompt(area: Area, neighborNames: string[]): stri
 The name should feel thematically consistent with these neighbors, but not repetitive.`
       : ""
 
+  // Build exclusion section if names should be avoided
+  const exclusionSection =
+    excludeNames.length > 0
+      ? `\n\nIMPORTANT: The following names are already taken - definitely don't use these:
+${excludeNames.map((n) => `- ${n}`).join("\n")}`
+      : ""
+
   return `Generate a short, evocative place name for a wilderness area in a fantasy world.
 
 This area is at distance ${area.distance} from town.
@@ -77,7 +92,8 @@ ${distanceDesc}
 
 ${featuresSection}
 
-${neighborSection}
+${neighborSection}${exclusionSection}
+
 Requirements:
 - Generate a short 1-3 word name (occasionally slightly longer if it sounds good)
 - Use evocative place-style names like 'Thornwood', 'The Scarred Basin', 'Misthollow', 'Alder's Rest'
@@ -138,12 +154,14 @@ export interface AnthropicMessagesClient {
  *
  * @param area - The area to name
  * @param neighborNames - Names of neighboring areas for thematic context
+ * @param existingNames - All existing area names to ensure uniqueness
  * @param apiKey - Anthropic API key (optional, falls back to global config)
  * @param client - Optional Anthropic client for dependency injection (used in tests)
  */
 export async function generateAreaName(
   area: Area,
   neighborNames: string[],
+  existingNames: string[] = [],
   apiKey?: string,
   client?: AnthropicMessagesClient
 ): Promise<string | undefined> {
@@ -154,26 +172,44 @@ export async function generateAreaName(
     return undefined
   }
 
-  const prompt = buildAreaNamingPrompt(area, neighborNames)
+  const messagesClient = client ?? new Anthropic({ apiKey: effectiveApiKey! }).messages
 
-  try {
-    const messagesClient = client ?? new Anthropic({ apiKey: effectiveApiKey! }).messages
+  // Try to generate a unique name, retrying if we get a duplicate
+  const maxRetries = 3
+  const usedNames: string[] = []
 
-    const response = await messagesClient.create({
-      model: NAMING_MODEL,
-      max_tokens: 30,
-      messages: [{ role: "user", content: prompt }],
-    })
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const prompt = buildAreaNamingPrompt(area, neighborNames, usedNames)
 
-    const text = response.content[0]?.type === "text" ? response.content[0].text : ""
-    const name = (text ?? "").trim()
+    try {
+      const response = await messagesClient.create({
+        model: NAMING_MODEL,
+        max_tokens: 30,
+        messages: [{ role: "user", content: prompt }],
+      })
 
-    if (!name) {
+      const text = response.content[0]?.type === "text" ? response.content[0].text : ""
+      const name = (text ?? "").trim()
+
+      if (!name) {
+        return FALLBACK_NAME
+      }
+
+      // Check if name is unique
+      if (existingNames.includes(name)) {
+        // Name is a duplicate - add to exclusion list and retry
+        usedNames.push(name)
+        continue
+      }
+
+      // Success - unique name generated
+      return name
+    } catch {
+      // On error, return fallback
       return FALLBACK_NAME
     }
-
-    return name
-  } catch {
-    return FALLBACK_NAME
   }
+
+  // If we exhausted retries, return fallback
+  return FALLBACK_NAME
 }
