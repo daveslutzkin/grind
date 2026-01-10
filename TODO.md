@@ -101,7 +101,7 @@ Gathering: Ore vein
 **Implementation:** Modified `formatters.ts` to check location tier skill requirements before displaying materials. When player's skill level is below the area's requirement (L5 for D2, L9 for D3+), node displays as locked with the required skill level instead of listing materials with misleading checkmarks.
 
 ### 10. Require move to node location before gathering
-**Status:** Pending
+**Status:** ✅ Complete
 **Description:** Currently can gather from hub (Clearing) without moving to the node's specific location. Should require moving to the location first.
 
 **Decision:** Accept both node type and display name: `move ore vein`, `move mining`, `move Ore Vein` all work to move to that location in the current area. No need to expose internal location IDs.
@@ -121,7 +121,7 @@ Gathering: Ore vein
 **Implementation:** Updated `formatWorldState` in `src/agent/formatters.ts` to show the required skill and guild when the player doesn't have the skill for a gathering node. Added `getGuildForSkill` helper function to map gathering skills to their guild names.
 
 ### 13. Reformat location/world state display
-**Status:** Pending
+**Status:** ✅ Complete
 **Description:** Current display is messy. Reformat to:
 ```
 area-d1-i2
