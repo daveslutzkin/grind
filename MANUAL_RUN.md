@@ -5,9 +5,9 @@ Interactive step-by-step simulation runs via Claude Code.
 ## How It Works
 
 1. Tell Claude to "start a manual run"
-2. Claude picks a seed and runs the batch runner with an empty action list
+2. Claude picks a seed and pipes an empty action list into the REPL
 3. You tell Claude the next action
-4. Claude runs the batch runner with that action added and shows the output
+4. Claude pipes the updated action list into the REPL and shows the output
 5. Repeat until done
 
 ## Output Format
@@ -35,10 +35,10 @@ accept <contract>            Accept a contract
 
 ## Under the Hood
 
-Uses `src/batch.ts`:
+Uses `src/repl.ts` with piped input:
 
 ```bash
-npx tsx src/batch.ts <seed> [action1] [action2] ...
+echo -e "action1\naction2\nend" | npx tsx src/repl.ts --llm-cache cache.json <seed>
 ```
 
-Each run replays all actions from scratch with the same seed, ensuring deterministic results.
+Each run replays all actions from scratch with the same seed and LLM cache, ensuring deterministic results.

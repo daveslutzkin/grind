@@ -78,9 +78,9 @@ Gathering: Ore vein
 
 ## New Items (from 30-action test run)
 
-### 7. Add mine/chop to batch runner
+### 7. Add mine/chop commands
 **Status:** Done
-**Description:** `mine` and `chop` commands were added to agent parser but not to batch runner's `parseCommand` in `runner.ts`. Forces users to use verbose `gather area-d1-i0-node-0 focus COPPER_ORE` syntax.
+**Description:** `mine` and `chop` commands were added to agent parser but not to `parseCommand` in `runner.ts`. Forces users to use verbose `gather area-d1-i0-node-0 focus COPPER_ORE` syntax.
 
 **Implementation:** Added `mine` and `chop` cases to `parseAction` in `runner.ts`. Both support the same modes as gather: `focus <material>`, `careful`, and `appraise`. Also updated `printHelp` to document the new commands.
 

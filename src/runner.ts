@@ -1,5 +1,5 @@
 /**
- * Shared runner module for REPL and batch execution
+ * Runner module for the REPL
  * Contains common types, command parsing, display formatting, and statistics
  */
 
@@ -1265,7 +1265,7 @@ export interface RunnerConfig {
 
 /**
  * Run a session with the given configuration.
- * This is the unified core loop used by both REPL and batch runners.
+ * This is the core loop used by the REPL.
  */
 export async function runSession(seed: string, config: RunnerConfig): Promise<void> {
   // Check if a save exists for this seed (only in interactive/TTY mode)
