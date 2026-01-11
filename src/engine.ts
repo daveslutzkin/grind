@@ -964,3 +964,19 @@ async function* executeLeave(state: WorldState, action: LeaveAction): ActionGene
     },
   }
 }
+
+// Export generator functions for use in interactive.ts
+export {
+  executeAcceptContract,
+  executeGather,
+  executeMine,
+  executeChop,
+  executeFight,
+  executeCraft,
+  executeStore,
+  executeDrop,
+  executeGuildEnrolment,
+  executeTurnInCombatToken,
+  executeTravelToLocation,
+  executeLeave,
+}

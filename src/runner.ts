@@ -1362,71 +1362,56 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
     // Call beforeAction hook if provided
     config.beforeAction?.(action, session.state)
 
-    // Handle interactive exploration (Explore and Survey) - only in TTY mode
-    if ((action.type === "Explore" || action.type === "Survey") && process.stdin.isTTY) {
-      // Pause the main readline to avoid conflicts with interactive prompts
+    // In TTY mode, use animated execution for ALL actions
+    if (process.stdin.isTTY) {
       config.onBeforeInteractive?.()
 
-      let logs: ActionLog[] = []
       try {
         // Import interactive functions dynamically
-        const { interactiveExplore, interactiveSurvey } = await import("./interactive.js")
+        const {
+          interactiveExplore,
+          interactiveSurvey,
+          interactiveExplorationTravel,
+          interactiveFarTravel,
+          executeAnimatedAction,
+        } = await import("./interactive.js")
 
+        // Special handling for Explore/Survey/Travel actions (they have interactive loops)
         if (action.type === "Explore") {
-          logs = await interactiveExplore(session.state)
+          const logs = await interactiveExplore(session.state)
+          for (const log of logs) {
+            session.stats.logs.push(log)
+          }
+        } else if (action.type === "Survey") {
+          const logs = await interactiveSurvey(session.state)
+          for (const log of logs) {
+            session.stats.logs.push(log)
+          }
+        } else if (action.type === "ExplorationTravel") {
+          const logs = await interactiveExplorationTravel(session.state, action)
+          for (const log of logs) {
+            session.stats.logs.push(log)
+          }
+        } else if (action.type === "FarTravel") {
+          const logs = await interactiveFarTravel(session.state, action)
+          for (const log of logs) {
+            session.stats.logs.push(log)
+          }
         } else {
-          logs = await interactiveSurvey(session.state)
+          // All other actions: use generic animation
+          const log = await executeAnimatedAction(session.state, action)
+          session.stats.logs.push(log)
+          config.onActionComplete(log, session.state)
         }
       } finally {
-        // Resume the main readline
         config.onAfterInteractive?.()
       }
 
-      // Record all logs from the interactive session (display already handled by interactive function)
-      for (const log of logs) {
-        session.stats.logs.push(log)
-      }
-
-      // Auto-save after interactive exploration
       writeSave(seed, session)
       continue
     }
 
-    // Handle interactive travel (ExplorationTravel and FarTravel) - only in TTY mode
-    if (
-      (action.type === "ExplorationTravel" || action.type === "FarTravel") &&
-      process.stdin.isTTY
-    ) {
-      // Pause the main readline to avoid conflicts with interactive prompts
-      config.onBeforeInteractive?.()
-
-      let logs: ActionLog[] = []
-      try {
-        // Import interactive functions dynamically
-        const { interactiveExplorationTravel, interactiveFarTravel } =
-          await import("./interactive.js")
-
-        if (action.type === "ExplorationTravel") {
-          logs = await interactiveExplorationTravel(session.state, action)
-        } else {
-          logs = await interactiveFarTravel(session.state, action)
-        }
-      } finally {
-        // Resume the main readline
-        config.onAfterInteractive?.()
-      }
-
-      // Record all logs from the interactive session (display already handled by interactive function)
-      for (const log of logs) {
-        session.stats.logs.push(log)
-      }
-
-      // Auto-save after interactive travel
-      writeSave(seed, session)
-      continue
-    }
-
-    // Execute the action (non-interactive mode or non-Explore/Survey actions)
+    // Non-TTY mode: execute without animation (for scripts, CI, etc.)
     const log = await executeAction(session.state, action)
     session.stats.logs.push(log)
     config.onActionComplete(log, session.state)

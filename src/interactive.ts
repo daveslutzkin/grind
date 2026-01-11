@@ -10,6 +10,7 @@ import type {
   FarTravelAction,
   ActionGenerator,
   ActionLog,
+  Action,
 } from "./types.js"
 import { setTimeout } from "timers/promises"
 import {
@@ -65,10 +66,8 @@ export async function runAnimatedAction(
 ): Promise<AnimationResult> {
   const { tickDelay = 100, label, checkCancel } = options
 
-  if (label) {
-    process.stdout.write(`\n${label}`)
-  }
-
+  // Don't print label yet - wait to see if there are any ticks
+  let labelPrinted = false
   let ticksCompleted = 0
   let lastLog: ActionLog | null = null
 
@@ -76,6 +75,12 @@ export async function runAnimatedAction(
     if (tick.done) {
       lastLog = tick.log
       break
+    }
+
+    // Print label on first tick (skip for 0-tick actions)
+    if (!labelPrinted && label) {
+      process.stdout.write(`\n${label}`)
+      labelPrinted = true
     }
 
     // Show dot
@@ -111,7 +116,10 @@ export async function runAnimatedAction(
     await setTimeout(tickDelay)
   }
 
-  process.stdout.write("\n")
+  // Only print newline if we printed something
+  if (labelPrinted) {
+    process.stdout.write("\n")
+  }
 
   return {
     log: lastLog!,
@@ -526,4 +534,148 @@ export async function interactiveFarTravel(
   } finally {
     cleanup()
   }
+}
+
+// ============================================================================
+// Generic Animated Action Execution
+// ============================================================================
+
+/**
+ * Get the display label for an action during animation
+ */
+export function getActionLabel(action: Action): string {
+  switch (action.type) {
+    case "Explore":
+      return "Exploring"
+    case "Survey":
+      return "Surveying"
+    case "ExplorationTravel":
+      return "Traveling"
+    case "FarTravel":
+      // Note: For dynamic labels like "Traveling (X hops)",
+      // the caller should compute and pass the label
+      return "Traveling"
+    case "Move":
+      return "Moving"
+    case "Mine":
+      return "Mining"
+    case "Gather":
+      return "Gathering"
+    case "Chop":
+      return "Chopping"
+    case "Fight":
+      return "Fighting"
+    case "Craft":
+      return "Crafting"
+    case "Store":
+      return "Storing"
+    case "Drop":
+      return "Dropping"
+    case "Enrol":
+      return "Enrolling"
+    case "TravelToLocation":
+      return "Traveling"
+    case "Leave":
+      return "Leaving"
+    case "AcceptContract":
+      return "Accepting contract"
+    case "TurnInCombatToken":
+      return "Turning in token"
+    default:
+      return "Working"
+  }
+}
+
+/**
+ * Get the action generator for any action type.
+ * This replicates the switch in executeAction but returns the generator instead of completing it.
+ * NOTE: This function will use imports from engine.js that will be added in the next step.
+ */
+async function getActionGenerator(state: WorldState, action: Action): Promise<ActionGenerator> {
+  // Dynamically import from engine.js - these will be exported in the next step
+  const {
+    executeAcceptContract,
+    executeGather,
+    executeMine,
+    executeChop,
+    executeFight,
+    executeCraft,
+    executeStore,
+    executeDrop,
+    executeGuildEnrolment,
+    executeTurnInCombatToken,
+    executeTravelToLocation,
+    executeLeave,
+  } = await import("./engine.js")
+
+  switch (action.type) {
+    case "Move":
+      return executeExplorationTravel(state, {
+        type: "ExplorationTravel",
+        destinationAreaId: action.destination,
+      })
+    case "AcceptContract":
+      return executeAcceptContract(state, action)
+    case "Gather":
+      return executeGather(state, action)
+    case "Mine":
+      return executeMine(state, action)
+    case "Chop":
+      return executeChop(state, action)
+    case "Fight":
+      return executeFight(state, action)
+    case "Craft":
+      return executeCraft(state, action)
+    case "Store":
+      return executeStore(state, action)
+    case "Drop":
+      return executeDrop(state, action)
+    case "Enrol":
+      return executeGuildEnrolment(state, action)
+    case "TurnInCombatToken":
+      return executeTurnInCombatToken(state, action)
+    case "Survey":
+      return executeSurvey(state, action)
+    case "Explore":
+      return executeExplore(state, action)
+    case "ExplorationTravel":
+      return executeExplorationTravel(state, action)
+    case "FarTravel":
+      return executeFarTravel(state, action)
+    case "TravelToLocation":
+      return executeTravelToLocation(state, action)
+    case "Leave":
+      return executeLeave(state, action)
+  }
+}
+
+/**
+ * Execute any action with animation (for TTY mode)
+ * This is the generic entry point for all animated actions.
+ *
+ * @param state - The world state
+ * @param action - The action to execute
+ * @param options - Optional overrides for label, tickDelay, etc.
+ * @returns The action log
+ */
+export async function executeAnimatedAction(
+  state: WorldState,
+  action: Action,
+  options: { label?: string; tickDelay?: number } = {}
+): Promise<ActionLog> {
+  const label = options.label ?? getActionLabel(action)
+  const tickDelay = options.tickDelay ?? 100
+
+  // Get the generator for this action
+  const generator = await getActionGenerator(state, action)
+
+  // Set up cancellation (only for multi-tick actions that support it)
+  // For now, we won't set up cancellation for most actions - just animate them
+  const { log } = await runAnimatedAction(generator, {
+    label,
+    tickDelay,
+    // No checkCancel for now - can add later for specific actions
+  })
+
+  return log
 }
