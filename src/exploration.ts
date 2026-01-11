@@ -183,6 +183,8 @@ export interface SuccessChanceParams {
  * - level_bonus = (level - 1) × 5%
  * - distance_penalty = (distance - 1) × 5%
  * - knowledge_bonus = 5% per connected known area + 20% × (known non-connected / total)
+ *
+ * Minimum floor: 1% (exploration is always possible, just harder at high distances)
  */
 export function calculateSuccessChance(params: SuccessChanceParams): number {
   const { level, distance, connectedKnownAreas, nonConnectedKnownAreas, totalAreasAtDistance } =
@@ -213,8 +215,8 @@ export function calculateSuccessChance(params: SuccessChanceParams): number {
   // Calculate total success chance
   const totalChance = baseRate + levelBonus - distancePenalty + connectedBonus + nonConnectedBonus
 
-  // Clamp between 0 and 1
-  return Math.max(0, Math.min(1, totalChance))
+  // Clamp between 1% floor and 100% (exploration is always possible)
+  return Math.max(0.01, Math.min(1, totalChance))
 }
 
 /**

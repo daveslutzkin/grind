@@ -182,7 +182,7 @@ describe("Exploration Utilities", () => {
     })
 
     describe("Edge cases", () => {
-      it("should floor success chance at 0% (no negative chances)", () => {
+      it("should floor success chance at 1% (exploration always possible)", () => {
         const chance = calculateSuccessChance({
           level: 1,
           distance: 20, // Very high distance penalty
@@ -190,7 +190,7 @@ describe("Exploration Utilities", () => {
           nonConnectedKnownAreas: 0,
           totalAreasAtDistance: 100,
         })
-        expect(chance).toBeGreaterThanOrEqual(0)
+        expect(chance).toBe(0.01)
       })
 
       it("should cap success chance at 100%", () => {
