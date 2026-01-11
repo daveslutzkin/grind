@@ -33,7 +33,6 @@ export { formatWorldState, formatActionLog }
 export interface SessionStats {
   logs: ActionLog[]
   startingSkills: Record<SkillID, SkillState>
-  totalSession: number
   sessionStartLogIndex: number // Index where current session starts in logs array
 }
 
@@ -938,7 +937,7 @@ export function computeLuckString(streams: RngStream[]): string {
     zLuck >= 0 ? `Top ${Math.ceil(100 - percentile)}%` : `Bottom ${Math.ceil(percentile)}%`
   const sigmaStr = zLuck >= 0 ? `+${zLuck.toFixed(2)}σ` : `${zLuck.toFixed(2)}σ`
 
-  return `${position} (${label}) — ${validStreams.length} streams (${sigmaStr})`
+  return `${position} (${label} - ${sigmaStr})`
 }
 
 /**
@@ -1140,15 +1139,11 @@ export function printSummary(state: WorldState, stats: SessionStats): void {
     sessionStats.ticksUsed > 0 ? (sessionStats.totalXP / sessionStats.ticksUsed).toFixed(2) : "0.00"
   console.log(
     pad(
-      `⏱  TIME: ${sessionStats.ticksUsed}/${stats.totalSession} ticks  │  XP: ${sessionStats.totalXP} actual, ${sessionStats.expectedXP.toFixed(1)} expected  │  XP/tick: ${sessionActualXPTick} actual, ${sessionExpectedXPTick} expected`
+      `⏱  TIME: ${sessionStats.ticksUsed} ticks  │  ACTIONS: ${sessionStats.actionCount}  |  XP: ${sessionStats.totalXP} actual, ${sessionStats.expectedXP.toFixed(1)} expected  │  XP/tick: ${sessionActualXPTick} actual, ${sessionExpectedXPTick} expected`
     )
   )
   console.log(`├${line}┤`)
-  console.log(pad(`📋 ACTIONS: ${sessionStats.actionCount} total`))
-  console.log(`├${line}┤`)
-  console.log(pad(`🎲 LUCK: ${sessionLuckStr}`))
-  console.log(`├${line}┤`)
-  console.log(pad(`📉 VOLATILITY: ${sessionVolatilityStr}`))
+  console.log(pad(`🎲 LUCK: ${sessionLuckStr}  |  VOLATILITY: ${sessionVolatilityStr}`))
   console.log(`├${line}┤`)
   console.log(
     pad(
@@ -1177,15 +1172,11 @@ export function printSummary(state: WorldState, stats: SessionStats): void {
       gameStats.ticksUsed > 0 ? (gameStats.totalXP / gameStats.ticksUsed).toFixed(2) : "0.00"
     console.log(
       pad(
-        `⏱  TIME: ${gameStats.ticksUsed} ticks total  │  XP: ${gameStats.totalXP} actual, ${gameStats.expectedXP.toFixed(1)} expected  │  XP/tick: ${gameActualXPTick} actual, ${gameExpectedXPTick} expected`
+        `⏱  TIME: ${gameStats.ticksUsed} ticks  │  ACTIONS: ${gameStats.actionCount}  |  XP: ${gameStats.totalXP} actual, ${gameStats.expectedXP.toFixed(1)} expected  │  XP/tick: ${gameActualXPTick} actual, ${gameExpectedXPTick} expected`
       )
     )
     console.log(`├${line}┤`)
-    console.log(pad(`📋 ACTIONS: ${gameStats.actionCount} total`))
-    console.log(`├${line}┤`)
-    console.log(pad(`🎲 LUCK: ${gameLuckStr}`))
-    console.log(`├${line}┤`)
-    console.log(pad(`📉 VOLATILITY: ${gameVolatilityStr}`))
+    console.log(pad(`🎲 LUCK: ${gameLuckStr}  |  VOLATILITY: ${gameVolatilityStr}`))
     console.log(`╚${dline}╝`)
   }
 }
@@ -1212,7 +1203,6 @@ export function createSession(options: CreateSessionOptions): Session {
   const stats: SessionStats = {
     logs: [],
     startingSkills: { ...state.player.skills },
-    totalSession: 0,
     sessionStartLogIndex: 0,
   }
   return { state, stats }

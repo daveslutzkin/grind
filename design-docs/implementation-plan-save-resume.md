@@ -259,8 +259,7 @@ This prevents corrupted saves if the process crashes mid-write.
   },
   "stats": {
     "logs": [...],
-    "startingSkills": {...},
-    "totalSession": 10000
+    "startingSkills": {...}
   }
 }
 ```

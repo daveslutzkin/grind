@@ -64,7 +64,6 @@ describe("Persistence", () => {
         stats: {
           logs: [],
           startingSkills: { ...state.player.skills },
-          totalSession: 0,
           sessionStartLogIndex: 0,
         },
       }
@@ -81,7 +80,6 @@ describe("Persistence", () => {
         stats: {
           logs: [],
           startingSkills: { ...state.player.skills },
-          totalSession: 0,
           sessionStartLogIndex: 0,
         },
       }
@@ -132,7 +130,6 @@ describe("Persistence", () => {
         stats: {
           logs: [],
           startingSkills: { ...state.player.skills },
-          totalSession: 0,
           sessionStartLogIndex: 0,
         },
       }
@@ -164,7 +161,6 @@ describe("Persistence", () => {
         stats: {
           logs: [],
           startingSkills: { ...state.player.skills },
-          totalSession: 0,
           sessionStartLogIndex: 0,
         },
       }
@@ -202,7 +198,6 @@ describe("Persistence", () => {
           stats: {
             logs: [],
             startingSkills: { ...state.player.skills },
-            totalSession: 0,
             sessionStartLogIndex: 0,
           },
         }
@@ -226,7 +221,6 @@ describe("Persistence", () => {
         stats: {
           logs: [],
           startingSkills: { ...state.player.skills },
-          totalSession: 0,
           sessionStartLogIndex: 0,
         },
       }
@@ -259,7 +253,6 @@ describe("Persistence", () => {
         stats: {
           logs: [],
           startingSkills: { ...state.player.skills },
-          totalSession: 0,
           sessionStartLogIndex: 0,
         },
       }
@@ -300,7 +293,6 @@ describe("Persistence", () => {
         stats: {
           logs: [],
           startingSkills: { ...state.player.skills },
-          totalSession: 0,
           sessionStartLogIndex: 0,
         },
       }
@@ -329,7 +321,6 @@ describe("Persistence", () => {
         stats: {
           logs: [],
           startingSkills: { ...state.player.skills },
-          totalSession: 0,
           sessionStartLogIndex: 0,
         },
       }
@@ -358,7 +349,6 @@ describe("Persistence", () => {
             },
           ],
           startingSkills: { ...state.player.skills },
-          totalSession: 0,
           sessionStartLogIndex: 0,
         },
       }
@@ -384,7 +374,6 @@ describe("Persistence", () => {
         stats: {
           logs: [],
           startingSkills: { ...state.player.skills },
-          totalSession: 0,
           sessionStartLogIndex: 0,
         },
       }
@@ -410,7 +399,6 @@ describe("Persistence", () => {
         stats: {
           logs: [],
           startingSkills: { ...state.player.skills },
-          totalSession: 0,
           sessionStartLogIndex: 0,
         },
       }
@@ -440,7 +428,6 @@ describe("Persistence", () => {
         stats: {
           logs: [],
           startingSkills: { ...state.player.skills },
-          totalSession: 0,
           sessionStartLogIndex: 0,
         },
       }
@@ -504,7 +491,6 @@ describe("Persistence", () => {
         stats: {
           logs: [],
           startingSkills: { ...state.player.skills },
-          totalSession: 0,
           sessionStartLogIndex: 0,
         },
       }
@@ -571,7 +557,6 @@ describe("Persistence", () => {
         stats: {
           logs: [],
           startingSkills: { ...state.player.skills },
-          totalSession: 0,
           sessionStartLogIndex: 0,
         },
       }
