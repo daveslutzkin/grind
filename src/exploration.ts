@@ -1312,18 +1312,35 @@ export async function* executeExplore(state: WorldState, _action: ExploreAction)
         discoveredConnectionId = picked.id
         connectionToUnknownArea = picked.type === "unknownConnection"
 
+        // Parse connection ID to find the target area (format: "areaId1->areaId2")
+        const [areaId1, areaId2] = picked.id.split("->")
+        const targetAreaId = areaId1 === currentArea.id ? areaId2 : areaId1
+
         // If we discovered a connection to an unknown area, generate its name
         if (connectionToUnknownArea) {
-          // Parse connection ID to find the target area (format: "areaId1->areaId2")
-          const [areaId1, areaId2] = picked.id.split("->")
-          const targetAreaId = areaId1 === currentArea.id ? areaId2 : areaId1
           discoveredUnknownAreaId = targetAreaId
           const targetArea = exploration.areas.get(targetAreaId)
           if (targetArea) {
             await ensureAreaFullyGenerated(state.rng, exploration, targetArea)
           }
 
-          // Show discovery feedback
+          // Show discovery feedback with "new area" annotation
+          const targetName = targetArea
+            ? getAreaDisplayName(targetAreaId, targetArea)
+            : "unknown area"
+          yield {
+            done: false,
+            feedback: {
+              discovered: {
+                type: "connection",
+                name: `connection to ${targetName} (new area)`,
+                id: picked.id,
+              },
+            },
+          }
+        } else {
+          // Known connection - show the destination name
+          const targetArea = exploration.areas.get(targetAreaId)
           const targetName = targetArea
             ? getAreaDisplayName(targetAreaId, targetArea)
             : "unknown area"
@@ -1336,12 +1353,6 @@ export async function* executeExplore(state: WorldState, _action: ExploreAction)
                 id: picked.id,
               },
             },
-          }
-        } else {
-          // Known connection
-          yield {
-            done: false,
-            feedback: { discovered: { type: "connection", name: "connection", id: picked.id } },
           }
         }
       }
