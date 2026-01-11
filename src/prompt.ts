@@ -20,6 +20,9 @@ const HISTORY_FILE = path.join(os.homedir(), ".grind_history")
 // In-memory history that persists across readline restarts
 let commandHistory: string[] = []
 
+// Track pending prompt to handle signals gracefully
+let pendingPromptResolve: ((value: string) => void) | null = null
+
 /**
  * Load history from file on startup
  */
@@ -98,6 +101,24 @@ export function initInput(): void {
       addToHistory(latest)
     }
   })
+
+  // Handle Ctrl+C (SIGINT) gracefully - treat as "end" command
+  rl.on("SIGINT", () => {
+    if (pendingPromptResolve) {
+      process.stdout.write("\n") // Add newline for clean output
+      pendingPromptResolve("end")
+      pendingPromptResolve = null
+    }
+  })
+
+  // Handle Ctrl+D (EOF/close) gracefully - treat as "end" command
+  rl.on("close", () => {
+    if (pendingPromptResolve) {
+      process.stdout.write("\n") // Add newline for clean output
+      pendingPromptResolve("end")
+      pendingPromptResolve = null
+    }
+  })
 }
 
 /**
@@ -118,7 +139,13 @@ export async function promptLine(question: string): Promise<string> {
     throw new Error("Input manager not initialized. Call initInput() first.")
   }
   return new Promise((resolve) => {
-    rl!.question(question, resolve)
+    // Store resolve callback so signal handlers can gracefully end the session
+    pendingPromptResolve = resolve
+    rl!.question(question, (answer) => {
+      // Clear the pending callback when normal input is received
+      pendingPromptResolve = null
+      resolve(answer)
+    })
   })
 }
 
