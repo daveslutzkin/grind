@@ -48,6 +48,14 @@ export interface RngStream {
 // Command Parsing
 // ============================================================================
 
+/**
+ * Normalize a name for comparison by removing punctuation (apostrophes, periods, etc.)
+ * but keeping letters, numbers, spaces, and dashes
+ */
+function normalizeName(name: string): string {
+  return name.toLowerCase().replace(/[^\w\s-]/g, "")
+}
+
 export type EnrolSkill = "Exploration" | "Mining" | "Woodcutting" | "Combat" | "Smithing"
 
 const SKILL_MAP: Record<string, EnrolSkill> = {
@@ -232,10 +240,11 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         return null
       }
 
-      // Match against known area names (case-insensitive, prefix match)
+      // Match against known area names (case-insensitive, prefix match, ignoring punctuation)
       if (context.state?.exploration) {
         const knownAreaIds = context.state.exploration.playerState.knownAreaIds
         const inputWithDashes = inputName.replace(/\s+/g, "-")
+        const normalizedInput = normalizeName(inputName)
 
         // Collect all matching areas
         const exactMatches: string[] = []
@@ -244,10 +253,10 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         for (const areaId of knownAreaIds) {
           const area = context.state.exploration.areas.get(areaId)
           if (area?.name) {
-            const areaNameLower = area.name.toLowerCase()
-            if (areaNameLower === inputName) {
+            const normalizedAreaName = normalizeName(area.name)
+            if (normalizedAreaName === normalizedInput) {
               exactMatches.push(areaId)
-            } else if (areaNameLower.startsWith(inputName)) {
+            } else if (normalizedAreaName.startsWith(normalizedInput)) {
               prefixMatches.push(areaId)
             }
           }
@@ -365,6 +374,9 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         return null
       }
 
+      // Normalize input for matching (remove punctuation)
+      const normalizedInput = normalizeName(inputName)
+
       // First, check for gathering node types (move ore vein, move mining, etc.)
       // Resolve to the actual location in the current area
       const oreVeinAliases = ["ore vein", "ore", "mining", "mine"]
@@ -428,9 +440,9 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         return { type: "TravelToLocation", locationId: mobCampLocations[index - 1].id }
       }
 
-      // Next, try to match against location display names (case-insensitive, partial match)
+      // Next, try to match against location display names (case-insensitive, partial match, ignoring punctuation)
       const matchedLocation = Object.entries(LOCATION_DISPLAY_NAMES).find(([, displayName]) =>
-        displayName.toLowerCase().includes(inputName)
+        normalizeName(displayName).includes(normalizedInput)
       )
       if (matchedLocation) {
         return { type: "TravelToLocation", locationId: matchedLocation[0] }
@@ -448,10 +460,10 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         for (const areaId of context.knownAreaIds) {
           const area = context.state.exploration.areas.get(areaId)
           if (area?.name) {
-            const areaNameLower = area.name.toLowerCase()
-            if (areaNameLower === inputName) {
+            const normalizedAreaName = normalizeName(area.name)
+            if (normalizedAreaName === normalizedInput) {
               exactMatches.push(areaId)
-            } else if (areaNameLower.startsWith(inputName)) {
+            } else if (normalizedAreaName.startsWith(normalizedInput)) {
               prefixMatches.push(areaId)
             }
           }
