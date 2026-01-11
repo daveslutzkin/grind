@@ -10,6 +10,7 @@ import type {
   SkillID,
   SkillState,
   ExplorationLocation,
+  AreaID,
 } from "./types.js"
 import {
   getTotalXP,
@@ -33,6 +34,7 @@ export interface SessionStats {
   logs: ActionLog[]
   startingSkills: Record<SkillID, SkillState>
   totalSession: number
+  sessionStartLogIndex: number // Index where current session starts in logs array
 }
 
 export interface RngStream {
@@ -45,6 +47,14 @@ export interface RngStream {
 // ============================================================================
 // Command Parsing
 // ============================================================================
+
+/**
+ * Normalize a name for comparison by removing punctuation (apostrophes, periods, etc.)
+ * but keeping letters, numbers, spaces, and dashes
+ */
+function normalizeName(name: string): string {
+  return name.toLowerCase().replace(/[^\w\s-]/g, "")
+}
 
 export type EnrolSkill = "Exploration" | "Mining" | "Woodcutting" | "Combat" | "Smithing"
 
@@ -230,10 +240,11 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         return null
       }
 
-      // Match against known area names (case-insensitive, prefix match)
+      // Match against known area names (case-insensitive, prefix match, ignoring punctuation)
       if (context.state?.exploration) {
         const knownAreaIds = context.state.exploration.playerState.knownAreaIds
         const inputWithDashes = inputName.replace(/\s+/g, "-")
+        const normalizedInput = normalizeName(inputName)
 
         // Collect all matching areas
         const exactMatches: string[] = []
@@ -242,10 +253,10 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         for (const areaId of knownAreaIds) {
           const area = context.state.exploration.areas.get(areaId)
           if (area?.name) {
-            const areaNameLower = area.name.toLowerCase()
-            if (areaNameLower === inputName) {
+            const normalizedAreaName = normalizeName(area.name)
+            if (normalizedAreaName === normalizedInput) {
               exactMatches.push(areaId)
-            } else if (areaNameLower.startsWith(inputName)) {
+            } else if (normalizedAreaName.startsWith(normalizedInput)) {
               prefixMatches.push(areaId)
             }
           }
@@ -363,6 +374,9 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         return null
       }
 
+      // Normalize input for matching (remove punctuation)
+      const normalizedInput = normalizeName(inputName)
+
       // First, check for gathering node types (move ore vein, move mining, etc.)
       // Resolve to the actual location in the current area
       const oreVeinAliases = ["ore vein", "ore", "mining", "mine"]
@@ -426,9 +440,9 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         return { type: "TravelToLocation", locationId: mobCampLocations[index - 1].id }
       }
 
-      // Next, try to match against location display names (case-insensitive, partial match)
+      // Next, try to match against location display names (case-insensitive, partial match, ignoring punctuation)
       const matchedLocation = Object.entries(LOCATION_DISPLAY_NAMES).find(([, displayName]) =>
-        displayName.toLowerCase().includes(inputName)
+        normalizeName(displayName).includes(normalizedInput)
       )
       if (matchedLocation) {
         return { type: "TravelToLocation", locationId: matchedLocation[0] }
@@ -446,10 +460,10 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         for (const areaId of context.knownAreaIds) {
           const area = context.state.exploration.areas.get(areaId)
           if (area?.name) {
-            const areaNameLower = area.name.toLowerCase()
-            if (areaNameLower === inputName) {
+            const normalizedAreaName = normalizeName(area.name)
+            if (normalizedAreaName === normalizedInput) {
               exactMatches.push(areaId)
-            } else if (areaNameLower.startsWith(inputName)) {
+            } else if (normalizedAreaName.startsWith(normalizedInput)) {
               prefixMatches.push(areaId)
             }
           }
@@ -508,6 +522,243 @@ function makePadInner(width: number): (s: string) => string {
   return (s: string) => "│ " + s.padEnd(width - 4) + " │"
 }
 
+// ============================================================================
+// 2D Map Visualization
+// ============================================================================
+
+interface Point {
+  x: number
+  y: number
+}
+
+interface AreaNode {
+  id: AreaID
+  displayName: string
+  pos: Point
+  isCurrent: boolean
+}
+
+/**
+ * Simple 2D canvas for drawing text-based graphics
+ */
+class Canvas {
+  private grid: string[][]
+  width: number
+  height: number
+
+  constructor(width: number, height: number) {
+    this.width = width
+    this.height = height
+    this.grid = Array(height)
+      .fill(null)
+      .map(() => Array(width).fill(" "))
+  }
+
+  set(x: number, y: number, char: string): void {
+    if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+      this.grid[y][x] = char
+    }
+  }
+
+  get(x: number, y: number): string {
+    if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+      return this.grid[y][x]
+    }
+    return " "
+  }
+
+  /**
+   * Draw a line between two points using simple line drawing
+   */
+  drawLine(x0: number, y0: number, x1: number, y1: number, char: string = "·"): void {
+    // Bresenham's line algorithm
+    const dx = Math.abs(x1 - x0)
+    const dy = Math.abs(y1 - y0)
+    const sx = x0 < x1 ? 1 : -1
+    const sy = y0 < y1 ? 1 : -1
+    let err = dx - dy
+
+    let x = x0
+    let y = y0
+
+    while (true) {
+      // Only draw if empty
+      if (this.get(x, y) === " ") {
+        this.set(x, y, char)
+      }
+
+      if (x === x1 && y === y1) break
+
+      const e2 = 2 * err
+      if (e2 > -dy) {
+        err -= dy
+        x += sx
+      }
+      if (e2 < dx) {
+        err += dx
+        y += sy
+      }
+    }
+  }
+
+  /**
+   * Draw text at position (overwrites existing content)
+   */
+  drawText(x: number, y: number, text: string): void {
+    for (let i = 0; i < text.length; i++) {
+      this.set(x + i, y, text[i])
+    }
+  }
+
+  /**
+   * Draw a box around text
+   */
+  drawBox(x: number, y: number, text: string, highlight: boolean = false): void {
+    const w = text.length
+    const topLeft = highlight ? "╔" : "┌"
+    const topRight = highlight ? "╗" : "┐"
+    const bottomLeft = highlight ? "╚" : "└"
+    const bottomRight = highlight ? "╝" : "┘"
+    const horizontal = highlight ? "═" : "─"
+    const vertical = highlight ? "║" : "│"
+
+    // Top border
+    this.set(x - 1, y - 1, topLeft)
+    for (let i = 0; i < w; i++) {
+      this.set(x + i, y - 1, horizontal)
+    }
+    this.set(x + w, y - 1, topRight)
+
+    // Sides
+    this.set(x - 1, y, vertical)
+    this.set(x + w, y, vertical)
+
+    // Bottom border
+    this.set(x - 1, y + 1, bottomLeft)
+    for (let i = 0; i < w; i++) {
+      this.set(x + i, y + 1, horizontal)
+    }
+    this.set(x + w, y + 1, bottomRight)
+
+    // Text
+    this.drawText(x, y, text)
+  }
+
+  render(): string {
+    return this.grid.map((row) => row.join("")).join("\n")
+  }
+}
+
+/**
+ * Calculate position for an area in 2D space using radial layout
+ */
+function calculateAreaPosition(
+  areaId: AreaID,
+  distance: number,
+  indexInDistance: number,
+  totalAtDistance: number,
+  centerX: number,
+  centerY: number
+): Point {
+  if (distance === 0) {
+    // Town at center
+    return { x: centerX, y: centerY }
+  }
+
+  // Arrange areas in a circle around center
+  // Radius increases with distance
+  const radius = distance * 12
+  const angle = (2 * Math.PI * indexInDistance) / totalAtDistance
+
+  return {
+    x: Math.round(centerX + radius * Math.cos(angle)),
+    y: Math.round(centerY + radius * Math.sin(angle) * 0.5), // Compress vertically
+  }
+}
+
+/**
+ * Print a text-based 2D map of known areas and connections
+ */
+export function printMap(state: WorldState): void {
+  const exploration = state.exploration
+  const currentAreaId = exploration.playerState.currentAreaId
+  const knownAreaIds = exploration.playerState.knownAreaIds
+  const knownConnectionIds = new Set(exploration.playerState.knownConnectionIds)
+
+  // Group areas by distance
+  const areasByDistance = new Map<number, AreaID[]>()
+  for (const areaId of knownAreaIds) {
+    const area = exploration.areas.get(areaId)
+    if (area) {
+      const distance = area.distance
+      if (!areasByDistance.has(distance)) {
+        areasByDistance.set(distance, [])
+      }
+      areasByDistance.get(distance)!.push(areaId)
+    }
+  }
+
+  // Calculate positions for all areas
+  const width = 100
+  const height = 40
+  const centerX = width / 2
+  const centerY = height / 2
+  const canvas = new Canvas(width, height)
+  const nodes: AreaNode[] = []
+
+  for (const [distance, areas] of areasByDistance) {
+    areas.forEach((areaId, index) => {
+      const area = exploration.areas.get(areaId)!
+      const displayName = getAreaDisplayName(areaId, area)
+      const shortName = displayName.length > 15 ? displayName.substring(0, 12) + "..." : displayName
+      const pos = calculateAreaPosition(areaId, distance, index, areas.length, centerX, centerY)
+
+      nodes.push({
+        id: areaId,
+        displayName: shortName,
+        pos,
+        isCurrent: areaId === currentAreaId,
+      })
+    })
+  }
+
+  // Draw connections first (so they appear behind nodes)
+  for (const conn of exploration.connections) {
+    const isKnown =
+      knownConnectionIds.has(createConnectionId(conn.fromAreaId, conn.toAreaId)) ||
+      knownConnectionIds.has(createConnectionId(conn.toAreaId, conn.fromAreaId))
+
+    if (!isKnown) continue
+
+    const fromNode = nodes.find((n) => n.id === conn.fromAreaId)
+    const toNode = nodes.find((n) => n.id === conn.toAreaId)
+
+    if (fromNode && toNode) {
+      canvas.drawLine(fromNode.pos.x, fromNode.pos.y, toNode.pos.x, toNode.pos.y, "·")
+    }
+  }
+
+  // Draw nodes on top of connections
+  for (const node of nodes) {
+    canvas.drawBox(
+      node.pos.x - Math.floor(node.displayName.length / 2),
+      node.pos.y,
+      node.displayName,
+      node.isCurrent
+    )
+  }
+
+  console.log("\n" + canvas.render())
+  console.log("\nLegend: ╔═══╗ Current location  · Connection  ┌───┐ Area")
+}
+
+/**
+ * Helper to create connection ID (imported from exploration module logic)
+ */
+function createConnectionId(areaId1: AreaID, areaId2: AreaID): string {
+  return `${areaId1}->${areaId2}`
+}
+
 /**
  * Print help with available actions and current location info
  * @param state - Current world state
@@ -536,6 +787,7 @@ export function printHelp(state: WorldState, options?: { showHints?: boolean }):
   console.log("│ drop <item> <qty>   - Drop items                            │")
   console.log("│ accept <contract>   - Accept a contract at guild            │")
   console.log("├─────────────────────────────────────────────────────────────┤")
+  console.log("│ map                 - Show map of known areas/connections   │")
   console.log("│ state               - Show current world state              │")
   console.log("│ world               - Show world data (nodes, enemies, etc) │")
   console.log("│ help                - Show this help                        │")
@@ -711,37 +963,38 @@ export function computeVolatility(xpProbabilities: number[]): string {
 }
 
 /**
- * Compute session statistics from logs
+ * Computed statistics for a set of action logs
  */
 export interface ComputedStats {
   ticksUsed: number
   totalXP: number
   expectedXP: number
   xpProbabilities: number[]
-  actionCounts: Record<string, { success: number; fail: number; time: number }>
+  actionCount: number // Total number of actions (not breakdown by type)
   contractsCompleted: number
   repGained: number
   skillDelta: string[]
 }
 
-export function computeSessionStats(state: WorldState, stats: SessionStats): ComputedStats {
-  const ticksUsed = state.time.currentTick
-
-  const actionCounts: Record<string, { success: number; fail: number; time: number }> = {}
-  for (const log of stats.logs) {
-    if (!actionCounts[log.actionType]) {
-      actionCounts[log.actionType] = { success: 0, fail: 0, time: 0 }
-    }
-    if (log.success) actionCounts[log.actionType].success++
-    else actionCounts[log.actionType].fail++
-    actionCounts[log.actionType].time += log.timeConsumed
+/**
+ * Internal helper: compute stats from a slice of logs
+ */
+function computeStatsFromLogs(
+  logs: ActionLog[],
+  startingSkills: Record<SkillID, SkillState>,
+  currentSkills: Record<SkillID, SkillState>
+): ComputedStats {
+  // Calculate ticks used from logs
+  let ticksUsed = 0
+  for (const log of logs) {
+    ticksUsed += log.timeConsumed
   }
 
   let totalXP = 0
   let expectedXP = 0
   const xpProbabilities: number[] = []
 
-  for (const log of stats.logs) {
+  for (const log of logs) {
     if (log.skillGained) totalXP += log.skillGained.amount
 
     if (log.rngRolls.length > 0) {
@@ -765,7 +1018,7 @@ export function computeSessionStats(state: WorldState, stats: SessionStats): Com
 
   let contractsCompleted = 0
   let repGained = 0
-  for (const log of stats.logs) {
+  for (const log of logs) {
     if (log.contractsCompleted) {
       contractsCompleted += log.contractsCompleted.length
       for (const c of log.contractsCompleted) {
@@ -784,11 +1037,11 @@ export function computeSessionStats(state: WorldState, stats: SessionStats): Com
     "Exploration",
   ]
   for (const skill of skills) {
-    const startXP = getTotalXP(stats.startingSkills[skill])
-    const endXP = getTotalXP(state.player.skills[skill])
+    const startXP = getTotalXP(startingSkills[skill])
+    const endXP = getTotalXP(currentSkills[skill])
     if (endXP > startXP) {
-      const startLevel = stats.startingSkills[skill].level
-      const endLevel = state.player.skills[skill].level
+      const startLevel = startingSkills[skill].level
+      const endLevel = currentSkills[skill].level
       skillDelta.push(`${skill}: ${startLevel}→${endLevel} (+${endXP - startXP} XP)`)
     }
   }
@@ -798,7 +1051,7 @@ export function computeSessionStats(state: WorldState, stats: SessionStats): Com
     totalXP,
     expectedXP,
     xpProbabilities,
-    actionCounts,
+    actionCount: logs.length,
     contractsCompleted,
     repGained,
     skillDelta,
@@ -806,7 +1059,39 @@ export function computeSessionStats(state: WorldState, stats: SessionStats): Com
 }
 
 /**
- * Print session summary
+ * Compute session statistics (only logs from current session)
+ */
+export function computeSessionStats(state: WorldState, stats: SessionStats): ComputedStats {
+  const sessionLogs = stats.logs.slice(stats.sessionStartLogIndex)
+  return computeStatsFromLogs(sessionLogs, stats.startingSkills, state.player.skills)
+}
+
+/**
+ * Compute game statistics (all logs across all sessions)
+ */
+export function computeGameStats(state: WorldState, stats: SessionStats): ComputedStats {
+  // For game stats, we need the starting skills from the very first session
+  // We can reconstruct them from the current skills minus all XP gained in all logs
+  const gameStartSkills: Record<SkillID, SkillState> = {} as Record<SkillID, SkillState>
+  const skills: SkillID[] = [
+    "Mining",
+    "Woodcutting",
+    "Combat",
+    "Smithing",
+    "Woodcrafting",
+    "Exploration",
+  ]
+
+  for (const skill of skills) {
+    // Start with current level 0
+    gameStartSkills[skill] = { level: 0, xp: 0 }
+  }
+
+  return computeStatsFromLogs(stats.logs, gameStartSkills, state.player.skills)
+}
+
+/**
+ * Print session and game summaries
  */
 export function printSummary(state: WorldState, stats: SessionStats): void {
   const W = 120
@@ -814,49 +1099,20 @@ export function printSummary(state: WorldState, stats: SessionStats): void {
   const dline = "═".repeat(W - 2)
   const pad = makePadInner(W)
 
-  const computed = computeSessionStats(state, stats)
+  // Compute both session and game stats
+  const sessionStats = computeSessionStats(state, stats)
+  const gameStats = computeGameStats(state, stats)
 
-  const volatilityStr = computeVolatility(computed.xpProbabilities)
-  const rngStreams = buildRngStreams(stats.logs)
-  const luckStr = computeLuckString(rngStreams)
+  // Session-specific calculations
+  const sessionLogs = stats.logs.slice(stats.sessionStartLogIndex)
+  const sessionVolatilityStr = computeVolatility(sessionStats.xpProbabilities)
+  const sessionRngStreams = buildRngStreams(sessionLogs)
+  const sessionLuckStr = computeLuckString(sessionRngStreams)
 
-  const actionStrs = Object.entries(computed.actionCounts).map(
-    ([type, { success, fail, time }]) =>
-      `${type}: ${success}✓${fail > 0 ? ` ${fail}✗` : ""} (${time}t)`
-  )
-
-  console.log(`\n╔${dline}╗`)
-  console.log(`║${"SESSION SUMMARY".padStart(W / 2 + 7).padEnd(W - 2)}║`)
-  console.log(`╠${dline}╣`)
-
-  const expectedXPTick =
-    computed.ticksUsed > 0 ? (computed.expectedXP / computed.ticksUsed).toFixed(2) : "0.00"
-  const actualXPTick =
-    computed.ticksUsed > 0 ? (computed.totalXP / computed.ticksUsed).toFixed(2) : "0.00"
-  console.log(
-    pad(
-      `⏱  TIME: ${computed.ticksUsed}/${stats.totalSession} ticks  │  XP: ${computed.totalXP} actual, ${computed.expectedXP.toFixed(1)} expected  │  XP/tick: ${actualXPTick} actual, ${expectedXPTick} expected`
-    )
-  )
-  console.log(`├${line}┤`)
-  console.log(pad(`📋 ACTIONS: ${stats.logs.length} total  │  ${actionStrs.join("  │  ")}`))
-  console.log(`├${line}┤`)
-  console.log(pad(`🎲 LUCK: ${luckStr}`))
-  console.log(`├${line}┤`)
-  console.log(pad(`📉 VOLATILITY: ${volatilityStr}`))
-  console.log(`├${line}┤`)
-  console.log(
-    pad(
-      `📈 SKILLS: ${computed.skillDelta.length > 0 ? computed.skillDelta.join("  │  ") : "(no gains)"}`
-    )
-  )
-  console.log(`├${line}┤`)
-  console.log(
-    pad(
-      `🏆 CONTRACTS: ${computed.contractsCompleted} completed  │  Reputation: ${state.player.guildReputation} (+${computed.repGained} this session)`
-    )
-  )
-  console.log(`├${line}┤`)
+  // Game-wide calculations
+  const gameVolatilityStr = computeVolatility(gameStats.xpProbabilities)
+  const gameRngStreams = buildRngStreams(stats.logs)
+  const gameLuckStr = computeLuckString(gameRngStreams)
 
   // Final inventory + storage
   const allItems: Record<string, number> = {}
@@ -870,8 +1126,68 @@ export function printSummary(state: WorldState, stats: SessionStats): void {
     Object.entries(allItems)
       .map(([id, qty]) => `${qty}x ${id}`)
       .join(", ") || "(none)"
+
+  // Print SESSION SUMMARY
+  console.log(`\n╔${dline}╗`)
+  console.log(`║${"SESSION SUMMARY".padStart(W / 2 + 7).padEnd(W - 2)}║`)
+  console.log(`╠${dline}╣`)
+
+  const sessionExpectedXPTick =
+    sessionStats.ticksUsed > 0
+      ? (sessionStats.expectedXP / sessionStats.ticksUsed).toFixed(2)
+      : "0.00"
+  const sessionActualXPTick =
+    sessionStats.ticksUsed > 0 ? (sessionStats.totalXP / sessionStats.ticksUsed).toFixed(2) : "0.00"
+  console.log(
+    pad(
+      `⏱  TIME: ${sessionStats.ticksUsed}/${stats.totalSession} ticks  │  XP: ${sessionStats.totalXP} actual, ${sessionStats.expectedXP.toFixed(1)} expected  │  XP/tick: ${sessionActualXPTick} actual, ${sessionExpectedXPTick} expected`
+    )
+  )
+  console.log(`├${line}┤`)
+  console.log(pad(`📋 ACTIONS: ${sessionStats.actionCount} total`))
+  console.log(`├${line}┤`)
+  console.log(pad(`🎲 LUCK: ${sessionLuckStr}`))
+  console.log(`├${line}┤`)
+  console.log(pad(`📉 VOLATILITY: ${sessionVolatilityStr}`))
+  console.log(`├${line}┤`)
+  console.log(
+    pad(
+      `📈 SKILLS: ${sessionStats.skillDelta.length > 0 ? sessionStats.skillDelta.join("  │  ") : "(no gains)"}`
+    )
+  )
+  console.log(`├${line}┤`)
+  console.log(
+    pad(
+      `🏆 CONTRACTS: ${sessionStats.contractsCompleted} completed  │  Reputation: ${state.player.guildReputation} (+${sessionStats.repGained} this session)`
+    )
+  )
+  console.log(`├${line}┤`)
   console.log(pad(`🎒 FINAL ITEMS: ${itemsStr}`))
   console.log(`╚${dline}╝`)
+
+  // Print COMPLETE GAME SUMMARY (only if there were previous sessions)
+  if (stats.sessionStartLogIndex > 0) {
+    console.log(`\n╔${dline}╗`)
+    console.log(`║${"COMPLETE GAME SUMMARY".padStart(W / 2 + 10).padEnd(W - 2)}║`)
+    console.log(`╠${dline}╣`)
+
+    const gameExpectedXPTick =
+      gameStats.ticksUsed > 0 ? (gameStats.expectedXP / gameStats.ticksUsed).toFixed(2) : "0.00"
+    const gameActualXPTick =
+      gameStats.ticksUsed > 0 ? (gameStats.totalXP / gameStats.ticksUsed).toFixed(2) : "0.00"
+    console.log(
+      pad(
+        `⏱  TIME: ${gameStats.ticksUsed} ticks total  │  XP: ${gameStats.totalXP} actual, ${gameStats.expectedXP.toFixed(1)} expected  │  XP/tick: ${gameActualXPTick} actual, ${gameExpectedXPTick} expected`
+      )
+    )
+    console.log(`├${line}┤`)
+    console.log(pad(`📋 ACTIONS: ${gameStats.actionCount} total`))
+    console.log(`├${line}┤`)
+    console.log(pad(`🎲 LUCK: ${gameLuckStr}`))
+    console.log(`├${line}┤`)
+    console.log(pad(`📉 VOLATILITY: ${gameVolatilityStr}`))
+    console.log(`╚${dline}╝`)
+  }
 }
 
 // ============================================================================
@@ -897,6 +1213,7 @@ export function createSession(options: CreateSessionOptions): Session {
     logs: [],
     startingSkills: { ...state.player.skills },
     totalSession: 0,
+    sessionStartLogIndex: 0,
   }
   return { state, stats }
 }
@@ -920,8 +1237,9 @@ export async function executeAndRecord(
 
 import { createWorld } from "./world.js"
 import { executeAction } from "./engine.js"
-import { saveExists, loadSave, writeSave, deleteSave, deserializeSession } from "./persistence.js"
+import { saveExists, loadSave, writeSave, deserializeSession } from "./persistence.js"
 import { promptResume } from "./savePrompt.js"
+import { closeInput } from "./prompt.js"
 
 export type MetaCommandResult = "continue" | "end" | "quit"
 
@@ -968,12 +1286,15 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
     if (shouldResume) {
       // Resume from save
       session = deserializeSession(save)
+      // Update session boundary - all existing logs are from previous sessions
+      session.stats.sessionStartLogIndex = session.stats.logs.length
       console.log("\nResuming saved game...")
     } else {
-      // Delete save and start fresh
-      deleteSave(seed)
-      console.log("\nStarting new game...")
-      session = createSession({ seed, createWorld })
+      // User declined to resume - exit without deleting the save
+      console.log("\nExiting. Your save file has been preserved.")
+      console.log("To start a new game, manually delete the save or use a different seed.")
+      closeInput()
+      return
     }
   } else {
     // No save exists, create new session
@@ -1070,10 +1391,9 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
         config.onAfterInteractive?.()
       }
 
-      // Record all logs from the interactive session
+      // Record all logs from the interactive session (display already handled by interactive function)
       for (const log of logs) {
         session.stats.logs.push(log)
-        config.onActionComplete(log, session.state)
       }
 
       // Auto-save after interactive exploration
@@ -1105,10 +1425,9 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
         config.onAfterInteractive?.()
       }
 
-      // Record all logs from the interactive session
+      // Record all logs from the interactive session (display already handled by interactive function)
       for (const log of logs) {
         session.stats.logs.push(log)
-        config.onActionComplete(log, session.state)
       }
 
       // Auto-save after interactive travel

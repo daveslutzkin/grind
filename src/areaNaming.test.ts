@@ -748,7 +748,8 @@ describe("Area Naming", () => {
           stats: {
             logs: [],
             startingSkills: { ...state.player.skills },
-            totalSession: 20000,
+            totalSession: 0,
+            sessionStartLogIndex: 0,
           },
         }
 

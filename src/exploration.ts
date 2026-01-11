@@ -65,7 +65,7 @@ export function getAreaDisplayName(areaId: AreaID, area?: Area): string {
 export const KNOWN_CONNECTION_MULTIPLIER = 1.0 // Connections to known areas (easiest)
 export const MOB_CAMP_MULTIPLIER = 0.5 // Mob camps
 export const GATHERING_NODE_WITH_SKILL_MULTIPLIER = 0.5 // Gathering nodes when player has skill
-export const GATHERING_NODE_WITHOUT_SKILL_MULTIPLIER = 0.05 // Gathering nodes without skill (20× harder)
+export const GATHERING_NODE_WITHOUT_SKILL_MULTIPLIER = 0.05 // Gathering nodes without skill (10× harder)
 export const UNKNOWN_CONNECTION_MULTIPLIER = 0.25 // Connections to unknown areas
 
 /** @deprecated Use UNKNOWN_CONNECTION_MULTIPLIER instead */

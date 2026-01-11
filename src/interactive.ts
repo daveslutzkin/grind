@@ -27,7 +27,7 @@ import {
   executeExplorationTravel,
   executeFarTravel,
 } from "./exploration.js"
-import { formatTickFeedback } from "./agent/formatters.js"
+import { formatActionLog, formatTickFeedback, formatWorldState } from "./agent/formatters.js"
 import { promptYesNo } from "./prompt.js"
 
 // ============================================================================
@@ -303,8 +303,9 @@ export async function interactiveExplore(state: WorldState): Promise<ActionLog[]
         return logs
       }
 
-      // Collect the log
+      // Collect the log and show result immediately (world state shown at end)
       logs.push(finalLog)
+      console.log(formatActionLog(finalLog, state))
 
       // Check if there are any discoverables left by rebuilding the list
       const { discoverables: remainingDiscoverables } = buildDiscoverables(state, currentArea)
@@ -318,6 +319,8 @@ export async function interactiveExplore(state: WorldState): Promise<ActionLog[]
         } else {
           console.log("\n✓ Area fully explored - nothing left to discover")
         }
+        console.log("")
+        console.log(formatWorldState(state))
         return logs
       }
     } finally {
@@ -327,6 +330,8 @@ export async function interactiveExplore(state: WorldState): Promise<ActionLog[]
     // Prompt to continue exploring
     const shouldContinue = await promptYesNo("\nContinue exploring?")
     if (!shouldContinue) {
+      console.log("")
+      console.log(formatWorldState(state))
       return logs
     }
   }
@@ -370,8 +375,9 @@ export async function interactiveSurvey(state: WorldState): Promise<ActionLog[]>
         return logs
       }
 
-      // Collect the log
+      // Collect the log and show result immediately (world state shown at end)
       logs.push(finalLog)
+      console.log(formatActionLog(finalLog, state))
     } finally {
       cleanup()
     }
@@ -380,12 +386,16 @@ export async function interactiveSurvey(state: WorldState): Promise<ActionLog[]>
     const remainingAnalysis = analyzeRemainingAreas(state)
     if (!remainingAnalysis.hasUndiscovered) {
       console.log("\n✓ No more undiscovered areas to survey")
+      console.log("")
+      console.log(formatWorldState(state))
       return logs
     }
 
     // Prompt to continue surveying
     const shouldContinue = await promptYesNo("\nContinue surveying?")
     if (!shouldContinue) {
+      console.log("")
+      console.log(formatWorldState(state))
       return logs
     }
   }
@@ -445,6 +455,9 @@ export async function interactiveExplorationTravel(
       return []
     }
 
+    console.log(formatActionLog(finalLog, state))
+    console.log("")
+    console.log(formatWorldState(state))
     return [finalLog]
   } finally {
     cleanup()
@@ -506,6 +519,9 @@ export async function interactiveFarTravel(
       return []
     }
 
+    console.log(formatActionLog(finalLog, state))
+    console.log("")
+    console.log(formatWorldState(state))
     return [finalLog]
   } finally {
     cleanup()
