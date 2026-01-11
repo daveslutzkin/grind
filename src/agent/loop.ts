@@ -1,7 +1,6 @@
 import { createWorld } from "../world.js"
 import { executeAction } from "../engine.js"
 import type { WorldState, Action, ActionLog } from "../types.js"
-import { getCurrentAreaId } from "../types.js"
 import { formatWorldState, formatActionLog } from "./formatters.js"
 import {
   summarizeAction,
@@ -15,77 +14,6 @@ import { createSystemPrompt } from "./prompts.js"
 import { createLLMClient, LLMClient } from "./llm.js"
 import { loadAgentConfig } from "./config.js"
 import type { AgentSessionStats, AgentKnowledge } from "./output.js"
-
-/**
- * Check if any meaningful action is possible given the current state.
- * Returns false if remaining ticks are insufficient for any productive action.
- *
- * Meaningful actions:
- * - Store: 0 ticks, but only if inventory has non-weapon items
- * - APPRAISE: 1 tick (if at a location with nodes and skill level >= 3)
- * - Move: minimum travel time via connections
- * - Enrol: 3 ticks
- * - Gather FOCUS: 5 ticks
- * - Drop: 1 tick (but wasteful, not considered meaningful)
- */
-function hasViableAction(state: WorldState): boolean {
-  const remaining = state.time.sessionRemainingTicks
-  const currentArea = getCurrentAreaId(state)
-
-  // 0-tick actions: Store is only meaningful if we have non-weapon items in inventory
-  // Weapons (CRUDE_WEAPON, IMPROVED_WEAPON) shouldn't be stored as they're needed for combat
-  const storableItems = state.player.inventory.filter(
-    (i) => i.itemId !== "CRUDE_WEAPON" && i.itemId !== "IMPROVED_WEAPON"
-  )
-  if (storableItems.length > 0 && currentArea === "TOWN") {
-    return true // Can store items
-  }
-
-  // 1-tick actions: APPRAISE requires L3+, nodes at location
-  const hasGatheringSkillL3 =
-    state.player.skills.Mining.level >= 3 || state.player.skills.Woodcutting.level >= 3
-  const nodesHere = state.world.nodes?.filter((n) => n.areaId === currentArea && !n.depleted)
-  if (remaining >= 1 && hasGatheringSkillL3 && nodesHere && nodesHere.length > 0) {
-    return true // Can appraise
-  }
-
-  // 3-tick actions: Enrol (if not already enrolled)
-  if (remaining >= 3) {
-    if (
-      state.player.skills.Mining.level === 0 ||
-      state.player.skills.Woodcutting.level === 0 ||
-      state.player.skills.Combat.level === 0
-    ) {
-      return true // Can enrol in a skill
-    }
-  }
-
-  // Check minimum travel cost from current location via known connections
-  const knownConnections = state.exploration.playerState.knownConnectionIds
-  const outgoingConnections = knownConnections
-    .filter((connId) => connId.startsWith(`${currentArea}->`))
-    .map((connId) => {
-      const destArea = connId.split("->")[1]
-      const connection = state.exploration.connections.find(
-        (c) => c.fromAreaId === currentArea && c.toAreaId === destArea
-      )
-      return connection?.travelTimeMultiplier ?? Infinity
-    })
-  const minTravelCost = outgoingConnections.length > 0 ? Math.min(...outgoingConnections) : Infinity
-
-  if (remaining >= minTravelCost) {
-    return true // Can travel somewhere
-  }
-
-  // 5-tick actions: Gather FOCUS (if nodes here and skill enrolled)
-  if (remaining >= 5 && nodesHere && nodesHere.length > 0) {
-    if (state.player.skills.Mining.level >= 1 || state.player.skills.Woodcutting.level >= 1) {
-      return true // Can gather
-    }
-  }
-
-  return false
-}
 
 /**
  * Configuration for the agent loop
@@ -207,7 +135,6 @@ function categorizeLearning(learning: string): keyof AgentKnowledge | null {
 export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
   // Initialize world
   const state = createWorld(config.seed)
-  state.time.sessionRemainingTicks = config.ticks
 
   // Track stats
   const stats: AgentSessionStats = {
@@ -291,7 +218,7 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
     },
 
     isComplete(): boolean {
-      return state.time.sessionRemainingTicks <= 0
+      return state.time.currentTick >= config.ticks
     },
 
     async step(): Promise<StepResult> {
@@ -301,22 +228,6 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
           action: null,
           log: null,
           reasoning: "",
-          learning: "",
-        }
-      }
-
-      // Check if any meaningful action is possible
-      if (!hasViableAction(state)) {
-        if (config.verbose) {
-          console.log(
-            `\n[Tick ${state.time.currentTick}] No viable actions with ${state.time.sessionRemainingTicks} ticks remaining - ending session`
-          )
-        }
-        return {
-          done: true,
-          action: null,
-          log: null,
-          reasoning: "No viable actions possible with remaining ticks",
           learning: "",
         }
       }

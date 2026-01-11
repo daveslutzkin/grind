@@ -227,121 +227,6 @@ export function calculateExpectedTicks(successChance: number, rollInterval: numb
 }
 
 // ============================================================================
-// Shadow Rolling (for interactive mode animation)
-// ============================================================================
-
-/**
- * Shadow roll for exploration - determines tick count until success without mutating state
- *
- * Performs RNG rolls to find when a discovery would happen, without actually
- * making discoveries or updating state. Used by interactive mode to know how long
- * to animate before the real execution.
- *
- * @param rng - Cloned RNG state (will be mutated but discarded after)
- * @param discoverables - List of discoverable items with thresholds
- * @param rollInterval - Time between rolls
- * @param maxTicks - Maximum ticks available (session remaining)
- * @returns Tick count until success, or null if session would end
- */
-export function shadowRollExplore(
-  rng: RngState,
-  discoverables: Array<{ threshold: number }>,
-  rollInterval: number,
-  maxTicks: number
-): number | null {
-  let ticksConsumed = 0
-  let accumulatedTicks = 0
-  let succeeded = false
-
-  while (!succeeded && ticksConsumed < maxTicks) {
-    accumulatedTicks += rollInterval
-    const ticksThisRoll = Math.floor(accumulatedTicks)
-    accumulatedTicks -= ticksThisRoll
-
-    if (ticksThisRoll > 0) {
-      if (ticksConsumed + ticksThisRoll > maxTicks) {
-        return null // Would exceed session time
-      }
-      ticksConsumed += ticksThisRoll
-    }
-
-    // Shadow roll - only advance RNG, don't record anything
-    const rollValue = rollFloat(rng, 0, 1, `shadow_explore_${ticksConsumed}`)
-    const hits = discoverables.filter((d) => rollValue <= d.threshold)
-
-    if (hits.length > 0) {
-      // Pick randomly among hits (shadow roll)
-      rollFloat(rng, 0, hits.length, `shadow_pick_${ticksConsumed}`)
-      succeeded = true
-    }
-  }
-
-  return succeeded ? ticksConsumed : null
-}
-
-/**
- * Shadow roll for survey - determines tick count until discovering an undiscovered area
- *
- * @param rng - Cloned RNG state (will be mutated but discarded after)
- * @param successChance - Probability of success per roll
- * @param rollInterval - Time between rolls
- * @param maxTicks - Maximum ticks available
- * @param totalConnections - Total number of connections from area
- * @param knownAreaIds - Set of already known area IDs
- * @param allConnections - All connections from current area
- * @param currentAreaId - ID of the current area
- * @returns Tick count until success, or null if session would end
- */
-export function shadowRollSurvey(
-  rng: RngState,
-  successChance: number,
-  rollInterval: number,
-  maxTicks: number,
-  totalConnections: number,
-  knownAreaIds: Set<string>,
-  allConnections: Array<{ fromAreaId: string; toAreaId: string }>,
-  currentAreaId: string
-): number | null {
-  let ticksConsumed = 0
-  let accumulatedTicks = 0
-  let succeeded = false
-
-  while (!succeeded && ticksConsumed < maxTicks) {
-    accumulatedTicks += rollInterval
-    const ticksThisRoll = Math.floor(accumulatedTicks)
-    accumulatedTicks -= ticksThisRoll
-
-    if (ticksThisRoll > 0) {
-      if (ticksConsumed + ticksThisRoll > maxTicks) {
-        return null
-      }
-      ticksConsumed += ticksThisRoll
-    }
-
-    // Shadow roll for success
-    const success = rollFloat(rng, 0, 1, `shadow_survey_${ticksConsumed}`) < successChance
-
-    if (success) {
-      // Shadow pick a connection
-      const connIndex = Math.floor(
-        rollFloat(rng, 0, totalConnections, `shadow_pick_${ticksConsumed}`)
-      )
-      const selectedConn = allConnections[connIndex]
-      const targetId =
-        selectedConn.fromAreaId === currentAreaId ? selectedConn.toAreaId : selectedConn.fromAreaId
-
-      // Check if this area is already known
-      if (!knownAreaIds.has(targetId)) {
-        succeeded = true
-      }
-      // If known, loop continues (wasted roll per spec)
-    }
-  }
-
-  return succeeded ? ticksConsumed : null
-}
-
-// ============================================================================
 // Luck Tracking Helper
 // ============================================================================
 
@@ -935,11 +820,6 @@ export async function* executeSurvey(state: WorldState, _action: SurveyAction): 
     return
   }
 
-  if (state.time.sessionRemainingTicks <= 0) {
-    yield { done: true, log: createFailureLog(state, "Survey", "SESSION_ENDED") }
-    return
-  }
-
   const exploration = state.exploration!
   const currentArea = exploration.areas.get(exploration.playerState.currentAreaId)!
 
@@ -979,23 +859,13 @@ export async function* executeSurvey(state: WorldState, _action: SurveyAction): 
   let succeeded = false
   let accumulatedTicks = 0
 
-  while (!succeeded && state.time.sessionRemainingTicks > 0) {
+  while (!succeeded) {
     // Accumulate ticks based on roll interval
     accumulatedTicks += rollInterval
     const ticksThisRoll = Math.floor(accumulatedTicks)
     accumulatedTicks -= ticksThisRoll
 
     if (ticksThisRoll > 0) {
-      if (state.time.sessionRemainingTicks < ticksThisRoll) {
-        ticksConsumed += state.time.sessionRemainingTicks
-        // Consume remaining ticks and yield them
-        for (let i = 0; i < state.time.sessionRemainingTicks; i++) {
-          consumeTime(state, 1)
-          yield { done: false }
-        }
-        break
-      }
-
       // Yield ticks as they're consumed
       for (let i = 0; i < ticksThisRoll; i++) {
         consumeTime(state, 1)
@@ -1055,10 +925,10 @@ export async function* executeSurvey(state: WorldState, _action: SurveyAction): 
         actionType: "Survey",
         parameters: {},
         success: false,
-        failureType: "SESSION_ENDED",
+        failureType: "NO_UNDISCOVERED_AREAS",
         timeConsumed: ticksConsumed,
         rngRolls: rolls,
-        stateDeltaSummary: "Survey interrupted - session ended",
+        stateDeltaSummary: "Survey interrupted",
       },
     }
     return
@@ -1215,11 +1085,6 @@ export async function* executeExplore(state: WorldState, _action: ExploreAction)
     return
   }
 
-  if (state.time.sessionRemainingTicks <= 0) {
-    yield { done: true, log: createFailureLog(state, "Explore", "SESSION_ENDED") }
-    return
-  }
-
   const exploration = state.exploration!
   const currentArea = exploration.areas.get(exploration.playerState.currentAreaId)!
   const level = state.player.skills.Exploration.level
@@ -1257,22 +1122,12 @@ export async function* executeExplore(state: WorldState, _action: ExploreAction)
   let accumulatedTicks = 0
   let pickedThreshold = 0 // Will store the threshold of the specific item found
 
-  while (!succeeded && state.time.sessionRemainingTicks > 0) {
+  while (!succeeded) {
     accumulatedTicks += rollInterval
     const ticksThisRoll = Math.floor(accumulatedTicks)
     accumulatedTicks -= ticksThisRoll
 
     if (ticksThisRoll > 0) {
-      if (state.time.sessionRemainingTicks < ticksThisRoll) {
-        ticksConsumed += state.time.sessionRemainingTicks
-        // Consume remaining ticks and yield them
-        for (let i = 0; i < state.time.sessionRemainingTicks; i++) {
-          consumeTime(state, 1)
-          yield { done: false }
-        }
-        break
-      }
-
       // Yield ticks as they're consumed
       for (let i = 0; i < ticksThisRoll; i++) {
         consumeTime(state, 1)
@@ -1386,10 +1241,10 @@ export async function* executeExplore(state: WorldState, _action: ExploreAction)
         actionType: "Explore",
         parameters: {},
         success: false,
-        failureType: "SESSION_ENDED",
+        failureType: "AREA_FULLY_EXPLORED",
         timeConsumed: ticksConsumed,
         rngRolls: rolls,
-        stateDeltaSummary: "Explore interrupted - session ended",
+        stateDeltaSummary: "Explore interrupted",
       },
     }
     return
@@ -1577,11 +1432,6 @@ export async function* executeExplorationTravel(
     return
   }
 
-  if (state.time.sessionRemainingTicks <= 0) {
-    yield { done: true, log: createFailureLog(state, "ExplorationTravel", "SESSION_ENDED") }
-    return
-  }
-
   const currentAreaId = exploration.playerState.currentAreaId
   const knownConnectionIds = new Set(exploration.playerState.knownConnectionIds)
   const destinationIsKnown = exploration.playerState.knownAreaIds.includes(destinationAreaId)
@@ -1610,18 +1460,6 @@ export async function* executeExplorationTravel(
   // Double time if scavenging
   if (scavenge) {
     travelTime *= 2
-  }
-
-  // Check if enough time
-  if (state.time.sessionRemainingTicks < travelTime) {
-    yield {
-      done: true,
-      log: {
-        ...createFailureLog(state, "ExplorationTravel", "SESSION_ENDED"),
-        timeConsumed: 0,
-      },
-    }
-    return
   }
 
   // Yield ticks during travel
@@ -1683,11 +1521,6 @@ export async function* executeFarTravel(
     return
   }
 
-  if (state.time.sessionRemainingTicks <= 0) {
-    yield { done: true, log: createFailureLog(state, "FarTravel", "SESSION_ENDED") }
-    return
-  }
-
   const currentAreaId = exploration.playerState.currentAreaId
 
   // Destination must be known for far travel
@@ -1710,18 +1543,6 @@ export async function* executeFarTravel(
   // Double time if scavenging
   if (scavenge) {
     travelTime *= 2
-  }
-
-  // Check if enough time
-  if (state.time.sessionRemainingTicks < travelTime) {
-    yield {
-      done: true,
-      log: {
-        ...createFailureLog(state, "FarTravel", "SESSION_ENDED"),
-        timeConsumed: 0,
-      },
-    }
-    return
   }
 
   // Yield ticks during travel

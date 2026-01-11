@@ -99,11 +99,6 @@ function simulateAction(state: WorldState, action: Action): string | null {
     return check.failureType!
   }
 
-  // Check if session has ended or would end before action completes
-  if (state.time.sessionRemainingTicks <= 0 || state.time.sessionRemainingTicks < check.timeCost) {
-    return "SESSION_ENDED"
-  }
-
   // Apply the action effects (optimistically assuming success for RNG-based actions)
   consumeTime(state, check.timeCost)
 
@@ -202,18 +197,6 @@ export function evaluatePlan(state: WorldState, actions: Action[]): PlanEvaluati
       violations.push({
         actionIndex: i,
         reason: reason || "Invalid action",
-      })
-      continue
-    }
-
-    // Check if session has ended or would end before action completes
-    if (
-      simState.time.sessionRemainingTicks <= 0 ||
-      simState.time.sessionRemainingTicks < eval_.expectedTime
-    ) {
-      violations.push({
-        actionIndex: i,
-        reason: "SESSION_ENDED: Not enough time remaining",
       })
       continue
     }

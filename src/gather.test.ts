@@ -125,12 +125,10 @@ describe("Phase 3: Gather Action Overhaul", () => {
         mode: GatherMode.APPRAISE,
       }
 
-      const ticksBefore = world.time.sessionRemainingTicks
       const log = await await executeAction(world, action)
 
       expect(log.success).toBe(true)
       expect(log.timeConsumed).toBe(1)
-      expect(world.time.sessionRemainingTicks).toBe(ticksBefore - 1)
     })
 
     it("should not modify node materials", async () => {

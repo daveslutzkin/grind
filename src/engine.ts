@@ -123,11 +123,6 @@ function extractParameters(action: Action): Record<string, unknown> {
 }
 
 export async function executeAction(state: WorldState, action: Action): Promise<ActionLog> {
-  // Check if session has ended
-  if (state.time.sessionRemainingTicks <= 0) {
-    return createFailureLog(state, action, "SESSION_ENDED")
-  }
-
   switch (action.type) {
     case "Move":
       // Move is an alias for ExplorationTravel
@@ -217,12 +212,6 @@ async function* executeGather(state: WorldState, action: GatherAction): ActionGe
   const check = checkGatherAction(state, action)
   if (!check.valid) {
     yield { done: true, log: createFailureLog(state, action, check.failureType!) }
-    return
-  }
-
-  // Check if enough time remaining
-  if (state.time.sessionRemainingTicks < check.timeCost) {
-    yield { done: true, log: createFailureLog(state, action, "SESSION_ENDED") }
     return
   }
 
@@ -632,12 +621,6 @@ async function* executeCraft(state: WorldState, action: CraftAction): ActionGene
     return
   }
 
-  // Check if enough time remaining
-  if (state.time.sessionRemainingTicks < check.timeCost) {
-    yield { done: true, log: createFailureLog(state, action, "SESSION_ENDED") }
-    return
-  }
-
   // Get recipe for additional info
   const recipe = state.world.recipes.find((r) => r.id === recipeId)!
   const totalTicks = recipe.craftTime
@@ -743,12 +726,6 @@ async function* executeDrop(state: WorldState, action: DropAction): ActionGenera
     return
   }
 
-  // Check if enough time remaining
-  if (state.time.sessionRemainingTicks < check.timeCost) {
-    yield { done: true, log: createFailureLog(state, action, "SESSION_ENDED") }
-    return
-  }
-
   // Consume time (1 tick)
   consumeTime(state, 1)
 
@@ -843,12 +820,6 @@ async function* executeGuildEnrolment(
     return
   }
 
-  // Check if enough time remaining
-  if (state.time.sessionRemainingTicks < check.timeCost) {
-    yield { done: true, log: createFailureLog(state, action, "SESSION_ENDED") }
-    return
-  }
-
   // Enrol takes 3 ticks
   for (let tick = 0; tick < 3; tick++) {
     consumeTime(state, 1)
@@ -921,12 +892,6 @@ async function* executeTravelToLocation(
     return
   }
 
-  // Check if enough time remaining
-  if (state.time.sessionRemainingTicks < check.timeCost) {
-    yield { done: true, log: createFailureLog(state, action, "SESSION_ENDED") }
-    return
-  }
-
   const ticks = check.timeCost
 
   // Yield a tick if > 0
@@ -965,12 +930,6 @@ async function* executeLeave(state: WorldState, action: LeaveAction): ActionGene
   const check = checkLeaveAction(state, action)
   if (!check.valid) {
     yield { done: true, log: createFailureLog(state, action, check.failureType!) }
-    return
-  }
-
-  // Check if enough time remaining
-  if (state.time.sessionRemainingTicks < check.timeCost) {
-    yield { done: true, log: createFailureLog(state, action, "SESSION_ENDED") }
     return
   }
 

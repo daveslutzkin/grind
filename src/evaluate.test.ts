@@ -310,53 +310,5 @@ describe("Evaluation APIs", () => {
 
       expect(JSON.stringify(state)).toBe(stateBefore)
     })
-
-    it("should detect session time exceeded", () => {
-      const state = createWorld("ore-test")
-      const areaId = getOreAreaId(state)
-      makeAreaKnown(state, areaId)
-      discoverAllLocations(state, areaId)
-      state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
-      state.time.sessionRemainingTicks = 3 // Only 3 ticks remaining
-      const node = state.world.nodes!.find((n) => n.areaId === areaId && !n.depleted)!
-      // Get the location ID for the node
-      const nodeIndexMatch = node.nodeId.match(/-node-(\d+)$/)
-      const locationId = nodeIndexMatch ? `${areaId}-loc-${nodeIndexMatch[1]}` : ""
-      const focusMat = node.materials.find((m) => m.requiredLevel === 1)!
-      const actions: Action[] = [
-        { type: "Move", destination: areaId }, // 0 ticks in evaluation
-        { type: "TravelToLocation", locationId }, // 1 tick
-        {
-          type: "Gather",
-          nodeId: node.nodeId,
-          mode: GatherMode.FOCUS,
-          focusMaterialId: focusMat.materialId,
-        }, // 5 ticks - total 6 ticks exceeds 3
-      ]
-
-      const result = evaluatePlan(state, actions)
-
-      expect(result.violations.length).toBeGreaterThan(0)
-      expect(
-        result.violations.some(
-          (v) => v.reason.includes("SESSION_ENDED") || v.reason.includes("time")
-        )
-      ).toBe(true)
-    })
-
-    it("should reject 0-tick action when session has ended", () => {
-      const state = createWorld("ore-test")
-      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD) // Must be at correct location
-      state.time.sessionRemainingTicks = 0 // Session already ended
-      const actions: Action[] = [
-        { type: "AcceptContract", contractId: "miners-guild-1" }, // 0 ticks but session ended
-      ]
-
-      const result = evaluatePlan(state, actions)
-
-      expect(result.violations).toHaveLength(1)
-      expect(result.violations[0].actionIndex).toBe(0)
-      expect(result.violations[0].reason).toContain("SESSION_ENDED")
-    })
   })
 })

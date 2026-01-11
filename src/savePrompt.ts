@@ -14,11 +14,6 @@ export function formatSaveSummary(save: SaveFile): string {
   const savedDate = new Date(save.savedAt)
   const formattedDate = `${savedDate.toISOString().split("T")[0]} ${savedDate.toTimeString().split(" ")[0].slice(0, 5)}`
 
-  // Calculate progress percentage
-  const totalTicks = state.time.currentTick + state.time.sessionRemainingTicks
-  const progressPercent =
-    totalTicks > 0 ? Math.round((state.time.currentTick / totalTicks) * 100) : 0
-
   // Get current area name
   const currentAreaId = state.exploration.playerState.currentAreaId
   const currentArea = state.exploration.areas[currentAreaId]
@@ -42,7 +37,7 @@ export function formatSaveSummary(save: SaveFile): string {
   const summary = [
     `\nSave found for seed '${save.seed}':`,
     `  Last saved: ${formattedDate}`,
-    `  Progress: Tick ${state.time.currentTick.toLocaleString()} of ${totalTicks.toLocaleString()} (${progressPercent}%)`,
+    `  Progress: Tick ${state.time.currentTick.toLocaleString()}`,
     `  Current area: ${areaName}`,
     ``,
     `  Skills:`,

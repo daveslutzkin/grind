@@ -307,15 +307,13 @@ describe("extractStaticWorldData", () => {
 describe("formatDynamicState", () => {
   it("should format current state compactly", () => {
     const state = createWorld("test-seed")
-    state.time.sessionRemainingTicks = 45
     state.time.currentTick = 5
 
     const dynamicState = formatDynamicState(state)
 
     expect(dynamicState).toContain("CURRENT STATE:")
     expect(dynamicState).toContain("Location: TOWN")
-    expect(dynamicState).toContain("Ticks: 45 remaining")
-    expect(dynamicState).toContain("used 5")
+    expect(dynamicState).toContain("5 elapsed")
   })
 
   it("should show inventory compactly", () => {

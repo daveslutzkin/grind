@@ -1212,7 +1212,7 @@ export function createSession(options: CreateSessionOptions): Session {
   const stats: SessionStats = {
     logs: [],
     startingSkills: { ...state.player.skills },
-    totalSession: state.time.sessionRemainingTicks,
+    totalSession: 0,
     sessionStartLogIndex: 0,
   }
   return { state, stats }
@@ -1306,7 +1306,7 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
   // Call onSessionStart hook if provided
   config.onSessionStart?.(session.state)
 
-  while (session.state.time.sessionRemainingTicks > 0) {
+  while (true) {
     const cmd = await config.getNextCommand()
     if (cmd === null) break
 

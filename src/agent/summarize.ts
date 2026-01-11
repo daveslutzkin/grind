@@ -253,9 +253,7 @@ export function formatDynamicState(state: WorldState): string {
 
   lines.push("CURRENT STATE:")
   lines.push(`Location: ${currentArea}`)
-  lines.push(
-    `Ticks: ${state.time.sessionRemainingTicks} remaining (used ${state.time.currentTick})`
-  )
+  lines.push(`Ticks: ${state.time.currentTick} elapsed`)
 
   // Inventory (compact)
   if (state.player.inventory.length > 0) {

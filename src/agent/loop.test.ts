@@ -35,7 +35,6 @@ describe("Agent Loop", () => {
       const state = loop.getWorldState()
       expect(state).toBeDefined()
       expect(state.exploration.playerState.currentAreaId).toBe("TOWN")
-      expect(state.time.sessionRemainingTicks).toBe(25)
     })
 
     it("should track session stats", () => {
@@ -65,42 +64,56 @@ describe("Agent Loop", () => {
       ).toBeGreaterThan(0)
     })
 
-    it("should detect when session is complete", async () => {
-      // Create a loop with 0 ticks - should be done immediately
-      const shortLoop = createAgentLoop({
-        seed: "short-test",
+    it("should be complete when elapsed ticks >= tick budget", async () => {
+      // Create a loop with 0 tick budget - should be complete immediately
+      const completedLoop = createAgentLoop({
+        seed: "complete-test",
         ticks: 0,
         objective: "test",
         verbose: false,
         dryRun: true,
       })
 
-      expect(shortLoop.isComplete()).toBe(true)
-    })
+      expect(completedLoop.isComplete()).toBe(true)
 
-    it("should end early when no viable actions with 1 tick at TOWN", async () => {
-      // Create loop with minimal ticks
-      const minLoop = createAgentLoop({
-        seed: "min-test",
-        ticks: 1,
+      // Create a loop with positive tick budget - should not be complete initially
+      const activeLoop = createAgentLoop({
+        seed: "active-test",
+        ticks: 100,
         objective: "test",
         verbose: false,
         dryRun: true,
       })
 
-      // At TOWN with 1 tick, no skills enrolled, min travel cost is 2 (TOWN->OUTSKIRTS_MINE)
-      // No nodes at TOWN, so no gathering possible
-      // Should detect no viable actions and end
-      const result = await minLoop.step()
-      expect(result.done).toBe(true)
-      expect(result.reasoning).toContain("No viable actions")
+      expect(activeLoop.isComplete()).toBe(false)
     })
 
-    it("should allow Store action at TOWN with items in inventory", async () => {
-      // Create loop
+    it("should terminate in dry run mode after mock action", async () => {
+      // Create loop with tick budget
+      const minLoop = createAgentLoop({
+        seed: "min-test",
+        ticks: 10,
+        objective: "test",
+        verbose: false,
+        dryRun: true,
+      })
+
+      // First step should execute the mock action and return done=false
+      const result1 = await minLoop.step()
+      expect(result1.done).toBe(false)
+      expect(result1.action).toBeTruthy()
+
+      // Second step in dry run mode should detect that an action was already attempted
+      // and return done=true (dry run behavior to prevent infinite loops)
+      const result2 = await minLoop.step()
+      expect(result2.done).toBe(true)
+    })
+
+    it("should execute actions in dry run mode", async () => {
+      // Create loop with minimal tick budget
       const storeLoop = createAgentLoop({
         seed: "store-test",
-        ticks: 2,
+        ticks: 5,
         objective: "test",
         verbose: false,
         dryRun: true,
@@ -110,10 +123,10 @@ describe("Agent Loop", () => {
       const state = storeLoop.getWorldState()
       state.player.inventory.push({ itemId: "COPPER_ORE", quantity: 5 })
 
-      // Should NOT end early because Store is possible (0 ticks)
+      // Should execute the mock action in dry run mode
       const result = await storeLoop.step()
-      // Dry run will execute an action, not end early
       expect(result.done).toBeDefined()
+      expect(result.action).toBeTruthy()
     })
   })
 })

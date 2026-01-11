@@ -123,7 +123,6 @@ describe("Integration: Full Session Flow", () => {
 
     // Session should have consumed ticks
     expect(state.time.currentTick).toBeGreaterThan(0)
-    expect(state.time.sessionRemainingTicks).toBeLessThan(20000)
 
     // All logs should have valid structure
     for (const log of logs) {
@@ -250,41 +249,6 @@ describe("Integration: Full Session Flow", () => {
 
     const invalidResult = evaluatePlan(state, invalidPlan)
     expect(invalidResult.violations.length).toBeGreaterThan(0)
-  })
-
-  it("should demonstrate session ends when ticks run out", async () => {
-    const state = createWorld("session-end-test")
-    const logs: ActionLog[] = []
-
-    // Get two distance-1 areas and make them known
-    const areas: AreaID[] = []
-    for (const area of state.exploration.areas.values()) {
-      if (area.distance === 1 && areas.length < 2) {
-        areas.push(area.id)
-        makeAreaKnown(state, area.id)
-      }
-    }
-    const destinations: AreaID[] = [...areas, "TOWN"]
-
-    // Keep moving until session ends
-    let sessionEnded = false
-    let i = 0
-
-    while (!sessionEnded && i < 10000) {
-      const dest = destinations[i % 3]
-      if (state.exploration.playerState.currentAreaId !== dest) {
-        const log = await executeAction(state, { type: "Move", destination: dest })
-        logs.push(log)
-
-        if (log.failureType === "SESSION_ENDED") {
-          sessionEnded = true
-        }
-      }
-      i++
-    }
-
-    // Session should have ended (either flag set or no ticks remaining)
-    expect(sessionEnded || state.time.sessionRemainingTicks <= 0).toBe(true)
   })
 
   it.skip("should show how dominant strategies might form (combat not yet implemented)", async () => {
