@@ -1082,8 +1082,9 @@ export async function executeAndRecord(
 
 import { createWorld } from "./world.js"
 import { executeAction } from "./engine.js"
-import { saveExists, loadSave, writeSave, deleteSave, deserializeSession } from "./persistence.js"
+import { saveExists, loadSave, writeSave, deserializeSession } from "./persistence.js"
 import { promptResume } from "./savePrompt.js"
+import { closeInput } from "./prompt.js"
 
 export type MetaCommandResult = "continue" | "end" | "quit"
 
@@ -1134,10 +1135,11 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
       session.stats.sessionStartLogIndex = session.stats.logs.length
       console.log("\nResuming saved game...")
     } else {
-      // Delete save and start fresh
-      deleteSave(seed)
-      console.log("\nStarting new game...")
-      session = createSession({ seed, createWorld })
+      // User declined to resume - exit without deleting the save
+      console.log("\nExiting. Your save file has been preserved.")
+      console.log("To start a new game, manually delete the save or use a different seed.")
+      closeInput()
+      return
     }
   } else {
     // No save exists, create new session
