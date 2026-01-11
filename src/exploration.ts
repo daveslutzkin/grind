@@ -1296,8 +1296,15 @@ export async function* executeExplore(state: WorldState, _action: ExploreAction)
     const targetArea = exploration.areas.get(discoveredUnknownAreaId)
     const areaName = getAreaDisplayName(discoveredUnknownAreaId, targetArea)
     discovered = `connection to ${areaName}`
+  } else if (discoveredConnectionId) {
+    // Known connection - show the destination name
+    const [areaId1, areaId2] = discoveredConnectionId.split("->")
+    const targetAreaId = areaId1 === currentArea.id ? areaId2 : areaId1
+    const targetArea = exploration.areas.get(targetAreaId)
+    const targetName = targetArea ? getAreaDisplayName(targetAreaId, targetArea) : "unknown area"
+    discovered = `connection to ${targetName}`
   } else {
-    discovered = "new connection"
+    discovered = "unknown discovery"
   }
 
   yield {

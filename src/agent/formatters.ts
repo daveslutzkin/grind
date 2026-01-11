@@ -802,7 +802,7 @@ export function formatActionLog(log: ActionLog, state?: WorldState): string {
     )
     if (connection) {
       const travelTime = Math.round(BASE_TRAVEL_TIME * connection.travelTimeMultiplier)
-      timeStr = ` (${travelTime}t)`
+      timeStr = ` (${travelTime}t travel time)`
     }
   }
 
