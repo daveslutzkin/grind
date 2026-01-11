@@ -1055,18 +1055,25 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
       // Pause the main readline to avoid conflicts with interactive prompts
       config.onBeforeInteractive?.()
 
+      let logs: ActionLog[] = []
       try {
         // Import interactive functions dynamically
         const { interactiveExplore, interactiveSurvey } = await import("./interactive.js")
 
         if (action.type === "Explore") {
-          await interactiveExplore(session.state)
+          logs = await interactiveExplore(session.state)
         } else {
-          await interactiveSurvey(session.state)
+          logs = await interactiveSurvey(session.state)
         }
       } finally {
         // Resume the main readline
         config.onAfterInteractive?.()
+      }
+
+      // Record all logs from the interactive session
+      for (const log of logs) {
+        session.stats.logs.push(log)
+        config.onActionComplete(log, session.state)
       }
 
       // Interactive mode handles its own display, just show state after
@@ -1086,19 +1093,26 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
       // Pause the main readline to avoid conflicts with interactive prompts
       config.onBeforeInteractive?.()
 
+      let logs: ActionLog[] = []
       try {
         // Import interactive functions dynamically
         const { interactiveExplorationTravel, interactiveFarTravel } =
           await import("./interactive.js")
 
         if (action.type === "ExplorationTravel") {
-          await interactiveExplorationTravel(session.state, action)
+          logs = await interactiveExplorationTravel(session.state, action)
         } else {
-          await interactiveFarTravel(session.state, action)
+          logs = await interactiveFarTravel(session.state, action)
         }
       } finally {
         // Resume the main readline
         config.onAfterInteractive?.()
+      }
+
+      // Record all logs from the interactive session
+      for (const log of logs) {
+        session.stats.logs.push(log)
+        config.onActionComplete(log, session.state)
       }
 
       // Interactive mode handles its own display, just show state after
