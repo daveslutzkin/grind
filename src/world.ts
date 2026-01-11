@@ -535,6 +535,7 @@ export function createWorld(seed: string): WorldState {
         knownAreaIds,
         knownLocationIds,
         knownConnectionIds,
+        visitedLocationIds: [...knownLocationIds], // Start with all TOWN locations as visited
         totalLuckDelta: 0,
         currentStreak: 0,
       },

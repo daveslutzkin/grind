@@ -903,6 +903,11 @@ async function* executeTravelToLocation(
   // Move to location
   state.exploration.playerState.currentLocationId = locationId
 
+  // Track visited locations (for knowledge/discovery tracking)
+  if (!state.exploration.playerState.visitedLocationIds.includes(locationId)) {
+    state.exploration.playerState.visitedLocationIds.push(locationId)
+  }
+
   // Check for contract completion (after every successful action)
   const contractsCompleted = checkAndCompleteContracts(state)
 

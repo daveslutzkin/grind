@@ -11,7 +11,7 @@ import {
 } from "./summarize.js"
 import { parseAgentResponse, AgentResponse } from "./parser.js"
 import { createSystemPrompt } from "./prompts.js"
-import { createLLMClient, LLMClient } from "./llm.js"
+import { createLLMClient, LLMClient, LLMContextSnapshot } from "./llm.js"
 import { loadAgentConfig } from "./config.js"
 import type { AgentSessionStats, AgentKnowledge } from "./output.js"
 
@@ -38,6 +38,10 @@ export interface StepResult {
   reasoning: string
   learning: string
   error?: string
+  // For verbose tracing
+  contextSnapshot?: LLMContextSnapshot
+  currentPrompt?: string
+  llmResponse?: string
 }
 
 /**
@@ -237,6 +241,9 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
       conversationHistory.push(`STATE:\n${stateText}`)
 
       let response: AgentResponse
+      let contextSnapshot: LLMContextSnapshot | undefined
+      let currentPrompt: string = ""
+      let rawLlmResponse: string = ""
 
       if (config.dryRun) {
         // Mock response for testing
@@ -262,19 +269,21 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
         updateContextSummaries()
 
         // Check if we should continue previous action
-        let prompt: string
         if (continueCondition && lastAction) {
-          prompt = `Previous action result:\n${stateText}\n\nYou set CONTINUE_IF: ${continueCondition}\n\nShould you continue with the same action, or do something else?`
+          currentPrompt = `Previous action result:\n${stateText}\n\nYou set CONTINUE_IF: ${continueCondition}\n\nShould you continue with the same action, or do something else?`
         } else {
-          prompt = stateText
+          currentPrompt = stateText
         }
 
+        // Capture context snapshot BEFORE calling LLM (for verbose tracing)
+        contextSnapshot = llmClient!.getContextSnapshot()
+
         // Call LLM
-        const llmResponse = await llmClient!.chat(prompt)
-        conversationHistory.push(`AGENT:\n${llmResponse}`)
+        rawLlmResponse = await llmClient!.chat(currentPrompt)
+        conversationHistory.push(`AGENT:\n${rawLlmResponse}`)
 
         // Parse response
-        response = parseAgentResponse(llmResponse)
+        response = parseAgentResponse(rawLlmResponse)
 
         if (response.error || !response.action) {
           return {
@@ -284,6 +293,9 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
             reasoning: response.reasoning,
             learning: response.learning,
             error: response.error ?? "No action parsed",
+            contextSnapshot,
+            currentPrompt,
+            llmResponse: rawLlmResponse,
           }
         }
       }
@@ -360,6 +372,9 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
         log,
         reasoning: response.reasoning,
         learning: response.learning,
+        contextSnapshot,
+        currentPrompt,
+        llmResponse: rawLlmResponse,
       }
     },
 
