@@ -84,7 +84,7 @@ export async function runAnimatedAction(
 
     // Show feedback if any
     if (tick.feedback) {
-      const feedbackStr = formatTickFeedback(tick.feedback)
+      const feedbackStr = formatTickFeedback(tick.feedback, ticksCompleted)
       if (feedbackStr) {
         process.stdout.write(` ${feedbackStr}`)
       }

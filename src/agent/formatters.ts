@@ -130,8 +130,10 @@ function getAreaExplorationStatus(state: WorldState, areaId: string): string {
 /**
  * Format tick feedback for display during animated actions
  * Returns a string to show after the dot, or null if no display needed
+ * @param feedback The feedback to format
+ * @param ticksCompleted Number of ticks completed so far
  */
-export function formatTickFeedback(feedback: TickFeedback): string | null {
+export function formatTickFeedback(feedback: TickFeedback, ticksCompleted: number): string | null {
   if (feedback.damage) {
     const { target, amount, enemyHpRemaining, playerHpRemaining } = feedback.damage
     if (target === "enemy") {
@@ -174,7 +176,7 @@ export function formatTickFeedback(feedback: TickFeedback): string | null {
   }
 
   if (feedback.discovered) {
-    return `Found ${feedback.discovered.name}!`
+    return `*found after ${ticksCompleted} ticks*`
   }
 
   if (feedback.xpGained) {
