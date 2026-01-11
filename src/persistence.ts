@@ -92,9 +92,15 @@ export function deserializeSession(save: SaveFile): Session {
     },
   }
 
+  // Handle old saves that don't have sessionStartLogIndex
+  const stats = {
+    ...save.stats,
+    sessionStartLogIndex: save.stats.sessionStartLogIndex ?? 0,
+  }
+
   return {
     state,
-    stats: save.stats,
+    stats,
   }
 }
 
