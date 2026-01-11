@@ -48,6 +48,7 @@ function createTestState(overrides: Partial<WorldState> = {}): WorldState {
         knownAreaIds: ["TOWN"],
         knownLocationIds: [],
         knownConnectionIds: [],
+        visitedLocationIds: [],
         totalLuckDelta: 0,
         currentStreak: 0,
       },

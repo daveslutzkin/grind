@@ -523,6 +523,7 @@ export interface ExplorationStateData {
     knownAreaIds: AreaID[]
     knownLocationIds: string[]
     knownConnectionIds: string[]
+    visitedLocationIds: string[]
     totalLuckDelta: number
     currentStreak: number
   }
@@ -561,6 +562,7 @@ export function initializeExplorationState(rng: RngState): ExplorationStateData 
       knownAreaIds: ["TOWN"],
       knownLocationIds: [],
       knownConnectionIds: [],
+      visitedLocationIds: [],
       totalLuckDelta: 0,
       currentStreak: 0,
     },

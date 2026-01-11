@@ -200,11 +200,15 @@ function extractKeyFacts(learnings: string[], patterns: FactPattern[]): string[]
 /**
  * Extract static world data that doesn't change between ticks.
  * This can be cached in the prompt.
+ *
+ * IMPORTANT: Only includes information the player has actually discovered
+ * by visiting locations. This prevents "god knowledge" about the world.
  */
 export function extractStaticWorldData(state: WorldState): string {
   const lines: string[] = []
+  const visitedLocationIds = new Set(state.exploration.playerState.visitedLocationIds)
 
-  lines.push("WORLD REFERENCE (static):")
+  lines.push("WORLD REFERENCE (discovered so far):")
 
   // All known areas
   lines.push(`Areas: ${state.exploration.playerState.knownAreaIds.join(", ")}`)
@@ -220,20 +224,37 @@ export function extractStaticWorldData(state: WorldState): string {
       travelPairs.push(`${connId}=${connection.travelTimeMultiplier}t`)
     }
   }
-  lines.push(`Travel: ${travelPairs.join(", ")}`)
+  if (travelPairs.length > 0) {
+    lines.push(`Travel: ${travelPairs.join(", ")}`)
+  }
 
-  // Recipes (if any)
-  if (state.world.recipes.length > 0) {
-    const recipeList = state.world.recipes.map((r) => {
+  // Recipes - only from guild halls the player has visited
+  // Find all guild hall locations in TOWN that have been visited
+  const townArea = state.exploration.areas.get("TOWN")
+  const visitedGuildTypes = new Set<string>()
+  if (townArea) {
+    for (const loc of townArea.locations) {
+      if (loc.guildType && visitedLocationIds.has(loc.id)) {
+        visitedGuildTypes.add(loc.guildType)
+      }
+    }
+  }
+
+  const discoveredRecipes = state.world.recipes.filter((r) => visitedGuildTypes.has(r.guildType))
+  if (discoveredRecipes.length > 0) {
+    const recipeList = discoveredRecipes.map((r) => {
       const inputs = r.inputs.map((i) => `${i.quantity}x${i.itemId}`).join("+")
       return `${r.id}@${r.guildType}:${inputs}→${r.output.quantity}x${r.output.itemId}`
     })
     lines.push(`Recipes: ${recipeList.join("; ")}`)
   }
 
-  // Contract templates (available contracts)
-  if (state.world.contracts.length > 0) {
-    const contractList = state.world.contracts.map((c) => {
+  // Contracts - only from locations the player has visited
+  const discoveredContracts = state.world.contracts.filter((c) =>
+    visitedLocationIds.has(c.acceptLocationId)
+  )
+  if (discoveredContracts.length > 0) {
+    const contractList = discoveredContracts.map((c) => {
       const reqs = c.requirements.map((r) => `${r.quantity}x${r.itemId}`).join("+")
       const rewards = c.rewards.map((r) => `${r.quantity}x${r.itemId}`).join("+")
       return `${c.id}@${c.acceptLocationId}:${reqs}→${rewards}`

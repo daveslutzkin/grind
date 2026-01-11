@@ -24,6 +24,17 @@ export interface ContextConfig {
 }
 
 /**
+ * Snapshot of current LLM context for tracing
+ */
+export interface LLMContextSnapshot {
+  systemPrompt: string
+  staticContext: string
+  actionSummary: string
+  learningSummary: string
+  recentMessages: string[]
+}
+
+/**
  * LLM client wrapper for Anthropic API
  */
 export interface LLMClient {
@@ -72,6 +83,11 @@ export interface LLMClient {
    * Update the learning summary
    */
   updateLearningSummary(summary: string): void
+
+  /**
+   * Get a snapshot of current context for tracing
+   */
+  getContextSnapshot(): LLMContextSnapshot
 
   /**
    * Send a message and get a response from the LLM
@@ -266,6 +282,21 @@ export function createLLMClient(config: AgentConfig): LLMClient {
 
     updateLearningSummary(summary: string): void {
       contextConfig.learningSummary = summary
+    },
+
+    getContextSnapshot(): LLMContextSnapshot {
+      // Get recent messages for the snapshot
+      const nonSystemMessages = history.filter((m) => m.role !== "system")
+      const recentMessageCount = contextConfig.recentExchangeCount * 3
+      const recentMessages = nonSystemMessages.slice(-recentMessageCount)
+
+      return {
+        systemPrompt,
+        staticContext: contextConfig.staticContext,
+        actionSummary: contextConfig.actionSummary,
+        learningSummary: contextConfig.learningSummary,
+        recentMessages: recentMessages.map((m) => `[${m.role}]: ${m.content}`),
+      }
     },
 
     async chat(userMessage: string): Promise<string> {

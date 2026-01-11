@@ -237,6 +237,7 @@ export interface WorldState {
       knownAreaIds: AreaID[] // Using array for serialization compatibility
       knownLocationIds: string[]
       knownConnectionIds: string[] // "areaId1->areaId2" format
+      visitedLocationIds: string[] // Locations the player has actually been to (for knowledge tracking)
       // Luck tracking for surfacing
       totalLuckDelta: number
       currentStreak: number

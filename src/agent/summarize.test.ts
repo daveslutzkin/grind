@@ -271,7 +271,10 @@ describe("extractStaticWorldData", () => {
     expect(staticData).toContain("WORLD REFERENCE")
     expect(staticData).toContain("Areas:") // Changed from Locations: to Areas:
     expect(staticData).toContain("TOWN")
-    expect(staticData).toContain("Travel:")
+    // Travel is only shown when there are known connections
+    if (state.exploration.playerState.knownConnectionIds.length > 0) {
+      expect(staticData).toContain("Travel:")
+    }
   })
 
   it("should include recipes if present", () => {
