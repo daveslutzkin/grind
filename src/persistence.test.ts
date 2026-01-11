@@ -206,7 +206,7 @@ describe("Persistence", () => {
             logs: [],
             startingSkills: { ...state.player.skills },
             totalSession: state.time.sessionRemainingTicks,
-          sessionStartLogIndex: 0,
+            sessionStartLogIndex: 0,
           },
         }
 
