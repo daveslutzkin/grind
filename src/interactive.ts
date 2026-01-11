@@ -387,7 +387,7 @@ export async function interactiveSurvey(state: WorldState): Promise<ActionLog[]>
     const remainingAnalysis = analyzeRemainingAreas(state)
     if (!remainingAnalysis.hasUndiscovered) {
       console.log("\n✓ No more undiscovered areas to survey")
-      return
+      return logs
     }
 
     // Prompt to continue surveying
