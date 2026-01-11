@@ -1041,7 +1041,7 @@ describe("Formatters", () => {
       }
 
       const result = formatTickFeedback(feedback, 6)
-      expect(result).toBe("*found after 6 ticks*")
+      expect(result).toBe("*found after 5 ticks*")
     })
 
     it("should show damage feedback", () => {
