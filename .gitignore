@@ -4,4 +4,3 @@ node_modules/
 dist/
 .*sw?
 agent-config.json
-saves/
