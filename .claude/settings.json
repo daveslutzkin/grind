@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/check-tdd.sh"
+            "command": ".claude/stop-checks.sh"
           }
         ]
       }
