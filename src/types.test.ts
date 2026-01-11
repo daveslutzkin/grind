@@ -5,7 +5,6 @@ describe("Types", () => {
     const state: WorldState = {
       time: {
         currentTick: 0,
-        sessionRemainingTicks: 20,
       },
       player: {
         inventory: [],

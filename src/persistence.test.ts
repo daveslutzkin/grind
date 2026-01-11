@@ -64,7 +64,7 @@ describe("Persistence", () => {
         stats: {
           logs: [],
           startingSkills: { ...state.player.skills },
-          totalSession: state.time.sessionRemainingTicks,
+          totalSession: 0,
         },
       }
       writeSave(TEST_SEED, session)
@@ -80,7 +80,7 @@ describe("Persistence", () => {
         stats: {
           logs: [],
           startingSkills: { ...state.player.skills },
-          totalSession: state.time.sessionRemainingTicks,
+          totalSession: 0,
         },
       }
 
@@ -99,9 +99,6 @@ describe("Persistence", () => {
       // Verify the session is restored correctly
       expect(deserializedSession.state.time.currentTick).toBe(
         originalSession.state.time.currentTick
-      )
-      expect(deserializedSession.state.time.sessionRemainingTicks).toBe(
-        originalSession.state.time.sessionRemainingTicks
       )
       expect(deserializedSession.state.player.inventory).toEqual(
         originalSession.state.player.inventory
@@ -133,7 +130,7 @@ describe("Persistence", () => {
         stats: {
           logs: [],
           startingSkills: { ...state.player.skills },
-          totalSession: state.time.sessionRemainingTicks,
+          totalSession: 0,
         },
       }
 
@@ -164,7 +161,7 @@ describe("Persistence", () => {
         stats: {
           logs: [],
           startingSkills: { ...state.player.skills },
-          totalSession: state.time.sessionRemainingTicks,
+          totalSession: 0,
         },
       }
 
@@ -201,7 +198,7 @@ describe("Persistence", () => {
           stats: {
             logs: [],
             startingSkills: { ...state.player.skills },
-            totalSession: state.time.sessionRemainingTicks,
+            totalSession: 0,
           },
         }
 
@@ -224,7 +221,7 @@ describe("Persistence", () => {
         stats: {
           logs: [],
           startingSkills: { ...state.player.skills },
-          totalSession: state.time.sessionRemainingTicks,
+          totalSession: 0,
         },
       }
 
@@ -256,7 +253,7 @@ describe("Persistence", () => {
         stats: {
           logs: [],
           startingSkills: { ...state.player.skills },
-          totalSession: state.time.sessionRemainingTicks,
+          totalSession: 0,
         },
       }
 
@@ -296,7 +293,7 @@ describe("Persistence", () => {
         stats: {
           logs: [],
           startingSkills: { ...state.player.skills },
-          totalSession: state.time.sessionRemainingTicks,
+          totalSession: 0,
         },
       }
 
@@ -324,7 +321,7 @@ describe("Persistence", () => {
         stats: {
           logs: [],
           startingSkills: { ...state.player.skills },
-          totalSession: state.time.sessionRemainingTicks,
+          totalSession: 0,
         },
       }
 
@@ -352,7 +349,7 @@ describe("Persistence", () => {
             },
           ],
           startingSkills: { ...state.player.skills },
-          totalSession: state.time.sessionRemainingTicks,
+          totalSession: 0,
         },
       }
 
@@ -377,7 +374,7 @@ describe("Persistence", () => {
         stats: {
           logs: [],
           startingSkills: { ...state.player.skills },
-          totalSession: state.time.sessionRemainingTicks,
+          totalSession: 0,
         },
       }
 
@@ -402,7 +399,7 @@ describe("Persistence", () => {
         stats: {
           logs: [],
           startingSkills: { ...state.player.skills },
-          totalSession: state.time.sessionRemainingTicks,
+          totalSession: 0,
         },
       }
 
@@ -431,7 +428,7 @@ describe("Persistence", () => {
         stats: {
           logs: [],
           startingSkills: { ...state.player.skills },
-          totalSession: state.time.sessionRemainingTicks,
+          totalSession: 0,
         },
       }
 
@@ -494,7 +491,7 @@ describe("Persistence", () => {
         stats: {
           logs: [],
           startingSkills: { ...state.player.skills },
-          totalSession: state.time.sessionRemainingTicks,
+          totalSession: 0,
         },
       }
       writeSave(TEST_SEED, session)
@@ -560,7 +557,7 @@ describe("Persistence", () => {
         stats: {
           logs: [],
           startingSkills: { ...state.player.skills },
-          totalSession: state.time.sessionRemainingTicks,
+          totalSession: 0,
         },
       }
       writeSave(TEST_SEED, session)

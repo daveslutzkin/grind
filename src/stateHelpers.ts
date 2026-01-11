@@ -17,7 +17,6 @@ import { addXPToSkill } from "./types.js"
  */
 export function consumeTime(state: WorldState, ticks: number): void {
   state.time.currentTick += ticks
-  state.time.sessionRemainingTicks -= ticks
 }
 
 // ============================================================================

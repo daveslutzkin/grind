@@ -935,11 +935,6 @@ export async function* executeSurvey(state: WorldState, _action: SurveyAction): 
     return
   }
 
-  if (state.time.sessionRemainingTicks <= 0) {
-    yield { done: true, log: createFailureLog(state, "Survey", "SESSION_ENDED") }
-    return
-  }
-
   const exploration = state.exploration!
   const currentArea = exploration.areas.get(exploration.playerState.currentAreaId)!
 
@@ -979,23 +974,13 @@ export async function* executeSurvey(state: WorldState, _action: SurveyAction): 
   let succeeded = false
   let accumulatedTicks = 0
 
-  while (!succeeded && state.time.sessionRemainingTicks > 0) {
+  while (!succeeded) {
     // Accumulate ticks based on roll interval
     accumulatedTicks += rollInterval
     const ticksThisRoll = Math.floor(accumulatedTicks)
     accumulatedTicks -= ticksThisRoll
 
     if (ticksThisRoll > 0) {
-      if (state.time.sessionRemainingTicks < ticksThisRoll) {
-        ticksConsumed += state.time.sessionRemainingTicks
-        // Consume remaining ticks and yield them
-        for (let i = 0; i < state.time.sessionRemainingTicks; i++) {
-          consumeTime(state, 1)
-          yield { done: false }
-        }
-        break
-      }
-
       // Yield ticks as they're consumed
       for (let i = 0; i < ticksThisRoll; i++) {
         consumeTime(state, 1)
@@ -1055,10 +1040,10 @@ export async function* executeSurvey(state: WorldState, _action: SurveyAction): 
         actionType: "Survey",
         parameters: {},
         success: false,
-        failureType: "SESSION_ENDED",
+        failureType: "NO_UNDISCOVERED_AREAS",
         timeConsumed: ticksConsumed,
         rngRolls: rolls,
-        stateDeltaSummary: "Survey interrupted - session ended",
+        stateDeltaSummary: "Survey interrupted",
       },
     }
     return
@@ -1215,11 +1200,6 @@ export async function* executeExplore(state: WorldState, _action: ExploreAction)
     return
   }
 
-  if (state.time.sessionRemainingTicks <= 0) {
-    yield { done: true, log: createFailureLog(state, "Explore", "SESSION_ENDED") }
-    return
-  }
-
   const exploration = state.exploration!
   const currentArea = exploration.areas.get(exploration.playerState.currentAreaId)!
   const level = state.player.skills.Exploration.level
@@ -1257,22 +1237,12 @@ export async function* executeExplore(state: WorldState, _action: ExploreAction)
   let accumulatedTicks = 0
   let pickedThreshold = 0 // Will store the threshold of the specific item found
 
-  while (!succeeded && state.time.sessionRemainingTicks > 0) {
+  while (!succeeded) {
     accumulatedTicks += rollInterval
     const ticksThisRoll = Math.floor(accumulatedTicks)
     accumulatedTicks -= ticksThisRoll
 
     if (ticksThisRoll > 0) {
-      if (state.time.sessionRemainingTicks < ticksThisRoll) {
-        ticksConsumed += state.time.sessionRemainingTicks
-        // Consume remaining ticks and yield them
-        for (let i = 0; i < state.time.sessionRemainingTicks; i++) {
-          consumeTime(state, 1)
-          yield { done: false }
-        }
-        break
-      }
-
       // Yield ticks as they're consumed
       for (let i = 0; i < ticksThisRoll; i++) {
         consumeTime(state, 1)
@@ -1386,10 +1356,10 @@ export async function* executeExplore(state: WorldState, _action: ExploreAction)
         actionType: "Explore",
         parameters: {},
         success: false,
-        failureType: "SESSION_ENDED",
+        failureType: "AREA_FULLY_EXPLORED",
         timeConsumed: ticksConsumed,
         rngRolls: rolls,
-        stateDeltaSummary: "Explore interrupted - session ended",
+        stateDeltaSummary: "Explore interrupted",
       },
     }
     return
@@ -1577,11 +1547,6 @@ export async function* executeExplorationTravel(
     return
   }
 
-  if (state.time.sessionRemainingTicks <= 0) {
-    yield { done: true, log: createFailureLog(state, "ExplorationTravel", "SESSION_ENDED") }
-    return
-  }
-
   const currentAreaId = exploration.playerState.currentAreaId
   const knownConnectionIds = new Set(exploration.playerState.knownConnectionIds)
   const destinationIsKnown = exploration.playerState.knownAreaIds.includes(destinationAreaId)
@@ -1610,18 +1575,6 @@ export async function* executeExplorationTravel(
   // Double time if scavenging
   if (scavenge) {
     travelTime *= 2
-  }
-
-  // Check if enough time
-  if (state.time.sessionRemainingTicks < travelTime) {
-    yield {
-      done: true,
-      log: {
-        ...createFailureLog(state, "ExplorationTravel", "SESSION_ENDED"),
-        timeConsumed: 0,
-      },
-    }
-    return
   }
 
   // Yield ticks during travel
@@ -1683,11 +1636,6 @@ export async function* executeFarTravel(
     return
   }
 
-  if (state.time.sessionRemainingTicks <= 0) {
-    yield { done: true, log: createFailureLog(state, "FarTravel", "SESSION_ENDED") }
-    return
-  }
-
   const currentAreaId = exploration.playerState.currentAreaId
 
   // Destination must be known for far travel
@@ -1710,18 +1658,6 @@ export async function* executeFarTravel(
   // Double time if scavenging
   if (scavenge) {
     travelTime *= 2
-  }
-
-  // Check if enough time
-  if (state.time.sessionRemainingTicks < travelTime) {
-    yield {
-      done: true,
-      log: {
-        ...createFailureLog(state, "FarTravel", "SESSION_ENDED"),
-        timeConsumed: 0,
-      },
-    }
-    return
   }
 
   // Yield ticks during travel

@@ -203,7 +203,6 @@ export interface RngState {
 export interface WorldState {
   time: {
     currentTick: number
-    sessionRemainingTicks: number
   }
 
   player: {
@@ -488,7 +487,6 @@ export type FailureType =
   | "ENEMY_NOT_FOUND"
   | "RECIPE_NOT_FOUND"
   | "ITEM_NOT_FOUND"
-  | "SESSION_ENDED"
   | "ALREADY_ENROLLED"
   | "MISSING_WEAPON"
   | "MISSING_FOCUS_MATERIAL"

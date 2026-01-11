@@ -699,8 +699,6 @@ function formatFailureMessage(failureType: FailureType): string {
       return "Recipe not found!"
     case "ITEM_NOT_FOUND":
       return "Item not found!"
-    case "SESSION_ENDED":
-      return "Session ended!"
     case "ALREADY_ENROLLED":
       return "Already enrolled!"
     case "MISSING_WEAPON":
@@ -866,7 +864,7 @@ export function formatActionLog(log: ActionLog, state?: WorldState): string {
 
     lines.push(`  RNG: ${deltaStr} (${luckLabel})`)
   } else if (isExplorationAction) {
-    // Failed exploration (e.g., SESSION_ENDED) - don't show individual rolls
+    // Failed exploration - don't show individual rolls
     // as they reveal information about undiscovered things
   } else if (log.rngRolls.length > 0) {
     // Non-exploration: show individual rolls

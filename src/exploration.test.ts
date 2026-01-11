@@ -688,12 +688,7 @@ describe("Shadow Rolling", () => {
 
       // Clone RNG for shadow roll
       const shadowRng = { ...state.rng }
-      const shadowTicks = shadowRollExplore(
-        shadowRng,
-        discoverables,
-        rollInterval,
-        state.time.sessionRemainingTicks
-      )
+      const shadowTicks = shadowRollExplore(shadowRng, discoverables, rollInterval, 20000)
 
       // Execute real action (should use same RNG sequence from same starting point)
       const action: ExploreAction = { type: "Explore" }
@@ -721,7 +716,7 @@ describe("Shadow Rolling", () => {
 
       // Clone RNG for shadow roll
       const shadowRng = { ...state.rng }
-      shadowRollExplore(shadowRng, discoverables, rollInterval, state.time.sessionRemainingTicks)
+      shadowRollExplore(shadowRng, discoverables, rollInterval, 20000)
 
       // Original RNG should be unchanged
       expect(state.rng.counter).toBe(originalCounter)
@@ -749,7 +744,7 @@ describe("Shadow Rolling", () => {
         shadowRng,
         successChance,
         rollInterval,
-        state.time.sessionRemainingTicks,
+        20000,
         allConnections.length,
         knownAreaIds,
         allConnections,
@@ -790,7 +785,7 @@ describe("Shadow Rolling", () => {
         shadowRng,
         successChance,
         rollInterval,
-        state.time.sessionRemainingTicks,
+        20000,
         allConnections.length,
         knownAreaIds,
         allConnections,
@@ -814,18 +809,6 @@ describe("Survey Action", () => {
 
       expect(log.success).toBe(false)
       expect(log.failureType).toBe("NOT_IN_EXPLORATION_GUILD")
-    })
-
-    it("should fail if session has ended", async () => {
-      const state = createExplorationWorld("survey-test")
-      state.player.skills.Exploration = { level: 1, xp: 0 }
-      state.time.sessionRemainingTicks = 0
-      const action: SurveyAction = { type: "Survey" }
-
-      const log = await executeToCompletion(executeSurvey(state, action))
-
-      expect(log.success).toBe(false)
-      expect(log.failureType).toBe("SESSION_ENDED")
     })
   })
 
@@ -1354,40 +1337,6 @@ describe("ExplorationTravel vs FarTravel - Regression Tests", () => {
     // Direct travel should still work
     expect(log.success).toBe(true)
     expect(state.exploration!.playerState.currentAreaId).toBe(area0)
-  })
-})
-
-describe("XP on Session End", () => {
-  it("should NOT grant XP when Survey fails due to session end (no discovery)", async () => {
-    const state = createExplorationWorld("survey-session-end")
-    state.player.skills.Exploration = { level: 1, xp: 0 }
-    state.time.sessionRemainingTicks = 4 // Just enough for 2 rolls
-    const action: SurveyAction = { type: "Survey" }
-
-    const log = await executeToCompletion(executeSurvey(state, action))
-
-    // XP is only granted on successful discovery, not on failed attempts
-    if (!log.success) {
-      expect(log.skillGained).toBeUndefined()
-    }
-  })
-
-  it("should NOT grant XP when Explore fails due to session end (no discovery)", async () => {
-    const state = createExplorationWorld("explore-session-end")
-    state.player.skills.Exploration = { level: 1, xp: 0 }
-    // Move to an area that has content
-    const d1Area = Array.from(state.exploration!.areas.values()).find((a) => a.distance === 1)!
-    state.exploration!.playerState.currentAreaId = d1Area.id
-    state.exploration!.playerState.knownAreaIds.push(d1Area.id)
-    state.time.sessionRemainingTicks = 4
-
-    const action: ExploreAction = { type: "Explore" }
-    const log = await executeToCompletion(executeExplore(state, action))
-
-    // XP is only granted on successful discovery, not on failed attempts
-    if (!log.success) {
-      expect(log.skillGained).toBeUndefined()
-    }
   })
 })
 

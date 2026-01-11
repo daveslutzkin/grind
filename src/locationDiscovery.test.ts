@@ -199,8 +199,6 @@ describe("Location Discovery", () => {
       // Keep exploring until we discover a Mining location
       let discoveredMiningLocation = false
       for (let i = 0; i < 50 && !discoveredMiningLocation; i++) {
-        if (state.time.sessionRemainingTicks <= 0) break
-
         const exploreAction: ExploreAction = { type: "Explore" }
         const exploreLog = await executeToCompletion(executeExplore(state, exploreAction))
 

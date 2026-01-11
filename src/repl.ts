@@ -51,9 +51,6 @@ async function main(): Promise<void> {
 
     onSessionEnd: (state: WorldState, stats: SessionStats, showSummary: boolean) => {
       if (showSummary) {
-        if (state.time.sessionRemainingTicks <= 0) {
-          console.log("\n⏰ Session time exhausted!")
-        }
         printSummary(state, stats)
       }
       closeInput()

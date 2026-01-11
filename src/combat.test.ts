@@ -225,14 +225,12 @@ describe.skip("Combat Progression (combat not yet implemented)", () => {
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
       state.player.equippedWeapon = "CRUDE_WEAPON"
       state.rng.seed = "force-fight-fail"
-      const initialTicks = state.time.sessionRemainingTicks
       const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
 
       const log = await executeAction(state, action)
 
       if (log.failureType === "COMBAT_FAILURE") {
         expect(log.timeConsumed).toBe(3)
-        expect(state.time.sessionRemainingTicks).toBe(initialTicks - 3)
       }
     })
   })
@@ -336,12 +334,10 @@ describe.skip("Combat Progression (combat not yet implemented)", () => {
     it("should cost 0 ticks", async () => {
       const state = createWorld("test-seed")
       setupStateWithToken(state)
-      const initialTicks = state.time.sessionRemainingTicks
 
       const log = await executeAction(state, { type: "TurnInCombatToken" })
 
       expect(log.timeConsumed).toBe(0)
-      expect(state.time.sessionRemainingTicks).toBe(initialTicks)
     })
 
     it("should fail if not at Combat Guild", async () => {

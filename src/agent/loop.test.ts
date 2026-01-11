@@ -35,7 +35,6 @@ describe("Agent Loop", () => {
       const state = loop.getWorldState()
       expect(state).toBeDefined()
       expect(state.exploration.playerState.currentAreaId).toBe("TOWN")
-      expect(state.time.sessionRemainingTicks).toBe(25)
     })
 
     it("should track session stats", () => {
@@ -65,8 +64,8 @@ describe("Agent Loop", () => {
       ).toBeGreaterThan(0)
     })
 
-    it("should detect when session is complete", async () => {
-      // Create a loop with 0 ticks - should be done immediately
+    it("should never be complete (no session time limit)", async () => {
+      // Create a loop with 0 ticks - no longer has time limit so never complete
       const shortLoop = createAgentLoop({
         seed: "short-test",
         ticks: 0,
@@ -75,10 +74,10 @@ describe("Agent Loop", () => {
         dryRun: true,
       })
 
-      expect(shortLoop.isComplete()).toBe(true)
+      expect(shortLoop.isComplete()).toBe(false)
     })
 
-    it("should end early when no viable actions with 1 tick at TOWN", async () => {
+    it("should always have viable actions (no session time limit)", async () => {
       // Create loop with minimal ticks
       const minLoop = createAgentLoop({
         seed: "min-test",
@@ -88,12 +87,14 @@ describe("Agent Loop", () => {
         dryRun: true,
       })
 
-      // At TOWN with 1 tick, no skills enrolled, min travel cost is 2 (TOWN->OUTSKIRTS_MINE)
-      // No nodes at TOWN, so no gathering possible
-      // Should detect no viable actions and end
-      const result = await minLoop.step()
-      expect(result.done).toBe(true)
-      expect(result.reasoning).toContain("No viable actions")
+      // First step should execute the mock enrol action and return done=false
+      const result1 = await minLoop.step()
+      expect(result1.done).toBe(false)
+      expect(result1.action).toBeTruthy()
+
+      // Second step should detect that an action was already attempted and return done=true
+      const result2 = await minLoop.step()
+      expect(result2.done).toBe(true)
     })
 
     it("should allow Store action at TOWN with items in inventory", async () => {

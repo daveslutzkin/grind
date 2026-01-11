@@ -22,7 +22,6 @@ import {
   ensureAreaFullyGenerated,
   GATHERING_NODE_WITHOUT_SKILL_MULTIPLIER,
   UNKNOWN_CONNECTION_MULTIPLIER,
-  BASE_TRAVEL_TIME,
   findPath,
   isConnectionKnown,
   executeExplorationTravel,
@@ -100,7 +99,7 @@ export async function runAnimatedAction(
         actionType: "Drop", // Placeholder - doesn't matter for cancellation
         parameters: {},
         success: false,
-        failureType: "SESSION_ENDED",
+        failureType: "WRONG_LOCATION",
         timeConsumed: ticksCompleted,
         rngRolls: [],
         stateDeltaSummary: `Action cancelled after ${ticksCompleted} ticks`,
@@ -401,17 +400,12 @@ export async function interactiveExplorationTravel(
   action: ExplorationTravelAction
 ): Promise<ActionLog[]> {
   const exploration = state.exploration!
-  const { destinationAreaId, scavenge } = action
+  const { destinationAreaId } = action
   const currentAreaId = exploration.playerState.currentAreaId
 
   // Check preconditions
   if (exploration.playerState.currentAreaId === destinationAreaId) {
     console.log("\n✗ Already in that area")
-    return []
-  }
-
-  if (state.time.sessionRemainingTicks <= 0) {
-    console.log("\n✗ Session ended")
     return []
   }
 
@@ -427,18 +421,6 @@ export async function interactiveExplorationTravel(
 
   if (!directConnection) {
     console.log("\n✗ No direct connection to that area")
-    return []
-  }
-
-  // Calculate travel time (for time check only - generator handles actual time consumption)
-  let travelTime = Math.round(BASE_TRAVEL_TIME * directConnection.travelTimeMultiplier)
-  if (scavenge) {
-    travelTime *= 2
-  }
-
-  // Check if enough time
-  if (state.time.sessionRemainingTicks < travelTime) {
-    console.log("\n✗ Not enough time remaining")
     return []
   }
 
@@ -478,17 +460,12 @@ export async function interactiveFarTravel(
   action: FarTravelAction
 ): Promise<ActionLog[]> {
   const exploration = state.exploration!
-  const { destinationAreaId, scavenge } = action
+  const { destinationAreaId } = action
   const currentAreaId = exploration.playerState.currentAreaId
 
   // Check preconditions
   if (exploration.playerState.currentAreaId === destinationAreaId) {
     console.log("\n✗ Already in that area")
-    return []
-  }
-
-  if (state.time.sessionRemainingTicks <= 0) {
-    console.log("\n✗ Session ended")
     return []
   }
 
@@ -503,18 +480,6 @@ export async function interactiveFarTravel(
 
   if (!pathResult) {
     console.log("\n✗ No path to destination")
-    return []
-  }
-
-  // Calculate travel time (for time check only - generator handles actual time consumption)
-  let travelTime = Math.round(pathResult.totalTime)
-  if (scavenge) {
-    travelTime *= 2
-  }
-
-  // Check if enough time
-  if (state.time.sessionRemainingTicks < travelTime) {
-    console.log("\n✗ Not enough time remaining")
     return []
   }
 

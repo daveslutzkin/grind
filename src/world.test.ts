@@ -43,7 +43,6 @@ describe("World Factory", () => {
       const world = createWorld("test-seed")
 
       expect(world.time.currentTick).toBe(0)
-      expect(world.time.sessionRemainingTicks).toBeGreaterThan(0)
       expect(world.exploration.playerState.currentAreaId).toBe("TOWN")
     })
 

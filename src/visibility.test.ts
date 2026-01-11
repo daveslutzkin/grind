@@ -14,7 +14,7 @@ import { NodeType } from "./types.js"
 // Helper to create a minimal world state for testing
 function createTestState(overrides: Partial<WorldState> = {}): WorldState {
   return {
-    time: { currentTick: 0, sessionRemainingTicks: 100 },
+    time: { currentTick: 0 },
     player: {
       inventory: [],
       inventoryCapacity: 20,

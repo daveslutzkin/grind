@@ -725,7 +725,7 @@ export interface ComputedStats {
 }
 
 export function computeSessionStats(state: WorldState, stats: SessionStats): ComputedStats {
-  const ticksUsed = stats.totalSession - state.time.sessionRemainingTicks
+  const ticksUsed = state.time.currentTick
 
   const actionCounts: Record<string, { success: number; fail: number; time: number }> = {}
   for (const log of stats.logs) {
@@ -896,7 +896,7 @@ export function createSession(options: CreateSessionOptions): Session {
   const stats: SessionStats = {
     logs: [],
     startingSkills: { ...state.player.skills },
-    totalSession: state.time.sessionRemainingTicks,
+    totalSession: 0,
   }
   return { state, stats }
 }
@@ -985,7 +985,7 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
   // Call onSessionStart hook if provided
   config.onSessionStart?.(session.state)
 
-  while (session.state.time.sessionRemainingTicks > 0) {
+  while (true) {
     const cmd = await config.getNextCommand()
     if (cmd === null) break
 
