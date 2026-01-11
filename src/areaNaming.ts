@@ -6,6 +6,7 @@ import Anthropic from "@anthropic-ai/sdk"
 import type { Area, AreaConnection, AreaID } from "./types.js"
 import { ExplorationLocationType } from "./types.js"
 import { getAnthropicApiKey } from "./config.js"
+import { isCacheEnabled, getCachedResponse, storeCachedResponse } from "./llmCache.js"
 
 /** Model to use for area naming (fast and cheap) */
 const NAMING_MODEL = "claude-3-5-haiku-latest"
@@ -165,6 +166,15 @@ export async function generateAreaName(
   apiKey?: string,
   client?: AnthropicMessagesClient
 ): Promise<string | undefined> {
+  // Check cache first for deterministic replays
+  if (isCacheEnabled()) {
+    const prompt = buildAreaNamingPrompt(area, neighborNames, [])
+    const cached = getCachedResponse(prompt)
+    if (cached !== undefined) {
+      return cached || FALLBACK_NAME
+    }
+  }
+
   const effectiveApiKey = apiKey ?? getAnthropicApiKey()
 
   // If no API key available, skip LLM call entirely - areas stay unnamed
@@ -192,6 +202,10 @@ export async function generateAreaName(
       const name = (text ?? "").trim()
 
       if (!name) {
+        // Cache the empty response as fallback
+        if (isCacheEnabled()) {
+          storeCachedResponse(prompt, "")
+        }
         return FALLBACK_NAME
       }
 
@@ -203,6 +217,10 @@ export async function generateAreaName(
       }
 
       // Success - unique name generated
+      // Cache the response for replay
+      if (isCacheEnabled()) {
+        storeCachedResponse(prompt, name)
+      }
       return name
     } catch {
       // On error, return fallback

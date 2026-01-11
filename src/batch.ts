@@ -12,9 +12,10 @@ import {
   printSummary,
   type SessionStats,
 } from "./runner.js"
+import { initLLMCache, saveLLMCache } from "./llmCache.js"
 
 function printUsage(): void {
-  console.log("Usage: npx tsx src/batch.ts <seed> [command1] [command2] ...")
+  console.log("Usage: npx tsx src/batch.ts [--llm-cache <file>] <seed> [command1] [command2] ...")
   console.log("")
   console.log("Commands:")
   console.log("  enrol <skill>              - Enrol in guild (exploration, mining, etc)")
@@ -40,8 +41,26 @@ async function main(): Promise<void> {
     process.exit(1)
   }
 
-  const seed = args[0]
-  const commands = args.slice(1)
+  // Parse --llm-cache option
+  let llmCacheFile: string | null = null
+  let argIndex = 0
+
+  if (args[0] === "--llm-cache") {
+    if (args.length < 3) {
+      printUsage()
+      process.exit(1)
+    }
+    llmCacheFile = args[1]
+    argIndex = 2
+  }
+
+  const seed = args[argIndex]
+  const commands = args.slice(argIndex + 1)
+
+  // Initialize LLM cache if specified
+  if (llmCacheFile) {
+    initLLMCache(llmCacheFile)
+  }
   let cmdIndex = 0
   let lastLog: ActionLog | null = null
 
@@ -67,6 +86,11 @@ async function main(): Promise<void> {
       process.exit(1)
     },
   })
+
+  // Save LLM cache if enabled
+  if (llmCacheFile) {
+    saveLLMCache()
+  }
 }
 
 main()
