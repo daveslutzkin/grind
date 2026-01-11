@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "savedAt": "2026-01-11T22:19:44.727Z",
+  "savedAt": "2026-01-11T22:22:08.443Z",
   "seed": "42",
   "state": {
     "time": {
@@ -466,7 +466,7 @@
           "generated": true,
           "locations": [],
           "indexInDistance": 0,
-          "name": "Greenward Fields"
+          "name": "Green Meadows"
         },
         "area-d1-i1": {
           "id": "area-d1-i1",
@@ -829,7 +829,7 @@
         "success": true,
         "timeConsumed": 3,
         "rngRolls": [],
-        "stateDeltaSummary": "Enrolled in Exploration guild, discovered Greenward Fields",
+        "stateDeltaSummary": "Enrolled in Exploration guild, discovered Green Meadows",
         "explorationLog": {
           "discoveredAreaId": "area-d1-i0",
           "discoveredConnectionId": "TOWN->area-d1-i0"
