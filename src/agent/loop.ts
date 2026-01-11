@@ -1,7 +1,6 @@
 import { createWorld } from "../world.js"
 import { executeAction } from "../engine.js"
 import type { WorldState, Action, ActionLog } from "../types.js"
-import { getCurrentAreaId } from "../types.js"
 import { formatWorldState, formatActionLog } from "./formatters.js"
 import {
   summarizeAction,
@@ -15,34 +14,6 @@ import { createSystemPrompt } from "./prompts.js"
 import { createLLMClient, LLMClient } from "./llm.js"
 import { loadAgentConfig } from "./config.js"
 import type { AgentSessionStats, AgentKnowledge } from "./output.js"
-
-/**
- * Check if any meaningful action is possible given the current state.
- * Always returns true since there's no session time limit.
- *
- * Meaningful actions:
- * - Store: 0 ticks, but only if inventory has non-weapon items
- * - APPRAISE: 1 tick (if at a location with nodes and skill level >= 3)
- * - Move: minimum travel time via connections
- * - Enrol: 3 ticks
- * - Gather FOCUS: 5 ticks
- * - Drop: 1 tick (but wasteful, not considered meaningful)
- */
-function hasViableAction(state: WorldState): boolean {
-  const currentArea = getCurrentAreaId(state)
-
-  // 0-tick actions: Store is only meaningful if we have non-weapon items in inventory
-  // Weapons (CRUDE_WEAPON, IMPROVED_WEAPON) shouldn't be stored as they're needed for combat
-  const storableItems = state.player.inventory.filter(
-    (i) => i.itemId !== "CRUDE_WEAPON" && i.itemId !== "IMPROVED_WEAPON"
-  )
-  if (storableItems.length > 0 && currentArea === "TOWN") {
-    return true // Can store items
-  }
-
-  // Always return true - no session time limit
-  return true
-}
 
 /**
  * Configuration for the agent loop
@@ -247,7 +218,7 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
     },
 
     isComplete(): boolean {
-      return false
+      return state.time.currentTick >= config.ticks
     },
 
     async step(): Promise<StepResult> {
@@ -257,20 +228,6 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
           action: null,
           log: null,
           reasoning: "",
-          learning: "",
-        }
-      }
-
-      // Check if any meaningful action is possible
-      if (!hasViableAction(state)) {
-        if (config.verbose) {
-          console.log(`\n[Tick ${state.time.currentTick}] No viable actions - ending session`)
-        }
-        return {
-          done: true,
-          action: null,
-          log: null,
-          reasoning: "No viable actions possible",
           learning: "",
         }
       }

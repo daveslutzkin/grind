@@ -64,44 +64,56 @@ describe("Agent Loop", () => {
       ).toBeGreaterThan(0)
     })
 
-    it("should never be complete (no session time limit)", async () => {
-      // Create a loop with 0 ticks - no longer has time limit so never complete
-      const shortLoop = createAgentLoop({
-        seed: "short-test",
+    it("should be complete when elapsed ticks >= tick budget", async () => {
+      // Create a loop with 0 tick budget - should be complete immediately
+      const completedLoop = createAgentLoop({
+        seed: "complete-test",
         ticks: 0,
         objective: "test",
         verbose: false,
         dryRun: true,
       })
 
-      expect(shortLoop.isComplete()).toBe(false)
-    })
+      expect(completedLoop.isComplete()).toBe(true)
 
-    it("should always have viable actions (no session time limit)", async () => {
-      // Create loop with minimal ticks
-      const minLoop = createAgentLoop({
-        seed: "min-test",
-        ticks: 1,
+      // Create a loop with positive tick budget - should not be complete initially
+      const activeLoop = createAgentLoop({
+        seed: "active-test",
+        ticks: 100,
         objective: "test",
         verbose: false,
         dryRun: true,
       })
 
-      // First step should execute the mock enrol action and return done=false
+      expect(activeLoop.isComplete()).toBe(false)
+    })
+
+    it("should terminate in dry run mode after mock action", async () => {
+      // Create loop with tick budget
+      const minLoop = createAgentLoop({
+        seed: "min-test",
+        ticks: 10,
+        objective: "test",
+        verbose: false,
+        dryRun: true,
+      })
+
+      // First step should execute the mock action and return done=false
       const result1 = await minLoop.step()
       expect(result1.done).toBe(false)
       expect(result1.action).toBeTruthy()
 
-      // Second step should detect that an action was already attempted and return done=true
+      // Second step in dry run mode should detect that an action was already attempted
+      // and return done=true (dry run behavior to prevent infinite loops)
       const result2 = await minLoop.step()
       expect(result2.done).toBe(true)
     })
 
-    it("should allow Store action at TOWN with items in inventory", async () => {
-      // Create loop
+    it("should execute actions in dry run mode", async () => {
+      // Create loop with minimal tick budget
       const storeLoop = createAgentLoop({
         seed: "store-test",
-        ticks: 2,
+        ticks: 5,
         objective: "test",
         verbose: false,
         dryRun: true,
@@ -111,10 +123,10 @@ describe("Agent Loop", () => {
       const state = storeLoop.getWorldState()
       state.player.inventory.push({ itemId: "COPPER_ORE", quantity: 5 })
 
-      // Should NOT end early because Store is possible (0 ticks)
+      // Should execute the mock action in dry run mode
       const result = await storeLoop.step()
-      // Dry run will execute an action, not end early
       expect(result.done).toBeDefined()
+      expect(result.action).toBeTruthy()
     })
   })
 })
