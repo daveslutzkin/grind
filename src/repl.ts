@@ -46,8 +46,11 @@ async function main(): Promise<void> {
     onActionComplete: (log, state) => {
       console.log("")
       console.log(formatActionLog(log, state))
-      console.log("")
-      console.log(formatWorldState(state))
+      // Only show world state if the action succeeded
+      if (log.success) {
+        console.log("")
+        console.log(formatWorldState(state))
+      }
     },
 
     onSessionEnd: (state: WorldState, stats: SessionStats, showSummary: boolean) => {
