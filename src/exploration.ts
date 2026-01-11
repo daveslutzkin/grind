@@ -767,7 +767,7 @@ const EXPLORATION_XP_THRESHOLDS = [
   1500, // L10→L11: D10 has ~1451 discoveries
 ]
 
-function getExplorationXPThreshold(currentLevel: number): number {
+export function getExplorationXPThreshold(currentLevel: number): number {
   if (currentLevel <= 0) return EXPLORATION_XP_THRESHOLDS[0]
   if (currentLevel <= EXPLORATION_XP_THRESHOLDS.length) {
     return EXPLORATION_XP_THRESHOLDS[currentLevel - 1]

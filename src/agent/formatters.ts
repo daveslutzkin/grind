@@ -1,4 +1,5 @@
 import type { WorldState, ActionLog, FailureType, TickFeedback } from "../types.js"
+import { getXPThresholdForNextLevel } from "../types.js"
 import { getCurrentAreaId, getCurrentLocationId, ExplorationLocationType } from "../types.js"
 import {
   getUnlockedModes,
@@ -7,7 +8,12 @@ import {
   getLocationSkillRequirement,
 } from "../actionChecks.js"
 import { getLocationDisplayName } from "../world.js"
-import { BASE_TRAVEL_TIME, getAreaDisplayName as getAreaDisplayNameBase } from "../exploration.js"
+import {
+  BASE_TRAVEL_TIME,
+  getAreaDisplayName as getAreaDisplayNameBase,
+  getRollInterval,
+  getExplorationXPThreshold,
+} from "../exploration.js"
 import {
   getPlayerNodeView,
   getNodeTypeName,
@@ -16,6 +22,7 @@ import {
   getMaxVisibleMaterialLevel,
 } from "../visibility.js"
 import type { GatheringSkillID } from "../types.js"
+import { normalCDF } from "../runner.js"
 
 /**
  * Get the guild name where a gathering skill can be learned
@@ -751,6 +758,32 @@ function formatFailureMessage(failureType: FailureType): string {
 }
 
 /**
+ * Calculate percentile for discovery time using geometric distribution
+ * For geometric distribution (trials until first success):
+ * - Mean = 1/p (in trials) or rollInterval/p (in ticks)
+ * - StdDev = sqrt(1-p)/p (in trials) or rollInterval*sqrt(1-p)/p (in ticks)
+ */
+function calculateDiscoveryPercentile(
+  actualTicks: number,
+  expectedTicks: number,
+  rollInterval: number
+): number {
+  // Success probability per roll
+  const p = rollInterval / expectedTicks
+
+  // Standard deviation for geometric distribution (in ticks)
+  // stdDev = rollInterval * sqrt(1-p) / p = expectedTicks * sqrt(1-p)
+  const stdDev = expectedTicks * Math.sqrt(1 - p)
+
+  // Z-score: how many standard deviations from the mean
+  // Note: actualTicks < expectedTicks means lucky (negative z-score, lower percentile)
+  const zScore = (actualTicks - expectedTicks) / stdDev
+
+  // Convert to percentile (0-100)
+  return normalCDF(zScore) * 100
+}
+
+/**
  * Format ActionLog as concise text for LLM consumption
  * @param log The action log to format
  * @param state Optional world state for filtering material visibility
@@ -760,7 +793,20 @@ export function formatActionLog(log: ActionLog, state?: WorldState): string {
 
   // One-line summary - focus on what happened, not internal action names
   const icon = log.success ? "✓" : "✗"
-  const timeStr = log.timeConsumed > 0 ? ` (${log.timeConsumed}t)` : ""
+  let timeStr = log.timeConsumed > 0 ? ` (${log.timeConsumed}t)` : ""
+
+  // For connection discoveries, show connection travel time instead of discovery time
+  if (log.explorationLog?.discoveredConnectionId && state) {
+    const connId = log.explorationLog.discoveredConnectionId
+    const [fromId, toId] = connId.split("->")
+    const connection = state.exploration.connections.find(
+      (c) => c.fromAreaId === fromId && c.toAreaId === toId
+    )
+    if (connection) {
+      const travelTime = Math.round(BASE_TRAVEL_TIME * connection.travelTimeMultiplier)
+      timeStr = ` (${travelTime}t)`
+    }
+  }
 
   let summary: string
   if (!log.success && log.failureType) {
@@ -827,6 +873,21 @@ export function formatActionLog(log: ActionLog, state?: WorldState): string {
   // XP gained (inline with level ups if any)
   if (log.skillGained) {
     let xpLine = `  +${log.skillGained.amount} ${log.skillGained.skill} XP`
+
+    // Add XP progress if state is available
+    if (state) {
+      const skill = state.player.skills[log.skillGained.skill]
+      if (skill) {
+        const threshold =
+          log.skillGained.skill === "Exploration"
+            ? getExplorationXPThreshold(skill.level)
+            : getXPThresholdForNextLevel(skill.level)
+        const remaining = threshold - skill.xp
+        const percentToNext = Math.round((skill.xp / threshold) * 100)
+        xpLine += ` (${remaining} to next level, ${percentToNext}% there)`
+      }
+    }
+
     if (log.levelUps && log.levelUps.length > 0) {
       const lvls = log.levelUps.map((l) => `${l.skill} ${l.fromLevel}→${l.toLevel}`).join(", ")
       xpLine += ` [LEVEL UP: ${lvls}]`
@@ -845,13 +906,49 @@ export function formatActionLog(log: ActionLog, state?: WorldState): string {
   // RNG display - exploration uses luckInfo, others show individual rolls
   const isExplorationAction = log.actionType === "Explore" || log.actionType === "Survey"
 
-  if (log.explorationLog?.luckInfo) {
+  if (log.explorationLog?.luckInfo && state) {
     // Exploration: show luck summary without revealing individual rolls
+    const luck = log.explorationLog.luckInfo
+    const delta = luck.luckDelta
+
+    // Get roll interval based on player's exploration level
+    const explorationLevel = state.player.skills.Exploration.level
+    const rollInterval = getRollInterval(explorationLevel)
+
+    // Calculate percentile using geometric distribution
+    const percentile = calculateDiscoveryPercentile(
+      luck.actualTicks,
+      luck.expectedTicks,
+      rollInterval
+    )
+
+    // Determine luck label based on percentile
+    // Lower percentile = faster/luckier (e.g., 35% means faster than 35% of outcomes)
+    let luckLabel: string
+    if (percentile <= 15) {
+      luckLabel = "very lucky"
+    } else if (percentile <= 40) {
+      luckLabel = "lucky"
+    } else if (percentile >= 85) {
+      luckLabel = "very unlucky"
+    } else if (percentile >= 60) {
+      luckLabel = "unlucky"
+    } else {
+      luckLabel = "average"
+    }
+
+    const deltaStr =
+      delta > 0 ? `${delta}t faster` : delta < 0 ? `${Math.abs(delta)}t slower` : "on target"
+
+    lines.push(
+      `  RNG: ${luckLabel} (${Math.round(percentile)}% percentile) - took ${luck.actualTicks}t, ${deltaStr} than expected`
+    )
+  } else if (log.explorationLog?.luckInfo) {
+    // Fallback if state is not available - use old format
     const luck = log.explorationLog.luckInfo
     const delta = luck.luckDelta
     const deltaPercent = luck.expectedTicks > 0 ? (delta / luck.expectedTicks) * 100 : 0
 
-    // Determine luck label based on how far from expected
     let luckLabel: string
     if (deltaPercent >= 50) {
       luckLabel = "very lucky"
