@@ -45,6 +45,82 @@ function getAreaDisplayName(state: WorldState, areaId: string): string {
 }
 
 /**
+ * Get the exploration status of an area for display purposes.
+ * Returns: "undiscovered" | "unexplored" | "partly explored" | "fully explored"
+ */
+function getAreaExplorationStatus(state: WorldState, areaId: string): string {
+  const knownAreaIds = state.exploration.playerState.knownAreaIds
+  const knownLocationIds = state.exploration.playerState.knownLocationIds
+  const knownConnectionIds = new Set(state.exploration.playerState.knownConnectionIds)
+
+  // If area is not in knownAreaIds, we only know a connection exists
+  if (!knownAreaIds.includes(areaId)) {
+    return "undiscovered"
+  }
+
+  const area = state.exploration.areas.get(areaId)
+  if (!area) {
+    return "unexplored"
+  }
+
+  // Count known locations in this area
+  const knownLocs = area.locations.filter((loc) => knownLocationIds.includes(loc.id)).length
+
+  // Count discovered connections from this area
+  const connectionsFromArea = state.exploration.connections.filter(
+    (conn) => conn.fromAreaId === areaId || conn.toAreaId === areaId
+  )
+  const discoveredConnectionsFromArea = connectionsFromArea.filter((conn) => {
+    const connId = `${conn.fromAreaId}->${conn.toAreaId}`
+    const reverseConnId = `${conn.toAreaId}->${conn.fromAreaId}`
+    // Don't count the TOWN->here connection as a discovery from this area
+    if (conn.fromAreaId === "TOWN" && conn.toAreaId === areaId) return false
+    return knownConnectionIds.has(connId) || knownConnectionIds.has(reverseConnId)
+  })
+
+  // Check if any discoveries have been made
+  const hasAnyDiscovery = knownLocs > 0 || discoveredConnectionsFromArea.length > 1
+
+  // Check if fully explored
+  const remainingLocations = area.locations.filter((loc) => !knownLocationIds.includes(loc.id))
+  const remainingKnownConnections = state.exploration.connections.filter((conn) => {
+    const isFromCurrent = conn.fromAreaId === areaId
+    const isToCurrent = conn.toAreaId === areaId
+    if (!isFromCurrent && !isToCurrent) return false
+    const connId = `${conn.fromAreaId}->${conn.toAreaId}`
+    const reverseConnId = `${conn.toAreaId}->${conn.fromAreaId}`
+    const isDiscovered = knownConnectionIds.has(connId) || knownConnectionIds.has(reverseConnId)
+    const targetId = isFromCurrent ? conn.toAreaId : conn.fromAreaId
+    const targetIsKnown = knownAreaIds.includes(targetId)
+    return !isDiscovered && targetIsKnown
+  })
+  const remainingUnknownConnections = state.exploration.connections.filter((conn) => {
+    const isFromCurrent = conn.fromAreaId === areaId
+    const isToCurrent = conn.toAreaId === areaId
+    if (!isFromCurrent && !isToCurrent) return false
+    const connId = `${conn.fromAreaId}->${conn.toAreaId}`
+    const reverseConnId = `${conn.toAreaId}->${conn.fromAreaId}`
+    const isDiscovered = knownConnectionIds.has(connId) || knownConnectionIds.has(reverseConnId)
+    const targetId = isFromCurrent ? conn.toAreaId : conn.fromAreaId
+    const targetIsKnown = knownAreaIds.includes(targetId)
+    return !isDiscovered && !targetIsKnown
+  })
+
+  const isFullyExplored =
+    remainingLocations.length === 0 &&
+    remainingKnownConnections.length === 0 &&
+    remainingUnknownConnections.length === 0
+
+  if (!hasAnyDiscovery) {
+    return "unexplored"
+  } else if (isFullyExplored) {
+    return "fully explored"
+  } else {
+    return "partly explored"
+  }
+}
+
+/**
  * Format tick feedback for display during animated actions
  * Returns a string to show after the dot, or null if no display needed
  */
@@ -549,9 +625,15 @@ export function formatWorldState(state: WorldState): string {
       same.sort(sortByTime)
       further.sort(sortByTime)
 
-      // Format each group
+      // Format each group with exploration status
       const formatGroup = (group: [string, number][]) =>
-        group.map(([dest, time]) => `${getAreaDisplayName(state, dest)} (${time}t)`).join(", ")
+        group
+          .map(([dest, time]) => {
+            const status = getAreaExplorationStatus(state, dest)
+            const areaName = getAreaDisplayName(state, dest)
+            return `${time}t - ${areaName} (${status})`
+          })
+          .join(", ")
 
       // Display groups in order: closer, same, further
       if (closer.length > 0) {
