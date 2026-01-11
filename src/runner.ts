@@ -365,6 +365,7 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
     case "goto":
     case "go":
     case "move":
+    case "mv":
     case "travel": {
       // Unified travel command - works for both locations and areas
       const inputName = parts.slice(1).join(" ").toLowerCase()
