@@ -28,7 +28,7 @@ import {
   executeExplorationTravel,
   executeFarTravel,
 } from "./exploration.js"
-import { formatActionLog, formatTickFeedback } from "./agent/formatters.js"
+import { formatActionLog, formatTickFeedback, formatWorldState } from "./agent/formatters.js"
 import { promptYesNo } from "./prompt.js"
 
 // ============================================================================
@@ -239,8 +239,11 @@ function analyzeRemainingAreas(state: WorldState): {
 
 /**
  * Interactive exploration loop - continuously explores until user stops or area exhausted
+ * Returns all action logs generated during the interactive session
  */
-export async function interactiveExplore(state: WorldState): Promise<void> {
+export async function interactiveExplore(state: WorldState): Promise<ActionLog[]> {
+  const logs: ActionLog[] = []
+
   while (true) {
     // Check if area is fully explored using shared logic
     const exploration = state.exploration!
@@ -253,7 +256,7 @@ export async function interactiveExplore(state: WorldState): Promise<void> {
 
     if (discoverables.length === 0) {
       console.log("\n✓ Area fully explored - nothing left to discover")
-      return
+      return logs
     }
 
     // Analyze remaining discoveries for warnings
@@ -268,14 +271,14 @@ export async function interactiveExplore(state: WorldState): Promise<void> {
 
       const continueFirst = await promptYesNo("Do you want to keep looking?")
       if (!continueFirst) {
-        return
+        return logs
       }
 
       const continueSecond = await promptYesNo(
         `Are you sure? This could take a while (expected: ${Math.round(analysis.hardExpectedTicks)}t per discovery)`
       )
       if (!continueSecond) {
-        return
+        return logs
       }
     }
 
@@ -298,11 +301,14 @@ export async function interactiveExplore(state: WorldState): Promise<void> {
 
       if (cancelled) {
         console.log(`Exploration cancelled after ${ticksCompleted}t`)
-        return
+        return logs
       }
 
-      // Show discovery result
+      // Collect the log and show result immediately
+      logs.push(finalLog)
       console.log(formatActionLog(finalLog, state))
+      console.log("")
+      console.log(formatWorldState(state))
 
       // Check if there are any discoverables left by rebuilding the list
       const { discoverables: remainingDiscoverables } = buildDiscoverables(state, currentArea)
@@ -316,7 +322,7 @@ export async function interactiveExplore(state: WorldState): Promise<void> {
         } else {
           console.log("\n✓ Area fully explored - nothing left to discover")
         }
-        return
+        return logs
       }
     } finally {
       cleanup()
@@ -325,22 +331,25 @@ export async function interactiveExplore(state: WorldState): Promise<void> {
     // Prompt to continue exploring
     const shouldContinue = await promptYesNo("\nContinue exploring?")
     if (!shouldContinue) {
-      return
+      return logs
     }
   }
 }
 
 /**
  * Interactive survey loop - continuously surveys until user stops or no more areas
+ * Returns all action logs generated during the interactive session
  */
-export async function interactiveSurvey(state: WorldState): Promise<void> {
+export async function interactiveSurvey(state: WorldState): Promise<ActionLog[]> {
+  const logs: ActionLog[] = []
+
   while (true) {
     // Check if there are undiscovered areas
     const analysis = analyzeRemainingAreas(state)
 
     if (!analysis.hasUndiscovered) {
       console.log("\n✓ No more undiscovered areas to survey")
-      return
+      return logs
     }
 
     // Set up cancellation
@@ -362,11 +371,14 @@ export async function interactiveSurvey(state: WorldState): Promise<void> {
 
       if (cancelled) {
         console.log(`Survey cancelled after ${ticksCompleted}t`)
-        return
+        return logs
       }
 
-      // Show discovery result
+      // Collect the log and show result immediately
+      logs.push(finalLog)
       console.log(formatActionLog(finalLog, state))
+      console.log("")
+      console.log(formatWorldState(state))
     } finally {
       cleanup()
     }
@@ -375,24 +387,25 @@ export async function interactiveSurvey(state: WorldState): Promise<void> {
     const remainingAnalysis = analyzeRemainingAreas(state)
     if (!remainingAnalysis.hasUndiscovered) {
       console.log("\n✓ No more undiscovered areas to survey")
-      return
+      return logs
     }
 
     // Prompt to continue surveying
     const shouldContinue = await promptYesNo("\nContinue surveying?")
     if (!shouldContinue) {
-      return
+      return logs
     }
   }
 }
 
 /**
  * Interactive exploration travel - travel between directly connected areas with animation
+ * Returns the action log if travel completed, empty array if cancelled or failed preconditions
  */
 export async function interactiveExplorationTravel(
   state: WorldState,
   action: ExplorationTravelAction
-): Promise<void> {
+): Promise<ActionLog[]> {
   const exploration = state.exploration!
   const { destinationAreaId, scavenge } = action
   const currentAreaId = exploration.playerState.currentAreaId
@@ -400,12 +413,12 @@ export async function interactiveExplorationTravel(
   // Check preconditions
   if (exploration.playerState.currentAreaId === destinationAreaId) {
     console.log("\n✗ Already in that area")
-    return
+    return []
   }
 
   if (state.time.sessionRemainingTicks <= 0) {
     console.log("\n✗ Session ended")
-    return
+    return []
   }
 
   const knownConnectionIds = new Set(exploration.playerState.knownConnectionIds)
@@ -420,7 +433,7 @@ export async function interactiveExplorationTravel(
 
   if (!directConnection) {
     console.log("\n✗ No direct connection to that area")
-    return
+    return []
   }
 
   // Calculate travel time (for time check only - generator handles actual time consumption)
@@ -432,7 +445,7 @@ export async function interactiveExplorationTravel(
   // Check if enough time
   if (state.time.sessionRemainingTicks < travelTime) {
     console.log("\n✗ Not enough time remaining")
-    return
+    return []
   }
 
   // Set up cancellation
@@ -453,10 +466,13 @@ export async function interactiveExplorationTravel(
 
     if (cancelled) {
       console.log(`Travel cancelled after ${ticksCompleted}t`)
-      return
+      return []
     }
 
     console.log(formatActionLog(finalLog, state))
+    console.log("")
+    console.log(formatWorldState(state))
+    return [finalLog]
   } finally {
     cleanup()
   }
@@ -464,11 +480,12 @@ export async function interactiveExplorationTravel(
 
 /**
  * Interactive far travel - multi-hop travel to any known reachable area with animation
+ * Returns the action log if travel completed, empty array if cancelled or failed preconditions
  */
 export async function interactiveFarTravel(
   state: WorldState,
   action: FarTravelAction
-): Promise<void> {
+): Promise<ActionLog[]> {
   const exploration = state.exploration!
   const { destinationAreaId, scavenge } = action
   const currentAreaId = exploration.playerState.currentAreaId
@@ -476,18 +493,18 @@ export async function interactiveFarTravel(
   // Check preconditions
   if (exploration.playerState.currentAreaId === destinationAreaId) {
     console.log("\n✗ Already in that area")
-    return
+    return []
   }
 
   if (state.time.sessionRemainingTicks <= 0) {
     console.log("\n✗ Session ended")
-    return
+    return []
   }
 
   // Destination must be known for far travel
   if (!exploration.playerState.knownAreaIds.includes(destinationAreaId)) {
     console.log("\n✗ Area not known")
-    return
+    return []
   }
 
   // Find shortest path to destination
@@ -495,7 +512,7 @@ export async function interactiveFarTravel(
 
   if (!pathResult) {
     console.log("\n✗ No path to destination")
-    return
+    return []
   }
 
   // Calculate travel time (for time check only - generator handles actual time consumption)
@@ -507,7 +524,7 @@ export async function interactiveFarTravel(
   // Check if enough time
   if (state.time.sessionRemainingTicks < travelTime) {
     console.log("\n✗ Not enough time remaining")
-    return
+    return []
   }
 
   const hops = pathResult.path.length - 1
@@ -530,10 +547,13 @@ export async function interactiveFarTravel(
 
     if (cancelled) {
       console.log(`Travel cancelled after ${ticksCompleted}t`)
-      return
+      return []
     }
 
     console.log(formatActionLog(finalLog, state))
+    console.log("")
+    console.log(formatWorldState(state))
+    return [finalLog]
   } finally {
     cleanup()
   }
