@@ -28,7 +28,7 @@ import {
   executeExplorationTravel,
   executeFarTravel,
 } from "./exploration.js"
-import { formatTickFeedback } from "./agent/formatters.js"
+import { formatActionLog, formatTickFeedback, formatWorldState } from "./agent/formatters.js"
 import { promptYesNo } from "./prompt.js"
 
 // ============================================================================
@@ -304,8 +304,11 @@ export async function interactiveExplore(state: WorldState): Promise<ActionLog[]
         return logs
       }
 
-      // Collect the log
+      // Collect the log and show result immediately
       logs.push(finalLog)
+      console.log(formatActionLog(finalLog, state))
+      console.log("")
+      console.log(formatWorldState(state))
 
       // Check if there are any discoverables left by rebuilding the list
       const { discoverables: remainingDiscoverables } = buildDiscoverables(state, currentArea)
@@ -371,8 +374,11 @@ export async function interactiveSurvey(state: WorldState): Promise<ActionLog[]>
         return logs
       }
 
-      // Collect the log
+      // Collect the log and show result immediately
       logs.push(finalLog)
+      console.log(formatActionLog(finalLog, state))
+      console.log("")
+      console.log(formatWorldState(state))
     } finally {
       cleanup()
     }
@@ -463,6 +469,9 @@ export async function interactiveExplorationTravel(
       return []
     }
 
+    console.log(formatActionLog(finalLog, state))
+    console.log("")
+    console.log(formatWorldState(state))
     return [finalLog]
   } finally {
     cleanup()
@@ -541,6 +550,9 @@ export async function interactiveFarTravel(
       return []
     }
 
+    console.log(formatActionLog(finalLog, state))
+    console.log("")
+    console.log(formatWorldState(state))
     return [finalLog]
   } finally {
     cleanup()

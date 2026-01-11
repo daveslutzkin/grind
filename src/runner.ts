@@ -1070,10 +1070,9 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
         config.onAfterInteractive?.()
       }
 
-      // Record all logs from the interactive session
+      // Record all logs from the interactive session (display already handled by interactive function)
       for (const log of logs) {
         session.stats.logs.push(log)
-        config.onActionComplete(log, session.state)
       }
 
       // Auto-save after interactive exploration
@@ -1105,10 +1104,9 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
         config.onAfterInteractive?.()
       }
 
-      // Record all logs from the interactive session
+      // Record all logs from the interactive session (display already handled by interactive function)
       for (const log of logs) {
         session.stats.logs.push(log)
-        config.onActionComplete(log, session.state)
       }
 
       // Auto-save after interactive travel
