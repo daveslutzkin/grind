@@ -20,7 +20,7 @@ import {
   ExplorationLocationType,
 } from "./types.js"
 import { LOCATION_DISPLAY_NAMES, getSkillForGuildLocation } from "./world.js"
-import { getReachableAreas, getAreaDisplayName, BASE_TRAVEL_TIME } from "./exploration.js"
+import { getReachableAreas, getAreaDisplayName } from "./exploration.js"
 import { formatWorldState, formatActionLog } from "./agent/formatters.js"
 
 // Re-export agent formatters for unified display
@@ -47,6 +47,14 @@ export interface RngStream {
 // ============================================================================
 // Command Parsing
 // ============================================================================
+
+/**
+ * Normalize a name for comparison by removing punctuation (apostrophes, periods, etc.)
+ * but keeping letters, numbers, spaces, and dashes
+ */
+function normalizeName(name: string): string {
+  return name.toLowerCase().replace(/[^\w\s-]/g, "")
+}
 
 export type EnrolSkill = "Exploration" | "Mining" | "Woodcutting" | "Combat" | "Smithing"
 
@@ -232,10 +240,11 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         return null
       }
 
-      // Match against known area names (case-insensitive, prefix match)
+      // Match against known area names (case-insensitive, prefix match, ignoring punctuation)
       if (context.state?.exploration) {
         const knownAreaIds = context.state.exploration.playerState.knownAreaIds
         const inputWithDashes = inputName.replace(/\s+/g, "-")
+        const normalizedInput = normalizeName(inputName)
 
         // Collect all matching areas
         const exactMatches: string[] = []
@@ -244,10 +253,10 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         for (const areaId of knownAreaIds) {
           const area = context.state.exploration.areas.get(areaId)
           if (area?.name) {
-            const areaNameLower = area.name.toLowerCase()
-            if (areaNameLower === inputName) {
+            const normalizedAreaName = normalizeName(area.name)
+            if (normalizedAreaName === normalizedInput) {
               exactMatches.push(areaId)
-            } else if (areaNameLower.startsWith(inputName)) {
+            } else if (normalizedAreaName.startsWith(normalizedInput)) {
               prefixMatches.push(areaId)
             }
           }
@@ -365,6 +374,9 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         return null
       }
 
+      // Normalize input for matching (remove punctuation)
+      const normalizedInput = normalizeName(inputName)
+
       // First, check for gathering node types (move ore vein, move mining, etc.)
       // Resolve to the actual location in the current area
       const oreVeinAliases = ["ore vein", "ore", "mining", "mine"]
@@ -428,9 +440,9 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         return { type: "TravelToLocation", locationId: mobCampLocations[index - 1].id }
       }
 
-      // Next, try to match against location display names (case-insensitive, partial match)
+      // Next, try to match against location display names (case-insensitive, partial match, ignoring punctuation)
       const matchedLocation = Object.entries(LOCATION_DISPLAY_NAMES).find(([, displayName]) =>
-        displayName.toLowerCase().includes(inputName)
+        normalizeName(displayName).includes(normalizedInput)
       )
       if (matchedLocation) {
         return { type: "TravelToLocation", locationId: matchedLocation[0] }
@@ -448,10 +460,10 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         for (const areaId of context.knownAreaIds) {
           const area = context.state.exploration.areas.get(areaId)
           if (area?.name) {
-            const areaNameLower = area.name.toLowerCase()
-            if (areaNameLower === inputName) {
+            const normalizedAreaName = normalizeName(area.name)
+            if (normalizedAreaName === normalizedInput) {
               exactMatches.push(areaId)
-            } else if (areaNameLower.startsWith(inputName)) {
+            } else if (normalizedAreaName.startsWith(normalizedInput)) {
               prefixMatches.push(areaId)
             }
           }
@@ -510,8 +522,162 @@ function makePadInner(width: number): (s: string) => string {
   return (s: string) => "│ " + s.padEnd(width - 4) + " │"
 }
 
+// ============================================================================
+// 2D Map Visualization
+// ============================================================================
+
+interface Point {
+  x: number
+  y: number
+}
+
+interface AreaNode {
+  id: AreaID
+  displayName: string
+  pos: Point
+  isCurrent: boolean
+}
+
 /**
- * Print a text-based map of known areas and connections
+ * Simple 2D canvas for drawing text-based graphics
+ */
+class Canvas {
+  private grid: string[][]
+  width: number
+  height: number
+
+  constructor(width: number, height: number) {
+    this.width = width
+    this.height = height
+    this.grid = Array(height)
+      .fill(null)
+      .map(() => Array(width).fill(" "))
+  }
+
+  set(x: number, y: number, char: string): void {
+    if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+      this.grid[y][x] = char
+    }
+  }
+
+  get(x: number, y: number): string {
+    if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+      return this.grid[y][x]
+    }
+    return " "
+  }
+
+  /**
+   * Draw a line between two points using simple line drawing
+   */
+  drawLine(x0: number, y0: number, x1: number, y1: number, char: string = "·"): void {
+    // Bresenham's line algorithm
+    const dx = Math.abs(x1 - x0)
+    const dy = Math.abs(y1 - y0)
+    const sx = x0 < x1 ? 1 : -1
+    const sy = y0 < y1 ? 1 : -1
+    let err = dx - dy
+
+    let x = x0
+    let y = y0
+
+    while (true) {
+      // Only draw if empty
+      if (this.get(x, y) === " ") {
+        this.set(x, y, char)
+      }
+
+      if (x === x1 && y === y1) break
+
+      const e2 = 2 * err
+      if (e2 > -dy) {
+        err -= dy
+        x += sx
+      }
+      if (e2 < dx) {
+        err += dx
+        y += sy
+      }
+    }
+  }
+
+  /**
+   * Draw text at position (overwrites existing content)
+   */
+  drawText(x: number, y: number, text: string): void {
+    for (let i = 0; i < text.length; i++) {
+      this.set(x + i, y, text[i])
+    }
+  }
+
+  /**
+   * Draw a box around text
+   */
+  drawBox(x: number, y: number, text: string, highlight: boolean = false): void {
+    const w = text.length
+    const topLeft = highlight ? "╔" : "┌"
+    const topRight = highlight ? "╗" : "┐"
+    const bottomLeft = highlight ? "╚" : "└"
+    const bottomRight = highlight ? "╝" : "┘"
+    const horizontal = highlight ? "═" : "─"
+    const vertical = highlight ? "║" : "│"
+
+    // Top border
+    this.set(x - 1, y - 1, topLeft)
+    for (let i = 0; i < w; i++) {
+      this.set(x + i, y - 1, horizontal)
+    }
+    this.set(x + w, y - 1, topRight)
+
+    // Sides
+    this.set(x - 1, y, vertical)
+    this.set(x + w, y, vertical)
+
+    // Bottom border
+    this.set(x - 1, y + 1, bottomLeft)
+    for (let i = 0; i < w; i++) {
+      this.set(x + i, y + 1, horizontal)
+    }
+    this.set(x + w, y + 1, bottomRight)
+
+    // Text
+    this.drawText(x, y, text)
+  }
+
+  render(): string {
+    return this.grid.map((row) => row.join("")).join("\n")
+  }
+}
+
+/**
+ * Calculate position for an area in 2D space using radial layout
+ */
+function calculateAreaPosition(
+  areaId: AreaID,
+  distance: number,
+  indexInDistance: number,
+  totalAtDistance: number,
+  centerX: number,
+  centerY: number
+): Point {
+  if (distance === 0) {
+    // Town at center
+    return { x: centerX, y: centerY }
+  }
+
+  // Arrange areas in a circle around center
+  // Radius increases with distance
+  const radius = distance * 12
+  const angle = (2 * Math.PI * indexInDistance) / totalAtDistance
+
+  return {
+    x: Math.round(centerX + radius * Math.cos(angle)),
+    y: Math.round(centerY + radius * Math.sin(angle) * 0.5), // Compress vertically
+  }
+}
+
+/**
+ * Print a text-based 2D map of known areas and connections
  */
 export function printMap(state: WorldState): void {
   const exploration = state.exploration
@@ -532,69 +698,58 @@ export function printMap(state: WorldState): void {
     }
   }
 
-  // Sort distances
-  const distances = Array.from(areasByDistance.keys()).sort((a, b) => a - b)
+  // Calculate positions for all areas
+  const width = 100
+  const height = 40
+  const centerX = width / 2
+  const centerY = height / 2
+  const canvas = new Canvas(width, height)
+  const nodes: AreaNode[] = []
 
-  console.log("\n┌─────────────────────────────────────────────────────────────┐")
-  console.log("│ EXPLORATION MAP                                             │")
-  console.log("├─────────────────────────────────────────────────────────────┤")
-
-  for (const distance of distances) {
-    const areas = areasByDistance.get(distance)!
-    const distanceLabel = distance === 0 ? "Town" : `Distance ${distance}`
-    console.log(`│                                                             │`)
-    console.log(`│ ${distanceLabel}:`.padEnd(62) + "│")
-
-    for (const areaId of areas) {
-      const area = exploration.areas.get(areaId)
+  for (const [distance, areas] of areasByDistance) {
+    areas.forEach((areaId, index) => {
+      const area = exploration.areas.get(areaId)!
       const displayName = getAreaDisplayName(areaId, area)
-      const isCurrent = areaId === currentAreaId
-      const marker = isCurrent ? "→" : " "
+      const shortName = displayName.length > 15 ? displayName.substring(0, 12) + "..." : displayName
+      const pos = calculateAreaPosition(areaId, distance, index, areas.length, centerX, centerY)
 
-      console.log(`│ ${marker} ${displayName}`.padEnd(62) + "│")
+      nodes.push({
+        id: areaId,
+        displayName: shortName,
+        pos,
+        isCurrent: areaId === currentAreaId,
+      })
+    })
+  }
 
-      // Find all connections from this area
-      const connections: Array<{ targetId: AreaID; travelTime: number }> = []
-      for (const conn of exploration.connections) {
-        const isKnown =
-          knownConnectionIds.has(createConnectionId(conn.fromAreaId, conn.toAreaId)) ||
-          knownConnectionIds.has(createConnectionId(conn.toAreaId, conn.fromAreaId))
+  // Draw connections first (so they appear behind nodes)
+  for (const conn of exploration.connections) {
+    const isKnown =
+      knownConnectionIds.has(createConnectionId(conn.fromAreaId, conn.toAreaId)) ||
+      knownConnectionIds.has(createConnectionId(conn.toAreaId, conn.fromAreaId))
 
-        if (!isKnown) continue
+    if (!isKnown) continue
 
-        let targetId: AreaID | null = null
-        if (conn.fromAreaId === areaId && knownAreaIds.includes(conn.toAreaId)) {
-          targetId = conn.toAreaId
-        } else if (conn.toAreaId === areaId && knownAreaIds.includes(conn.fromAreaId)) {
-          targetId = conn.fromAreaId
-        }
+    const fromNode = nodes.find((n) => n.id === conn.fromAreaId)
+    const toNode = nodes.find((n) => n.id === conn.toAreaId)
 
-        if (targetId) {
-          const travelTime = Math.round(BASE_TRAVEL_TIME * conn.travelTimeMultiplier)
-          connections.push({ targetId, travelTime })
-        }
-      }
-
-      // Sort connections by travel time
-      connections.sort((a, b) => a.travelTime - b.travelTime)
-
-      // Display connections
-      for (let i = 0; i < connections.length; i++) {
-        const { targetId, travelTime } = connections[i]
-        const targetArea = exploration.areas.get(targetId)
-        const targetDisplayName = getAreaDisplayName(targetId, targetArea)
-        const isLast = i === connections.length - 1
-        const prefix = isLast ? "└─" : "├─"
-
-        const connLine = `   ${prefix} ${targetDisplayName} (${travelTime}t)`
-        console.log(`│ ${connLine}`.padEnd(62) + "│")
-      }
+    if (fromNode && toNode) {
+      canvas.drawLine(fromNode.pos.x, fromNode.pos.y, toNode.pos.x, toNode.pos.y, "·")
     }
   }
 
-  console.log("│                                                             │")
-  console.log("│ Legend: → Current location  (Xt) Travel time in ticks      │")
-  console.log("└─────────────────────────────────────────────────────────────┘")
+  // Draw nodes on top of connections
+  for (const node of nodes) {
+    canvas.drawBox(
+      node.pos.x - Math.floor(node.displayName.length / 2),
+      node.pos.y,
+      node.displayName,
+      node.isCurrent
+    )
+  }
+
+  console.log("\n" + canvas.render())
+  console.log("\nLegend: ╔═══╗ Current location  · Connection  ┌───┐ Area")
 }
 
 /**
