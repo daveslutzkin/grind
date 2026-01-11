@@ -11,6 +11,7 @@ import {
   formatActionLog,
   printHelp,
   printSummary,
+  printMap,
   type SessionStats,
   type MetaCommandResult,
 } from "./runner.js"
@@ -77,6 +78,14 @@ async function main(): Promise<void> {
       },
       "?": (state: WorldState): MetaCommandResult => {
         printHelp(state)
+        return "continue"
+      },
+      map: (state: WorldState): MetaCommandResult => {
+        printMap(state)
+        return "continue"
+      },
+      m: (state: WorldState): MetaCommandResult => {
+        printMap(state)
         return "continue"
       },
       state: (state: WorldState): MetaCommandResult => {

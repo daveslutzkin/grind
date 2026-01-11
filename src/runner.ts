@@ -10,6 +10,7 @@ import type {
   SkillID,
   SkillState,
   ExplorationLocation,
+  AreaID,
 } from "./types.js"
 import {
   getTotalXP,
@@ -19,7 +20,7 @@ import {
   ExplorationLocationType,
 } from "./types.js"
 import { LOCATION_DISPLAY_NAMES, getSkillForGuildLocation } from "./world.js"
-import { getReachableAreas, getAreaDisplayName } from "./exploration.js"
+import { getReachableAreas, getAreaDisplayName, BASE_TRAVEL_TIME } from "./exploration.js"
 import { formatWorldState, formatActionLog } from "./agent/formatters.js"
 
 // Re-export agent formatters for unified display
@@ -509,6 +510,100 @@ function makePadInner(width: number): (s: string) => string {
 }
 
 /**
+ * Print a text-based map of known areas and connections
+ */
+export function printMap(state: WorldState): void {
+  const exploration = state.exploration
+  const currentAreaId = exploration.playerState.currentAreaId
+  const knownAreaIds = exploration.playerState.knownAreaIds
+  const knownConnectionIds = new Set(exploration.playerState.knownConnectionIds)
+
+  // Group areas by distance
+  const areasByDistance = new Map<number, AreaID[]>()
+  for (const areaId of knownAreaIds) {
+    const area = exploration.areas.get(areaId)
+    if (area) {
+      const distance = area.distance
+      if (!areasByDistance.has(distance)) {
+        areasByDistance.set(distance, [])
+      }
+      areasByDistance.get(distance)!.push(areaId)
+    }
+  }
+
+  // Sort distances
+  const distances = Array.from(areasByDistance.keys()).sort((a, b) => a - b)
+
+  console.log("\n┌─────────────────────────────────────────────────────────────┐")
+  console.log("│ EXPLORATION MAP                                             │")
+  console.log("├─────────────────────────────────────────────────────────────┤")
+
+  for (const distance of distances) {
+    const areas = areasByDistance.get(distance)!
+    const distanceLabel = distance === 0 ? "Town" : `Distance ${distance}`
+    console.log(`│                                                             │`)
+    console.log(`│ ${distanceLabel}:`.padEnd(62) + "│")
+
+    for (const areaId of areas) {
+      const area = exploration.areas.get(areaId)
+      const displayName = getAreaDisplayName(areaId, area)
+      const isCurrent = areaId === currentAreaId
+      const marker = isCurrent ? "→" : " "
+
+      console.log(`│ ${marker} ${displayName}`.padEnd(62) + "│")
+
+      // Find all connections from this area
+      const connections: Array<{ targetId: AreaID; travelTime: number }> = []
+      for (const conn of exploration.connections) {
+        const isKnown =
+          knownConnectionIds.has(createConnectionId(conn.fromAreaId, conn.toAreaId)) ||
+          knownConnectionIds.has(createConnectionId(conn.toAreaId, conn.fromAreaId))
+
+        if (!isKnown) continue
+
+        let targetId: AreaID | null = null
+        if (conn.fromAreaId === areaId && knownAreaIds.includes(conn.toAreaId)) {
+          targetId = conn.toAreaId
+        } else if (conn.toAreaId === areaId && knownAreaIds.includes(conn.fromAreaId)) {
+          targetId = conn.fromAreaId
+        }
+
+        if (targetId) {
+          const travelTime = Math.round(BASE_TRAVEL_TIME * conn.travelTimeMultiplier)
+          connections.push({ targetId, travelTime })
+        }
+      }
+
+      // Sort connections by travel time
+      connections.sort((a, b) => a.travelTime - b.travelTime)
+
+      // Display connections
+      for (let i = 0; i < connections.length; i++) {
+        const { targetId, travelTime } = connections[i]
+        const targetArea = exploration.areas.get(targetId)
+        const targetDisplayName = getAreaDisplayName(targetId, targetArea)
+        const isLast = i === connections.length - 1
+        const prefix = isLast ? "└─" : "├─"
+
+        const connLine = `   ${prefix} ${targetDisplayName} (${travelTime}t)`
+        console.log(`│ ${connLine}`.padEnd(62) + "│")
+      }
+    }
+  }
+
+  console.log("│                                                             │")
+  console.log("│ Legend: → Current location  (Xt) Travel time in ticks      │")
+  console.log("└─────────────────────────────────────────────────────────────┘")
+}
+
+/**
+ * Helper to create connection ID (imported from exploration module logic)
+ */
+function createConnectionId(areaId1: AreaID, areaId2: AreaID): string {
+  return `${areaId1}->${areaId2}`
+}
+
+/**
  * Print help with available actions and current location info
  * @param state - Current world state
  * @param options.showHints - Whether to show contextual hints (default: true)
@@ -536,6 +631,7 @@ export function printHelp(state: WorldState, options?: { showHints?: boolean }):
   console.log("│ drop <item> <qty>   - Drop items                            │")
   console.log("│ accept <contract>   - Accept a contract at guild            │")
   console.log("├─────────────────────────────────────────────────────────────┤")
+  console.log("│ map                 - Show map of known areas/connections   │")
   console.log("│ state               - Show current world state              │")
   console.log("│ world               - Show world data (nodes, enemies, etc) │")
   console.log("│ help                - Show this help                        │")
