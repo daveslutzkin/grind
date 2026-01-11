@@ -176,7 +176,7 @@ export function formatTickFeedback(feedback: TickFeedback, ticksCompleted: numbe
   }
 
   if (feedback.discovered) {
-    return `*found after ${ticksCompleted} ticks*`
+    return `*found after ${ticksCompleted - 1} ticks*`
   }
 
   if (feedback.xpGained) {
