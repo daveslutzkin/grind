@@ -749,6 +749,7 @@ describe("Area Naming", () => {
             logs: [],
             startingSkills: { ...state.player.skills },
             totalSession: state.time.sessionRemainingTicks,
+            sessionStartLogIndex: 0,
           },
         }
 

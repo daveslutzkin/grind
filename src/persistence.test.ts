@@ -65,6 +65,7 @@ describe("Persistence", () => {
           logs: [],
           startingSkills: { ...state.player.skills },
           totalSession: state.time.sessionRemainingTicks,
+          sessionStartLogIndex: 0,
         },
       }
       writeSave(TEST_SEED, session)
@@ -81,6 +82,7 @@ describe("Persistence", () => {
           logs: [],
           startingSkills: { ...state.player.skills },
           totalSession: state.time.sessionRemainingTicks,
+          sessionStartLogIndex: 0,
         },
       }
 
@@ -134,6 +136,7 @@ describe("Persistence", () => {
           logs: [],
           startingSkills: { ...state.player.skills },
           totalSession: state.time.sessionRemainingTicks,
+          sessionStartLogIndex: 0,
         },
       }
 
@@ -165,6 +168,7 @@ describe("Persistence", () => {
           logs: [],
           startingSkills: { ...state.player.skills },
           totalSession: state.time.sessionRemainingTicks,
+          sessionStartLogIndex: 0,
         },
       }
 
@@ -202,6 +206,7 @@ describe("Persistence", () => {
             logs: [],
             startingSkills: { ...state.player.skills },
             totalSession: state.time.sessionRemainingTicks,
+          sessionStartLogIndex: 0,
           },
         }
 
@@ -225,6 +230,7 @@ describe("Persistence", () => {
           logs: [],
           startingSkills: { ...state.player.skills },
           totalSession: state.time.sessionRemainingTicks,
+          sessionStartLogIndex: 0,
         },
       }
 
@@ -257,6 +263,7 @@ describe("Persistence", () => {
           logs: [],
           startingSkills: { ...state.player.skills },
           totalSession: state.time.sessionRemainingTicks,
+          sessionStartLogIndex: 0,
         },
       }
 
@@ -297,6 +304,7 @@ describe("Persistence", () => {
           logs: [],
           startingSkills: { ...state.player.skills },
           totalSession: state.time.sessionRemainingTicks,
+          sessionStartLogIndex: 0,
         },
       }
 
@@ -325,6 +333,7 @@ describe("Persistence", () => {
           logs: [],
           startingSkills: { ...state.player.skills },
           totalSession: state.time.sessionRemainingTicks,
+          sessionStartLogIndex: 0,
         },
       }
 
@@ -353,6 +362,7 @@ describe("Persistence", () => {
           ],
           startingSkills: { ...state.player.skills },
           totalSession: state.time.sessionRemainingTicks,
+          sessionStartLogIndex: 0,
         },
       }
 
@@ -378,6 +388,7 @@ describe("Persistence", () => {
           logs: [],
           startingSkills: { ...state.player.skills },
           totalSession: state.time.sessionRemainingTicks,
+          sessionStartLogIndex: 0,
         },
       }
 
@@ -403,6 +414,7 @@ describe("Persistence", () => {
           logs: [],
           startingSkills: { ...state.player.skills },
           totalSession: state.time.sessionRemainingTicks,
+          sessionStartLogIndex: 0,
         },
       }
 
@@ -432,6 +444,7 @@ describe("Persistence", () => {
           logs: [],
           startingSkills: { ...state.player.skills },
           totalSession: state.time.sessionRemainingTicks,
+          sessionStartLogIndex: 0,
         },
       }
 
@@ -495,6 +508,7 @@ describe("Persistence", () => {
           logs: [],
           startingSkills: { ...state.player.skills },
           totalSession: state.time.sessionRemainingTicks,
+          sessionStartLogIndex: 0,
         },
       }
       writeSave(TEST_SEED, session)
@@ -561,6 +575,7 @@ describe("Persistence", () => {
           logs: [],
           startingSkills: { ...state.player.skills },
           totalSession: state.time.sessionRemainingTicks,
+          sessionStartLogIndex: 0,
         },
       }
       writeSave(TEST_SEED, session)

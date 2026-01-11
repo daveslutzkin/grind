@@ -33,6 +33,7 @@ export interface SessionStats {
   logs: ActionLog[]
   startingSkills: Record<SkillID, SkillState>
   totalSession: number
+  sessionStartLogIndex: number // Index where current session starts in logs array
 }
 
 export interface RngStream {
@@ -711,37 +712,38 @@ export function computeVolatility(xpProbabilities: number[]): string {
 }
 
 /**
- * Compute session statistics from logs
+ * Computed statistics for a set of action logs
  */
 export interface ComputedStats {
   ticksUsed: number
   totalXP: number
   expectedXP: number
   xpProbabilities: number[]
-  actionCounts: Record<string, { success: number; fail: number; time: number }>
+  actionCount: number // Total number of actions (not breakdown by type)
   contractsCompleted: number
   repGained: number
   skillDelta: string[]
 }
 
-export function computeSessionStats(state: WorldState, stats: SessionStats): ComputedStats {
-  const ticksUsed = stats.totalSession - state.time.sessionRemainingTicks
-
-  const actionCounts: Record<string, { success: number; fail: number; time: number }> = {}
-  for (const log of stats.logs) {
-    if (!actionCounts[log.actionType]) {
-      actionCounts[log.actionType] = { success: 0, fail: 0, time: 0 }
-    }
-    if (log.success) actionCounts[log.actionType].success++
-    else actionCounts[log.actionType].fail++
-    actionCounts[log.actionType].time += log.timeConsumed
+/**
+ * Internal helper: compute stats from a slice of logs
+ */
+function computeStatsFromLogs(
+  logs: ActionLog[],
+  startingSkills: Record<SkillID, SkillState>,
+  currentSkills: Record<SkillID, SkillState>
+): ComputedStats {
+  // Calculate ticks used from logs
+  let ticksUsed = 0
+  for (const log of logs) {
+    ticksUsed += log.timeConsumed
   }
 
   let totalXP = 0
   let expectedXP = 0
   const xpProbabilities: number[] = []
 
-  for (const log of stats.logs) {
+  for (const log of logs) {
     if (log.skillGained) totalXP += log.skillGained.amount
 
     if (log.rngRolls.length > 0) {
@@ -765,7 +767,7 @@ export function computeSessionStats(state: WorldState, stats: SessionStats): Com
 
   let contractsCompleted = 0
   let repGained = 0
-  for (const log of stats.logs) {
+  for (const log of logs) {
     if (log.contractsCompleted) {
       contractsCompleted += log.contractsCompleted.length
       for (const c of log.contractsCompleted) {
@@ -784,11 +786,11 @@ export function computeSessionStats(state: WorldState, stats: SessionStats): Com
     "Exploration",
   ]
   for (const skill of skills) {
-    const startXP = getTotalXP(stats.startingSkills[skill])
-    const endXP = getTotalXP(state.player.skills[skill])
+    const startXP = getTotalXP(startingSkills[skill])
+    const endXP = getTotalXP(currentSkills[skill])
     if (endXP > startXP) {
-      const startLevel = stats.startingSkills[skill].level
-      const endLevel = state.player.skills[skill].level
+      const startLevel = startingSkills[skill].level
+      const endLevel = currentSkills[skill].level
       skillDelta.push(`${skill}: ${startLevel}→${endLevel} (+${endXP - startXP} XP)`)
     }
   }
@@ -798,7 +800,7 @@ export function computeSessionStats(state: WorldState, stats: SessionStats): Com
     totalXP,
     expectedXP,
     xpProbabilities,
-    actionCounts,
+    actionCount: logs.length,
     contractsCompleted,
     repGained,
     skillDelta,
@@ -806,7 +808,39 @@ export function computeSessionStats(state: WorldState, stats: SessionStats): Com
 }
 
 /**
- * Print session summary
+ * Compute session statistics (only logs from current session)
+ */
+export function computeSessionStats(state: WorldState, stats: SessionStats): ComputedStats {
+  const sessionLogs = stats.logs.slice(stats.sessionStartLogIndex)
+  return computeStatsFromLogs(sessionLogs, stats.startingSkills, state.player.skills)
+}
+
+/**
+ * Compute game statistics (all logs across all sessions)
+ */
+export function computeGameStats(state: WorldState, stats: SessionStats): ComputedStats {
+  // For game stats, we need the starting skills from the very first session
+  // We can reconstruct them from the current skills minus all XP gained in all logs
+  const gameStartSkills: Record<SkillID, SkillState> = {} as Record<SkillID, SkillState>
+  const skills: SkillID[] = [
+    "Mining",
+    "Woodcutting",
+    "Combat",
+    "Smithing",
+    "Woodcrafting",
+    "Exploration",
+  ]
+
+  for (const skill of skills) {
+    // Start with current level 0
+    gameStartSkills[skill] = { level: 0, xp: 0 }
+  }
+
+  return computeStatsFromLogs(stats.logs, gameStartSkills, state.player.skills)
+}
+
+/**
+ * Print session and game summaries
  */
 export function printSummary(state: WorldState, stats: SessionStats): void {
   const W = 120
@@ -814,49 +848,20 @@ export function printSummary(state: WorldState, stats: SessionStats): void {
   const dline = "═".repeat(W - 2)
   const pad = makePadInner(W)
 
-  const computed = computeSessionStats(state, stats)
+  // Compute both session and game stats
+  const sessionStats = computeSessionStats(state, stats)
+  const gameStats = computeGameStats(state, stats)
 
-  const volatilityStr = computeVolatility(computed.xpProbabilities)
-  const rngStreams = buildRngStreams(stats.logs)
-  const luckStr = computeLuckString(rngStreams)
+  // Session-specific calculations
+  const sessionLogs = stats.logs.slice(stats.sessionStartLogIndex)
+  const sessionVolatilityStr = computeVolatility(sessionStats.xpProbabilities)
+  const sessionRngStreams = buildRngStreams(sessionLogs)
+  const sessionLuckStr = computeLuckString(sessionRngStreams)
 
-  const actionStrs = Object.entries(computed.actionCounts).map(
-    ([type, { success, fail, time }]) =>
-      `${type}: ${success}✓${fail > 0 ? ` ${fail}✗` : ""} (${time}t)`
-  )
-
-  console.log(`\n╔${dline}╗`)
-  console.log(`║${"SESSION SUMMARY".padStart(W / 2 + 7).padEnd(W - 2)}║`)
-  console.log(`╠${dline}╣`)
-
-  const expectedXPTick =
-    computed.ticksUsed > 0 ? (computed.expectedXP / computed.ticksUsed).toFixed(2) : "0.00"
-  const actualXPTick =
-    computed.ticksUsed > 0 ? (computed.totalXP / computed.ticksUsed).toFixed(2) : "0.00"
-  console.log(
-    pad(
-      `⏱  TIME: ${computed.ticksUsed}/${stats.totalSession} ticks  │  XP: ${computed.totalXP} actual, ${computed.expectedXP.toFixed(1)} expected  │  XP/tick: ${actualXPTick} actual, ${expectedXPTick} expected`
-    )
-  )
-  console.log(`├${line}┤`)
-  console.log(pad(`📋 ACTIONS: ${stats.logs.length} total  │  ${actionStrs.join("  │  ")}`))
-  console.log(`├${line}┤`)
-  console.log(pad(`🎲 LUCK: ${luckStr}`))
-  console.log(`├${line}┤`)
-  console.log(pad(`📉 VOLATILITY: ${volatilityStr}`))
-  console.log(`├${line}┤`)
-  console.log(
-    pad(
-      `📈 SKILLS: ${computed.skillDelta.length > 0 ? computed.skillDelta.join("  │  ") : "(no gains)"}`
-    )
-  )
-  console.log(`├${line}┤`)
-  console.log(
-    pad(
-      `🏆 CONTRACTS: ${computed.contractsCompleted} completed  │  Reputation: ${state.player.guildReputation} (+${computed.repGained} this session)`
-    )
-  )
-  console.log(`├${line}┤`)
+  // Game-wide calculations
+  const gameVolatilityStr = computeVolatility(gameStats.xpProbabilities)
+  const gameRngStreams = buildRngStreams(stats.logs)
+  const gameLuckStr = computeLuckString(gameRngStreams)
 
   // Final inventory + storage
   const allItems: Record<string, number> = {}
@@ -870,8 +875,68 @@ export function printSummary(state: WorldState, stats: SessionStats): void {
     Object.entries(allItems)
       .map(([id, qty]) => `${qty}x ${id}`)
       .join(", ") || "(none)"
+
+  // Print SESSION SUMMARY
+  console.log(`\n╔${dline}╗`)
+  console.log(`║${"SESSION SUMMARY".padStart(W / 2 + 7).padEnd(W - 2)}║`)
+  console.log(`╠${dline}╣`)
+
+  const sessionExpectedXPTick =
+    sessionStats.ticksUsed > 0
+      ? (sessionStats.expectedXP / sessionStats.ticksUsed).toFixed(2)
+      : "0.00"
+  const sessionActualXPTick =
+    sessionStats.ticksUsed > 0 ? (sessionStats.totalXP / sessionStats.ticksUsed).toFixed(2) : "0.00"
+  console.log(
+    pad(
+      `⏱  TIME: ${sessionStats.ticksUsed}/${stats.totalSession} ticks  │  XP: ${sessionStats.totalXP} actual, ${sessionStats.expectedXP.toFixed(1)} expected  │  XP/tick: ${sessionActualXPTick} actual, ${sessionExpectedXPTick} expected`
+    )
+  )
+  console.log(`├${line}┤`)
+  console.log(pad(`📋 ACTIONS: ${sessionStats.actionCount} total`))
+  console.log(`├${line}┤`)
+  console.log(pad(`🎲 LUCK: ${sessionLuckStr}`))
+  console.log(`├${line}┤`)
+  console.log(pad(`📉 VOLATILITY: ${sessionVolatilityStr}`))
+  console.log(`├${line}┤`)
+  console.log(
+    pad(
+      `📈 SKILLS: ${sessionStats.skillDelta.length > 0 ? sessionStats.skillDelta.join("  │  ") : "(no gains)"}`
+    )
+  )
+  console.log(`├${line}┤`)
+  console.log(
+    pad(
+      `🏆 CONTRACTS: ${sessionStats.contractsCompleted} completed  │  Reputation: ${state.player.guildReputation} (+${sessionStats.repGained} this session)`
+    )
+  )
+  console.log(`├${line}┤`)
   console.log(pad(`🎒 FINAL ITEMS: ${itemsStr}`))
   console.log(`╚${dline}╝`)
+
+  // Print COMPLETE GAME SUMMARY (only if there were previous sessions)
+  if (stats.sessionStartLogIndex > 0) {
+    console.log(`\n╔${dline}╗`)
+    console.log(`║${"COMPLETE GAME SUMMARY".padStart(W / 2 + 10).padEnd(W - 2)}║`)
+    console.log(`╠${dline}╣`)
+
+    const gameExpectedXPTick =
+      gameStats.ticksUsed > 0 ? (gameStats.expectedXP / gameStats.ticksUsed).toFixed(2) : "0.00"
+    const gameActualXPTick =
+      gameStats.ticksUsed > 0 ? (gameStats.totalXP / gameStats.ticksUsed).toFixed(2) : "0.00"
+    console.log(
+      pad(
+        `⏱  TIME: ${gameStats.ticksUsed} ticks total  │  XP: ${gameStats.totalXP} actual, ${gameStats.expectedXP.toFixed(1)} expected  │  XP/tick: ${gameActualXPTick} actual, ${gameExpectedXPTick} expected`
+      )
+    )
+    console.log(`├${line}┤`)
+    console.log(pad(`📋 ACTIONS: ${gameStats.actionCount} total`))
+    console.log(`├${line}┤`)
+    console.log(pad(`🎲 LUCK: ${gameLuckStr}`))
+    console.log(`├${line}┤`)
+    console.log(pad(`📉 VOLATILITY: ${gameVolatilityStr}`))
+    console.log(`╚${dline}╝`)
+  }
 }
 
 // ============================================================================
@@ -897,6 +962,7 @@ export function createSession(options: CreateSessionOptions): Session {
     logs: [],
     startingSkills: { ...state.player.skills },
     totalSession: state.time.sessionRemainingTicks,
+    sessionStartLogIndex: 0,
   }
   return { state, stats }
 }
@@ -968,6 +1034,8 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
     if (shouldResume) {
       // Resume from save
       session = deserializeSession(save)
+      // Update session boundary - all existing logs are from previous sessions
+      session.stats.sessionStartLogIndex = session.stats.logs.length
       console.log("\nResuming saved game...")
     } else {
       // Delete save and start fresh
