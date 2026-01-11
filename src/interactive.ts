@@ -371,6 +371,13 @@ export async function interactiveSurvey(state: WorldState): Promise<void> {
       cleanup()
     }
 
+    // Check if there are more areas to discover before prompting
+    const remainingAnalysis = analyzeRemainingAreas(state)
+    if (!remainingAnalysis.hasUndiscovered) {
+      console.log("\n✓ No more undiscovered areas to survey")
+      return
+    }
+
     // Prompt to continue surveying
     const shouldContinue = await promptYesNo("\nContinue surveying?")
     if (!shouldContinue) {
