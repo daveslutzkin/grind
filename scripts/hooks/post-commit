@@ -1,0 +1,110 @@
+#!/bin/bash
+
+# Post-commit hook to enforce development practices:
+# 1. Warns when source files are changed without corresponding test updates
+# 2. Warns when branch is behind main (on non-main branches)
+
+# ============================================================================
+# CHECK 1: Test coverage - warn if source files changed without test updates
+# ============================================================================
+
+# Files that typically don't require their own test files
+EXEMPT_PATTERNS="index\.ts$|\.d\.ts$"
+
+# Get list of .ts files changed (excluding test files and exempt patterns)
+source_files=$(git diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null | grep -E '\.ts$' | grep -vE '\.test\.ts$' | grep -vE "$EXEMPT_PATTERNS")
+
+# Get list of test files changed
+test_files=$(git diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null | grep -E '\.test\.ts$')
+
+# If source files changed but no test files, warn
+if [ -n "$source_files" ] && [ -z "$test_files" ]; then
+    echo ""
+    echo "┌─────────────────────────────────────────────────────────────────────┐"
+    echo "│  WARNING: Source files modified without test file changes           │"
+    echo "└─────────────────────────────────────────────────────────────────────┘"
+    echo ""
+    echo "Source files changed in this commit:"
+
+    missing_tests=()
+    existing_tests=()
+
+    for file in $source_files; do
+        # Determine the expected test file path
+        test_file="${file%.ts}.test.ts"
+
+        if [ -f "$test_file" ]; then
+            existing_tests+=("  $file  ->  $test_file exists but wasn't modified")
+        else
+            missing_tests+=("  $file  ->  NO TEST FILE ($test_file)")
+        fi
+    done
+
+    # Show files with missing tests first (more critical)
+    if [ ${#missing_tests[@]} -gt 0 ]; then
+        echo ""
+        echo "Missing test files:"
+        for msg in "${missing_tests[@]}"; do
+            echo "$msg"
+        done
+    fi
+
+    # Then show files where tests exist but weren't updated
+    if [ ${#existing_tests[@]} -gt 0 ]; then
+        echo ""
+        echo "Tests exist but weren't updated:"
+        for msg in "${existing_tests[@]}"; do
+            echo "$msg"
+        done
+    fi
+
+    echo ""
+    echo "Per CLAUDE.md: 'Test-driven development: Write tests first, then implement'"
+    echo ""
+    echo "ACTION REQUIRED:"
+    echo "  1. Add or update tests to cover your changes"
+    echo "  2. Run 'npm run check' to verify all checks pass"
+    echo "  3. Commit the test changes"
+    echo ""
+fi
+
+# ============================================================================
+# CHECK 2: Branch sync - warn if branch is behind main
+# ============================================================================
+
+current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+
+# Only check on non-main branches
+if [ "$current_branch" != "main" ] && [ "$current_branch" != "master" ]; then
+    # Fetch main silently to get latest state (best effort, don't fail if offline)
+    git fetch origin main 2>/dev/null || git fetch origin master 2>/dev/null || true
+
+    # Determine which main branch exists
+    if git rev-parse --verify origin/main &>/dev/null; then
+        main_branch="origin/main"
+    elif git rev-parse --verify origin/master &>/dev/null; then
+        main_branch="origin/master"
+    else
+        # No remote main branch found, skip check
+        exit 0
+    fi
+
+    # Count commits that main has but this branch doesn't
+    behind_count=$(git rev-list --count HEAD.."$main_branch" 2>/dev/null || echo "0")
+
+    if [ "$behind_count" -gt 0 ]; then
+        echo ""
+        echo "┌─────────────────────────────────────────────────────────────────────┐"
+        echo "│  WARNING: Branch is behind $main_branch                             │"
+        echo "└─────────────────────────────────────────────────────────────────────┘"
+        echo ""
+        echo "Your branch '$current_branch' is $behind_count commit(s) behind $main_branch."
+        echo ""
+        echo "ACTION REQUIRED:"
+        echo "  Consider rebasing or merging to stay up-to-date:"
+        echo "    git fetch origin main && git rebase origin/main"
+        echo "  or:"
+        echo "    git fetch origin main && git merge origin/main"
+        echo ""
+    fi
+fi

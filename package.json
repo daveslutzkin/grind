@@ -5,6 +5,7 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
+    "prepare": "bash scripts/install-hooks.sh",
     "build": "tsc",
     "demo": "npm run build && node dist/demo.js",
     "repl": "npm run build && node dist/repl.js",
