@@ -1076,10 +1076,6 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
         config.onActionComplete(log, session.state)
       }
 
-      // Interactive mode handles its own display, just show state after
-      console.log("")
-      console.log(formatWorldState(session.state))
-
       // Auto-save after interactive exploration
       writeSave(seed, session)
       continue
@@ -1114,10 +1110,6 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
         session.stats.logs.push(log)
         config.onActionComplete(log, session.state)
       }
-
-      // Interactive mode handles its own display, just show state after
-      console.log("")
-      console.log(formatWorldState(session.state))
 
       // Auto-save after interactive travel
       writeSave(seed, session)
