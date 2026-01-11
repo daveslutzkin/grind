@@ -629,8 +629,12 @@ export function formatWorldState(state: WorldState): string {
       const formatGroup = (group: [string, number][]) =>
         group
           .map(([dest, time]) => {
-            const status = getAreaExplorationStatus(state, dest)
             const areaName = getAreaDisplayName(state, dest)
+            // Town doesn't show exploration status
+            if (dest === "TOWN") {
+              return `${time}t - ${areaName}`
+            }
+            const status = getAreaExplorationStatus(state, dest)
             return `${time}t - ${areaName} (${status})`
           })
           .join(", ")
