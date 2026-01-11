@@ -29,7 +29,7 @@ async function main(): Promise<void> {
     console.log("🌍 Area naming enabled (ANTHROPIC_API_KEY detected)")
   }
 
-  initInput()
+  await initInput()
 
   await runSession(seed, {
     getNextCommand: async () => {

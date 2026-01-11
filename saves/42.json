@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "savedAt": "2026-01-11T19:58:08.964Z",
+  "savedAt": "2026-01-11T22:19:44.727Z",
   "seed": "42",
   "state": {
     "time": {
-      "currentTick": 105
+      "currentTick": 3
     },
     "player": {
       "inventory": [],
@@ -12,7 +12,7 @@
       "storage": [],
       "skills": {
         "Mining": {
-          "level": 1,
+          "level": 0,
           "xp": 0
         },
         "Woodcutting": {
@@ -24,7 +24,7 @@
           "xp": 0
         },
         "Smithing": {
-          "level": 1,
+          "level": 0,
           "xp": 0
         },
         "Woodcrafting": {
@@ -33,13 +33,11 @@
         },
         "Exploration": {
           "level": 1,
-          "xp": 1
+          "xp": 0
         }
       },
       "guildReputation": 0,
-      "activeContracts": [
-        "miners-guild-1"
-      ],
+      "activeContracts": [],
       "equippedWeapon": null,
       "contractKillProgress": {},
       "appraisedNodeIds": []
@@ -468,7 +466,7 @@
           "generated": true,
           "locations": [],
           "indexInDistance": 0,
-          "name": "Greenhollow"
+          "name": "Greenward Fields"
         },
         "area-d1-i1": {
           "id": "area-d1-i1",
@@ -522,7 +520,7 @@
         "area-d2-i1": {
           "id": "area-d2-i1",
           "distance": 2,
-          "generated": true,
+          "generated": false,
           "locations": [
             {
               "id": "area-d2-i1-loc-0",
@@ -531,8 +529,7 @@
               "gatheringSkillType": "Mining"
             }
           ],
-          "indexInDistance": 1,
-          "name": "Stonebreak Ridge"
+          "indexInDistance": 1
         },
         "area-d2-i2": {
           "id": "area-d2-i2",
@@ -780,35 +777,10 @@
           "fromAreaId": "area-d1-i0",
           "toAreaId": "area-d2-i1",
           "travelTimeMultiplier": 1.2
-        },
-        {
-          "fromAreaId": "area-d2-i1",
-          "toAreaId": "area-d1-i1",
-          "travelTimeMultiplier": 3.9
-        },
-        {
-          "fromAreaId": "area-d2-i1",
-          "toAreaId": "area-d2-i6",
-          "travelTimeMultiplier": 3.2
-        },
-        {
-          "fromAreaId": "area-d2-i1",
-          "toAreaId": "area-d2-i5",
-          "travelTimeMultiplier": 2.9
-        },
-        {
-          "fromAreaId": "area-d2-i1",
-          "toAreaId": "area-d3-i7",
-          "travelTimeMultiplier": 0.9
-        },
-        {
-          "fromAreaId": "area-d2-i1",
-          "toAreaId": "area-d3-i4",
-          "travelTimeMultiplier": 3.3
         }
       ],
       "playerState": {
-        "currentAreaId": "area-d1-i0",
+        "currentAreaId": "TOWN",
         "currentLocationId": null,
         "knownAreaIds": [
           "TOWN",
@@ -824,16 +796,15 @@
           "TOWN_WAREHOUSE"
         ],
         "knownConnectionIds": [
-          "TOWN->area-d1-i0",
-          "area-d1-i0->area-d2-i1"
+          "TOWN->area-d1-i0"
         ],
-        "totalLuckDelta": 26,
-        "currentStreak": 1
+        "totalLuckDelta": 0,
+        "currentStreak": 0
       }
     },
     "rng": {
       "seed": "42",
-      "counter": 258
+      "counter": 200
     }
   },
   "stats": {
@@ -858,7 +829,7 @@
         "success": true,
         "timeConsumed": 3,
         "rngRolls": [],
-        "stateDeltaSummary": "Enrolled in Exploration guild, discovered Greenhollow",
+        "stateDeltaSummary": "Enrolled in Exploration guild, discovered Greenward Fields",
         "explorationLog": {
           "discoveredAreaId": "area-d1-i0",
           "discoveredConnectionId": "TOWN->area-d1-i0"
@@ -872,291 +843,6 @@
         "timeConsumed": 0,
         "rngRolls": [],
         "stateDeltaSummary": "Left Explorers Guild for Town Square"
-      },
-      {
-        "tickBefore": 3,
-        "actionType": "TravelToLocation",
-        "parameters": {
-          "locationId": "TOWN_MINERS_GUILD"
-        },
-        "success": true,
-        "timeConsumed": 0,
-        "rngRolls": [],
-        "stateDeltaSummary": "Traveled to Miners Guild"
-      },
-      {
-        "tickBefore": 3,
-        "actionType": "Enrol",
-        "parameters": {
-          "skill": "Mining"
-        },
-        "success": true,
-        "timeConsumed": 3,
-        "rngRolls": [],
-        "stateDeltaSummary": "Enrolled in Mining guild"
-      },
-      {
-        "tickBefore": 6,
-        "actionType": "AcceptContract",
-        "parameters": {
-          "contractId": "miners-guild-1"
-        },
-        "success": true,
-        "timeConsumed": 0,
-        "rngRolls": [],
-        "stateDeltaSummary": "Accepted contract miners-guild-1"
-      },
-      {
-        "tickBefore": 6,
-        "actionType": "Leave",
-        "parameters": {},
-        "success": true,
-        "timeConsumed": 0,
-        "rngRolls": [],
-        "stateDeltaSummary": "Left Miners Guild for Town Square"
-      },
-      {
-        "tickBefore": 6,
-        "actionType": "TravelToLocation",
-        "parameters": {
-          "locationId": "TOWN_SMITHING_GUILD"
-        },
-        "success": true,
-        "timeConsumed": 0,
-        "rngRolls": [],
-        "stateDeltaSummary": "Traveled to Smithing Guild"
-      },
-      {
-        "tickBefore": 6,
-        "actionType": "Enrol",
-        "parameters": {
-          "skill": "Smithing"
-        },
-        "success": true,
-        "timeConsumed": 3,
-        "rngRolls": [],
-        "stateDeltaSummary": "Enrolled in Smithing guild"
-      },
-      {
-        "tickBefore": 9,
-        "actionType": "Leave",
-        "parameters": {},
-        "success": true,
-        "timeConsumed": 0,
-        "rngRolls": [],
-        "stateDeltaSummary": "Left Smithing Guild for Town Square"
-      },
-      {
-        "tickBefore": 9,
-        "actionType": "ExplorationTravel",
-        "parameters": {
-          "destinationAreaId": "area-d1-i0"
-        },
-        "success": true,
-        "timeConsumed": 42,
-        "rngRolls": [],
-        "stateDeltaSummary": "Traveled to Greenhollow"
-      },
-      {
-        "tickBefore": 51,
-        "actionType": "Explore",
-        "parameters": {},
-        "success": true,
-        "timeConsumed": 54,
-        "skillGained": {
-          "skill": "Exploration",
-          "amount": 1
-        },
-        "rngRolls": [
-          {
-            "label": "explore_roll_2",
-            "probability": 0.025,
-            "result": false,
-            "rngCounter": 201
-          },
-          {
-            "label": "explore_roll_4",
-            "probability": 0.025,
-            "result": false,
-            "rngCounter": 202
-          },
-          {
-            "label": "explore_roll_6",
-            "probability": 0.025,
-            "result": false,
-            "rngCounter": 203
-          },
-          {
-            "label": "explore_roll_8",
-            "probability": 0.025,
-            "result": false,
-            "rngCounter": 204
-          },
-          {
-            "label": "explore_roll_10",
-            "probability": 0.025,
-            "result": false,
-            "rngCounter": 205
-          },
-          {
-            "label": "explore_roll_12",
-            "probability": 0.025,
-            "result": false,
-            "rngCounter": 206
-          },
-          {
-            "label": "explore_roll_14",
-            "probability": 0.025,
-            "result": false,
-            "rngCounter": 207
-          },
-          {
-            "label": "explore_roll_16",
-            "probability": 0.025,
-            "result": false,
-            "rngCounter": 208
-          },
-          {
-            "label": "explore_roll_18",
-            "probability": 0.025,
-            "result": false,
-            "rngCounter": 209
-          },
-          {
-            "label": "explore_roll_20",
-            "probability": 0.025,
-            "result": false,
-            "rngCounter": 210
-          },
-          {
-            "label": "explore_roll_22",
-            "probability": 0.025,
-            "result": false,
-            "rngCounter": 211
-          },
-          {
-            "label": "explore_roll_24",
-            "probability": 0.025,
-            "result": false,
-            "rngCounter": 212
-          },
-          {
-            "label": "explore_roll_26",
-            "probability": 0.025,
-            "result": false,
-            "rngCounter": 213
-          },
-          {
-            "label": "explore_roll_28",
-            "probability": 0.025,
-            "result": false,
-            "rngCounter": 214
-          },
-          {
-            "label": "explore_roll_30",
-            "probability": 0.025,
-            "result": false,
-            "rngCounter": 215
-          },
-          {
-            "label": "explore_roll_32",
-            "probability": 0.025,
-            "result": false,
-            "rngCounter": 216
-          },
-          {
-            "label": "explore_roll_34",
-            "probability": 0.025,
-            "result": false,
-            "rngCounter": 217
-          },
-          {
-            "label": "explore_roll_36",
-            "probability": 0.025,
-            "result": false,
-            "rngCounter": 218
-          },
-          {
-            "label": "explore_roll_38",
-            "probability": 0.025,
-            "result": false,
-            "rngCounter": 219
-          },
-          {
-            "label": "explore_roll_40",
-            "probability": 0.025,
-            "result": false,
-            "rngCounter": 220
-          },
-          {
-            "label": "explore_roll_42",
-            "probability": 0.025,
-            "result": false,
-            "rngCounter": 221
-          },
-          {
-            "label": "explore_roll_44",
-            "probability": 0.025,
-            "result": false,
-            "rngCounter": 222
-          },
-          {
-            "label": "explore_roll_46",
-            "probability": 0.025,
-            "result": false,
-            "rngCounter": 223
-          },
-          {
-            "label": "explore_roll_48",
-            "probability": 0.025,
-            "result": false,
-            "rngCounter": 224
-          },
-          {
-            "label": "explore_roll_50",
-            "probability": 0.025,
-            "result": false,
-            "rngCounter": 225
-          },
-          {
-            "label": "explore_roll_52",
-            "probability": 0.025,
-            "result": false,
-            "rngCounter": 226
-          },
-          {
-            "label": "explore_roll_54",
-            "probability": 0.025,
-            "result": true,
-            "rngCounter": 258
-          }
-        ],
-        "stateDeltaSummary": "Discovered connection to Stonebreak Ridge",
-        "explorationLog": {
-          "discoveredConnectionId": "area-d1-i0->area-d2-i1",
-          "connectionToUnknownArea": true,
-          "areaFullyExplored": true,
-          "luckInfo": {
-            "actualTicks": 54,
-            "expectedTicks": 80,
-            "luckDelta": 26,
-            "totalLuckDelta": 26,
-            "currentStreak": 1
-          }
-        }
-      },
-      {
-        "tickBefore": 105,
-        "actionType": "Explore",
-        "parameters": {},
-        "success": false,
-        "failureType": "AREA_FULLY_EXPLORED",
-        "timeConsumed": 0,
-        "rngRolls": [],
-        "stateDeltaSummary": "Failed: AREA_FULLY_EXPLORED",
-        "explorationLog": {
-          "areaFullyExplored": true
-        }
       }
     ],
     "startingSkills": {
