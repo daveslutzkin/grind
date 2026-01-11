@@ -1,5 +1,5 @@
 import { describe, it, expect } from "@jest/globals"
-import { formatWorldState, formatActionLog } from "./formatters.js"
+import { formatWorldState, formatActionLog, formatTickFeedback } from "./formatters.js"
 import { createWorld, TOWN_LOCATIONS } from "../world.js"
 import { executeAction } from "../engine.js"
 import type { GatherMode, WorldState, AreaID } from "../types.js"
@@ -973,6 +973,100 @@ describe("Formatters", () => {
       if (log.extraction && log.extraction.extracted.length > 0) {
         expect(formatted).toContain("Gained:")
       }
+    })
+
+    it("should show XP progress with percentage when state is provided", async () => {
+      const state = createWorld("xp-test")
+      // Join Explorers Guild to start gaining XP
+      setTownLocation(state, TOWN_LOCATIONS.EXPLORERS_GUILD)
+      await executeAction(state, { type: "Enrol", skill: "Exploration" })
+
+      // Survey to discover an area and gain XP
+      const log = await executeAction(state, { type: "Survey" })
+      const formatted = formatActionLog(log, state)
+
+      if (log.skillGained) {
+        // Should show XP progress with format: "+N XP (X to next level, Y% there)"
+        expect(formatted).toMatch(/\+\d+ Exploration XP \(\d+ to next level, \d+% there\)/)
+      }
+    })
+
+    it("should show connection travel time for discovered connections", async () => {
+      const state = createWorld("connection-test")
+      setTownLocation(state, TOWN_LOCATIONS.EXPLORERS_GUILD)
+      await executeAction(state, { type: "Enrol", skill: "Exploration" })
+
+      // First discover an area via Survey
+      await executeAction(state, { type: "Survey" })
+
+      // Now explore to find a known connection
+      const log = await executeAction(state, { type: "Explore" })
+      const formatted = formatActionLog(log, state)
+
+      if (
+        log.explorationLog?.discoveredConnectionId &&
+        !log.explorationLog.connectionToUnknownArea
+      ) {
+        // Should show travel time with format: "connection to X (Nt travel time)"
+        expect(formatted).toMatch(/connection to .+ \(\d+t travel time\)/)
+      }
+    })
+
+    it("should show RNG percentile for exploration discoveries", async () => {
+      const state = createWorld("rng-test")
+      setTownLocation(state, TOWN_LOCATIONS.EXPLORERS_GUILD)
+      await executeAction(state, { type: "Enrol", skill: "Exploration" })
+
+      // Explore to discover something
+      const log = await executeAction(state, { type: "Explore" })
+      const formatted = formatActionLog(log, state)
+
+      if (log.explorationLog?.luckInfo) {
+        // Should show percentile with format: "RNG: <label> (N% percentile) - took Nt, Nt faster/slower than expected"
+        expect(formatted).toMatch(
+          /RNG: .+ \(\d+% percentile\) - took \d+t, \d+t (faster|slower) than expected/
+        )
+      }
+    })
+  })
+
+  describe("formatTickFeedback", () => {
+    it("should show ticks elapsed for discovered items", () => {
+      const feedback = {
+        discovered: {
+          type: "connection" as const,
+          name: "connection to Town",
+          id: "test-id",
+        },
+      }
+
+      const result = formatTickFeedback(feedback, 6)
+      expect(result).toBe("*found after 6 ticks*")
+    })
+
+    it("should show damage feedback", () => {
+      const feedback = {
+        damage: {
+          target: "enemy" as const,
+          amount: 10,
+          enemyHpRemaining: 20,
+        },
+      }
+
+      const result = formatTickFeedback(feedback, 1)
+      expect(result).toBe("(-10 enemy, 20 HP left)")
+    })
+
+    it("should show gathered items", () => {
+      const feedback = {
+        gathered: {
+          itemId: "copper_ore",
+          quantity: 3,
+        },
+      }
+
+      const result = formatTickFeedback(feedback, 2)
+      expect(result).toBe("(+3 copper_ore)")
     })
   })
 })
