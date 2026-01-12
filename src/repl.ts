@@ -3,7 +3,6 @@
  */
 
 import "dotenv/config"
-import { evaluateAction } from "./evaluate.js"
 import type { WorldState } from "./types.js"
 import {
   runSession,
@@ -151,13 +150,6 @@ async function main(): Promise<void> {
       quit: (): MetaCommandResult => "quit",
       exit: (): MetaCommandResult => "quit",
       q: (): MetaCommandResult => "quit",
-    },
-
-    beforeAction: (action, state) => {
-      const eval_ = evaluateAction(state, action)
-      if (eval_.successProbability > 0 && eval_.successProbability < 1) {
-        console.log(`⚠ Success chance: ${(eval_.successProbability * 100).toFixed(0)}%`)
-      }
     },
 
     onBeforeInteractive: () => {

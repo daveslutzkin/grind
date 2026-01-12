@@ -4,9 +4,6 @@ export type {
   Action,
   ActionLog,
   ActionType,
-  ActionEvaluation,
-  PlanEvaluation,
-  PlanViolation,
   LocationID,
   ItemID,
   SkillID,
@@ -29,9 +26,6 @@ export type {
 
 // Engine
 export { executeAction } from "./engine.js"
-
-// Evaluation APIs
-export { evaluateAction, evaluatePlan } from "./evaluate.js"
 
 // World factory
 export { createWorld } from "./world.js"
