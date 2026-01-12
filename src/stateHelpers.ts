@@ -24,29 +24,46 @@ export function consumeTime(state: WorldState, ticks: number): void {
 // ============================================================================
 
 /**
- * Add items to player inventory, stacking with existing items
+ * Add items to player inventory - non-stacking (each unit takes 1 slot)
  */
 export function addToInventory(state: WorldState, itemId: ItemID, quantity: number): void {
-  const existing = state.player.inventory.find((i) => i.itemId === itemId)
-  if (existing) {
-    existing.quantity += quantity
-  } else {
-    state.player.inventory.push({ itemId, quantity })
+  for (let i = 0; i < quantity; i++) {
+    state.player.inventory.push({ itemId, quantity: 1 })
   }
 }
 
 /**
- * Remove items from player inventory
+ * Remove items from player inventory - removes across multiple slots
  */
 export function removeFromInventory(state: WorldState, itemId: ItemID, quantity: number): void {
-  const item = state.player.inventory.find((i) => i.itemId === itemId)
-  if (item) {
-    item.quantity -= quantity
-    if (item.quantity <= 0) {
-      const index = state.player.inventory.indexOf(item)
-      state.player.inventory.splice(index, 1)
+  let remaining = quantity
+  while (remaining > 0) {
+    const index = state.player.inventory.findIndex((s) => s.itemId === itemId)
+    if (index === -1) {
+      throw new Error(`Not enough ${itemId} in inventory`)
     }
+    state.player.inventory.splice(index, 1)
+    remaining--
   }
+}
+
+/**
+ * Add items to inventory with overflow handling - returns items that couldn't fit
+ */
+export function addToInventoryWithOverflow(
+  state: WorldState,
+  itemId: ItemID,
+  quantity: number
+): { added: number; discarded: number } {
+  const available = state.player.inventoryCapacity - state.player.inventory.length
+  const toAdd = Math.min(quantity, available)
+  const discarded = quantity - toAdd
+
+  for (let i = 0; i < toAdd; i++) {
+    state.player.inventory.push({ itemId, quantity: 1 })
+  }
+
+  return { added: toAdd, discarded }
 }
 
 /**
@@ -81,40 +98,28 @@ export function removeFromStorage(state: WorldState, itemId: ItemID, quantity: n
 
 /**
  * Check if contract rewards will fit in inventory after consuming requirements.
- * Simulates the inventory state to account for freed slots.
+ * Non-stacking: checks total item count (each unit = 1 slot)
  */
 export function canFitContractRewards(
   state: WorldState,
   requirements: ItemStack[],
   rewards: ItemStack[]
 ): boolean {
-  // Simulate inventory state after consuming requirements
-  const simulatedInventory = new Map<ItemID, number>()
-  for (const item of state.player.inventory) {
-    simulatedInventory.set(item.itemId, item.quantity)
-  }
+  const currentCount = state.player.inventory.length
 
-  // Simulate consuming requirements from inventory
+  // Calculate how many items we'll remove from inventory (not storage)
+  let removeCount = 0
   for (const req of requirements) {
-    const current = simulatedInventory.get(req.itemId) ?? 0
-    // We consume from inventory first; if not enough, remainder comes from storage
-    // For slot calculation, we only care about inventory
-    const toConsume = Math.min(current, req.quantity)
-    if (toConsume >= current) {
-      simulatedInventory.delete(req.itemId) // Slot freed
-    } else {
-      simulatedInventory.set(req.itemId, current - toConsume)
-    }
+    // Count all slots with this item ID
+    const inInventoryCount = state.player.inventory.filter((i) => i.itemId === req.itemId).length
+    const toRemove = Math.min(inInventoryCount, req.quantity)
+    removeCount += toRemove
   }
 
-  // Simulate adding rewards
-  for (const reward of rewards) {
-    const current = simulatedInventory.get(reward.itemId) ?? 0
-    simulatedInventory.set(reward.itemId, current + reward.quantity)
-  }
+  // Calculate how many items we'll add
+  const addCount = rewards.reduce((sum, r) => sum + r.quantity, 0)
 
-  // Check if simulated inventory fits in capacity
-  return simulatedInventory.size <= state.player.inventoryCapacity
+  return currentCount - removeCount + addCount <= state.player.inventoryCapacity
 }
 
 /**

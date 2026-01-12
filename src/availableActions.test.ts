@@ -290,8 +290,11 @@ describe("getAvailableActions", () => {
       state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.SMITHING_GUILD
       // Enrol in Smithing
       state.player.skills.Smithing = { level: 1, xp: 0 }
-      // Add ingredients for copper-bar recipe (2 COPPER_ORE)
-      state.player.inventory = [{ itemId: "COPPER_ORE", quantity: 2 }]
+      // Add ingredients for copper-bar recipe (2 COPPER_ORE) - non-stacking
+      state.player.inventory = [
+        { itemId: "COPPER_ORE", quantity: 1 },
+        { itemId: "COPPER_ORE", quantity: 1 },
+      ]
 
       const actions = getAvailableActions(state)
 
