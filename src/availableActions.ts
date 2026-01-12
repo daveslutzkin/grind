@@ -25,6 +25,7 @@ import {
   calculateExpectedTicks,
   prepareSurveyData,
   buildDiscoverables,
+  isConnectionKnown,
 } from "./exploration.js"
 import { getSkillForGuildLocation } from "./world.js"
 
@@ -330,8 +331,9 @@ function addFightActions(state: WorldState, actions: AvailableAction[]): void {
 }
 
 /**
- * Add travel to location action if any discovered locations in current area.
- * Shows placeholder since there could be many locations.
+ * Add travel to location action if any discovered locations in current area
+ * OR if there are known connected adjacent areas.
+ * Shows placeholder since there could be many destinations.
  */
 function addTravelToLocationActions(state: WorldState, actions: AvailableAction[]): void {
   const currentAreaId = getCurrentAreaId(state)
@@ -348,11 +350,23 @@ function addTravelToLocationActions(state: WorldState, actions: AvailableAction[
     return check.valid
   })
 
-  if (hasValidLocation) {
+  // Check if there are known connected adjacent areas (for ExplorationTravel)
+  const knownConnectionIds = new Set(state.exploration.playerState.knownConnectionIds)
+  const hasAdjacentArea = state.exploration.connections.some((conn) => {
+    // Must connect to current area
+    if (conn.fromAreaId !== currentAreaId && conn.toAreaId !== currentAreaId) {
+      return false
+    }
+
+    // Must be a known connection (checks both directions)
+    return isConnectionKnown(knownConnectionIds, conn.fromAreaId, conn.toAreaId)
+  })
+
+  if (hasValidLocation || hasAdjacentArea) {
     actions.push({
-      displayName: "go <location>",
+      displayName: hasValidLocation ? "go <location>" : "go <area>",
       timeCost: inTown ? 0 : 1,
-      isVariable: false,
+      isVariable: hasAdjacentArea, // Variable if can travel to areas (different times)
       successProbability: 1,
     })
   }
