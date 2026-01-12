@@ -278,6 +278,8 @@ export async function interactiveExplore(state: WorldState): Promise<ActionLog[]
 
       const continueFirst = await promptYesNo("Do you want to keep looking?")
       if (!continueFirst) {
+        console.log("")
+        console.log(formatWorldState(state))
         return logs
       }
 
@@ -285,6 +287,8 @@ export async function interactiveExplore(state: WorldState): Promise<ActionLog[]
         `Are you sure? This could take a while (expected: ${Math.round(analysis.hardExpectedTicks)}t per discovery)`
       )
       if (!continueSecond) {
+        console.log("")
+        console.log(formatWorldState(state))
         return logs
       }
     }
