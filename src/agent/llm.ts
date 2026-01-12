@@ -345,7 +345,7 @@ export function createLLMClient(config: AgentConfig): LLMClient {
           const total = usage.input_tokens
           const cacheRate = total > 0 ? ((cached / total) * 100).toFixed(1) : 0
 
-          console.log(`[Cache] ${cached}/${total} tokens cached (${cacheRate}%)`)
+          console.log(`\t[Cache] ${cached}/${total} tokens cached (${cacheRate}%)`)
         }
 
         // Extract text from response
@@ -388,7 +388,7 @@ export function createLLMClient(config: AgentConfig): LLMClient {
               const total = usage.input_tokens
               const cacheRate = total > 0 ? ((cached / total) * 100).toFixed(1) : 0
 
-              console.log(`[Cache] ${cached}/${total} tokens cached (${cacheRate}%)`)
+              console.log(`\t[Cache] ${cached}/${total} tokens cached (${cacheRate}%)`)
             }
 
             const assistantMessage =
