@@ -55,7 +55,7 @@ describe.skip("Combat Progression (combat not yet implemented)", () => {
     it("should grant CRUDE_WEAPON when enrolling in Combat", async () => {
       const state = createWorld("test-seed")
       setTownLocation(state, TOWN_LOCATIONS.COMBAT_GUILD)
-      const action: GuildEnrolmentAction = { type: "Enrol", skill: "Combat" }
+      const action: GuildEnrolmentAction = { type: "Enrol" }
 
       const log = await executeAction(state, action)
 
@@ -69,7 +69,7 @@ describe.skip("Combat Progression (combat not yet implemented)", () => {
     it("should NOT grant weapon when enrolling in Mining", async () => {
       const state = createWorld("test-seed")
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-      const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
+      const action: GuildEnrolmentAction = { type: "Enrol" }
 
       await executeAction(state, action)
 
@@ -81,9 +81,9 @@ describe.skip("Combat Progression (combat not yet implemented)", () => {
       const state = createWorld("test-seed")
 
       setTownLocation(state, TOWN_LOCATIONS.FORESTERS_GUILD)
-      await executeAction(state, { type: "Enrol", skill: "Woodcutting" })
+      await executeAction(state, { type: "Enrol" })
       setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD)
-      await executeAction(state, { type: "Enrol", skill: "Smithing" })
+      await executeAction(state, { type: "Enrol" })
 
       const weapon = state.player.inventory.find((i) => i.itemId === "CRUDE_WEAPON")
       expect(weapon).toBeUndefined()
@@ -101,7 +101,7 @@ describe.skip("Combat Progression (combat not yet implemented)", () => {
     it("should auto-equip CRUDE_WEAPON when granted from Combat enrolment", async () => {
       const state = createWorld("test-seed")
       setTownLocation(state, TOWN_LOCATIONS.COMBAT_GUILD)
-      const action: GuildEnrolmentAction = { type: "Enrol", skill: "Combat" }
+      const action: GuildEnrolmentAction = { type: "Enrol" }
 
       await executeAction(state, action)
 
@@ -115,7 +115,7 @@ describe.skip("Combat Progression (combat not yet implemented)", () => {
       setupCombatArea(state)
       state.player.skills.Combat = { level: 1, xp: 0 }
       // No weapon equipped
-      const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
+      const action: FightAction = { type: "Fight" }
 
       const log = await executeAction(state, action)
 
@@ -131,7 +131,7 @@ describe.skip("Combat Progression (combat not yet implemented)", () => {
       // Weapon "equipped" but not actually owned
       state.player.equippedWeapon = "CRUDE_WEAPON"
       // inventory is empty - no weapon
-      const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
+      const action: FightAction = { type: "Fight" }
 
       const log = await executeAction(state, action)
 
@@ -146,7 +146,7 @@ describe.skip("Combat Progression (combat not yet implemented)", () => {
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
       state.player.equippedWeapon = "CRUDE_WEAPON"
-      const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
+      const action: FightAction = { type: "Fight" }
 
       const log = await executeAction(state, action)
 
@@ -160,7 +160,7 @@ describe.skip("Combat Progression (combat not yet implemented)", () => {
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "IMPROVED_WEAPON", quantity: 1 })
       state.player.equippedWeapon = "IMPROVED_WEAPON"
-      const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
+      const action: FightAction = { type: "Fight" }
 
       const log = await executeAction(state, action)
 
@@ -175,7 +175,7 @@ describe.skip("Combat Progression (combat not yet implemented)", () => {
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
       state.player.equippedWeapon = "CRUDE_WEAPON"
-      const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
+      const action: FightAction = { type: "Fight" }
 
       const log = await executeAction(state, action)
 
@@ -189,7 +189,7 @@ describe.skip("Combat Progression (combat not yet implemented)", () => {
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "IMPROVED_WEAPON", quantity: 1 })
       state.player.equippedWeapon = "IMPROVED_WEAPON"
-      const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
+      const action: FightAction = { type: "Fight" }
 
       const log = await executeAction(state, action)
 
@@ -207,7 +207,7 @@ describe.skip("Combat Progression (combat not yet implemented)", () => {
       state.player.equippedWeapon = "CRUDE_WEAPON"
       // Use a seed that will fail
       state.rng.seed = "force-fight-fail"
-      const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
+      const action: FightAction = { type: "Fight" }
 
       const log = await executeAction(state, action)
 
@@ -225,7 +225,7 @@ describe.skip("Combat Progression (combat not yet implemented)", () => {
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
       state.player.equippedWeapon = "CRUDE_WEAPON"
       state.rng.seed = "force-fight-fail"
-      const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
+      const action: FightAction = { type: "Fight" }
 
       const log = await executeAction(state, action)
 
@@ -243,7 +243,7 @@ describe.skip("Combat Progression (combat not yet implemented)", () => {
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
       state.player.equippedWeapon = "CRUDE_WEAPON"
-      const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
+      const action: FightAction = { type: "Fight" }
 
       const log = await executeAction(state, action)
 
@@ -263,7 +263,7 @@ describe.skip("Combat Progression (combat not yet implemented)", () => {
       state.player.skills.Combat = { level: 1, xp: 0 }
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
       state.player.equippedWeapon = "CRUDE_WEAPON"
-      const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
+      const action: FightAction = { type: "Fight" }
 
       const log = await executeAction(state, action)
 

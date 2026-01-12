@@ -15,16 +15,19 @@ NOTES: [Optional - Your persistent memory. Update this to remember important dis
 CONTINUE_IF: [Optional - condition for repeating the action, e.g., "inventory not full and node not depleted"]
 
 Action formats:
-- Go to <DESTINATION> (guild, service, node type, or area name)
-- Leave (return to hub/clearing from a location)
-- Enrol <SKILL>
-- Gather node <NODE_ID> <MODE> [MATERIAL_ID]
-  - Modes: FOCUS (requires material ID), CAREFUL_ALL, APPRAISE
-- Fight <ENEMY_ID>
-- Store <QUANTITY> <ITEM_ID>
-- Drop <QUANTITY> <ITEM_ID>
-- AcceptContract <CONTRACT_ID>
-- TurnInCombatToken
+- go <area name | location in current area>
+- fartravel <far away area name>
+- leave
+- explore
+- survey
+- enrol
+- accept <contract_id>
+- mine <focus | careful_all | appraise> [material_id]
+- chop <focus | careful_all | appraise> [material_id]
+- fight
+- craft <recipe_id>
+- store <quantity> <item_id>
+- drop <quantity> <item_id>
 `
 
 /**
@@ -40,19 +43,6 @@ GAME OVERVIEW:
 - You have an inventory with limited slots
 - You can learn skills and level them up through practice
 - Some actions require specific skills or locations
-
-AVAILABLE ACTION TYPES:
-- Go: Travel to destinations - works for both:
-  - Locations within an area (guilds, warehouse, ore vein, tree stand, enemy camp)
-  - Other areas (Town, wilderness zones you've discovered connections to)
-- Leave: Return to the hub/clearing from a location you've entered
-- Enrol: Learn a new skill at the guild (one-time unlock)
-- Gather: Extract resources from nodes (various modes available)
-- Fight: Battle enemies (requires Combat skill and a weapon)
-- Store: Put items in storage at town (frees inventory space)
-- Drop: Discard items (takes time for disposal)
-- AcceptContract: Accept a guild contract for rewards
-- TurnInCombatToken: Unlock combat contracts
 
 YOUR MEMORY SYSTEM:
 - You only see what's visible at your current location

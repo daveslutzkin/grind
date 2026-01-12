@@ -321,7 +321,7 @@ export interface ChopAction {
 
 export interface FightAction {
   type: "Fight"
-  enemyId: string
+  // enemyId resolved from current location during execution
 }
 
 export interface CraftAction {
@@ -343,7 +343,7 @@ export interface DropAction {
 
 export interface GuildEnrolmentAction {
   type: "Enrol"
-  skill: SkillID
+  // skill resolved from current guild location during execution
 }
 
 export interface TurnInCombatTokenAction {

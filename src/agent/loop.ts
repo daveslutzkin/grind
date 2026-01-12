@@ -242,7 +242,7 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
         // Mock response for testing
         response = {
           reasoning: "Testing in dry run mode",
-          action: { type: "Enrol", skill: "Mining" },
+          action: { type: "Enrol" },
           learning: "This is a test",
           notes: null,
           continueCondition: null,

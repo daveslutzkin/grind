@@ -428,7 +428,7 @@ async function runSession(seed: string): Promise<{
       focusMaterialId: material.materialId,
     })
   )
-  logs.push(await executeAction(state, { type: "Fight", enemyId: "cave-rat" }))
+  logs.push(await executeAction(state, { type: "Fight" }))
   logs.push(await executeAction(state, { type: "Move", destination: "TOWN" }))
 
   return { logs, state }

@@ -19,7 +19,7 @@ import {
   GatherMode,
   ExplorationLocationType,
 } from "./types.js"
-import { LOCATION_DISPLAY_NAMES, getSkillForGuildLocation } from "./world.js"
+import { LOCATION_DISPLAY_NAMES } from "./world.js"
 import { getReachableAreas, getAreaDisplayName } from "./exploration.js"
 import { formatWorldState, formatActionLog } from "./agent/formatters.js"
 
@@ -53,16 +53,6 @@ export interface RngStream {
  */
 function normalizeName(name: string): string {
   return name.toLowerCase().replace(/[^\w\s-]/g, "")
-}
-
-export type EnrolSkill = "Exploration" | "Mining" | "Woodcutting" | "Combat" | "Smithing"
-
-const SKILL_MAP: Record<string, EnrolSkill> = {
-  exploration: "Exploration",
-  mining: "Mining",
-  woodcutting: "Woodcutting",
-  combat: "Combat",
-  smithing: "Smithing",
 }
 
 export interface ParseContext {
@@ -248,11 +238,8 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
     }
 
     case "fight": {
-      const enemyId = parts[1]
-      if (!enemyId) {
-        return null
-      }
-      return { type: "Fight", enemyId }
+      // No arguments - enemy resolved by engine from current location
+      return { type: "Fight" }
     }
 
     case "craft": {
@@ -291,20 +278,8 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
 
     case "enrol":
     case "enroll": {
-      const skillName = parts[1]
-      if (!skillName) {
-        // Auto-detect skill from current guild hall location
-        const guildSkill = getSkillForGuildLocation(context.currentLocationId ?? null)
-        if (guildSkill) {
-          return { type: "Enrol", skill: guildSkill }
-        }
-        return null
-      }
-      const skill = SKILL_MAP[skillName.toLowerCase()]
-      if (!skill) {
-        return null
-      }
-      return { type: "Enrol", skill }
+      // No arguments - skill resolved by engine from current guild location
+      return { type: "Enrol" }
     }
 
     case "goto":

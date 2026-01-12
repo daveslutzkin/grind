@@ -9,18 +9,23 @@ describe("Prompts", () => {
       expect(prompt).toContain("text-based game")
     })
 
-    it("should include available action types", () => {
+    it("should include available action formats", () => {
       const prompt = createSystemPrompt("explore the game")
 
-      expect(prompt).toContain("Go")
-      expect(prompt).toContain("Leave")
-      expect(prompt).toContain("Gather")
-      expect(prompt).toContain("Fight")
-      expect(prompt).toContain("Store")
-      expect(prompt).toContain("Drop")
-      expect(prompt).toContain("AcceptContract")
-      expect(prompt).toContain("Enrol")
-      // Note: Craft is not included in gathering MVP (no recipes defined)
+      // Check for new simplified action formats
+      expect(prompt).toContain("go <area name")
+      expect(prompt).toContain("leave")
+      expect(prompt).toContain("fight")
+      expect(prompt).toContain("store <quantity>")
+      expect(prompt).toContain("drop <quantity>")
+      expect(prompt).toContain("accept <contract_id>")
+      expect(prompt).toContain("enrol")
+      expect(prompt).toContain("chop <focus")
+      expect(prompt).toContain("mine <focus")
+      expect(prompt).toContain("explore")
+      expect(prompt).toContain("survey")
+      expect(prompt).toContain("fartravel")
+      expect(prompt).toContain("craft <recipe_id>")
     })
 
     it("should include the objective", () => {
