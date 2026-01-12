@@ -667,7 +667,7 @@ describe("Formatters", () => {
 
       const log = await executeAction(state, {
         type: "Craft",
-        recipeId: "iron-bar-recipe",
+        recipeId: "iron-bar",
       })
 
       const formatted = formatActionLog(log)

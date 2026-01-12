@@ -141,7 +141,7 @@ describe("Evaluation APIs", () => {
       setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD)
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
-      const action: Action = { type: "Craft", recipeId: "iron-bar-recipe" }
+      const action: Action = { type: "Craft", recipeId: "iron-bar" }
 
       const result = evaluateAction(state, action)
 

@@ -90,33 +90,17 @@ function getAreaExplorationStatus(state: WorldState, areaId: string): string {
 
   // Check if fully explored
   const remainingLocations = area.locations.filter((loc) => !knownLocationIds.includes(loc.id))
-  const remainingKnownConnections = state.exploration.connections.filter((conn) => {
+  const remainingConnections = state.exploration.connections.filter((conn) => {
     const isFromCurrent = conn.fromAreaId === areaId
     const isToCurrent = conn.toAreaId === areaId
     if (!isFromCurrent && !isToCurrent) return false
     const connId = `${conn.fromAreaId}->${conn.toAreaId}`
     const reverseConnId = `${conn.toAreaId}->${conn.fromAreaId}`
     const isDiscovered = knownConnectionIds.has(connId) || knownConnectionIds.has(reverseConnId)
-    const targetId = isFromCurrent ? conn.toAreaId : conn.fromAreaId
-    const targetIsKnown = knownAreaIds.includes(targetId)
-    return !isDiscovered && targetIsKnown
-  })
-  const remainingUnknownConnections = state.exploration.connections.filter((conn) => {
-    const isFromCurrent = conn.fromAreaId === areaId
-    const isToCurrent = conn.toAreaId === areaId
-    if (!isFromCurrent && !isToCurrent) return false
-    const connId = `${conn.fromAreaId}->${conn.toAreaId}`
-    const reverseConnId = `${conn.toAreaId}->${conn.fromAreaId}`
-    const isDiscovered = knownConnectionIds.has(connId) || knownConnectionIds.has(reverseConnId)
-    const targetId = isFromCurrent ? conn.toAreaId : conn.fromAreaId
-    const targetIsKnown = knownAreaIds.includes(targetId)
-    return !isDiscovered && !targetIsKnown
+    return !isDiscovered
   })
 
-  const isFullyExplored =
-    remainingLocations.length === 0 &&
-    remainingKnownConnections.length === 0 &&
-    remainingUnknownConnections.length === 0
+  const isFullyExplored = remainingLocations.length === 0 && remainingConnections.length === 0
 
   if (!hasAnyDiscovery) {
     return "unexplored"
@@ -260,8 +244,7 @@ export function formatWorldState(state: WorldState): string {
     const recipeStr = recipes
       .map((r) => {
         const inputs = r.inputs.map((i) => `${i.quantity} ${i.itemId}`).join("+")
-        const id = r.id.replace(/-recipe$/, "")
-        return `${id} (${inputs}, ${r.guildType})`
+        return `${r.id} (${inputs}, ${r.guildType})`
       })
       .join(", ")
     lines.push(`Recipes: ${recipeStr}`)

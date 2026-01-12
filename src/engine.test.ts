@@ -582,7 +582,7 @@ describe("Engine", () => {
       setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD)
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 5 })
-      const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
+      const action: CraftAction = { type: "Craft", recipeId: "iron-bar" }
 
       const log = await await executeAction(state, action)
 
@@ -598,11 +598,11 @@ describe("Engine", () => {
       setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD)
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
-      const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
+      const action: CraftAction = { type: "Craft", recipeId: "iron-bar" }
 
       const log = await await executeAction(state, action)
 
-      expect(log.timeConsumed).toBe(3) // iron-bar-recipe craftTime is 3
+      expect(log.timeConsumed).toBe(3) // iron-bar craftTime is 3
     })
 
     it("should grant Smithing XP", async () => {
@@ -610,7 +610,7 @@ describe("Engine", () => {
       setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD)
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
-      const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
+      const action: CraftAction = { type: "Craft", recipeId: "iron-bar" }
 
       const log = await await executeAction(state, action)
 
@@ -626,7 +626,7 @@ describe("Engine", () => {
       state.exploration.playerState.currentAreaId = areaId
       state.exploration.playerState.currentLocationId = null // At clearing, not a guild hall
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
-      const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
+      const action: CraftAction = { type: "Craft", recipeId: "iron-bar" }
 
       const log = await await executeAction(state, action)
 
@@ -649,7 +649,7 @@ describe("Engine", () => {
       setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD)
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 }) // need 2
-      const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
+      const action: CraftAction = { type: "Craft", recipeId: "iron-bar" }
 
       const log = await await executeAction(state, action)
 
@@ -895,7 +895,7 @@ describe("Engine", () => {
       setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD) // Must be at smithing guild
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
       // Skills start at 0, so Smithing should be 0
-      const action: CraftAction = { type: "Craft", recipeId: "iron-bar-recipe" }
+      const action: CraftAction = { type: "Craft", recipeId: "iron-bar" }
 
       const log = await await executeAction(state, action)
 
