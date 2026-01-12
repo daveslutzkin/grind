@@ -267,6 +267,33 @@ function parseAction(actionText: string, state: WorldState): Action | null {
     return { type: "TurnInCombatToken" }
   }
 
+  // Try to parse Explore action
+  if (/^explore$/i.test(text)) {
+    return { type: "Explore" }
+  }
+
+  // Try to parse Survey action
+  if (/^survey$/i.test(text)) {
+    return { type: "Survey" }
+  }
+
+  // Try to parse FarTravel action
+  // Patterns: "FarTravel DEST", "Far DEST"
+  const farTravelPatterns = [/^fartravel\s+(.+)/i, /^far\s+(.+)/i]
+  for (const pattern of farTravelPatterns) {
+    const match = text.match(pattern)
+    if (match) {
+      const destination = match[1].trim()
+      // Try to resolve as an area name
+      const areaId = matchAreaByName(state, destination)
+      if (areaId) {
+        return { type: "FarTravel", destinationAreaId: areaId }
+      }
+      // Fall back to using destination as-is (might be an area ID directly)
+      return { type: "FarTravel", destinationAreaId: destination }
+    }
+  }
+
   return null
 }
 
