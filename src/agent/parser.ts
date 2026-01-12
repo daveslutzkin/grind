@@ -1,4 +1,4 @@
-import type { Action, WorldState } from "../types.js"
+import type { Action } from "../types.js"
 import { GatherMode } from "../types.js"
 
 /**
@@ -37,7 +37,7 @@ function extractSection(text: string, sectionName: string): string {
 /**
  * Parse the ACTION section into an Action object
  */
-function parseAction(actionText: string, _state: WorldState): Action | null {
+function parseAction(actionText: string): Action | null {
   if (!actionText) return null
 
   // Normalize the text
@@ -189,14 +189,14 @@ function parseAction(actionText: string, _state: WorldState): Action | null {
 /**
  * Parse an LLM response into a structured AgentResponse
  */
-export function parseAgentResponse(response: string, state: WorldState): AgentResponse {
+export function parseAgentResponse(response: string): AgentResponse {
   const reasoning = extractSection(response, "REASONING")
   const actionText = extractSection(response, "ACTION")
   const learning = extractSection(response, "LEARNING")
   const notes = extractSection(response, "NOTES") || null
   const continueCondition = extractSection(response, "CONTINUE_IF") || null
 
-  const action = parseAction(actionText, state)
+  const action = parseAction(actionText)
 
   if (!action && actionText) {
     return {
