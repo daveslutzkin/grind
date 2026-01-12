@@ -441,8 +441,8 @@ describe("Engine", () => {
       }
     })
 
-    it("should succeed if inventory full but already has that item (slot-based)", async () => {
-      const state = createWorld("ore-test")
+    it("should succeed with full inventory but discard overflow (non-stacking)", async () => {
+      const state = createWorld("overflow-test")
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
       state.exploration.playerState.currentAreaId = areaId
@@ -450,23 +450,74 @@ describe("Engine", () => {
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
       expect(node).toBeDefined()
-      const material = node!.materials[0]
-      // Fill 19 slots with other items, 1 slot with the material from the node
-      for (let i = 0; i < 19; i++) {
+      moveToNodeLocation(state, node!.nodeId, areaId)
+      // Find a material that requires level 1 or less
+      const material = node!.materials.find((m) => m.requiredLevel <= 1)
+      expect(material).toBeDefined()
+      // Fill all 10 slots - inventory is completely full
+      for (let i = 0; i < 10; i++) {
         state.player.inventory.push({ itemId: `ITEM_${i}`, quantity: 1 })
       }
-      state.player.inventory.push({ itemId: material.materialId, quantity: 1 })
       const action: GatherAction = {
         type: "Gather",
         nodeId: node!.nodeId,
         mode: GatherMode.FOCUS,
-        focusMaterialId: material.materialId,
+        focusMaterialId: material!.materialId,
       }
 
       const log = await await executeAction(state, action)
 
-      // Should not fail with INVENTORY_FULL because we can stack on existing material
-      expect(log.failureType).not.toBe("INVENTORY_FULL")
+      // Should succeed but discard all gathered items (no room)
+      expect(log.success).toBe(true)
+      expect(log.extraction?.discardedItems).toBeDefined()
+      expect(log.extraction?.discardedItems?.length).toBeGreaterThan(0)
+      // Inventory should still be full with the original items
+      expect(state.player.inventory.length).toBe(10)
+    })
+
+    it("should report partial discard when inventory nearly full", async () => {
+      const state = createWorld("partial-overflow-test")
+      const areaId = getOreAreaId(state)
+      makeAreaKnown(state, areaId)
+      state.exploration.playerState.currentAreaId = areaId
+      discoverAllLocations(state, areaId)
+      state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
+      const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
+      expect(node).toBeDefined()
+      moveToNodeLocation(state, node!.nodeId, areaId)
+      // Find a material that requires level 1 or less
+      const material = node!.materials.find((m) => m.requiredLevel <= 1)
+      expect(material).toBeDefined()
+      // Fill 8 of 10 slots - 2 slots available
+      for (let i = 0; i < 8; i++) {
+        state.player.inventory.push({ itemId: `ITEM_${i}`, quantity: 1 })
+      }
+      const action: GatherAction = {
+        type: "Gather",
+        nodeId: node!.nodeId,
+        mode: GatherMode.FOCUS,
+        focusMaterialId: material!.materialId,
+      }
+
+      const log = await await executeAction(state, action)
+
+      // Should succeed
+      expect(log.success).toBe(true)
+      // extracted = amount taken from node (may exceed inventory space)
+      const extracted = log.extraction?.extracted?.[0]?.quantity ?? 0
+      // discarded = amount that couldn't fit
+      const discarded = log.extraction?.discardedItems?.[0]?.quantity ?? 0
+      // Amount actually added = extracted - discarded
+      const actuallyAdded = extracted - discarded
+      // With 8 slots filled and 2 available, should have added at most 2
+      expect(actuallyAdded).toBeLessThanOrEqual(2)
+      expect(actuallyAdded).toBeGreaterThan(0)
+      // If we extracted more than 2, some must have been discarded
+      if (extracted > 2) {
+        expect(discarded).toBeGreaterThan(0)
+      }
+      // Inventory should be at capacity
+      expect(state.player.inventory.length).toBe(10)
     })
   })
 
