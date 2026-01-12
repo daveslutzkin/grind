@@ -1,70 +1,5 @@
 import type { Action, WorldState } from "../types.js"
 import { GatherMode } from "../types.js"
-import { LOCATION_DISPLAY_NAMES } from "../world.js"
-import { getAreaDisplayName } from "../exploration.js"
-
-/**
- * Normalize a name for comparison by removing punctuation (apostrophes, etc.)
- * but keeping letters, numbers, spaces, and dashes
- */
-function normalizeName(name: string): string {
-  return name.toLowerCase().replace(/[^\w\s-]/g, "")
-}
-
-/**
- * Match a destination name to a location ID from LOCATION_DISPLAY_NAMES
- * Returns the location ID if found, null otherwise
- */
-function matchLocationByName(input: string): string | null {
-  const normalizedInput = normalizeName(input)
-  for (const [locationId, displayName] of Object.entries(LOCATION_DISPLAY_NAMES)) {
-    if (normalizeName(displayName).includes(normalizedInput)) {
-      return locationId
-    }
-  }
-  return null
-}
-
-/**
- * Match an area name to an area ID using the exploration system
- * Returns the area ID if found, null otherwise
- */
-function matchAreaByName(state: WorldState, input: string): string | null {
-  const normalizedInput = normalizeName(input)
-  const exploration = state.exploration
-
-  // Check all known connections to find areas with matching names
-  for (const areaId of exploration.playerState.knownAreaIds) {
-    const area = exploration.areas.get(areaId)
-    const displayName = getAreaDisplayName(areaId, area)
-    if (normalizeName(displayName) === normalizedInput) {
-      return areaId
-    }
-  }
-
-  // Also check areas that have known connections but aren't in knownAreaIds yet
-  // (This handles the case where we discovered a connection but haven't visited)
-  const knownConnectionIds = new Set(exploration.playerState.knownConnectionIds)
-  for (const connection of exploration.connections) {
-    // Check if this connection is known
-    const connId1 = `${connection.fromAreaId}->${connection.toAreaId}`
-    const connId2 = `${connection.toAreaId}->${connection.fromAreaId}`
-    if (knownConnectionIds.has(connId1) || knownConnectionIds.has(connId2)) {
-      // Check both areas in this connection
-      for (const areaId of [connection.fromAreaId, connection.toAreaId]) {
-        if (!exploration.playerState.knownAreaIds.includes(areaId)) {
-          const area = exploration.areas.get(areaId)
-          const displayName = getAreaDisplayName(areaId, area)
-          if (normalizeName(displayName) === normalizedInput) {
-            return areaId
-          }
-        }
-      }
-    }
-  }
-
-  return null
-}
 
 /**
  * Parsed response from the LLM agent
@@ -102,7 +37,7 @@ function extractSection(text: string, sectionName: string): string {
 /**
  * Parse the ACTION section into an Action object
  */
-function parseAction(actionText: string, state: WorldState): Action | null {
+function parseAction(actionText: string, _state: WorldState): Action | null {
   if (!actionText) return null
 
   // Normalize the text
@@ -113,24 +48,13 @@ function parseAction(actionText: string, state: WorldState): Action | null {
     return { type: "Leave" }
   }
 
-  // Try to parse Go/Move action
+  // Try to parse Go/Move action - engine resolves destination
   // Patterns: "Go to DEST", "Move to DEST", "Go DEST", "Move DEST"
   const goPatterns = [/^go\s+to\s+(.+)/i, /^go\s+(.+)/i, /^move\s+to\s+(.+)/i, /^move\s+(.+)/i]
   for (const pattern of goPatterns) {
     const match = text.match(pattern)
     if (match) {
       const destination = match[1].trim()
-      // First, try to match as a location (guild, warehouse, etc.)
-      const locationId = matchLocationByName(destination)
-      if (locationId) {
-        return { type: "TravelToLocation", locationId }
-      }
-      // Second, try to resolve as an area name
-      const areaId = matchAreaByName(state, destination)
-      if (areaId) {
-        return { type: "Move", destination: areaId }
-      }
-      // Fall back to using destination as-is (might be an area ID directly)
       return { type: "Move", destination }
     }
   }
@@ -248,19 +172,13 @@ function parseAction(actionText: string, state: WorldState): Action | null {
     return { type: "Survey" }
   }
 
-  // Try to parse FarTravel action
+  // Try to parse FarTravel action - engine resolves destination
   // Patterns: "FarTravel DEST", "Far DEST"
   const farTravelPatterns = [/^fartravel\s+(.+)/i, /^far\s+(.+)/i]
   for (const pattern of farTravelPatterns) {
     const match = text.match(pattern)
     if (match) {
       const destination = match[1].trim()
-      // Try to resolve as an area name
-      const areaId = matchAreaByName(state, destination)
-      if (areaId) {
-        return { type: "FarTravel", destinationAreaId: areaId }
-      }
-      // Fall back to using destination as-is (might be an area ID directly)
       return { type: "FarTravel", destinationAreaId: destination }
     }
   }

@@ -248,7 +248,8 @@ describe("runSession", () => {
         },
       })
 
-      expect(beforeCalls).toEqual(["TravelToLocation", "Enrol", "Leave", "Survey"])
+      // After refactoring: parser returns "Move", not "TravelToLocation"
+      expect(beforeCalls).toEqual(["Move", "Enrol", "Leave", "Survey"])
     })
   })
 

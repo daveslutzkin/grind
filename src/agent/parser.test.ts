@@ -320,7 +320,7 @@ ACTION: move to COPSE
       })
     })
 
-    it("should parse Go to location as TravelToLocation", () => {
+    it("should parse Go to location as Move (engine resolves destination)", () => {
       const response = `
 REASONING: Going to a guild.
 
@@ -328,8 +328,8 @@ ACTION: Go to Miners Guild
 `
       const parsed = parseAgentResponse(response, testState)
 
-      expect(parsed.action?.type).toBe("TravelToLocation")
-      expect((parsed.action as { locationId: string }).locationId).toBe("TOWN_MINERS_GUILD")
+      expect(parsed.action?.type).toBe("Move")
+      expect((parsed.action as { destination: string }).destination).toBe("Miners Guild")
     })
 
     it("should parse NOTES section", () => {

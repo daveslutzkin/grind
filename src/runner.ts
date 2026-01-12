@@ -3,15 +3,7 @@
  * Contains common types, command parsing, display formatting, and statistics
  */
 
-import type {
-  Action,
-  ActionLog,
-  WorldState,
-  SkillID,
-  SkillState,
-  ExplorationLocation,
-  AreaID,
-} from "./types.js"
+import type { Action, ActionLog, WorldState, SkillID, SkillState, AreaID } from "./types.js"
 import {
   getTotalXP,
   getCurrentAreaId,
@@ -19,7 +11,6 @@ import {
   GatherMode,
   ExplorationLocationType,
 } from "./types.js"
-import { LOCATION_DISPLAY_NAMES } from "./world.js"
 import { getReachableAreas, getAreaDisplayName } from "./exploration.js"
 import { formatWorldState, formatActionLog } from "./agent/formatters.js"
 
@@ -46,14 +37,6 @@ export interface RngStream {
 // ============================================================================
 // Command Parsing
 // ============================================================================
-
-/**
- * Normalize a name for comparison by removing punctuation (apostrophes, periods, etc.)
- * but keeping letters, numbers, spaces, and dashes
- */
-function normalizeName(name: string): string {
-  return name.toLowerCase().replace(/[^\w\s-]/g, "")
-}
 
 export interface ParseContext {
   /** Known area IDs for area name matching (optional) */
@@ -185,56 +168,12 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
     case "fartravel":
     case "far": {
       // Far travel - multi-hop travel to any known reachable area
-      const inputName = parts.slice(1).join(" ").toLowerCase()
-      if (!inputName) {
+      const destination = parts.slice(1).join(" ")
+      if (!destination) {
         // No destination - this will be handled as a meta command to show the list
         return null
       }
-
-      // Match against known area names (case-insensitive, prefix match, ignoring punctuation)
-      if (context.state?.exploration) {
-        const knownAreaIds = context.state.exploration.playerState.knownAreaIds
-        const inputWithDashes = inputName.replace(/\s+/g, "-")
-        const normalizedInput = normalizeName(inputName)
-
-        // Collect all matching areas
-        const exactMatches: string[] = []
-        const prefixMatches: string[] = []
-
-        for (const areaId of knownAreaIds) {
-          const area = context.state.exploration.areas.get(areaId)
-          if (area?.name) {
-            const normalizedAreaName = normalizeName(area.name)
-            if (normalizedAreaName === normalizedInput) {
-              exactMatches.push(areaId)
-            } else if (normalizedAreaName.startsWith(normalizedInput)) {
-              prefixMatches.push(areaId)
-            }
-          }
-          // Also check raw area IDs
-          if (areaId.toLowerCase() === inputName || areaId.toLowerCase() === inputWithDashes) {
-            if (!exactMatches.includes(areaId)) exactMatches.push(areaId)
-          } else if (
-            areaId.toLowerCase().startsWith(inputName) ||
-            areaId.toLowerCase().startsWith(inputWithDashes)
-          ) {
-            if (!prefixMatches.includes(areaId)) prefixMatches.push(areaId)
-          }
-        }
-
-        // Prefer exact matches, then unique prefix matches
-        if (exactMatches.length === 1) {
-          return { type: "FarTravel", destinationAreaId: exactMatches[0] }
-        }
-        if (exactMatches.length === 0 && prefixMatches.length === 1) {
-          return { type: "FarTravel", destinationAreaId: prefixMatches[0] }
-        }
-        if (exactMatches.length > 1 || prefixMatches.length > 1) {
-          return null
-        }
-      }
-
-      return null
+      return { type: "FarTravel", destinationAreaId: destination }
     }
 
     case "fight": {
@@ -287,130 +226,12 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
     case "move":
     case "mv":
     case "travel": {
-      // Unified travel command - works for both locations and areas
-      const inputName = parts.slice(1).join(" ").toLowerCase()
-      if (!inputName) {
+      // Unified travel command - engine resolves destination
+      const destination = parts.slice(1).join(" ")
+      if (!destination) {
         return null
       }
-
-      // Normalize input for matching (remove punctuation)
-      const normalizedInput = normalizeName(inputName)
-
-      // First, check for gathering node types (move ore vein, move mining, etc.)
-      // Resolve to the actual location in the current area
-      const oreVeinAliases = ["ore vein", "ore", "mining", "mine"]
-      const treeStandAliases = ["tree stand", "tree", "woodcutting", "chop"]
-      if (oreVeinAliases.includes(inputName) || treeStandAliases.includes(inputName)) {
-        const skillType = oreVeinAliases.includes(inputName) ? "Mining" : "Woodcutting"
-        const currentAreaId = context.state?.exploration.playerState.currentAreaId
-        const area = context.state?.exploration.areas.get(currentAreaId ?? "")
-        const knownLocationIds = new Set(
-          context.state?.exploration.playerState.knownLocationIds ?? []
-        )
-        const matchingLocation = area?.locations.find(
-          (loc: ExplorationLocation) =>
-            loc.type === ExplorationLocationType.GATHERING_NODE &&
-            loc.gatheringSkillType === skillType &&
-            knownLocationIds.has(loc.id)
-        )
-        if (matchingLocation) {
-          return { type: "TravelToLocation", locationId: matchingLocation.id }
-        }
-        return null
-      }
-
-      // Check for enemy camp aliases (camp, enemy camp, mob camp)
-      const enemyCampAliases = ["enemy camp", "camp", "mob camp"]
-      const baseAlias = enemyCampAliases.find((alias) => inputName.startsWith(alias))
-      if (baseAlias) {
-        // Extract optional index (e.g., "enemy camp 2" -> index 2)
-        const remainder = inputName.slice(baseAlias.length).trim()
-        const index = remainder ? parseInt(remainder, 10) : 1
-
-        const currentAreaId = context.state?.exploration.playerState.currentAreaId
-        const area = context.state?.exploration.areas.get(currentAreaId ?? "")
-        const knownLocationIds = new Set(
-          context.state?.exploration.playerState.knownLocationIds ?? []
-        )
-        const mobCampLocations =
-          area?.locations.filter(
-            (loc: ExplorationLocation) =>
-              loc.type === ExplorationLocationType.MOB_CAMP && knownLocationIds.has(loc.id)
-          ) ?? []
-
-        if (mobCampLocations.length === 0) {
-          return null
-        }
-
-        if (isNaN(index) || index < 1 || index > mobCampLocations.length) {
-          return null
-        }
-
-        return { type: "TravelToLocation", locationId: mobCampLocations[index - 1].id }
-      }
-
-      // Next, try to match against location display names (case-insensitive, partial match, ignoring punctuation)
-      const matchedLocation = Object.entries(LOCATION_DISPLAY_NAMES).find(([, displayName]) =>
-        normalizeName(displayName).includes(normalizedInput)
-      )
-      if (matchedLocation) {
-        return { type: "TravelToLocation", locationId: matchedLocation[0] }
-      }
-
-      // Next, check if it matches a known area (for inter-area travel)
-      // Match against both raw area IDs and human-readable area names
-      if (context.knownAreaIds && context.state?.exploration) {
-        const inputWithDashes = inputName.replace(/\s+/g, "-")
-
-        // Collect all matching areas (both exact and prefix matches)
-        const exactMatches: string[] = []
-        const prefixMatches: string[] = []
-
-        for (const areaId of context.knownAreaIds) {
-          const area = context.state.exploration.areas.get(areaId)
-          if (area?.name) {
-            const normalizedAreaName = normalizeName(area.name)
-            if (normalizedAreaName === normalizedInput) {
-              exactMatches.push(areaId)
-            } else if (normalizedAreaName.startsWith(normalizedInput)) {
-              prefixMatches.push(areaId)
-            }
-          }
-        }
-
-        // Prefer exact matches, then unique prefix matches
-        // If ambiguous (multiple prefix matches), fail to let user be more specific
-        if (exactMatches.length === 1) {
-          return { type: "ExplorationTravel", destinationAreaId: exactMatches[0] }
-        }
-        if (exactMatches.length === 0 && prefixMatches.length === 1) {
-          return { type: "ExplorationTravel", destinationAreaId: prefixMatches[0] }
-        }
-        // If multiple matches, don't return - let it fall through to fail
-
-        // Fall back to matching raw area IDs (same logic: prefer exact, then unique prefix)
-        const exactIdMatches = context.knownAreaIds.filter(
-          (a) => a.toLowerCase() === inputName || a.toLowerCase() === inputWithDashes
-        )
-        const prefixIdMatches = context.knownAreaIds.filter(
-          (a) =>
-            (a.toLowerCase().startsWith(inputName) ||
-              a.toLowerCase().startsWith(inputWithDashes)) &&
-            a.toLowerCase() !== inputName &&
-            a.toLowerCase() !== inputWithDashes
-        )
-
-        if (exactIdMatches.length === 1) {
-          return { type: "ExplorationTravel", destinationAreaId: exactIdMatches[0] }
-        }
-        if (exactIdMatches.length === 0 && prefixIdMatches.length === 1) {
-          return { type: "ExplorationTravel", destinationAreaId: prefixIdMatches[0] }
-        }
-      }
-
-      // Fall back: try as location ID (uppercase with underscores)
-      const locationId = parts.slice(1).join("_").toUpperCase()
-      return { type: "TravelToLocation", locationId }
+      return { type: "Move", destination }
     }
 
     case "leave": {

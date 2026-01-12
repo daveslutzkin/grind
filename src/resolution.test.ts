@@ -1,0 +1,314 @@
+import { resolveDestination, GATHERING_NODE_ALIASES, ENEMY_CAMP_ALIASES } from "./resolution.js"
+import type { WorldState, Area } from "./types.js"
+import { ExplorationLocationType } from "./types.js"
+import { createWorld } from "./world.js"
+
+describe("Resolution Module", () => {
+  let state: WorldState
+
+  beforeEach(() => {
+    // Create a test world with known areas and locations
+    state = createWorld("test-seed")
+
+    // Ensure we have some known areas and locations for testing
+    // TOWN should exist by default
+    state.exploration.playerState.knownAreaIds = ["TOWN"]
+    state.exploration.playerState.knownLocationIds = []
+    state.exploration.playerState.currentAreaId = "TOWN"
+
+    // Add a test area with various location types
+    const testArea: Area = {
+      id: "TEST_AREA",
+      name: "Test Area",
+      distance: 1,
+      generated: true,
+      locations: [
+        {
+          id: "TEST_AREA-ORE_VEIN-loc-1",
+          areaId: "TEST_AREA",
+          type: ExplorationLocationType.GATHERING_NODE,
+          gatheringSkillType: "Mining",
+        },
+        {
+          id: "TEST_AREA-TREE_STAND-loc-2",
+          areaId: "TEST_AREA",
+          type: ExplorationLocationType.GATHERING_NODE,
+          gatheringSkillType: "Woodcutting",
+        },
+        {
+          id: "TEST_AREA-MOB_CAMP-loc-3",
+          areaId: "TEST_AREA",
+          type: ExplorationLocationType.MOB_CAMP,
+          creatureType: "Goblin",
+          difficulty: 0,
+        },
+        {
+          id: "TEST_AREA-MOB_CAMP-loc-4",
+          areaId: "TEST_AREA",
+          type: ExplorationLocationType.MOB_CAMP,
+          creatureType: "Orc",
+          difficulty: 1,
+        },
+      ],
+      indexInDistance: 0,
+    }
+
+    state.exploration.areas.set("TEST_AREA", testArea)
+    state.exploration.playerState.knownAreaIds.push("TEST_AREA")
+    state.exploration.playerState.knownLocationIds = [
+      "TEST_AREA-ORE_VEIN-loc-1",
+      "TEST_AREA-TREE_STAND-loc-2",
+      "TEST_AREA-MOB_CAMP-loc-3",
+      "TEST_AREA-MOB_CAMP-loc-4",
+    ]
+
+    // Add a second test area for multi-area resolution
+    const secondArea: Area = {
+      id: "SECOND_AREA",
+      name: "Second Test Area",
+      distance: 1,
+      generated: true,
+      locations: [],
+      indexInDistance: 1,
+    }
+
+    state.exploration.areas.set("SECOND_AREA", secondArea)
+    state.exploration.playerState.knownAreaIds.push("SECOND_AREA")
+
+    // Set current area to TEST_AREA for location resolution
+    state.exploration.playerState.currentAreaId = "TEST_AREA"
+  })
+
+  describe("resolveDestination - gathering node aliases", () => {
+    it("should resolve 'ore' to ore vein location", () => {
+      const result = resolveDestination(state, "ore", "near")
+      expect(result.type).toBe("location")
+      expect(result.locationId).toBe("TEST_AREA-ORE_VEIN-loc-1")
+    })
+
+    it("should resolve 'ore vein' to ore vein location", () => {
+      const result = resolveDestination(state, "ore vein", "near")
+      expect(result.type).toBe("location")
+      expect(result.locationId).toBe("TEST_AREA-ORE_VEIN-loc-1")
+    })
+
+    it("should resolve 'mining' to ore vein location", () => {
+      const result = resolveDestination(state, "mining", "near")
+      expect(result.type).toBe("location")
+      expect(result.locationId).toBe("TEST_AREA-ORE_VEIN-loc-1")
+    })
+
+    it("should resolve 'mine' to ore vein location", () => {
+      const result = resolveDestination(state, "mine", "near")
+      expect(result.type).toBe("location")
+      expect(result.locationId).toBe("TEST_AREA-ORE_VEIN-loc-1")
+    })
+
+    it("should resolve 'tree' to tree stand location", () => {
+      const result = resolveDestination(state, "tree", "near")
+      expect(result.type).toBe("location")
+      expect(result.locationId).toBe("TEST_AREA-TREE_STAND-loc-2")
+    })
+
+    it("should resolve 'tree stand' to tree stand location", () => {
+      const result = resolveDestination(state, "tree stand", "near")
+      expect(result.type).toBe("location")
+      expect(result.locationId).toBe("TEST_AREA-TREE_STAND-loc-2")
+    })
+
+    it("should resolve 'woodcutting' to tree stand location", () => {
+      const result = resolveDestination(state, "woodcutting", "near")
+      expect(result.type).toBe("location")
+      expect(result.locationId).toBe("TEST_AREA-TREE_STAND-loc-2")
+    })
+
+    it("should resolve 'chop' to tree stand location", () => {
+      const result = resolveDestination(state, "chop", "near")
+      expect(result.type).toBe("location")
+      expect(result.locationId).toBe("TEST_AREA-TREE_STAND-loc-2")
+    })
+
+    it("should return notFound when gathering node not in current area", () => {
+      state.exploration.playerState.currentAreaId = "TOWN"
+      const result = resolveDestination(state, "ore", "near")
+      expect(result.type).toBe("notFound")
+      expect(result.reason).toContain("No Mining node found")
+    })
+  })
+
+  describe("resolveDestination - enemy camp aliases", () => {
+    it("should resolve 'camp' to first enemy camp", () => {
+      const result = resolveDestination(state, "camp", "near")
+      expect(result.type).toBe("location")
+      expect(result.locationId).toBe("TEST_AREA-MOB_CAMP-loc-3")
+    })
+
+    it("should resolve 'enemy camp' to first enemy camp", () => {
+      const result = resolveDestination(state, "enemy camp", "near")
+      expect(result.type).toBe("location")
+      expect(result.locationId).toBe("TEST_AREA-MOB_CAMP-loc-3")
+    })
+
+    it("should resolve 'mob camp' to first enemy camp", () => {
+      const result = resolveDestination(state, "mob camp", "near")
+      expect(result.type).toBe("location")
+      expect(result.locationId).toBe("TEST_AREA-MOB_CAMP-loc-3")
+    })
+
+    it("should resolve 'enemy camp 2' to second enemy camp", () => {
+      const result = resolveDestination(state, "enemy camp 2", "near")
+      expect(result.type).toBe("location")
+      expect(result.locationId).toBe("TEST_AREA-MOB_CAMP-loc-4")
+    })
+
+    it("should resolve 'camp 2' to second enemy camp", () => {
+      const result = resolveDestination(state, "camp 2", "near")
+      expect(result.type).toBe("location")
+      expect(result.locationId).toBe("TEST_AREA-MOB_CAMP-loc-4")
+    })
+
+    it("should return notFound for invalid camp index", () => {
+      const result = resolveDestination(state, "camp 5", "near")
+      expect(result.type).toBe("notFound")
+    })
+
+    it("should return notFound when no enemy camps in current area", () => {
+      state.exploration.playerState.currentAreaId = "TOWN"
+      const result = resolveDestination(state, "camp", "near")
+      expect(result.type).toBe("notFound")
+      expect(result.reason).toContain("No enemy camps found")
+    })
+  })
+
+  describe("resolveDestination - area names", () => {
+    it("should resolve exact area name match", () => {
+      const result = resolveDestination(state, "Test Area", "near")
+      expect(result.type).toBe("area")
+      expect(result.areaId).toBe("TEST_AREA")
+    })
+
+    it("should resolve area name prefix match", () => {
+      const result = resolveDestination(state, "Test", "near")
+      expect(result.type).toBe("area")
+      expect(result.areaId).toBe("TEST_AREA")
+    })
+
+    it("should resolve area name case-insensitively", () => {
+      const result = resolveDestination(state, "test area", "near")
+      expect(result.type).toBe("area")
+      expect(result.areaId).toBe("TEST_AREA")
+    })
+
+    it("should resolve raw area ID", () => {
+      const result = resolveDestination(state, "TEST_AREA", "near")
+      expect(result.type).toBe("area")
+      expect(result.areaId).toBe("TEST_AREA")
+    })
+
+    it("should resolve raw area ID case-insensitively", () => {
+      const result = resolveDestination(state, "test_area", "near")
+      expect(result.type).toBe("area")
+      expect(result.areaId).toBe("TEST_AREA")
+    })
+
+    it("should prefer exact match over prefix match", () => {
+      // Add another area with a similar prefix
+      const area: Area = {
+        id: "TEST_SHORTER",
+        name: "Test Shorter",
+        distance: 1,
+        generated: true,
+        locations: [],
+        indexInDistance: 2,
+      }
+      state.exploration.areas.set("TEST_SHORTER", area)
+      state.exploration.playerState.knownAreaIds.push("TEST_SHORTER")
+
+      // "Test Area" exactly matches TEST_AREA's name
+      const result = resolveDestination(state, "Test Area", "near")
+      expect(result.type).toBe("area")
+      expect(result.areaId).toBe("TEST_AREA")
+    })
+
+    it("should return notFound for ambiguous prefix", () => {
+      // Create two areas that both match the same prefix
+      const area1: Area = {
+        id: "SIMILAR_ONE",
+        name: "Similar One",
+        distance: 1,
+        generated: true,
+        locations: [],
+        indexInDistance: 2,
+      }
+      const area2: Area = {
+        id: "SIMILAR_TWO",
+        name: "Similar Two",
+        distance: 1,
+        generated: true,
+        locations: [],
+        indexInDistance: 3,
+      }
+      state.exploration.areas.set("SIMILAR_ONE", area1)
+      state.exploration.areas.set("SIMILAR_TWO", area2)
+      state.exploration.playerState.knownAreaIds.push("SIMILAR_ONE", "SIMILAR_TWO")
+
+      // "Similar" is ambiguous - matches both areas
+      const result = resolveDestination(state, "Similar", "near")
+      expect(result.type).toBe("notFound")
+    })
+
+    it("should return notFound for unknown area", () => {
+      const result = resolveDestination(state, "Unknown Area", "near")
+      expect(result.type).toBe("notFound")
+      expect(result.reason).toContain("Unknown destination")
+    })
+  })
+
+  describe("resolveDestination - mode differences", () => {
+    it("should resolve to 'area' type in 'near' mode", () => {
+      const result = resolveDestination(state, "TEST_AREA", "near")
+      expect(result.type).toBe("area")
+    })
+
+    it("should resolve to 'farTravel' type in 'far' mode", () => {
+      const result = resolveDestination(state, "TEST_AREA", "far")
+      expect(result.type).toBe("farTravel")
+      expect(result.areaId).toBe("TEST_AREA")
+    })
+
+    it("should search all known areas in 'far' mode", () => {
+      // Move to TOWN (not adjacent to SECOND_AREA)
+      state.exploration.playerState.currentAreaId = "TOWN"
+
+      // In 'near' mode, SECOND_AREA might not be reachable
+      // But in 'far' mode, it should be found
+      const result = resolveDestination(state, "SECOND_AREA", "far")
+      expect(result.type).toBe("farTravel")
+      expect(result.areaId).toBe("SECOND_AREA")
+    })
+  })
+
+  describe("GATHERING_NODE_ALIASES constant", () => {
+    it("should contain all ore vein aliases", () => {
+      expect(GATHERING_NODE_ALIASES["ore"]).toBe("Mining")
+      expect(GATHERING_NODE_ALIASES["ore vein"]).toBe("Mining")
+      expect(GATHERING_NODE_ALIASES["mining"]).toBe("Mining")
+      expect(GATHERING_NODE_ALIASES["mine"]).toBe("Mining")
+    })
+
+    it("should contain all tree stand aliases", () => {
+      expect(GATHERING_NODE_ALIASES["tree"]).toBe("Woodcutting")
+      expect(GATHERING_NODE_ALIASES["tree stand"]).toBe("Woodcutting")
+      expect(GATHERING_NODE_ALIASES["woodcutting"]).toBe("Woodcutting")
+      expect(GATHERING_NODE_ALIASES["chop"]).toBe("Woodcutting")
+    })
+  })
+
+  describe("ENEMY_CAMP_ALIASES constant", () => {
+    it("should contain all enemy camp aliases", () => {
+      expect(ENEMY_CAMP_ALIASES).toContain("enemy camp")
+      expect(ENEMY_CAMP_ALIASES).toContain("camp")
+      expect(ENEMY_CAMP_ALIASES).toContain("mob camp")
+    })
+  })
+})
