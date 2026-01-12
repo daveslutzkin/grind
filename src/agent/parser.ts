@@ -1,6 +1,7 @@
-import type { Action, SkillID } from "../types.js"
+import type { Action, SkillID, WorldState } from "../types.js"
 import { GatherMode } from "../types.js"
 import { LOCATION_DISPLAY_NAMES } from "../world.js"
+import { getAreaDisplayName } from "../exploration.js"
 
 /**
  * Valid skill names for normalization
@@ -51,6 +52,47 @@ function matchLocationByName(input: string): string | null {
 }
 
 /**
+ * Match an area name to an area ID using the exploration system
+ * Returns the area ID if found, null otherwise
+ */
+function matchAreaByName(state: WorldState, input: string): string | null {
+  const normalizedInput = normalizeName(input)
+  const exploration = state.exploration
+
+  // Check all known connections to find areas with matching names
+  for (const areaId of exploration.playerState.knownAreaIds) {
+    const area = exploration.areas.get(areaId)
+    const displayName = getAreaDisplayName(areaId, area)
+    if (normalizeName(displayName) === normalizedInput) {
+      return areaId
+    }
+  }
+
+  // Also check areas that have known connections but aren't in knownAreaIds yet
+  // (This handles the case where we discovered a connection but haven't visited)
+  const knownConnectionIds = new Set(exploration.playerState.knownConnectionIds)
+  for (const connection of exploration.connections) {
+    // Check if this connection is known
+    const connId1 = `${connection.fromAreaId}->${connection.toAreaId}`
+    const connId2 = `${connection.toAreaId}->${connection.fromAreaId}`
+    if (knownConnectionIds.has(connId1) || knownConnectionIds.has(connId2)) {
+      // Check both areas in this connection
+      for (const areaId of [connection.fromAreaId, connection.toAreaId]) {
+        if (!exploration.playerState.knownAreaIds.includes(areaId)) {
+          const area = exploration.areas.get(areaId)
+          const displayName = getAreaDisplayName(areaId, area)
+          if (normalizeName(displayName) === normalizedInput) {
+            return areaId
+          }
+        }
+      }
+    }
+  }
+
+  return null
+}
+
+/**
  * Parsed response from the LLM agent
  */
 export interface AgentResponse {
@@ -86,7 +128,7 @@ function extractSection(text: string, sectionName: string): string {
 /**
  * Parse the ACTION section into an Action object
  */
-function parseAction(actionText: string): Action | null {
+function parseAction(actionText: string, state: WorldState): Action | null {
   if (!actionText) return null
 
   // Normalize the text
@@ -109,7 +151,12 @@ function parseAction(actionText: string): Action | null {
       if (locationId) {
         return { type: "TravelToLocation", locationId }
       }
-      // Fall back to area movement
+      // Second, try to resolve as an area name
+      const areaId = matchAreaByName(state, destination)
+      if (areaId) {
+        return { type: "Move", destination: areaId }
+      }
+      // Fall back to using destination as-is (might be an area ID directly)
       return { type: "Move", destination }
     }
   }
@@ -226,14 +273,14 @@ function parseAction(actionText: string): Action | null {
 /**
  * Parse an LLM response into a structured AgentResponse
  */
-export function parseAgentResponse(response: string): AgentResponse {
+export function parseAgentResponse(response: string, state: WorldState): AgentResponse {
   const reasoning = extractSection(response, "REASONING")
   const actionText = extractSection(response, "ACTION")
   const learning = extractSection(response, "LEARNING")
   const notes = extractSection(response, "NOTES") || null
   const continueCondition = extractSection(response, "CONTINUE_IF") || null
 
-  const action = parseAction(actionText)
+  const action = parseAction(actionText, state)
 
   if (!action && actionText) {
     return {

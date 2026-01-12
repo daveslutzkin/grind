@@ -282,7 +282,7 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
         conversationHistory.push(`AGENT:\n${rawLlmResponse}`)
 
         // Parse response
-        response = parseAgentResponse(rawLlmResponse)
+        response = parseAgentResponse(rawLlmResponse, state)
 
         if (response.error || !response.action) {
           return {
