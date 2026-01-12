@@ -35,9 +35,8 @@ import {
   calculateExpectedTicks,
   prepareSurveyData,
   buildDiscoverables,
-  getAreaDisplayName,
 } from "./exploration.js"
-import { getSkillForGuildLocation, getLocationDisplayName } from "./world.js"
+import { getSkillForGuildLocation } from "./world.js"
 
 /**
  * Represents an available action with cost information
@@ -145,7 +144,8 @@ export function getAvailableActions(state: WorldState): AvailableAction[] {
 }
 
 /**
- * Add crafting actions if player has ingredients and skill
+ * Add craft action if player can craft any recipe at this guild.
+ * Shows placeholder since time varies by recipe.
  */
 function addCraftingActions(
   state: WorldState,
@@ -155,6 +155,7 @@ function addCraftingActions(
   const currentLocation = getCurrentLocation(state)
   const recipes = state.world.recipes.filter((r) => r.guildType === guildType)
 
+  // Find first craftable recipe
   for (const recipe of recipes) {
     // Check guild level requirement
     if (
@@ -168,18 +169,34 @@ function addCraftingActions(
     const craftCheck = checkAction(state, craftAction)
 
     if (craftCheck.valid) {
+      // Calculate average craft time across all craftable recipes
+      const craftableRecipes = recipes.filter((r) => {
+        if (
+          currentLocation?.guildLevel !== undefined &&
+          currentLocation.guildLevel < r.requiredSkillLevel
+        ) {
+          return false
+        }
+        return checkAction(state, { type: "Craft", recipeId: r.id }).valid
+      })
+      const avgCraftTime = Math.round(
+        craftableRecipes.reduce((sum, r) => sum + r.craftTime, 0) / craftableRecipes.length
+      )
+
       actions.push({
-        displayName: `craft ${recipe.id}`,
-        timeCost: craftCheck.timeCost,
-        isVariable: false,
+        displayName: "craft <recipe>",
+        timeCost: avgCraftTime,
+        isVariable: true, // Time varies by recipe
         successProbability: 1,
       })
+      return // Only add one craft action
     }
   }
 }
 
 /**
- * Add contract acceptance actions
+ * Add accept contract action if any contracts available at this location.
+ * Shows placeholder since there could be multiple contracts.
  */
 function addContractActions(
   state: WorldState,
@@ -190,41 +207,45 @@ function addContractActions(
     (c) => c.acceptLocationId === locationId && !state.player.activeContracts.includes(c.id)
   )
 
+  // Check if any contract can be accepted
   for (const contract of contracts) {
     const acceptAction: Action = { type: "AcceptContract", contractId: contract.id }
     const acceptCheck = checkAction(state, acceptAction)
 
     if (acceptCheck.valid) {
       actions.push({
-        displayName: `accept ${contract.id}`,
+        displayName: "accept <contract>",
         timeCost: acceptCheck.timeCost,
         isVariable: false,
         successProbability: 1,
       })
+      return // Only add one accept action
     }
   }
 }
 
 /**
- * Add store actions for items in inventory
+ * Add store action if player has inventory items.
+ * Shows placeholder since there could be many items.
  */
 function addStoreActions(state: WorldState, actions: AvailableAction[]): void {
-  for (const item of state.player.inventory) {
-    const storeAction: StoreAction = {
-      type: "Store",
-      itemId: item.itemId,
-      quantity: item.quantity,
-    }
-    const storeCheck = checkAction(state, storeAction)
+  if (state.player.inventory.length === 0) return
 
-    if (storeCheck.valid) {
-      actions.push({
-        displayName: `store <quantity> ${item.itemId}`,
-        timeCost: storeCheck.timeCost,
-        isVariable: false,
-        successProbability: 1,
-      })
-    }
+  // Check if at least one item can be stored
+  const firstItem = state.player.inventory[0]
+  const storeCheck = checkAction(state, {
+    type: "Store",
+    itemId: firstItem.itemId,
+    quantity: 1,
+  })
+
+  if (storeCheck.valid) {
+    actions.push({
+      displayName: "store <quantity> <item>",
+      timeCost: storeCheck.timeCost,
+      isVariable: false,
+      successProbability: 1,
+    })
   }
 }
 
@@ -258,26 +279,26 @@ function addGatheringActions(
     const modeLower = mode.toLowerCase()
 
     if (mode === "FOCUS") {
-      // FOCUS mode requires a material ID
-      // List each gatherable material as a separate action
-      for (const mat of node.materials) {
-        if (mat.requiredLevel <= skillLevel && mat.remainingUnits > 0) {
-          const gatherAction: GatherAction = {
-            type: "Gather",
-            nodeId,
-            mode: mode as GatherMode,
-            focusMaterialId: mat.materialId,
-          }
-          const gatherCheck = checkAction(state, gatherAction)
+      // FOCUS mode requires a material ID - check if any material is gatherable
+      const gatherableMat = node.materials.find(
+        (mat) => mat.requiredLevel <= skillLevel && mat.remainingUnits > 0
+      )
+      if (gatherableMat) {
+        const gatherAction: GatherAction = {
+          type: "Gather",
+          nodeId,
+          mode: mode as GatherMode,
+          focusMaterialId: gatherableMat.materialId,
+        }
+        const gatherCheck = checkAction(state, gatherAction)
 
-          if (gatherCheck.valid) {
-            actions.push({
-              displayName: `${commandName} focus ${mat.materialId.toLowerCase()}`,
-              timeCost: gatherCheck.timeCost,
-              isVariable: false,
-              successProbability: 1,
-            })
-          }
+        if (gatherCheck.valid) {
+          actions.push({
+            displayName: `${commandName} focus <resource>`,
+            timeCost: gatherCheck.timeCost,
+            isVariable: false,
+            successProbability: 1,
+          })
         }
       }
     } else {
@@ -319,7 +340,8 @@ function addFightActions(state: WorldState, actions: AvailableAction[]): void {
 }
 
 /**
- * Add travel to location actions for discovered locations in current area
+ * Add travel to location action if any discovered locations in current area.
+ * Shows placeholder since there could be many locations.
  */
 function addTravelToLocationActions(state: WorldState, actions: AvailableAction[]): void {
   const currentAreaId = getCurrentAreaId(state)
@@ -327,25 +349,22 @@ function addTravelToLocationActions(state: WorldState, actions: AvailableAction[
   if (!area) return
 
   const knownLocationIds = state.exploration.playerState.knownLocationIds
+  const inTown = isInTown(state)
 
-  for (const location of area.locations) {
-    if (!knownLocationIds.includes(location.id)) continue
+  // Check if at least one location is reachable
+  const hasValidLocation = area.locations.some((location) => {
+    if (!knownLocationIds.includes(location.id)) return false
+    const check = checkAction(state, { type: "TravelToLocation", locationId: location.id })
+    return check.valid
+  })
 
-    const travelAction: TravelToLocationAction = {
-      type: "TravelToLocation",
-      locationId: location.id,
-    }
-    const travelCheck = checkAction(state, travelAction)
-
-    if (travelCheck.valid) {
-      const locationName = getLocationDisplayName(location.id, currentAreaId, state)
-      actions.push({
-        displayName: `go ${locationName}`,
-        timeCost: travelCheck.timeCost,
-        isVariable: false,
-        successProbability: 1,
-      })
-    }
+  if (hasValidLocation) {
+    actions.push({
+      displayName: "go <location>",
+      timeCost: inTown ? 0 : 1,
+      isVariable: false,
+      successProbability: 1,
+    })
   }
 }
 
@@ -397,50 +416,55 @@ function addExplorationActions(state: WorldState, actions: AvailableAction[]): v
 }
 
 /**
- * Add far travel actions to known reachable areas
+ * Add far travel action if any reachable areas exist.
+ * Shows placeholder since there could be many destinations.
  */
 function addFarTravelActions(state: WorldState, actions: AvailableAction[]): void {
   const reachableAreas = getReachableAreas(state)
+  if (reachableAreas.length === 0) return
 
-  for (const { areaId, travelTime } of reachableAreas) {
-    const farTravelCheck = checkAction(state, {
-      type: "FarTravel",
-      destinationAreaId: areaId,
+  // Check if at least one destination is valid
+  const hasValidDestination = reachableAreas.some(({ areaId }) => {
+    const check = checkAction(state, { type: "FarTravel", destinationAreaId: areaId })
+    return check.valid
+  })
+
+  if (hasValidDestination) {
+    // Calculate average travel time across all destinations
+    const avgTravelTime = Math.round(
+      reachableAreas.reduce((sum, { travelTime }) => sum + travelTime, 0) / reachableAreas.length
+    )
+    actions.push({
+      displayName: "fartravel <area>",
+      timeCost: avgTravelTime,
+      isVariable: true, // Time varies by destination
+      successProbability: 1,
     })
-
-    if (farTravelCheck.valid) {
-      const area = state.exploration.areas.get(areaId)
-      const areaName = getAreaDisplayName(areaId, area)
-      actions.push({
-        displayName: `fartravel ${areaName}`,
-        timeCost: Math.round(travelTime),
-        isVariable: false,
-        successProbability: 1,
-      })
-    }
   }
 }
 
 /**
- * Add drop actions for items in inventory
+ * Add drop action if player has inventory items.
+ * Shows placeholder since there could be many items.
  */
 function addDropActions(state: WorldState, actions: AvailableAction[]): void {
-  for (const item of state.player.inventory) {
-    const dropAction: DropAction = {
-      type: "Drop",
-      itemId: item.itemId,
-      quantity: 1, // Use 1 as representative; actual quantity is a parameter
-    }
-    const dropCheck = checkAction(state, dropAction)
+  if (state.player.inventory.length === 0) return
 
-    if (dropCheck.valid) {
-      actions.push({
-        displayName: `drop <quantity> ${item.itemId}`,
-        timeCost: dropCheck.timeCost,
-        isVariable: false,
-        successProbability: 1,
-      })
-    }
+  // Check if at least one item can be dropped
+  const firstItem = state.player.inventory[0]
+  const dropCheck = checkAction(state, {
+    type: "Drop",
+    itemId: firstItem.itemId,
+    quantity: 1,
+  })
+
+  if (dropCheck.valid) {
+    actions.push({
+      displayName: "drop <quantity> <item>",
+      timeCost: dropCheck.timeCost,
+      isVariable: false,
+      successProbability: 1,
+    })
   }
 }
 

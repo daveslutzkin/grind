@@ -162,8 +162,8 @@ describe("getAvailableActions", () => {
     it("should include gather modes for player skill level", () => {
       const actions = getAvailableActions(state)
 
-      // At Mining L1, should have FOCUS mode available
-      expect(hasAction(actions, "mine focus")).toBe(true)
+      // At Mining L1, should have FOCUS mode available (with placeholder)
+      expect(hasAction(actions, "mine focus <resource>")).toBe(true)
 
       // Should NOT have APPRAISE at L1 (requires L3)
       expect(hasAction(actions, "mine appraise")).toBe(false)
@@ -183,7 +183,7 @@ describe("getAvailableActions", () => {
 
     it("should have correct time cost for FOCUS mode", () => {
       const actions = getAvailableActions(state)
-      const focusAction = findAction(actions, "mine focus")
+      const focusAction = findAction(actions, "mine focus <resource>")
 
       expect(focusAction).toBeDefined()
       expect(focusAction?.timeCost).toBe(5)
@@ -227,12 +227,12 @@ describe("getAvailableActions", () => {
 
       const actions = getAvailableActions(state)
 
-      // Should have fartravel options
-      expect(hasAction(actions, "fartravel")).toBe(true)
+      // Should have fartravel option with placeholder
+      expect(hasAction(actions, "fartravel <area>")).toBe(true)
 
-      // Fartravel actions should not be variable
-      const farTravelAction = findAction(actions, "fartravel")
-      expect(farTravelAction?.isVariable).toBe(false)
+      // Fartravel uses placeholder so time varies by destination
+      const farTravelAction = findAction(actions, "fartravel <area>")
+      expect(farTravelAction?.isVariable).toBe(true)
     })
   })
 
@@ -276,10 +276,10 @@ describe("getAvailableActions", () => {
       expect(exploreAction?.successProbability).toBe(1)
     })
 
-    it("should include fartravel back to Town", () => {
+    it("should include fartravel action", () => {
       const actions = getAvailableActions(state)
 
-      expect(hasAction(actions, "fartravel Town")).toBe(true)
+      expect(hasAction(actions, "fartravel <area>")).toBe(true)
     })
   })
 
@@ -295,11 +295,11 @@ describe("getAvailableActions", () => {
 
       const actions = getAvailableActions(state)
 
-      expect(hasAction(actions, "craft copper-bar")).toBe(true)
+      expect(hasAction(actions, "craft <recipe>")).toBe(true)
 
-      const craftAction = findAction(actions, "craft copper-bar")
-      expect(craftAction?.timeCost).toBe(2) // copper-bar craftTime
-      expect(craftAction?.isVariable).toBe(false)
+      const craftAction = findAction(actions, "craft <recipe>")
+      expect(craftAction?.timeCost).toBeGreaterThan(0)
+      expect(craftAction?.isVariable).toBe(true) // Time varies by recipe
     })
 
     it("should NOT include craft when missing ingredients", () => {
@@ -312,7 +312,7 @@ describe("getAvailableActions", () => {
 
       const actions = getAvailableActions(state)
 
-      expect(hasAction(actions, "craft copper-bar")).toBe(false)
+      expect(hasAction(actions, "craft <recipe>")).toBe(false)
     })
   })
 
@@ -355,16 +355,15 @@ describe("getAvailableActions", () => {
   })
 
   describe("Travel to location", () => {
-    it("should include go actions for discovered locations in current area", () => {
+    it("should include go action for discovered locations in current area", () => {
       const state = createWorld("test-seed")
       // At Town hub
       state.exploration.playerState.currentLocationId = null
 
       const actions = getAvailableActions(state)
 
-      // Town locations should be discoverable
-      expect(hasAction(actions, "go Miners Guild")).toBe(true)
-      expect(hasAction(actions, "go Warehouse")).toBe(true)
+      // Should show placeholder for go action
+      expect(hasAction(actions, "go <location>")).toBe(true)
     })
 
     it("should have 0t cost for travel in town", () => {
@@ -372,7 +371,7 @@ describe("getAvailableActions", () => {
       state.exploration.playerState.currentLocationId = null
 
       const actions = getAvailableActions(state)
-      const goAction = findAction(actions, "go Miners Guild")
+      const goAction = findAction(actions, "go <location>")
 
       expect(goAction?.timeCost).toBe(0)
     })
