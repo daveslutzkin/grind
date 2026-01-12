@@ -6,17 +6,7 @@
  * to ensure consistency.
  */
 
-import type {
-  WorldState,
-  GatherMode,
-  SkillID,
-  Action,
-  GatherAction,
-  CraftAction,
-  StoreAction,
-  DropAction,
-  TravelToLocationAction,
-} from "./types.js"
+import type { WorldState, GatherMode, SkillID, Action, GatherAction, CraftAction } from "./types.js"
 import {
   getCurrentAreaId,
   getCurrentLocationId,
