@@ -101,6 +101,7 @@ Requirements:
 - The name can be inspired by the features but doesn't have to directly reference them
 - Don't make every mining area 'Something Ore' or 'Iron Something'
 - Be creative and varied
+- DON'T make every name 2 words, even though lots can be
 
 Respond with ONLY the area name, nothing else.`.trim()
 }
