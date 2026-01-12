@@ -362,16 +362,23 @@ function addTravelToLocationActions(state: WorldState, actions: AvailableAction[
     return isConnectionKnown(knownConnectionIds, conn.fromAreaId, conn.toAreaId)
   })
 
-  if (hasValidLocation || hasAdjacentArea) {
-    // For "go <area>", use 0 to show just "varies" without misleading estimate
-    // For "go <location>", use actual location travel time
-    const showingLocation = hasValidLocation
-    const timeCost = showingLocation ? (inTown ? 0 : 1) : 0
-
+  // Add "go <location>" if locations are available in current area
+  if (hasValidLocation) {
     actions.push({
-      displayName: showingLocation ? "go <location>" : "go <area>",
-      timeCost,
-      isVariable: hasAdjacentArea, // Variable if can travel to areas (different times)
+      displayName: "go <location>",
+      timeCost: inTown ? 0 : 1,
+      isVariable: false,
+      successProbability: 1,
+    })
+  }
+
+  // Add "go <area>" if adjacent areas are available
+  // This is separate from locations - both can be shown at the same time
+  if (hasAdjacentArea) {
+    actions.push({
+      displayName: "go <area>",
+      timeCost: 0, // Use 0 to show just "varies" without misleading estimate
+      isVariable: true,
       successProbability: 1,
     })
   }

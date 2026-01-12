@@ -445,6 +445,44 @@ describe("getAvailableActions", () => {
       expect(goAction?.timeCost).toBe(0)
       expect(goAction?.isVariable).toBe(true)
     })
+
+    it("should show both go <location> and go <area> when both available", () => {
+      const state = createWorld("test-seed")
+
+      // Stay at Town hub - this has both locations AND area connections
+      state.exploration.playerState.currentLocationId = null
+
+      // In Town, we have:
+      // - Locations: Miners Guild, Foresters Guild, etc. (for "go <location>")
+      // - Area connections: No adjacent areas yet, so need to discover some
+
+      // For this test to work, we need adjacent areas. Let's discover one.
+      state.player.skills.Exploration = { level: 1, xp: 0 }
+
+      // Manually discover an adjacent area and its connection
+      const adjacentAreaId = "area-d1-i0"
+      if (!state.exploration.playerState.knownAreaIds.includes(adjacentAreaId)) {
+        state.exploration.playerState.knownAreaIds.push(adjacentAreaId)
+      }
+      const connectionId = `TOWN->${adjacentAreaId}`
+      if (!state.exploration.playerState.knownConnectionIds.includes(connectionId)) {
+        state.exploration.playerState.knownConnectionIds.push(connectionId)
+      }
+
+      const actionsWithBoth = getAvailableActions(state)
+
+      // Should have BOTH actions
+      const goLocationAction = findAction(actionsWithBoth, "go <location>")
+      const goAreaAction = findAction(actionsWithBoth, "go <area>")
+
+      expect(goLocationAction).toBeDefined()
+      expect(goLocationAction?.timeCost).toBe(0) // Town location travel is free
+      expect(goLocationAction?.isVariable).toBe(false)
+
+      expect(goAreaAction).toBeDefined()
+      expect(goAreaAction?.timeCost).toBe(0) // Shows "varies"
+      expect(goAreaAction?.isVariable).toBe(true)
+    })
   })
 
   describe("Variable time costs", () => {
