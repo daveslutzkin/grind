@@ -646,7 +646,12 @@ export function formatWorldState(state: WorldState): string {
 function formatAvailableAction(action: AvailableAction): string {
   let cost: string
   if (action.isVariable) {
-    cost = `~${action.timeCost}t, varies`
+    // If timeCost is 0, just show "varies" without a misleading estimate
+    if (action.timeCost === 0) {
+      cost = `varies`
+    } else {
+      cost = `~${action.timeCost}t, varies`
+    }
   } else {
     cost = `${action.timeCost}t`
   }

@@ -363,9 +363,14 @@ function addTravelToLocationActions(state: WorldState, actions: AvailableAction[
   })
 
   if (hasValidLocation || hasAdjacentArea) {
+    // For "go <area>", use 0 to show just "varies" without misleading estimate
+    // For "go <location>", use actual location travel time
+    const showingLocation = hasValidLocation
+    const timeCost = showingLocation ? (inTown ? 0 : 1) : 0
+
     actions.push({
-      displayName: hasValidLocation ? "go <location>" : "go <area>",
-      timeCost: inTown ? 0 : 1,
+      displayName: showingLocation ? "go <location>" : "go <area>",
+      timeCost,
       isVariable: hasAdjacentArea, // Variable if can travel to areas (different times)
       successProbability: 1,
     })
