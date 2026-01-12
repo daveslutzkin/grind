@@ -1,7 +1,6 @@
 import { executeAction } from "./engine.js"
-import { evaluatePlan } from "./evaluate.js"
-import { createWorld, TOWN_LOCATIONS, MATERIALS } from "./world.js"
-import type { Action, ActionLog, WorldState, AreaID } from "./types.js"
+import { createWorld, TOWN_LOCATIONS } from "./world.js"
+import type { ActionLog, WorldState, AreaID } from "./types.js"
 import { GatherMode, NodeType, ExplorationLocationType } from "./types.js"
 
 /** Set player to be at a specific location in town */
@@ -55,15 +54,6 @@ function discoverAllLocations(state: WorldState, areaId: AreaID): void {
       }
     }
   }
-}
-
-/** Get the location ID for a node */
-function getNodeLocationId(nodeId: string, areaId: string): string {
-  const nodeIndexMatch = nodeId.match(/-node-(\d+)$/)
-  if (nodeIndexMatch) {
-    return `${areaId}-loc-${nodeIndexMatch[1]}`
-  }
-  return ""
 }
 
 describe("Integration: Full Session Flow", () => {
@@ -196,138 +186,6 @@ describe("Integration: Full Session Flow", () => {
 
     // - State change summary
     expect(gatherLog.stateDeltaSummary).toBeDefined()
-  })
-
-  it("should demonstrate plan evaluation finds violations", async () => {
-    const state = createWorld("plan-test")
-    state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
-
-    // Get ore area and make it known
-    const oreAreaId = getOreAreaId(state)
-    makeAreaKnown(state, oreAreaId)
-    discoverAllLocations(state, oreAreaId)
-
-    // Get a node from the area
-    const mineNode = state.world.nodes.find((n) => n.areaId === oreAreaId)!
-    const material = mineNode.materials[0]
-    const nodeLocationId = getNodeLocationId(mineNode.nodeId, oreAreaId)
-
-    // Valid plan: move to ore area, travel to node location, gather, gather, leave, move back
-    const validPlan: Action[] = [
-      { type: "Move", destination: oreAreaId },
-      { type: "TravelToLocation", locationId: nodeLocationId },
-      {
-        type: "Gather",
-        nodeId: mineNode.nodeId,
-        mode: GatherMode.FOCUS,
-        focusMaterialId: material.materialId,
-      },
-      {
-        type: "Gather",
-        nodeId: mineNode.nodeId,
-        mode: GatherMode.FOCUS,
-        focusMaterialId: material.materialId,
-      },
-      { type: "Leave" },
-      { type: "Move", destination: "TOWN" },
-    ]
-
-    const validResult = evaluatePlan(state, validPlan)
-    expect(validResult.violations).toHaveLength(0)
-    // Move (0) + TravelToLocation (1) + Gather FOCUS (5) + Gather FOCUS (5) + Leave (1) + Move (0) = 12
-    expect(validResult.expectedTime).toBe(12)
-
-    // Invalid plan: try to gather at wrong location
-    const invalidPlan: Action[] = [
-      {
-        type: "Gather",
-        nodeId: mineNode.nodeId,
-        mode: GatherMode.FOCUS,
-        focusMaterialId: material.materialId,
-      }, // Can't gather at TOWN
-    ]
-
-    const invalidResult = evaluatePlan(state, invalidPlan)
-    expect(invalidResult.violations.length).toBeGreaterThan(0)
-  })
-
-  it.skip("should show how dominant strategies might form (combat not yet implemented)", async () => {
-    // This test demonstrates that we can evaluate different strategies
-    const state = createWorld("strategy-test")
-
-    // Get ore area and make it known
-    const oreAreaId = getOreAreaId(state)
-    makeAreaKnown(state, oreAreaId)
-    discoverAllLocations(state, oreAreaId)
-
-    // Get an ore vein node and its first material
-    const mineNode = state.world.nodes.find(
-      (n) => n.areaId === oreAreaId && n.nodeType === NodeType.ORE_VEIN
-    )!
-    const material = mineNode.materials[0]
-    const nodeLocationId = getNodeLocationId(mineNode.nodeId, oreAreaId)
-
-    // Set skill levels based on material requirements (need enough to gather)
-    const requiredMiningLevel = MATERIALS[material.materialId]?.requiredLevel ?? 1
-    state.player.skills.Mining = { level: requiredMiningLevel, xp: 0 }
-    state.player.skills.Combat = { level: 1, xp: 0 } // Need level 1 to fight
-    state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
-    state.player.equippedWeapon = "CRUDE_WEAPON" // Need weapon to fight
-    // NOTE: Enemies not yet implemented - this test is skipped
-
-    // Strategy 1: Pure gathering (move to area, travel to node, gather 4 times)
-    const gatherStrategy: Action[] = [
-      { type: "Move", destination: oreAreaId },
-      { type: "TravelToLocation", locationId: nodeLocationId },
-      {
-        type: "Gather",
-        nodeId: mineNode.nodeId,
-        mode: GatherMode.FOCUS,
-        focusMaterialId: material.materialId,
-      },
-      {
-        type: "Gather",
-        nodeId: mineNode.nodeId,
-        mode: GatherMode.FOCUS,
-        focusMaterialId: material.materialId,
-      },
-      {
-        type: "Gather",
-        nodeId: mineNode.nodeId,
-        mode: GatherMode.FOCUS,
-        focusMaterialId: material.materialId,
-      },
-      {
-        type: "Gather",
-        nodeId: mineNode.nodeId,
-        mode: GatherMode.FOCUS,
-        focusMaterialId: material.materialId,
-      },
-    ]
-
-    // Strategy 2: Fighting
-    const fightStrategy: Action[] = [
-      { type: "Move", destination: oreAreaId },
-      { type: "Fight", enemyId: "cave-rat" },
-      { type: "Fight", enemyId: "cave-rat" },
-      { type: "Fight", enemyId: "cave-rat" },
-    ]
-
-    const gatherEval = evaluatePlan(state, gatherStrategy)
-    const fightEval = evaluatePlan(state, fightStrategy)
-
-    // We can compare strategies
-    // Gathering: Move (0) + TravelToLocation (1) + 4 * Gather FOCUS (5) = 21 ticks, expected XP = 0 + 0 + 4*1 = 4
-    // Fighting: Move (0) + 3 * Fight (3) = 9 ticks, expected XP = 0 (Move) + 3*0.7 = 2.1
-
-    expect(gatherEval.expectedTime).toBe(21)
-    expect(gatherEval.expectedXP).toBeCloseTo(4)
-
-    expect(fightEval.expectedTime).toBe(9)
-    expect(fightEval.expectedXP).toBeCloseTo(2.1)
-
-    // Gathering appears more efficient for pure XP gain
-    // This is the kind of insight that reveals dominant strategies
   })
 
   it("should demonstrate contract completion consumes items and cannot be exploited", async () => {

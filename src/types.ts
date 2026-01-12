@@ -594,24 +594,6 @@ export interface ActionLog {
   explorationLog?: ExplorationLog // For exploration actions
 }
 
-// Evaluation results
-export interface ActionEvaluation {
-  expectedTime: number
-  expectedXP: number
-  successProbability: number
-}
-
-export interface PlanViolation {
-  actionIndex: number
-  reason: string
-}
-
-export interface PlanEvaluation {
-  expectedTime: number
-  expectedXP: number
-  violations: PlanViolation[]
-}
-
 // Level calculation utilities
 // XP required to reach level N is N²
 // Level 1 → 2 requires 4 XP (2²)
