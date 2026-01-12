@@ -333,6 +333,21 @@ export function createLLMClient(config: AgentConfig): LLMClient {
           messages,
         })
 
+        // Log caching metrics
+        if (response.usage) {
+          const usage = response.usage as {
+            input_tokens: number
+            cache_creation_input_tokens?: number
+            cache_read_input_tokens?: number
+          }
+
+          const cached = usage.cache_read_input_tokens ?? 0
+          const total = usage.input_tokens
+          const cacheRate = total > 0 ? ((cached / total) * 100).toFixed(1) : 0
+
+          console.log(`[Cache] ${cached}/${total} tokens cached (${cacheRate}%)`)
+        }
+
         // Extract text from response
         const assistantMessage =
           response.content[0]?.type === "text" ? response.content[0].text : ""
@@ -360,6 +375,21 @@ export function createLLMClient(config: AgentConfig): LLMClient {
               system: systemWithCache,
               messages,
             })
+
+            // Log caching metrics
+            if (response.usage) {
+              const usage = response.usage as {
+                input_tokens: number
+                cache_creation_input_tokens?: number
+                cache_read_input_tokens?: number
+              }
+
+              const cached = usage.cache_read_input_tokens ?? 0
+              const total = usage.input_tokens
+              const cacheRate = total > 0 ? ((cached / total) * 100).toFixed(1) : 0
+
+              console.log(`[Cache] ${cached}/${total} tokens cached (${cacheRate}%)`)
+            }
 
             const assistantMessage =
               response.content[0]?.type === "text" ? response.content[0].text : ""
