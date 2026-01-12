@@ -118,7 +118,7 @@ describe("Integration: Full Session Flow", () => {
     // Try to craft if we have enough copper ore
     const copperOre = state.player.inventory.find((i) => i.itemId === "COPPER_ORE")
     if (copperOre && copperOre.quantity >= 2) {
-      logs.push(await executeAction(state, { type: "Craft", recipeId: "copper-bar-recipe" }))
+      logs.push(await executeAction(state, { type: "Craft", recipeId: "copper-bar" }))
     }
 
     // Session should have consumed ticks

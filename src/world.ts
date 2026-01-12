@@ -495,7 +495,7 @@ export function createWorld(seed: string): WorldState {
       nodes: allNodes,
       recipes: [
         {
-          id: "iron-bar-recipe",
+          id: "iron-bar",
           inputs: [{ itemId: "IRON_ORE", quantity: 2 }],
           output: { itemId: "IRON_BAR", quantity: 1 },
           craftTime: 3,
@@ -503,7 +503,7 @@ export function createWorld(seed: string): WorldState {
           requiredSkillLevel: 1,
         },
         {
-          id: "copper-bar-recipe",
+          id: "copper-bar",
           inputs: [{ itemId: "COPPER_ORE", quantity: 2 }],
           output: { itemId: "COPPER_BAR", quantity: 1 },
           craftTime: 2,
