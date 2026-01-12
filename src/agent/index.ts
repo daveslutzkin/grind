@@ -169,7 +169,7 @@ async function main(): Promise<void> {
           state.time.currentTick,
           {
             systemPrompt: result.contextSnapshot.systemPrompt,
-            staticContext: result.contextSnapshot.staticContext,
+            notes: result.contextSnapshot.notes,
             actionSummary: result.contextSnapshot.actionSummary,
             learningSummary: result.contextSnapshot.learningSummary,
             recentMessages: result.contextSnapshot.recentMessages,

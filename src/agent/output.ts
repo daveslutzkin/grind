@@ -19,7 +19,7 @@ export interface TraceEntry {
  */
 export interface VerboseContext {
   systemPrompt: string
-  staticContext: string
+  notes: string
   actionSummary: string
   learningSummary: string
   recentMessages: string[]
@@ -211,8 +211,8 @@ Use this to debug what information the agent actually sees.
       lines.push(context.systemPrompt)
       lines.push("")
 
-      lines.push("--- STATIC CONTEXT (World Knowledge) ---")
-      lines.push(context.staticContext || "(none)")
+      lines.push("--- AGENT NOTES (Persistent Memory) ---")
+      lines.push(context.notes || "(none)")
       lines.push("")
 
       lines.push("--- ACTION SUMMARY (Summarized History) ---")

@@ -2,13 +2,7 @@ import { createWorld } from "../world.js"
 import { executeAction } from "../engine.js"
 import type { WorldState, Action, ActionLog } from "../types.js"
 import { formatWorldState, formatActionLog } from "./formatters.js"
-import {
-  summarizeAction,
-  summarizeActionHistory,
-  summarizeLearnings,
-  extractStaticWorldData,
-  formatDynamicState,
-} from "./summarize.js"
+import { summarizeAction, summarizeActionHistory, summarizeLearnings } from "./summarize.js"
 import { parseAgentResponse, AgentResponse } from "./parser.js"
 import { createSystemPrompt } from "./prompts.js"
 import { createLLMClient, LLMClient, LLMContextSnapshot } from "./llm.js"
@@ -37,6 +31,7 @@ export interface StepResult {
   log: ActionLog | null
   reasoning: string
   learning: string
+  notes?: string // Agent's current notes
   error?: string
   // For verbose tracing
   contextSnapshot?: LLMContextSnapshot
@@ -169,6 +164,9 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
   // Whether to use summarization (default true)
   const useSummarization = config.useSummarization !== false
 
+  // Agent's persistent notes
+  let agentNotes: string = ""
+
   // LLM client (only if not dry run)
   let llmClient: LLMClient | null = null
   if (!config.dryRun) {
@@ -180,10 +178,10 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
     llmClient.setSystemPrompt(createSystemPrompt(config.objective))
 
     if (useSummarization) {
-      // Set up context management with static world data
+      // Set up context management - agent builds their own notes over time
       llmClient.setContextConfig({
         recentExchangeCount: 5,
-        staticContext: extractStaticWorldData(state),
+        notes: "",
         actionSummary: "",
         learningSummary: "",
       })
@@ -236,8 +234,8 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
         }
       }
 
-      // Format current state - use compact format if summarization is enabled
-      const stateText = useSummarization ? formatDynamicState(state) : formatWorldState(state)
+      // Format current state - agent sees the same state as a player would
+      const stateText = formatWorldState(state)
       conversationHistory.push(`STATE:\n${stateText}`)
 
       let response: AgentResponse
@@ -355,6 +353,14 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
         this.addLearning(response.learning)
       }
 
+      // Update agent notes if provided (notes replace previous notes entirely)
+      if (response.notes) {
+        agentNotes = response.notes
+        if (llmClient && useSummarization) {
+          llmClient.updateNotes(agentNotes)
+        }
+      }
+
       // Update continue state
       continueCondition = response.continueCondition
       lastAction = action
@@ -364,6 +370,9 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
         if (response.learning) {
           console.log(`Learning: ${response.learning}`)
         }
+        if (response.notes) {
+          console.log(`Notes updated: ${response.notes.substring(0, 100)}...`)
+        }
       }
 
       return {
@@ -372,6 +381,7 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
         log,
         reasoning: response.reasoning,
         learning: response.learning,
+        notes: agentNotes,
         contextSnapshot,
         currentPrompt,
         llmResponse: rawLlmResponse,

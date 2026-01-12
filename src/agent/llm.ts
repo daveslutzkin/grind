@@ -15,8 +15,8 @@ export interface LLMMessage {
 export interface ContextConfig {
   /** Number of recent exchanges to keep in full detail */
   recentExchangeCount: number
-  /** Static content to cache (world reference data) */
-  staticContext: string
+  /** Agent's persistent notes/memory */
+  notes: string
   /** Summarized action history */
   actionSummary: string
   /** Condensed learnings */
@@ -28,7 +28,7 @@ export interface ContextConfig {
  */
 export interface LLMContextSnapshot {
   systemPrompt: string
-  staticContext: string
+  notes: string
   actionSummary: string
   learningSummary: string
   recentMessages: string[]
@@ -85,6 +85,11 @@ export interface LLMClient {
   updateLearningSummary(summary: string): void
 
   /**
+   * Update the agent's notes/memory
+   */
+  updateNotes(notes: string): void
+
+  /**
    * Get a snapshot of current context for tracing
    */
   getContextSnapshot(): LLMContextSnapshot
@@ -115,7 +120,7 @@ export function createLLMClient(config: AgentConfig): LLMClient {
   // Context management
   let contextConfig: ContextConfig = {
     recentExchangeCount: 5,
-    staticContext: "",
+    notes: "",
     actionSummary: "",
     learningSummary: "",
   }
@@ -134,13 +139,14 @@ export function createLLMClient(config: AgentConfig): LLMClient {
   }
 
   /**
-   * Build the memory block containing static context, action summary, and learnings
+   * Build the memory block containing notes, action summary, and learnings
    */
   function buildMemoryBlock(): string {
     const parts: string[] = []
 
-    if (contextConfig.staticContext) {
-      parts.push(contextConfig.staticContext)
+    if (contextConfig.notes) {
+      parts.push("YOUR NOTES:")
+      parts.push(contextConfig.notes)
     }
 
     if (contextConfig.learningSummary) {
@@ -261,7 +267,7 @@ export function createLLMClient(config: AgentConfig): LLMClient {
       systemPrompt = ""
       contextConfig = {
         recentExchangeCount: 5,
-        staticContext: "",
+        notes: "",
         actionSummary: "",
         learningSummary: "",
       }
@@ -284,6 +290,10 @@ export function createLLMClient(config: AgentConfig): LLMClient {
       contextConfig.learningSummary = summary
     },
 
+    updateNotes(notes: string): void {
+      contextConfig.notes = notes
+    },
+
     getContextSnapshot(): LLMContextSnapshot {
       // Get recent messages for the snapshot
       const nonSystemMessages = history.filter((m) => m.role !== "system")
@@ -292,7 +302,7 @@ export function createLLMClient(config: AgentConfig): LLMClient {
 
       return {
         systemPrompt,
-        staticContext: contextConfig.staticContext,
+        notes: contextConfig.notes,
         actionSummary: contextConfig.actionSummary,
         learningSummary: contextConfig.learningSummary,
         recentMessages: recentMessages.map((m) => `[${m.role}]: ${m.content}`),
