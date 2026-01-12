@@ -34,11 +34,62 @@ describe("generateFailureHint", () => {
     expect(result.hint).toBe("More specific hints will be added in later packages")
   })
 
-  // Placeholder tests for future implementation
+  // Travel/Navigation Errors (Package 2)
   describe("Travel/Navigation Errors (Package 2)", () => {
-    it.todo("should provide hint for NO_PATH_TO_DESTINATION with undiscovered area")
-    it.todo("should provide hint for NO_PATH_TO_DESTINATION with no_route")
-    it.todo("should provide hint for AREA_NOT_FOUND")
+    it("should provide hint for NO_PATH_TO_DESTINATION with undiscovered area", () => {
+      const state = createWorld()
+      const details: FailureDetails = {
+        type: "NO_PATH_TO_DESTINATION",
+        reason: "undiscovered",
+        context: {
+          destination: "Silvermark Ridge",
+          destinationId: "area-d2-i0",
+        },
+      }
+
+      const result = generateFailureHint(details, state)
+
+      expect(result.message).toBe("No path to Silvermark Ridge")
+      expect(result.reason).toBe("Area is undiscovered")
+      expect(result.hint).toContain("Explore from your current location")
+    })
+
+    it("should provide hint for NO_PATH_TO_DESTINATION with no_route", () => {
+      const state = createWorld()
+      const details: FailureDetails = {
+        type: "NO_PATH_TO_DESTINATION",
+        reason: "no_route",
+        context: {
+          destination: "Distant Mountain",
+          destinationId: "area-d3-i5",
+        },
+      }
+
+      const result = generateFailureHint(details, state)
+
+      expect(result.message).toBe("No path to Distant Mountain")
+      expect(result.reason).toBe("No connecting route exists")
+      expect(result.hint).toContain("Areas may connect through intermediate locations")
+    })
+
+    it("should provide hint for AREA_NOT_KNOWN", () => {
+      const state = createWorld()
+      const details: FailureDetails = {
+        type: "AREA_NOT_KNOWN",
+        reason: "undiscovered",
+        context: {
+          destination: "Hidden Valley",
+          destinationId: "area-d4-i2",
+        },
+      }
+
+      const result = generateFailureHint(details, state)
+
+      expect(result.message).toBe("Cannot travel to Hidden Valley")
+      expect(result.reason).toBe("Area is undiscovered")
+      expect(result.hint).toContain("Explore from your current location")
+    })
+
     it.todo("should provide hint for LOCATION_NOT_DISCOVERED")
   })
 

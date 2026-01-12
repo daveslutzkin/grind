@@ -622,14 +622,22 @@ export async function grantExplorationGuildBenefits(state: WorldState): Promise<
 function createFailureLog(
   state: WorldState,
   actionType: "Survey" | "Explore" | "ExplorationTravel" | "FarTravel",
-  failureType: string
+  failureType: string,
+  reason?: string,
+  context?: Record<string, unknown>
 ): ActionLog {
+  const typedFailureType = failureType as ActionLog["failureType"]
   return {
     tickBefore: state.time.currentTick,
     actionType,
     parameters: {},
     success: false,
-    failureType: failureType as ActionLog["failureType"],
+    failureType: typedFailureType,
+    failureDetails: {
+      type: typedFailureType!,
+      reason,
+      context,
+    },
     timeConsumed: 0,
     rngRolls: [],
     stateDeltaSummary: `Failed: ${failureType}`,
@@ -1458,9 +1466,17 @@ export async function* executeExplorationTravel(
 
   if (!directConnection) {
     // No direct connection - cannot travel (must have a known connection from current area)
+    // Determine sub-reason: undiscovered vs no_route
+    const reason = destinationIsKnown ? "no_route" : "undiscovered"
+    const destinationArea = exploration.areas.get(destinationAreaId)
+    const destinationName = getAreaDisplayName(destinationAreaId, destinationArea)
+
     yield {
       done: true,
-      log: createFailureLog(state, "ExplorationTravel", "NO_PATH_TO_DESTINATION"),
+      log: createFailureLog(state, "ExplorationTravel", "NO_PATH_TO_DESTINATION", reason, {
+        destination: destinationName,
+        destinationId: destinationAreaId,
+      }),
     }
     return
   }
@@ -1536,7 +1552,15 @@ export async function* executeFarTravel(
 
   // Destination must be known for far travel
   if (!exploration.playerState.knownAreaIds.includes(destinationAreaId)) {
-    yield { done: true, log: createFailureLog(state, "FarTravel", "AREA_NOT_KNOWN") }
+    const destinationArea = exploration.areas.get(destinationAreaId)
+    const destinationName = getAreaDisplayName(destinationAreaId, destinationArea)
+    yield {
+      done: true,
+      log: createFailureLog(state, "FarTravel", "AREA_NOT_KNOWN", "undiscovered", {
+        destination: destinationName,
+        destinationId: destinationAreaId,
+      }),
+    }
     return
   }
 
@@ -1544,7 +1568,15 @@ export async function* executeFarTravel(
   const pathResult = findPath(state, currentAreaId, destinationAreaId)
 
   if (!pathResult) {
-    yield { done: true, log: createFailureLog(state, "FarTravel", "NO_PATH_TO_DESTINATION") }
+    const destinationArea = exploration.areas.get(destinationAreaId)
+    const destinationName = getAreaDisplayName(destinationAreaId, destinationArea)
+    yield {
+      done: true,
+      log: createFailureLog(state, "FarTravel", "NO_PATH_TO_DESTINATION", "no_route", {
+        destination: destinationName,
+        destinationId: destinationAreaId,
+      }),
+    }
     return
   }
 
