@@ -126,7 +126,7 @@ describe("parseAction - goto enemy camp", () => {
     const state = createWorld("test-seed")
     // Don't add any mob camps
 
-    const action = parseAction("goto enemy camp", { state, logErrors: false })
+    const action = parseAction("goto enemy camp", { state })
 
     expect(action).toBeNull()
   })
@@ -146,7 +146,7 @@ describe("parseAction - goto enemy camp", () => {
     state.exploration.playerState.knownLocationIds.push(mobCamp.id)
 
     // Try to go to camp 2 when only 1 exists
-    const action = parseAction("goto enemy camp 2", { state, logErrors: false })
+    const action = parseAction("goto enemy camp 2", { state })
 
     expect(action).toBeNull()
   })
@@ -165,10 +165,10 @@ describe("parseAction - goto enemy camp", () => {
     area.locations.push(mobCamp)
     state.exploration.playerState.knownLocationIds.push(mobCamp.id)
 
-    const action1 = parseAction("goto enemy camp 0", { state, logErrors: false })
+    const action1 = parseAction("goto enemy camp 0", { state })
     expect(action1).toBeNull()
 
-    const action2 = parseAction("goto enemy camp -1", { state, logErrors: false })
+    const action2 = parseAction("goto enemy camp -1", { state })
     expect(action2).toBeNull()
   })
 
@@ -187,7 +187,7 @@ describe("parseAction - goto enemy camp", () => {
     area.locations.push(mobCamp)
     // Don't add to knownLocationIds
 
-    const action = parseAction("goto enemy camp", { state, logErrors: false })
+    const action = parseAction("goto enemy camp", { state })
 
     expect(action).toBeNull()
   })

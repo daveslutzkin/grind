@@ -1,5 +1,5 @@
 /**
- * Shared runner module for REPL and batch execution
+ * Runner module for the REPL
  * Contains common types, command parsing, display formatting, and statistics
  */
 
@@ -70,8 +70,6 @@ export interface ParseContext {
   knownAreaIds?: string[]
   /** Current location ID for context-aware commands (optional) */
   currentLocationId?: string | null
-  /** Whether to log parse errors to console */
-  logErrors?: boolean
   /** Full world state for context-aware command resolution (optional) */
   state?: WorldState
 }
@@ -111,11 +109,6 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         }
 
         if (!nodeId) {
-          if (context.logErrors) {
-            console.log("You must be at a gathering node to use 'gather <mode>'.")
-            console.log("Usage: gather <node> <mode> [material]")
-            console.log("  Or use 'mine <mode>' or 'chop <mode>' as shortcuts")
-          }
           return null
         }
       } else {
@@ -125,20 +118,12 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
       }
 
       if (!nodeId || !modeName) {
-        if (context.logErrors) {
-          console.log("Usage: gather <node> <mode> [material]")
-          console.log("  Or: gather <mode> [material] (when at a gathering node)")
-          console.log("  Modes: focus <material>, careful, appraise")
-        }
         return null
       }
 
       if (modeName === "focus") {
         const focusMaterial = parts[materialIndex]?.toUpperCase()
         if (!focusMaterial) {
-          if (context.logErrors) {
-            console.log("FOCUS mode requires a material: gather focus <material>")
-          }
           return null
         }
         return { type: "Gather", nodeId, mode: GatherMode.FOCUS, focusMaterialId: focusMaterial }
@@ -147,9 +132,6 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
       } else if (modeName === "appraise") {
         return { type: "Gather", nodeId, mode: GatherMode.APPRAISE }
       } else {
-        if (context.logErrors) {
-          console.log("Invalid gather mode. Use: focus, careful, or appraise")
-        }
         return null
       }
     }
@@ -159,19 +141,12 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
       const modeName = parts[1]?.toLowerCase()
 
       if (!modeName) {
-        if (context.logErrors) {
-          console.log("Usage: mine <mode> [material]")
-          console.log("  Modes: focus <material>, careful, appraise")
-        }
         return null
       }
 
       if (modeName === "focus") {
         const focusMaterial = parts[2]?.toUpperCase()
         if (!focusMaterial) {
-          if (context.logErrors) {
-            console.log("FOCUS mode requires a material: mine focus <material>")
-          }
           return null
         }
         return { type: "Mine", mode: GatherMode.FOCUS, focusMaterialId: focusMaterial }
@@ -180,9 +155,6 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
       } else if (modeName === "appraise") {
         return { type: "Mine", mode: GatherMode.APPRAISE }
       } else {
-        if (context.logErrors) {
-          console.log("Invalid mine mode. Use: focus, careful, or appraise")
-        }
         return null
       }
     }
@@ -192,19 +164,12 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
       const modeName = parts[1]?.toLowerCase()
 
       if (!modeName) {
-        if (context.logErrors) {
-          console.log("Usage: chop <mode> [material]")
-          console.log("  Modes: focus <material>, careful, appraise")
-        }
         return null
       }
 
       if (modeName === "focus") {
         const focusMaterial = parts[2]?.toUpperCase()
         if (!focusMaterial) {
-          if (context.logErrors) {
-            console.log("FOCUS mode requires a material: chop focus <material>")
-          }
           return null
         }
         return { type: "Chop", mode: GatherMode.FOCUS, focusMaterialId: focusMaterial }
@@ -213,9 +178,6 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
       } else if (modeName === "appraise") {
         return { type: "Chop", mode: GatherMode.APPRAISE }
       } else {
-        if (context.logErrors) {
-          console.log("Invalid chop mode. Use: focus, careful, or appraise")
-        }
         return null
       }
     }
@@ -278,23 +240,16 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
           return { type: "FarTravel", destinationAreaId: prefixMatches[0] }
         }
         if (exactMatches.length > 1 || prefixMatches.length > 1) {
-          if (context.logErrors) {
-            console.log("Ambiguous destination - be more specific")
-          }
           return null
         }
       }
 
-      if (context.logErrors) {
-        console.log("Unknown destination. Use 'fartravel' to see all reachable areas.")
-      }
       return null
     }
 
     case "fight": {
       const enemyId = parts[1]
       if (!enemyId) {
-        if (context.logErrors) console.log("Usage: fight <enemy-id>")
         return null
       }
       return { type: "Fight", enemyId }
@@ -303,7 +258,6 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
     case "craft": {
       const recipeId = parts[1]
       if (!recipeId) {
-        if (context.logErrors) console.log("Usage: craft <recipe-id>")
         return null
       }
       return { type: "Craft", recipeId }
@@ -313,7 +267,6 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
       const storeItem = parts[1]?.toUpperCase()
       const storeQty = parseInt(parts[2] || "1", 10)
       if (!storeItem) {
-        if (context.logErrors) console.log("Usage: store <item-id> [quantity]")
         return null
       }
       return { type: "Store", itemId: storeItem, quantity: storeQty }
@@ -323,7 +276,6 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
       const dropItem = parts[1]?.toUpperCase()
       const dropQty = parseInt(parts[2] || "1", 10)
       if (!dropItem) {
-        if (context.logErrors) console.log("Usage: drop <item-id> [quantity]")
         return null
       }
       return { type: "Drop", itemId: dropItem, quantity: dropQty }
@@ -332,7 +284,6 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
     case "accept": {
       const contractId = parts[1]
       if (!contractId) {
-        if (context.logErrors) console.log("Usage: accept <contract-id>")
         return null
       }
       return { type: "AcceptContract", contractId }
@@ -347,16 +298,10 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         if (guildSkill) {
           return { type: "Enrol", skill: guildSkill }
         }
-        if (context.logErrors) {
-          console.log("Usage: enrol <skill>  (Exploration, Mining, Woodcutting, Combat, Smithing)")
-        }
         return null
       }
       const skill = SKILL_MAP[skillName.toLowerCase()]
       if (!skill) {
-        if (context.logErrors) {
-          console.log("Invalid skill. Choose: Exploration, Mining, Woodcutting, Combat, Smithing")
-        }
         return null
       }
       return { type: "Enrol", skill }
@@ -370,7 +315,6 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
       // Unified travel command - works for both locations and areas
       const inputName = parts.slice(1).join(" ").toLowerCase()
       if (!inputName) {
-        if (context.logErrors) console.log("Usage: goto <destination>  (location or area)")
         return null
       }
 
@@ -397,10 +341,6 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         if (matchingLocation) {
           return { type: "TravelToLocation", locationId: matchingLocation.id }
         }
-        // No matching location found - let it fail at execution time with proper error
-        if (context.logErrors) {
-          console.log(`No discovered ${skillType.toLowerCase()} location in current area`)
-        }
         return null
       }
 
@@ -424,16 +364,10 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
           ) ?? []
 
         if (mobCampLocations.length === 0) {
-          if (context.logErrors) {
-            console.log("No discovered enemy camps in current area")
-          }
           return null
         }
 
         if (isNaN(index) || index < 1 || index > mobCampLocations.length) {
-          if (context.logErrors) {
-            console.log(`Invalid camp index. Found ${mobCampLocations.length} enemy camp(s).`)
-          }
           return null
         }
 
@@ -1265,7 +1199,7 @@ export interface RunnerConfig {
 
 /**
  * Run a session with the given configuration.
- * This is the unified core loop used by both REPL and batch runners.
+ * This is the core loop used by the REPL.
  */
 export async function runSession(seed: string, config: RunnerConfig): Promise<void> {
   // Check if a save exists for this seed (only in interactive/TTY mode)

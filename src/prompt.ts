@@ -23,6 +23,10 @@ let commandHistory: string[] = []
 // Track pending prompt to handle signals gracefully
 let pendingPromptResolve: ((value: string) => void) | null = null
 
+// Buffer for piped/non-TTY input
+let pipedInputBuffer: string[] | null = null
+let pipedInputIndex = 0
+
 /**
  * Load history from file on startup
  */
@@ -77,9 +81,17 @@ export function addToHistory(command: string): void {
 
 /**
  * Initialize the input manager. Must be called before using prompt functions.
+ * For non-TTY input (pipes), reads all input upfront into a buffer.
  */
-export function initInput(): void {
+export async function initInput(): Promise<void> {
   if (rl) return
+
+  // For non-TTY input, read all lines upfront to avoid readline timing issues
+  if (!process.stdin.isTTY && pipedInputBuffer === null) {
+    pipedInputBuffer = await readAllStdin()
+    pipedInputIndex = 0
+    return // Don't create readline for piped input
+  }
 
   // Load history from file on first init
   if (commandHistory.length === 0) {
@@ -122,6 +134,22 @@ export function initInput(): void {
 }
 
 /**
+ * Read all lines from stdin (for piped input).
+ */
+async function readAllStdin(): Promise<string[]> {
+  return new Promise((resolve) => {
+    const lines: string[] = []
+    const tempRl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+      terminal: false,
+    })
+    tempRl.on("line", (line) => lines.push(line))
+    tempRl.on("close", () => resolve(lines))
+  })
+}
+
+/**
  * Close the input manager. Call when done with all input.
  */
 export function closeInput(): void {
@@ -129,12 +157,28 @@ export function closeInput(): void {
     rl.close()
     rl = null
   }
+  // Reset piped input buffer
+  pipedInputBuffer = null
+  pipedInputIndex = 0
 }
 
 /**
  * Prompt for a line of text input using readline.
+ * For piped input, serves from the pre-read buffer.
  */
 export async function promptLine(question: string): Promise<string> {
+  // For piped input, serve from buffer
+  if (pipedInputBuffer !== null) {
+    process.stdout.write(question) // Still show prompt for output consistency
+    if (pipedInputIndex < pipedInputBuffer.length) {
+      const line = pipedInputBuffer[pipedInputIndex++]
+      console.log(line) // Echo the command
+      return line
+    }
+    // Buffer exhausted - return "end" to finish session
+    return "end"
+  }
+
   if (!rl) {
     throw new Error("Input manager not initialized. Call initInput() first.")
   }
