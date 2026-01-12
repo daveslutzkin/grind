@@ -1,5 +1,6 @@
 import type { Action, SkillID } from "../types.js"
 import { GatherMode } from "../types.js"
+import { LOCATION_DISPLAY_NAMES } from "../world.js"
 
 /**
  * Valid skill names for normalization
@@ -22,6 +23,28 @@ function normalizeSkillName(input: string): SkillID | null {
   for (const skill of VALID_SKILLS) {
     if (skill.toLowerCase() === lower) {
       return skill
+    }
+  }
+  return null
+}
+
+/**
+ * Normalize a name for comparison by removing punctuation (apostrophes, etc.)
+ * but keeping letters, numbers, spaces, and dashes
+ */
+function normalizeName(name: string): string {
+  return name.toLowerCase().replace(/[^\w\s-]/g, "")
+}
+
+/**
+ * Match a destination name to a location ID from LOCATION_DISPLAY_NAMES
+ * Returns the location ID if found, null otherwise
+ */
+function matchLocationByName(input: string): string | null {
+  const normalizedInput = normalizeName(input)
+  for (const [locationId, displayName] of Object.entries(LOCATION_DISPLAY_NAMES)) {
+    if (normalizeName(displayName).includes(normalizedInput)) {
+      return locationId
     }
   }
   return null
@@ -69,17 +92,25 @@ function parseAction(actionText: string): Action | null {
   // Normalize the text
   const text = actionText.trim()
 
-  // Try to parse Move action
-  // Patterns: "Move to LOCATION", "Move LOCATION", "Move(destination=LOCATION)"
-  const movePatterns = [
-    /^move\s+to\s+(\w+)/i,
-    /^move\s+(\w+)/i,
-    /^move\s*\(\s*destination\s*=\s*(\w+)\s*\)/i,
-  ]
-  for (const pattern of movePatterns) {
+  // Try to parse Leave action (return to hub)
+  if (/^leave$/i.test(text)) {
+    return { type: "Leave" }
+  }
+
+  // Try to parse Go/Move action
+  // Patterns: "Go to DEST", "Move to DEST", "Go DEST", "Move DEST"
+  const goPatterns = [/^go\s+to\s+(.+)/i, /^go\s+(.+)/i, /^move\s+to\s+(.+)/i, /^move\s+(.+)/i]
+  for (const pattern of goPatterns) {
     const match = text.match(pattern)
     if (match) {
-      return { type: "Move", destination: match[1] }
+      const destination = match[1].trim()
+      // First, try to match as a location (guild, warehouse, etc.)
+      const locationId = matchLocationByName(destination)
+      if (locationId) {
+        return { type: "TravelToLocation", locationId }
+      }
+      // Fall back to area movement
+      return { type: "Move", destination }
     }
   }
 

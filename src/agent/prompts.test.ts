@@ -12,7 +12,8 @@ describe("Prompts", () => {
     it("should include available action types", () => {
       const prompt = createSystemPrompt("explore the game")
 
-      expect(prompt).toContain("Move")
+      expect(prompt).toContain("Go")
+      expect(prompt).toContain("Leave")
       expect(prompt).toContain("Gather")
       expect(prompt).toContain("Fight")
       expect(prompt).toContain("Store")

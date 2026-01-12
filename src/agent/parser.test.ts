@@ -267,12 +267,12 @@ CONTINUE_IF: inventory not full and node not depleted
     })
 
     it("should handle missing sections gracefully", () => {
-      const response = `ACTION: Move to MINE`
+      const response = `ACTION: Go to WILDERNESS`
       const parsed = parseAgentResponse(response)
 
       expect(parsed.action).toEqual({
         type: "Move",
-        destination: "MINE",
+        destination: "WILDERNESS",
       })
       expect(parsed.reasoning).toBe("")
       expect(parsed.learning).toBe("")
@@ -300,15 +300,16 @@ ACTION: move to COPSE
       })
     })
 
-    it("should parse alternative action formats", () => {
+    it("should parse Go to location as TravelToLocation", () => {
       const response = `
-REASONING: Using different format.
+REASONING: Going to a guild.
 
-ACTION: Move(destination=FOREST)
+ACTION: Go to Miners Guild
 `
       const parsed = parseAgentResponse(response)
 
-      expect(parsed.action?.type).toBe("Move")
+      expect(parsed.action?.type).toBe("TravelToLocation")
+      expect((parsed.action as { locationId: string }).locationId).toBe("TOWN_MINERS_GUILD")
     })
 
     it("should parse NOTES section", () => {
