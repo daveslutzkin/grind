@@ -424,5 +424,127 @@ LEARNING: Testing area name resolution.
         expect(parsed.action.destination).not.toBe(areaName)
       }
     })
+
+    it("should parse an Explore action", () => {
+      const response = `
+REASONING: I need to discover locations in this area.
+
+ACTION: Explore
+`
+      const parsed = parseAgentResponse(response, testState)
+
+      expect(parsed.action).toEqual({
+        type: "Explore",
+      })
+    })
+
+    it("should parse a Survey action", () => {
+      const response = `
+REASONING: I need to discover new connected areas.
+
+ACTION: Survey
+`
+      const parsed = parseAgentResponse(response, testState)
+
+      expect(parsed.action).toEqual({
+        type: "Survey",
+      })
+    })
+
+    it("should parse a FarTravel action with area name", () => {
+      // First, make sure we have a known area with a generated name
+      const areaId = Array.from(testState.exploration.areas.values()).find(
+        (a) => a.distance === 1 && a.name
+      )?.id
+
+      if (!areaId) {
+        // If no area with name exists, skip this test
+        return
+      }
+
+      // Make the area known
+      if (!testState.exploration.playerState.knownAreaIds.includes(areaId)) {
+        testState.exploration.playerState.knownAreaIds.push(areaId)
+      }
+
+      const area = testState.exploration.areas.get(areaId)!
+      const areaName = area.name
+
+      const response = `
+REASONING: I need to travel far to a known area.
+
+ACTION: FarTravel ${areaName}
+
+LEARNING: Testing far travel with area name.
+`
+      const parsed = parseAgentResponse(response, testState)
+
+      // Should resolve the area name to the area ID
+      expect(parsed.action?.type).toBe("FarTravel")
+      if (parsed.action?.type === "FarTravel") {
+        expect(parsed.action.destinationAreaId).toBe(areaId)
+      }
+    })
+
+    it("should parse a FarTravel action with short alias", () => {
+      // First, make sure we have a known area with a generated name
+      const areaId = Array.from(testState.exploration.areas.values()).find(
+        (a) => a.distance === 1 && a.name
+      )?.id
+
+      if (!areaId) {
+        // If no area with name exists, skip this test
+        return
+      }
+
+      // Make the area known
+      if (!testState.exploration.playerState.knownAreaIds.includes(areaId)) {
+        testState.exploration.playerState.knownAreaIds.push(areaId)
+      }
+
+      const area = testState.exploration.areas.get(areaId)!
+      const areaName = area.name
+
+      const response = `
+REASONING: I need to travel far using the short alias.
+
+ACTION: Far ${areaName}
+
+LEARNING: Testing far travel with short alias.
+`
+      const parsed = parseAgentResponse(response, testState)
+
+      // Should resolve the area name to the area ID
+      expect(parsed.action?.type).toBe("FarTravel")
+      if (parsed.action?.type === "FarTravel") {
+        expect(parsed.action.destinationAreaId).toBe(areaId)
+      }
+    })
+
+    it("should handle case-insensitive Explore action", () => {
+      const response = `
+REASONING: Testing case insensitivity.
+
+ACTION: explore
+`
+      const parsed = parseAgentResponse(response, testState)
+
+      expect(parsed.action).toEqual({
+        type: "Explore",
+      })
+    })
+
+    it("should handle case-insensitive Survey action", () => {
+      const response = `
+REASONING: Testing case insensitivity.
+
+ACTION: SURVEY
+`
+      const parsed = parseAgentResponse(response, testState)
+
+      expect(parsed.action).toEqual({
+        type: "Survey",
+      })
+    })
   })
 })
