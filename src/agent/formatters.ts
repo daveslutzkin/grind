@@ -295,13 +295,13 @@ export function formatWorldState(state: WorldState): string {
         const guildNames = guilds
           .map((loc) => getLocationDisplayName(loc.id, currentArea, state))
           .join(", ")
-        lines.push(`Guilds (go to <name> to enter): ${guildNames}`)
+        lines.push(`Guilds (go <name> to enter): ${guildNames}`)
       }
       if (services.length > 0) {
         const serviceNames = services
           .map((loc) => getLocationDisplayName(loc.id, currentArea, state))
           .join(", ")
-        lines.push(`Services (go to <name>): ${serviceNames}`)
+        lines.push(`Services (go <name>): ${serviceNames}`)
       }
     }
   } else {
