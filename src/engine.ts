@@ -24,7 +24,7 @@ import type {
   GatheringSkillID,
   ActionGenerator,
 } from "./types.js"
-import { isInTown, GatherMode, NodeType, getCurrentAreaId } from "./types.js"
+import { isInTown, GatherMode, NodeType, getCurrentAreaId, getCurrentLocationId } from "./types.js"
 import { rollFloat } from "./rng.js"
 import {
   executeSurvey,
@@ -55,7 +55,7 @@ import {
   grantXP,
   checkAndCompleteContracts,
 } from "./stateHelpers.js"
-import { getLocationDisplayName } from "./world.js"
+import { getLocationDisplayName, getSkillForGuildLocation } from "./world.js"
 
 /**
  * Helper to consume an action generator and return the final ActionLog.
@@ -811,7 +811,10 @@ async function* executeGuildEnrolment(
   action: GuildEnrolmentAction
 ): ActionGenerator {
   const tickBefore = state.time.currentTick
-  const { skill } = action
+
+  // Resolve skill from current location
+  const currentLocationId = getCurrentLocationId(state)
+  const skill = getSkillForGuildLocation(currentLocationId)
 
   // Use shared precondition check
   const check = checkGuildEnrolmentAction(state, action)
@@ -827,7 +830,7 @@ async function* executeGuildEnrolment(
   }
 
   // Set skill to level 1 (unlock it)
-  state.player.skills[skill] = { level: 1, xp: 0 }
+  state.player.skills[skill!] = { level: 1, xp: 0 }
 
   // Combat enrolment grants and equips CRUDE_WEAPON
   if (skill === "Combat") {

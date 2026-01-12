@@ -1,33 +1,7 @@
-import type { Action, SkillID, WorldState } from "../types.js"
+import type { Action, WorldState } from "../types.js"
 import { GatherMode } from "../types.js"
 import { LOCATION_DISPLAY_NAMES } from "../world.js"
 import { getAreaDisplayName } from "../exploration.js"
-
-/**
- * Valid skill names for normalization
- */
-const VALID_SKILLS: SkillID[] = [
-  "Mining",
-  "Woodcutting",
-  "Combat",
-  "Smithing",
-  "Woodcrafting",
-  "Exploration",
-]
-
-/**
- * Normalize a skill name to match the exact SkillID casing
- * Returns null if no match found
- */
-function normalizeSkillName(input: string): SkillID | null {
-  const lower = input.toLowerCase()
-  for (const skill of VALID_SKILLS) {
-    if (skill.toLowerCase() === lower) {
-      return skill
-    }
-  }
-  return null
-}
 
 /**
  * Normalize a name for comparison by removing punctuation (apostrophes, etc.)
@@ -213,15 +187,9 @@ function parseAction(actionText: string, state: WorldState): Action | null {
     return action
   }
 
-  // Try to parse Enrol action
-  const enrolMatch = text.match(/^enrol\s+(\w+)/i)
-  if (enrolMatch) {
-    const skill = normalizeSkillName(enrolMatch[1])
-    if (skill) {
-      return { type: "Enrol", skill }
-    }
-    // Invalid skill name - will be handled as parse error
-    return null
+  // Try to parse Enrol action (no arguments - skill resolved by engine)
+  if (/^enrol$/i.test(text)) {
+    return { type: "Enrol" }
   }
 
   // Try to parse Craft action
@@ -250,16 +218,19 @@ function parseAction(actionText: string, state: WorldState): Action | null {
     }
   }
 
-  // Try to parse Fight action
-  const fightMatch = text.match(/^fight\s+(\S+)/i)
-  if (fightMatch) {
-    return { type: "Fight", enemyId: fightMatch[1] }
+  // Try to parse Fight action (no arguments - enemy resolved by engine)
+  if (/^fight$/i.test(text)) {
+    return { type: "Fight" }
   }
 
   // Try to parse AcceptContract action
-  const acceptMatch = text.match(/^acceptcontract\s+(\S+)/i)
-  if (acceptMatch) {
-    return { type: "AcceptContract", contractId: acceptMatch[1] }
+  // Patterns: "accept CONTRACT_ID", "AcceptContract CONTRACT_ID"
+  const acceptPatterns = [/^accept\s+(\S+)/i, /^acceptcontract\s+(\S+)/i]
+  for (const pattern of acceptPatterns) {
+    const match = text.match(pattern)
+    if (match) {
+      return { type: "AcceptContract", contractId: match[1] }
+    }
   }
 
   // Try to parse TurnInCombatToken action

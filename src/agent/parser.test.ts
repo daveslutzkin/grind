@@ -162,17 +162,16 @@ ACTION: chop APPRAISE
       })
     })
 
-    it("should parse an Enrol action", () => {
+    it("should parse an Enrol action without skill argument", () => {
       const response = `
-REASONING: I need to learn mining before I can gather.
+REASONING: I need to learn the skill from this guild.
 
-ACTION: Enrol Mining
+ACTION: enrol
 `
       const parsed = parseAgentResponse(response, testState)
 
       expect(parsed.action).toEqual({
         type: "Enrol",
-        skill: "Mining",
       })
     })
 
@@ -220,21 +219,34 @@ ACTION: Drop 3 stone
       })
     })
 
-    it("should parse a Fight action", () => {
+    it("should parse a Fight action without enemy argument", () => {
       const response = `
 REASONING: Time to battle!
 
-ACTION: Fight cave_rat
+ACTION: fight
 `
       const parsed = parseAgentResponse(response, testState)
 
       expect(parsed.action).toEqual({
         type: "Fight",
-        enemyId: "cave_rat",
       })
     })
 
-    it("should parse an AcceptContract action", () => {
+    it("should parse an AcceptContract action with 'accept'", () => {
+      const response = `
+REASONING: This contract looks profitable.
+
+ACTION: accept iron_delivery
+`
+      const parsed = parseAgentResponse(response, testState)
+
+      expect(parsed.action).toEqual({
+        type: "AcceptContract",
+        contractId: "iron_delivery",
+      })
+    })
+
+    it("should parse an AcceptContract action with 'AcceptContract'", () => {
       const response = `
 REASONING: This contract looks profitable.
 

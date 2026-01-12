@@ -27,7 +27,7 @@ import {
   isInTown,
   ExplorationLocationType,
 } from "./types.js"
-import { getGuildLocationForSkill } from "./world.js"
+import { getGuildLocationForSkill, getSkillForGuildLocation } from "./world.js"
 
 /**
  * Result of checking action preconditions
@@ -500,18 +500,21 @@ export function checkDropAction(state: WorldState, action: DropAction): ActionCh
  */
 export function checkGuildEnrolmentAction(
   state: WorldState,
-  action: GuildEnrolmentAction
+  _action: GuildEnrolmentAction
 ): ActionCheckResult {
   const enrolTime = 3
 
-  // Must be at the correct guild hall for this skill
-  const requiredLocation = getGuildLocationForSkill(action.skill)
-  if (getCurrentLocationId(state) !== requiredLocation) {
+  // Resolve skill from current location
+  const currentLocationId = getCurrentLocationId(state)
+  const skill = getSkillForGuildLocation(currentLocationId)
+
+  // Must be at a guild hall
+  if (!skill) {
     return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
   }
 
   // Check if skill exists (defensive check for invalid skill names)
-  const skillState = state.player.skills[action.skill]
+  const skillState = state.player.skills[skill]
   if (!skillState) {
     return { valid: false, failureType: "INSUFFICIENT_SKILL", timeCost: 0, successProbability: 0 }
   }

@@ -485,7 +485,7 @@ describe("Engine", () => {
     it("should add loot to inventory on success", async () => {
       const state = createWorld("fight-success")
       setupCombatState(state)
-      const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
+      const action: FightAction = { type: "Fight" }
 
       const log = await await executeAction(state, action)
 
@@ -498,7 +498,7 @@ describe("Engine", () => {
     it("should consume fight time", async () => {
       const state = createWorld("ore-test")
       setupCombatState(state)
-      const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
+      const action: FightAction = { type: "Fight" }
 
       const log = await await executeAction(state, action)
 
@@ -508,7 +508,7 @@ describe("Engine", () => {
     it("should grant Combat XP on success", async () => {
       const state = createWorld("ore-test")
       setupCombatState(state)
-      const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
+      const action: FightAction = { type: "Fight" }
 
       const log = await await executeAction(state, action)
 
@@ -525,7 +525,7 @@ describe("Engine", () => {
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
       state.player.equippedWeapon = "CRUDE_WEAPON"
       // NOTE: Enemies not yet implemented - this describe block is skipped
-      const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
+      const action: FightAction = { type: "Fight" }
 
       const log = await await executeAction(state, action)
 
@@ -541,7 +541,7 @@ describe("Engine", () => {
       state.exploration.playerState.currentAreaId = areaId
       state.player.inventory.push({ itemId: "CRUDE_WEAPON", quantity: 1 })
       state.player.equippedWeapon = "CRUDE_WEAPON"
-      const action: FightAction = { type: "Fight", enemyId: "nonexistent" }
+      const action: FightAction = { type: "Fight" }
 
       const log = await await executeAction(state, action)
 
@@ -553,7 +553,7 @@ describe("Engine", () => {
       const state = createWorld("fight-fail")
       const areaId = setupCombatState(state)
       state.rng.seed = "force-fight-fail"
-      const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
+      const action: FightAction = { type: "Fight" }
 
       const log = await await executeAction(state, action)
 
@@ -566,7 +566,7 @@ describe("Engine", () => {
     it("should log RNG roll", async () => {
       const state = createWorld("ore-test")
       setupCombatState(state)
-      const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
+      const action: FightAction = { type: "Fight" }
 
       const log = await await executeAction(state, action)
 
@@ -881,7 +881,7 @@ describe("Engine", () => {
       state.player.equippedWeapon = "CRUDE_WEAPON"
       // NOTE: Enemies not yet implemented - this describe block is skipped
       // Skills start at 0, so Combat should be 0
-      const action: FightAction = { type: "Fight", enemyId: "cave-rat" }
+      const action: FightAction = { type: "Fight" }
 
       const log = await await executeAction(state, action)
 
@@ -938,7 +938,7 @@ describe("Engine", () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       expect(state.player.skills.Mining.level).toBe(0)
-      const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
+      const action: GuildEnrolmentAction = { type: "Enrol" }
 
       const log = await await executeAction(state, action)
 
@@ -950,7 +950,7 @@ describe("Engine", () => {
     it("should consume 3 ticks", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-      const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
+      const action: GuildEnrolmentAction = { type: "Enrol" }
 
       const log = await await executeAction(state, action)
 
@@ -961,7 +961,7 @@ describe("Engine", () => {
       const state = createWorld("ore-test")
       // At Town Square, not at any guild
       setTownLocation(state, null)
-      const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
+      const action: GuildEnrolmentAction = { type: "Enrol" }
 
       const log = await await executeAction(state, action)
 
@@ -969,11 +969,11 @@ describe("Engine", () => {
       expect(log.failureType).toBe("WRONG_LOCATION")
     })
 
-    it("should fail if at wrong guild location", async () => {
+    it("should fail if not at a guild location", async () => {
       const state = createWorld("ore-test")
-      // At Combat Guild, trying to enrol in Mining
-      setTownLocation(state, TOWN_LOCATIONS.COMBAT_GUILD)
-      const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
+      // At Warehouse, not at a guild
+      setTownLocation(state, TOWN_LOCATIONS.WAREHOUSE)
+      const action: GuildEnrolmentAction = { type: "Enrol" }
 
       const log = await await executeAction(state, action)
 
@@ -984,7 +984,7 @@ describe("Engine", () => {
     it("should not grant XP (just unlocks the skill)", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-      const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
+      const action: GuildEnrolmentAction = { type: "Enrol" }
 
       const log = await await executeAction(state, action)
 
@@ -996,7 +996,7 @@ describe("Engine", () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       state.player.skills.Mining = { level: 1, xp: 0 }
-      const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
+      const action: GuildEnrolmentAction = { type: "Enrol" }
 
       const log = await await executeAction(state, action)
 
@@ -1010,25 +1010,25 @@ describe("Engine", () => {
 
       // Enrol in Mining
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-      let log = await executeAction(state, { type: "Enrol", skill: "Mining" })
+      let log = await executeAction(state, { type: "Enrol" })
       expect(log.success).toBe(true)
       expect(state.player.skills.Mining.level).toBe(1)
 
       // Enrol in Woodcutting
       setTownLocation(state, TOWN_LOCATIONS.FORESTERS_GUILD)
-      log = await executeAction(state, { type: "Enrol", skill: "Woodcutting" })
+      log = await executeAction(state, { type: "Enrol" })
       expect(log.success).toBe(true)
       expect(state.player.skills.Woodcutting.level).toBe(1)
 
       // Enrol in Combat
       setTownLocation(state, TOWN_LOCATIONS.COMBAT_GUILD)
-      log = await executeAction(state, { type: "Enrol", skill: "Combat" })
+      log = await executeAction(state, { type: "Enrol" })
       expect(log.success).toBe(true)
       expect(state.player.skills.Combat.level).toBe(1)
 
       // Enrol in Smithing
       setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD)
-      log = await executeAction(state, { type: "Enrol", skill: "Smithing" })
+      log = await executeAction(state, { type: "Enrol" })
       expect(log.success).toBe(true)
       expect(state.player.skills.Smithing.level).toBe(1)
     })
@@ -1036,11 +1036,12 @@ describe("Engine", () => {
     it("should log action details", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-      const action: GuildEnrolmentAction = { type: "Enrol", skill: "Mining" }
+      const action: GuildEnrolmentAction = { type: "Enrol" }
 
       const log = await await executeAction(state, action)
 
       expect(log.actionType).toBe("Enrol")
+      // Log includes resolved skill for clarity
       expect(log.parameters).toEqual({ skill: "Mining" })
       expect(log.stateDeltaSummary).toContain("Mining")
     })

@@ -134,7 +134,7 @@ describe("Formatters", () => {
 
         // Enrol in Mining at L1
         setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-        await executeAction(state, { type: "Enrol", skill: "Mining" })
+        await executeAction(state, { type: "Enrol" })
         state.exploration.playerState.currentAreaId = areaId
 
         const formatted = formatWorldState(state)
@@ -155,7 +155,7 @@ describe("Formatters", () => {
 
         // Enrol in Mining at L1
         setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-        await executeAction(state, { type: "Enrol", skill: "Mining" })
+        await executeAction(state, { type: "Enrol" })
         state.exploration.playerState.currentAreaId = areaId
 
         // Find a node with a material requiring level > 1
@@ -184,7 +184,7 @@ describe("Formatters", () => {
 
         // Enrol in Mining and level up to L3 for APPRAISE
         setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-        await executeAction(state, { type: "Enrol", skill: "Mining" })
+        await executeAction(state, { type: "Enrol" })
         state.player.skills.Mining = { level: 3, xp: 0 } // L3 unlocks APPRAISE
         state.exploration.playerState.currentAreaId = areaId
 
@@ -221,7 +221,7 @@ describe("Formatters", () => {
 
         // Enrol in Mining first (must be at guild)
         setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-        await executeAction(state, { type: "Enrol", skill: "Mining" })
+        await executeAction(state, { type: "Enrol" })
 
         // Now move to D2 area (at hub, not at a specific location)
         makeAreaKnown(state, d2Area.id)
@@ -250,7 +250,7 @@ describe("Formatters", () => {
 
         // Enrol in Mining and set to L5 (meets D2 requirement)
         setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-        await executeAction(state, { type: "Enrol", skill: "Mining" })
+        await executeAction(state, { type: "Enrol" })
         state.player.skills.Mining = { level: 5, xp: 0 }
 
         // Now move to D2 area (at hub, not at a specific location)
@@ -513,7 +513,7 @@ describe("Formatters", () => {
       const state = createWorld("ore-test")
       // Enrol in Mining first (must be at guild)
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-      await executeAction(state, { type: "Enrol", skill: "Mining" })
+      await executeAction(state, { type: "Enrol" })
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
       // Position player at ore area and gather (testing gather log, not travel)
@@ -603,7 +603,6 @@ describe("Formatters", () => {
 
       const log = await executeAction(state, {
         type: "Fight",
-        enemyId: "test-enemy",
       })
 
       const formatted = formatActionLog(log)
@@ -679,7 +678,7 @@ describe("Formatters", () => {
 
     it("should show 'Node depleted!' error message", async () => {
       const state = createWorld("depleted-test")
-      await executeAction(state, { type: "Enrol", skill: "Mining" })
+      await executeAction(state, { type: "Enrol" })
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
       state.exploration.playerState.currentAreaId = areaId
@@ -710,10 +709,10 @@ describe("Formatters", () => {
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
 
       // Enrol once
-      await executeAction(state, { type: "Enrol", skill: "Mining" })
+      await executeAction(state, { type: "Enrol" })
 
       // Try to enrol again
-      const log = await executeAction(state, { type: "Enrol", skill: "Mining" })
+      const log = await executeAction(state, { type: "Enrol" })
 
       const formatted = formatActionLog(log)
 
@@ -734,7 +733,6 @@ describe("Formatters", () => {
 
       const log = await executeAction(state, {
         type: "Fight",
-        enemyId: "test-enemy-2",
       })
 
       const formatted = formatActionLog(log)
@@ -746,7 +744,7 @@ describe("Formatters", () => {
 
     it("should show 'Wrong location!' error message", async () => {
       const state = createWorld("location-test")
-      await executeAction(state, { type: "Enrol", skill: "Mining" })
+      await executeAction(state, { type: "Enrol" })
 
       // Try to gather from a node in a different area
       const areaId = getOreAreaId(state)
@@ -785,7 +783,7 @@ describe("Formatters", () => {
 
     it("should show 'Resource node not found!' error message", async () => {
       const state = createWorld("node-test")
-      await executeAction(state, { type: "Enrol", skill: "Mining" })
+      await executeAction(state, { type: "Enrol" })
 
       const log = await executeAction(state, {
         type: "Gather",
@@ -808,7 +806,6 @@ describe("Formatters", () => {
 
       const log = await executeAction(state, {
         type: "Fight",
-        enemyId: "nonexistent-enemy",
       })
 
       const formatted = formatActionLog(log)
@@ -819,7 +816,7 @@ describe("Formatters", () => {
 
     it("should show 'Mode not unlocked!' error message", async () => {
       const state = createWorld("mode-test")
-      await executeAction(state, { type: "Enrol", skill: "Mining" })
+      await executeAction(state, { type: "Enrol" })
       // Set player to level 2 - high enough for distance-1 areas but not for APPRAISE (requires L3)
       state.player.skills.Mining = { level: 2, xp: 0 }
 
@@ -847,7 +844,7 @@ describe("Formatters", () => {
 
     it("should show 'Location not discovered!' error message", async () => {
       const state = createWorld("location-discovery-test")
-      await executeAction(state, { type: "Enrol", skill: "Mining" })
+      await executeAction(state, { type: "Enrol" })
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
       state.exploration.playerState.currentAreaId = areaId
@@ -891,7 +888,7 @@ describe("Formatters", () => {
 
     it("should include XP gain information when present", async () => {
       const state = createWorld("ore-test")
-      await executeAction(state, { type: "Enrol", skill: "Mining" })
+      await executeAction(state, { type: "Enrol" })
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
       // Position player at ore area directly
@@ -921,7 +918,7 @@ describe("Formatters", () => {
 
     it("should include RNG roll outcomes when present", async () => {
       const state = createWorld("ore-test")
-      await executeAction(state, { type: "Enrol", skill: "Mining" })
+      await executeAction(state, { type: "Enrol" })
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
       // Position player at ore area directly
@@ -949,7 +946,7 @@ describe("Formatters", () => {
 
     it("should include items gained/lost", async () => {
       const state = createWorld("ore-test")
-      await executeAction(state, { type: "Enrol", skill: "Mining" })
+      await executeAction(state, { type: "Enrol" })
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
       // Position player at ore area directly
@@ -979,7 +976,7 @@ describe("Formatters", () => {
       const state = createWorld("xp-test")
       // Join Explorers Guild to start gaining XP
       setTownLocation(state, TOWN_LOCATIONS.EXPLORERS_GUILD)
-      await executeAction(state, { type: "Enrol", skill: "Exploration" })
+      await executeAction(state, { type: "Enrol" })
 
       // Survey to discover an area and gain XP
       const log = await executeAction(state, { type: "Survey" })
@@ -994,7 +991,7 @@ describe("Formatters", () => {
     it("should show connection travel time for discovered connections", async () => {
       const state = createWorld("connection-test")
       setTownLocation(state, TOWN_LOCATIONS.EXPLORERS_GUILD)
-      await executeAction(state, { type: "Enrol", skill: "Exploration" })
+      await executeAction(state, { type: "Enrol" })
 
       // First discover an area via Survey
       await executeAction(state, { type: "Survey" })
@@ -1015,7 +1012,7 @@ describe("Formatters", () => {
     it("should show RNG percentile for exploration discoveries", async () => {
       const state = createWorld("rng-test")
       setTownLocation(state, TOWN_LOCATIONS.EXPLORERS_GUILD)
-      await executeAction(state, { type: "Enrol", skill: "Exploration" })
+      await executeAction(state, { type: "Enrol" })
 
       // Explore to discover something
       const log = await executeAction(state, { type: "Explore" })
