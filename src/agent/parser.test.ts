@@ -310,5 +310,70 @@ ACTION: Move(destination=FOREST)
 
       expect(parsed.action?.type).toBe("Move")
     })
+
+    it("should parse NOTES section", () => {
+      const response = `
+REASONING: I should note what I found here.
+
+ACTION: Move to TOWN
+
+NOTES: Miners Guild has contract: 2 copper bars -> 5 copper ore. Travel to mine takes 3 ticks.
+`
+      const parsed = parseAgentResponse(response)
+
+      expect(parsed.notes).toContain("Miners Guild has contract")
+      expect(parsed.notes).toContain("Travel to mine takes 3 ticks")
+    })
+
+    it("should parse multiline NOTES section", () => {
+      const response = `
+REASONING: Recording discoveries.
+
+ACTION: Move to TOWN
+
+NOTES: Discovered:
+- Miners Guild at TOWN_MINERS_GUILD has copper contract
+- Smithing Guild has recipes for bars
+- Travel to area-d1-i0 takes 2 ticks
+
+CONTINUE_IF: inventory not full
+`
+      const parsed = parseAgentResponse(response)
+
+      expect(parsed.notes).toContain("Miners Guild")
+      expect(parsed.notes).toContain("Smithing Guild")
+      expect(parsed.notes).toContain("area-d1-i0")
+      expect(parsed.continueCondition).toContain("inventory not full")
+    })
+
+    it("should return null notes when NOTES section is missing", () => {
+      const response = `
+REASONING: No notes this time.
+
+ACTION: Enrol Mining
+
+LEARNING: Mining costs 3 ticks.
+`
+      const parsed = parseAgentResponse(response)
+
+      expect(parsed.notes).toBeNull()
+      expect(parsed.learning).toContain("Mining costs 3 ticks")
+    })
+
+    it("should handle NOTES before LEARNING", () => {
+      const response = `
+REASONING: Testing section order.
+
+ACTION: Move to MINE
+
+NOTES: Mine location discovered.
+
+LEARNING: Travel cost was 2 ticks.
+`
+      const parsed = parseAgentResponse(response)
+
+      expect(parsed.notes).toBe("Mine location discovered.")
+      expect(parsed.learning).toBe("Travel cost was 2 ticks.")
+    })
   })
 })

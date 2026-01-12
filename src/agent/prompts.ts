@@ -81,4 +81,3 @@ Remember:
 - Document learnings, but put facts to remember in NOTES
 - Your inventory has limited space - manage it wisely`
 }
-

@@ -249,6 +249,7 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
           reasoning: "Testing in dry run mode",
           action: { type: "Enrol", skill: "Mining" },
           learning: "This is a test",
+          notes: null,
           continueCondition: null,
         }
 

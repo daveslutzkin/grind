@@ -193,4 +193,3 @@ function extractKeyFacts(learnings: string[], patterns: FactPattern[]): string[]
 
   return facts
 }
-

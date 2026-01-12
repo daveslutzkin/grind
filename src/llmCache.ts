@@ -64,7 +64,7 @@ export function isCacheEnabled(): boolean {
  * If replaying and we have a cached response, return it.
  * If we've exhausted cached responses, return undefined to trigger a real LLM call.
  */
-export function getCachedResponse(prompt: string): string | undefined {
+export function getCachedResponse(_prompt: string): string | undefined {
   if (!globalCache) return undefined
 
   // If we have more cached responses to replay, use them
