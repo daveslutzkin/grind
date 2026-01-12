@@ -105,7 +105,9 @@ function createFailureLog(
   state: WorldState,
   action: Action,
   failureType: FailureType,
-  timeConsumed: number = 0
+  timeConsumed: number = 0,
+  reason?: string,
+  context?: Record<string, unknown>
 ): ActionLog {
   return {
     tickBefore: state.time.currentTick,
@@ -113,6 +115,11 @@ function createFailureLog(
     parameters: extractParameters(action),
     success: false,
     failureType,
+    failureDetails: {
+      type: failureType,
+      reason,
+      context,
+    },
     timeConsumed,
     rngRolls: [],
     stateDeltaSummary: `Failed: ${failureType}`,
@@ -130,9 +137,11 @@ function extractParameters(action: Action): Record<string, unknown> {
 async function* createFailureGenerator(
   state: WorldState,
   action: Action,
-  failureType: FailureType
+  failureType: FailureType,
+  reason?: string,
+  context?: Record<string, unknown>
 ): ActionGenerator {
-  yield { done: true, log: createFailureLog(state, action, failureType) }
+  yield { done: true, log: createFailureLog(state, action, failureType, 0, reason, context) }
 }
 
 /**

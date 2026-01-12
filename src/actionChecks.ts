@@ -35,6 +35,8 @@ import { getGuildLocationForSkill, getSkillForGuildLocation } from "./world.js"
 export interface ActionCheckResult {
   valid: boolean
   failureType?: FailureType
+  failureReason?: string // NEW - sub-reason for the failure
+  failureContext?: Record<string, unknown> // NEW - context data for hint generation
   timeCost: number
   successProbability: number
 }

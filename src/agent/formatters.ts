@@ -24,6 +24,7 @@ import {
 import type { GatheringSkillID } from "../types.js"
 import { normalCDF } from "../runner.js"
 import { getAvailableActions, type AvailableAction } from "../availableActions.js"
+import { generateFailureHint } from "../hints.js"
 
 /**
  * Get the guild name where a gathering skill can be learned
@@ -792,8 +793,20 @@ export function formatActionLog(log: ActionLog, state?: WorldState): string {
 
   let summary: string
   if (!log.success && log.failureType) {
-    // For failures, show user-friendly error message
-    summary = `${icon} ${formatFailureMessage(log.failureType)}`
+    // For failures, check if we have structured failure details
+    if (log.failureDetails && state) {
+      const formatted = generateFailureHint(log.failureDetails, state)
+      summary = `${icon} ${formatted.message}`
+      if (formatted.reason) {
+        summary += `\n  Reason: ${formatted.reason}`
+      }
+      if (formatted.hint) {
+        summary += `\n  Hint: ${formatted.hint}`
+      }
+    } else {
+      // Fallback to old format when no failureDetails
+      summary = `${icon} ${formatFailureMessage(log.failureType)}`
+    }
   } else if (log.stateDeltaSummary) {
     // For successes, just show the human-readable summary
     summary = `${icon} ${log.stateDeltaSummary}${timeStr}`
