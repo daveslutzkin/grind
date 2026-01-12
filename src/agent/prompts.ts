@@ -45,6 +45,14 @@ GAME OVERVIEW:
 - You can learn skills and level them up through practice
 - Some actions require specific skills or locations
 
+AVAILABLE ACTIONS:
+- The state always shows "Available actions:" listing valid actions for your current situation
+- Each action shows its time cost in ticks (t)
+- Actions marked "~Nt, varies" have RNG-dependent duration (exploration actions)
+- Actions with success probability shown (e.g., "70% success") may fail
+- Only attempt actions from this list
+- Arguments shown as <placeholder> must be filled with valid values from the state
+
 YOUR MEMORY SYSTEM:
 - You only see what's visible at your current location
 - When you leave a location, you won't see its details anymore

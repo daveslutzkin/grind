@@ -23,6 +23,7 @@ import {
 } from "../visibility.js"
 import type { GatheringSkillID } from "../types.js"
 import { normalCDF } from "../runner.js"
+import { getAvailableActions, type AvailableAction } from "../availableActions.js"
 
 /**
  * Get the guild name where a gathering skill can be learned
@@ -180,7 +181,6 @@ export function formatTickFeedback(feedback: TickFeedback, ticksCompleted: numbe
 export function formatWorldState(state: WorldState): string {
   const lines: string[] = []
   const currentArea = getCurrentAreaId(state)
-  const possibleActions: string[] = []
 
   // ========== PLAYER SECTION (separated by blank line) ==========
 
@@ -436,24 +436,6 @@ export function formatWorldState(state: WorldState): string {
                 lines.push(`  ${str}`)
               }
               lines.push("")
-              // Show available gathering commands when player can actually gather
-              const playerSkill = state.player.skills[skill]
-              if (playerSkill) {
-                const unlockedModes = getUnlockedModes(playerSkill.level)
-                const skillCommands = skill === "Mining" ? "mine" : "chop"
-                const modeExamples = unlockedModes.slice(0, 2).map((mode) => {
-                  const lowerMode = mode.toLowerCase().replace("_all", "")
-                  if (mode === "FOCUS") {
-                    const canGatherMat = sortedMaterials.find((m) => m.requiredLevel <= skillLevel)
-                    const exampleMat = canGatherMat
-                      ? canGatherMat.materialId.toLowerCase()
-                      : "material"
-                    return `${skillCommands} focus ${exampleMat}`
-                  }
-                  return `${skillCommands} ${lowerMode}`
-                })
-                possibleActions.push(...modeExamples)
-              }
             } else {
               lines.push("No visible resources at your current skill level.")
             }
@@ -468,7 +450,6 @@ export function formatWorldState(state: WorldState): string {
 
         lines.push(`Enemy camp: ${creatureType}`)
         lines.push(`Difficulty: ${difficulty}`)
-        possibleActions.push("fight")
       }
     } else {
       // At hub - show area-level information
@@ -646,24 +627,37 @@ export function formatWorldState(state: WorldState): string {
     }
   }
 
-  // Show enrol hint at guild halls (last, as it's the actionable item)
-  if (isAtGuildHall && currentLocation?.guildType) {
-    const skill = currentLocation.guildType
-    const playerSkill = state.player.skills[skill]
-    if (!playerSkill || playerSkill.level === 0) {
-      possibleActions.push("enrol")
+  // ========== AVAILABLE ACTIONS SECTION ==========
+  const available = getAvailableActions(state)
+  if (available.length > 0) {
+    lines.push("")
+    lines.push("Available actions:")
+    for (const action of available) {
+      lines.push(formatAvailableAction(action))
     }
   }
 
-  if (currentLocationId) {
-    possibleActions.push("leave")
-  }
-
-  if (possibleActions.length > 0) {
-    lines.push(`Actions: ${possibleActions.join(" || ")}`)
-  }
-
   return lines.join("\n")
+}
+
+/**
+ * Format a single available action for display
+ */
+function formatAvailableAction(action: AvailableAction): string {
+  let cost: string
+  if (action.isVariable) {
+    cost = `~${action.timeCost}t, varies`
+  } else {
+    cost = `${action.timeCost}t`
+  }
+
+  let suffix = ""
+  if (action.successProbability < 1.0) {
+    const pct = Math.round(action.successProbability * 100)
+    suffix = `, ${pct}% success`
+  }
+
+  return `  - ${action.displayName} (${cost}${suffix})`
 }
 
 /**

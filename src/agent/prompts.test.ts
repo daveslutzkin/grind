@@ -49,6 +49,16 @@ describe("Prompts", () => {
       expect(prompt.toLowerCase()).toContain("discover")
     })
 
+    it("should include available actions guidance", () => {
+      const prompt = createSystemPrompt("explore")
+
+      expect(prompt).toContain("AVAILABLE ACTIONS")
+      expect(prompt).toContain("Available actions:")
+      expect(prompt).toContain("time cost in ticks")
+      expect(prompt).toContain("varies")
+      expect(prompt).toContain("Only attempt actions from this list")
+    })
+
     it("should not reveal detailed mechanics", () => {
       const prompt = createSystemPrompt("explore")
 
