@@ -56,6 +56,7 @@ import {
   checkAndCompleteContracts,
 } from "./stateHelpers.js"
 import { getLocationDisplayName, getSkillForGuildLocation } from "./world.js"
+import { resolveDestination } from "./resolution.js"
 
 /**
  * Helper to consume an action generator and return the final ActionLog.
@@ -124,14 +125,37 @@ function extractParameters(action: Action): Record<string, unknown> {
 
 export async function executeAction(state: WorldState, action: Action): Promise<ActionLog> {
   switch (action.type) {
-    case "Move":
-      // Move is an alias for ExplorationTravel
-      return executeToCompletion(
-        executeExplorationTravel(state, {
-          type: "ExplorationTravel",
-          destinationAreaId: action.destination,
-        })
-      )
+    case "Move": {
+      // Resolve the destination string to a specific location or area
+      const resolved = resolveDestination(state, action.destination, "near")
+
+      switch (resolved.type) {
+        case "location":
+          return executeToCompletion(
+            executeTravelToLocation(state, {
+              type: "TravelToLocation",
+              locationId: resolved.locationId!,
+            })
+          )
+        case "area":
+          return executeToCompletion(
+            executeExplorationTravel(state, {
+              type: "ExplorationTravel",
+              destinationAreaId: resolved.areaId!,
+            })
+          )
+        case "farTravel":
+          return executeToCompletion(
+            executeFarTravel(state, {
+              type: "FarTravel",
+              destinationAreaId: resolved.areaId!,
+            })
+          )
+        case "notFound":
+          return createFailureLog(state, action, "NO_PATH_TO_DESTINATION")
+      }
+      break
+    }
     case "AcceptContract":
       return executeToCompletion(executeAcceptContract(state, action))
     case "Gather":
@@ -158,8 +182,22 @@ export async function executeAction(state: WorldState, action: Action): Promise<
       return executeToCompletion(executeExplore(state, action))
     case "ExplorationTravel":
       return executeToCompletion(executeExplorationTravel(state, action))
-    case "FarTravel":
-      return executeToCompletion(executeFarTravel(state, action))
+    case "FarTravel": {
+      // Resolve the destination string to an area ID
+      const resolved = resolveDestination(state, action.destinationAreaId, "far")
+
+      if (resolved.type === "area" || resolved.type === "farTravel") {
+        return executeToCompletion(
+          executeFarTravel(state, {
+            type: "FarTravel",
+            destinationAreaId: resolved.areaId!,
+            scavenge: action.scavenge,
+          })
+        )
+      } else {
+        return createFailureLog(state, action, "NO_PATH_TO_DESTINATION")
+      }
+    }
     case "TravelToLocation":
       return executeToCompletion(executeTravelToLocation(state, action))
     case "Leave":
@@ -208,10 +246,37 @@ async function* executeGather(state: WorldState, action: GatherAction): ActionGe
   const tickBefore = state.time.currentTick
   const rolls: RngRoll[] = []
 
+  // If nodeId is not provided, try to infer from current location
+  let nodeId = action.nodeId
+  if (!nodeId) {
+    const currentLocationId = getCurrentLocationId(state)
+    if (currentLocationId) {
+      const match = currentLocationId.match(/^(.+?)-(TREE_STAND|ORE_VEIN)-loc-(\d+)$/)
+      if (match) {
+        const [, areaId, , locIndex] = match
+        nodeId = `${areaId}-node-${locIndex}`
+      }
+    }
+
+    if (!nodeId) {
+      yield {
+        done: true,
+        log: createFailureLog(state, action, "NODE_NOT_FOUND"),
+      }
+      return
+    }
+  }
+
+  // Create a new action with resolved nodeId for validation
+  const resolvedAction: GatherAction = {
+    ...action,
+    nodeId,
+  }
+
   // Use shared precondition check
-  const check = checkGatherAction(state, action)
+  const check = checkGatherAction(state, resolvedAction)
   if (!check.valid) {
-    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    yield { done: true, log: createFailureLog(state, resolvedAction, check.failureType!) }
     return
   }
 
@@ -224,7 +289,13 @@ async function* executeGather(state: WorldState, action: GatherAction): ActionGe
   }
 
   // Execute multi-material node gather (keep existing logic)
-  const log = executeMultiMaterialGatherInternal(state, action, rolls, tickBefore, check.timeCost)
+  const log = executeMultiMaterialGatherInternal(
+    state,
+    resolvedAction,
+    rolls,
+    tickBefore,
+    check.timeCost
+  )
 
   yield { done: true, log }
 }

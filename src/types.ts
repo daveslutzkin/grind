@@ -284,7 +284,7 @@ export type ActionType =
 
 export interface MoveAction {
   type: "Move"
-  destination: AreaID // Now an AreaID
+  destination: string // Raw destination string - engine resolves what it means
 }
 
 export interface AcceptContractAction {
@@ -294,7 +294,7 @@ export interface AcceptContractAction {
 
 export interface GatherAction {
   type: "Gather"
-  nodeId: string
+  nodeId?: string // Optional - engine infers from current area if not provided
   mode?: GatherMode // Optional for backward compat; defaults to legacy behavior
   focusMaterialId?: MaterialID // Required for FOCUS mode
 }
@@ -381,7 +381,7 @@ export interface ExplorationTravelAction {
  */
 export interface FarTravelAction {
   type: "FarTravel"
-  destinationAreaId: AreaID
+  destinationAreaId: string // Raw destination string - engine resolves to area ID
   scavenge?: boolean // If true, 2x travel time but chance to find resources
 }
 

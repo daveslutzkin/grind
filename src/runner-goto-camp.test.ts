@@ -1,193 +1,82 @@
 /**
  * Tests for goto enemy camp command parsing
+ * After refactoring: parser returns raw strings, engine resolves destinations
  */
 
 import { parseAction } from "./runner.js"
-import type { ExplorationLocation } from "./types.js"
-import { ExplorationLocationType } from "./types.js"
 import { createWorld } from "./world.js"
 
-describe("parseAction - goto enemy camp", () => {
-  it("parses 'goto enemy camp' to travel to discovered mob camp", () => {
-    // Create a world state with a discovered enemy camp
+describe("parseAction - goto commands (raw strings)", () => {
+  it("parses 'goto enemy camp' to Move with raw destination", () => {
     const state = createWorld("test-seed")
-    const currentAreaId = state.exploration.playerState.currentAreaId
-    const area = state.exploration.areas.get(currentAreaId)!
-
-    // Add a MOB_CAMP location to the current area
-    const mobCampLocation: ExplorationLocation = {
-      id: "test-mob-camp-1",
-      areaId: currentAreaId,
-      type: ExplorationLocationType.MOB_CAMP,
-      difficulty: 1,
-      creatureType: "goblin",
-    }
-    area.locations.push(mobCampLocation)
-
-    // Mark the camp as discovered
-    state.exploration.playerState.knownLocationIds.push(mobCampLocation.id)
 
     const action = parseAction("goto enemy camp", { state })
 
     expect(action).toEqual({
-      type: "TravelToLocation",
-      locationId: "test-mob-camp-1",
+      type: "Move",
+      destination: "enemy camp",
     })
   })
 
-  it("parses 'goto camp' to travel to discovered mob camp", () => {
+  it("parses 'goto camp' to Move with raw destination", () => {
     const state = createWorld("test-seed")
-    const currentAreaId = state.exploration.playerState.currentAreaId
-    const area = state.exploration.areas.get(currentAreaId)!
-
-    const mobCampLocation: ExplorationLocation = {
-      id: "test-mob-camp-1",
-      areaId: currentAreaId,
-      type: ExplorationLocationType.MOB_CAMP,
-      difficulty: 1,
-    }
-    area.locations.push(mobCampLocation)
-    state.exploration.playerState.knownLocationIds.push(mobCampLocation.id)
 
     const action = parseAction("goto camp", { state })
 
     expect(action).toEqual({
-      type: "TravelToLocation",
-      locationId: "test-mob-camp-1",
+      type: "Move",
+      destination: "camp",
     })
   })
 
-  it("parses 'goto mob camp' to travel to discovered mob camp", () => {
+  it("parses 'goto mob camp' to Move with raw destination", () => {
     const state = createWorld("test-seed")
-    const currentAreaId = state.exploration.playerState.currentAreaId
-    const area = state.exploration.areas.get(currentAreaId)!
-
-    const mobCampLocation: ExplorationLocation = {
-      id: "test-mob-camp-1",
-      areaId: currentAreaId,
-      type: ExplorationLocationType.MOB_CAMP,
-      difficulty: 2,
-    }
-    area.locations.push(mobCampLocation)
-    state.exploration.playerState.knownLocationIds.push(mobCampLocation.id)
 
     const action = parseAction("goto mob camp", { state })
 
     expect(action).toEqual({
-      type: "TravelToLocation",
-      locationId: "test-mob-camp-1",
+      type: "Move",
+      destination: "mob camp",
     })
   })
 
-  it("supports index to select specific camp when multiple exist", () => {
+  it("parses 'goto enemy camp 2' to Move with indexed destination", () => {
     const state = createWorld("test-seed")
-    const currentAreaId = state.exploration.playerState.currentAreaId
-    const area = state.exploration.areas.get(currentAreaId)!
 
-    // Add two mob camps
-    const mobCamp1: ExplorationLocation = {
-      id: "test-mob-camp-1",
-      areaId: currentAreaId,
-      type: ExplorationLocationType.MOB_CAMP,
-      difficulty: 1,
-    }
-    const mobCamp2: ExplorationLocation = {
-      id: "test-mob-camp-2",
-      areaId: currentAreaId,
-      type: ExplorationLocationType.MOB_CAMP,
-      difficulty: 2,
-    }
-    area.locations.push(mobCamp1, mobCamp2)
-    state.exploration.playerState.knownLocationIds.push(mobCamp1.id, mobCamp2.id)
-
-    // Test going to first camp (default)
-    const action1 = parseAction("goto enemy camp", { state })
-    expect(action1).toEqual({
-      type: "TravelToLocation",
-      locationId: "test-mob-camp-1",
-    })
-
-    // Test going to second camp (explicit index)
-    const action2 = parseAction("goto enemy camp 2", { state })
-    expect(action2).toEqual({
-      type: "TravelToLocation",
-      locationId: "test-mob-camp-2",
-    })
-
-    // Test going to first camp (explicit index)
-    const action3 = parseAction("goto camp 1", { state })
-    expect(action3).toEqual({
-      type: "TravelToLocation",
-      locationId: "test-mob-camp-1",
-    })
-  })
-
-  it("returns null when no enemy camps are discovered", () => {
-    const state = createWorld("test-seed")
-    // Don't add any mob camps
-
-    const action = parseAction("goto enemy camp", { state })
-
-    expect(action).toBeNull()
-  })
-
-  it("returns null when camp index is out of bounds", () => {
-    const state = createWorld("test-seed")
-    const currentAreaId = state.exploration.playerState.currentAreaId
-    const area = state.exploration.areas.get(currentAreaId)!
-
-    const mobCamp: ExplorationLocation = {
-      id: "test-mob-camp-1",
-      areaId: currentAreaId,
-      type: ExplorationLocationType.MOB_CAMP,
-      difficulty: 1,
-    }
-    area.locations.push(mobCamp)
-    state.exploration.playerState.knownLocationIds.push(mobCamp.id)
-
-    // Try to go to camp 2 when only 1 exists
     const action = parseAction("goto enemy camp 2", { state })
 
-    expect(action).toBeNull()
+    expect(action).toEqual({
+      type: "Move",
+      destination: "enemy camp 2",
+    })
   })
 
-  it("returns null when camp index is invalid (0 or negative)", () => {
+  it("parses 'goto camp 1' to Move with indexed destination", () => {
     const state = createWorld("test-seed")
-    const currentAreaId = state.exploration.playerState.currentAreaId
-    const area = state.exploration.areas.get(currentAreaId)!
 
-    const mobCamp: ExplorationLocation = {
-      id: "test-mob-camp-1",
-      areaId: currentAreaId,
-      type: ExplorationLocationType.MOB_CAMP,
-      difficulty: 1,
-    }
-    area.locations.push(mobCamp)
-    state.exploration.playerState.knownLocationIds.push(mobCamp.id)
+    const action = parseAction("goto camp 1", { state })
 
-    const action1 = parseAction("goto enemy camp 0", { state })
-    expect(action1).toBeNull()
-
-    const action2 = parseAction("goto enemy camp -1", { state })
-    expect(action2).toBeNull()
+    expect(action).toEqual({
+      type: "Move",
+      destination: "camp 1",
+    })
   })
 
-  it("ignores undiscovered enemy camps", () => {
+  it("parses various goto commands to Move actions", () => {
     const state = createWorld("test-seed")
-    const currentAreaId = state.exploration.playerState.currentAreaId
-    const area = state.exploration.areas.get(currentAreaId)!
 
-    // Add a mob camp but don't mark it as discovered
-    const mobCamp: ExplorationLocation = {
-      id: "test-mob-camp-1",
-      areaId: currentAreaId,
-      type: ExplorationLocationType.MOB_CAMP,
-      difficulty: 1,
-    }
-    area.locations.push(mobCamp)
-    // Don't add to knownLocationIds
+    expect(parseAction("goto ore", { state })).toEqual({ type: "Move", destination: "ore" })
+    expect(parseAction("goto tree", { state })).toEqual({ type: "Move", destination: "tree" })
+    expect(parseAction("goto miners guild", { state })).toEqual({
+      type: "Move",
+      destination: "miners guild",
+    })
+  })
 
-    const action = parseAction("goto enemy camp", { state })
+  it("returns null when no destination provided", () => {
+    const state = createWorld("test-seed")
+
+    const action = parseAction("goto", { state })
 
     expect(action).toBeNull()
   })
