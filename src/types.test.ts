@@ -39,6 +39,7 @@ describe("Types", () => {
           knownAreaIds: ["TOWN"],
           knownLocationIds: [],
           knownConnectionIds: [],
+          visitedLocationIds: [],
           totalLuckDelta: 0,
           currentStreak: 0,
         },

@@ -34,6 +34,7 @@ export interface AgentResponse {
   reasoning: string
   action: Action | null
   learning: string
+  notes: string | null // Agent's persistent notes/memory
   continueCondition: string | null
   error?: string
 }
@@ -43,7 +44,10 @@ export interface AgentResponse {
  */
 function extractSection(text: string, sectionName: string): string {
   const patterns = [
-    new RegExp(`${sectionName}:\\s*(.+?)(?=\\n(?:REASONING|ACTION|LEARNING|CONTINUE_IF):|$)`, "is"),
+    new RegExp(
+      `${sectionName}:\\s*(.+?)(?=\\n(?:REASONING|ACTION|LEARNING|NOTES|CONTINUE_IF):|$)`,
+      "is"
+    ),
     new RegExp(`${sectionName}:\\s*(.+)`, "i"),
   ]
 
@@ -195,6 +199,7 @@ export function parseAgentResponse(response: string): AgentResponse {
   const reasoning = extractSection(response, "REASONING")
   const actionText = extractSection(response, "ACTION")
   const learning = extractSection(response, "LEARNING")
+  const notes = extractSection(response, "NOTES") || null
   const continueCondition = extractSection(response, "CONTINUE_IF") || null
 
   const action = parseAction(actionText)
@@ -204,6 +209,7 @@ export function parseAgentResponse(response: string): AgentResponse {
       reasoning,
       action: null,
       learning,
+      notes,
       continueCondition,
       error: `Could not parse action: "${actionText}"`,
     }
@@ -214,6 +220,7 @@ export function parseAgentResponse(response: string): AgentResponse {
       reasoning,
       action: null,
       learning,
+      notes,
       continueCondition,
       error: "No ACTION section found in response",
     }
@@ -223,6 +230,7 @@ export function parseAgentResponse(response: string): AgentResponse {
     reasoning,
     action,
     learning,
+    notes,
     continueCondition,
   }
 }

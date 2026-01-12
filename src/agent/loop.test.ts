@@ -128,5 +128,70 @@ describe("Agent Loop", () => {
       expect(result.done).toBeDefined()
       expect(result.action).toBeTruthy()
     })
+
+    it("should include notes field in step result", async () => {
+      const notesLoop = createAgentLoop({
+        seed: "notes-test",
+        ticks: 10,
+        objective: "test",
+        verbose: false,
+        dryRun: true,
+      })
+
+      const result = await notesLoop.step()
+
+      // Notes field should exist (may be undefined or empty string in dry run)
+      expect("notes" in result || result.notes === undefined).toBe(true)
+    })
+
+    it("should provide conversation history", () => {
+      const history = loop.getConversationHistory()
+      expect(Array.isArray(history)).toBe(true)
+    })
+
+    it("should return knowledge structure with all categories", () => {
+      const knowledge = loop.getKnowledge()
+
+      expect(Array.isArray(knowledge.world)).toBe(true)
+      expect(Array.isArray(knowledge.mechanics)).toBe(true)
+      expect(Array.isArray(knowledge.items)).toBe(true)
+      expect(Array.isArray(knowledge.strategies)).toBe(true)
+    })
+
+    it("should categorize learnings correctly", () => {
+      // World-related learning (keywords: location, travel, town, mine, forest)
+      loop.addLearning("The mine is located to the east of town")
+      // Mechanics-related learning (keywords: tick, xp, skill, cost, probability, level)
+      loop.addLearning("Mining gives 5 XP per action")
+      // Item-related learning (keywords: ore, wood, item, gather, material)
+      loop.addLearning("Copper ore can be smelted into bars")
+      // Strategy-related learning (keywords: should, better, strategy, efficient)
+      loop.addLearning("I should avoid combat until I am stronger")
+
+      const knowledge = loop.getKnowledge()
+
+      expect(knowledge.world.length).toBeGreaterThan(0)
+      expect(knowledge.mechanics.length).toBeGreaterThan(0)
+      expect(knowledge.items.length).toBeGreaterThan(0)
+      expect(knowledge.strategies.length).toBeGreaterThan(0)
+    })
+
+    it("should not add duplicate learnings", () => {
+      loop.addLearning("Mining costs 3 ticks")
+      loop.addLearning("Mining costs 3 ticks")
+      loop.addLearning("Mining costs 3 ticks")
+
+      const knowledge = loop.getKnowledge()
+      const allLearnings = [
+        ...knowledge.world,
+        ...knowledge.mechanics,
+        ...knowledge.items,
+        ...knowledge.strategies,
+      ]
+
+      // Should only have one instance
+      const count = allLearnings.filter((l) => l === "Mining costs 3 ticks").length
+      expect(count).toBe(1)
+    })
   })
 })

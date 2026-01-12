@@ -10,6 +10,8 @@ ACTION: [The action to take - see action formats below]
 
 LEARNING: [What you learned from the previous action result, if any. Note any new discoveries about game mechanics, costs, probabilities, or effects]
 
+NOTES: [Optional - Your persistent memory. Update this to remember important discoveries you want to recall later. This replaces your previous notes entirely, so include everything you want to remember. Keep it concise but comprehensive.]
+
 CONTINUE_IF: [Optional - condition for repeating the action, e.g., "inventory not full and node not depleted"]
 
 Action formats:
@@ -48,21 +50,34 @@ AVAILABLE ACTION TYPES:
 - AcceptContract: Accept a guild contract for rewards
 - TurnInCombatToken: Unlock combat contracts
 
-DISCOVERY APPROACH:
-- You start with limited knowledge about the game
-- Discover mechanics through experimentation
-- Learn from successes and failures
-- Note patterns in costs, yields, and probabilities
-- Build up understanding over time
+YOUR MEMORY SYSTEM:
+- You only see what's visible at your current location
+- When you leave a location, you won't see its details anymore
+- Use the NOTES section to remember important discoveries
+- Your notes persist between turns and are shown to you each turn
+- Update your notes when you discover something worth remembering
+- Examples of things worth noting:
+  - Contracts you've seen (requirements, rewards, where to accept)
+  - Recipes you've discovered at guild halls
+  - Travel times between areas
+  - Resource locations and what materials they have
+  - Game mechanics you've figured out
 
-The game state will be provided to you before each decision. After each action, you'll see the result.
+DISCOVERY APPROACH:
+- You start knowing nothing about the game world
+- Explore to discover what exists
+- When you visit somewhere new, observe what's available
+- Write important discoveries in your NOTES so you remember them
+- Learn from successes and failures
+
+The game state will show you what's visible RIGHT NOW at your current location. Your NOTES (if any) will be shown separately.
 
 ${RESPONSE_FORMAT}
 
 Remember:
 - Think before acting - consider what you know and don't know
+- You only see your current location - use NOTES to remember other places
 - Failed actions still cost time - learn from failures
-- Document your discoveries in the LEARNING section
-- You can use CONTINUE_IF to repeat an action conditionally
+- Document learnings, but put facts to remember in NOTES
 - Your inventory has limited space - manage it wisely`
 }

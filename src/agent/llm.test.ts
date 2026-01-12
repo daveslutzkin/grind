@@ -94,4 +94,85 @@ describe("LLM Client", () => {
       }
     })
   })
+
+  describe("Notes functionality", () => {
+    let client: LLMClient
+    const mockConfig: AgentConfig = {
+      anthropicApiKey: "test-key",
+      model: "claude-sonnet-4-20250514",
+    }
+
+    beforeEach(() => {
+      client = createLLMClient(mockConfig)
+    })
+
+    it("should update notes via updateNotes", () => {
+      client.updateNotes("First note: mining costs 3 ticks")
+
+      const snapshot = client.getContextSnapshot()
+      expect(snapshot.notes).toBe("First note: mining costs 3 ticks")
+    })
+
+    it("should replace notes entirely on update", () => {
+      client.updateNotes("Original notes")
+      client.updateNotes("Completely new notes")
+
+      const snapshot = client.getContextSnapshot()
+      expect(snapshot.notes).toBe("Completely new notes")
+      expect(snapshot.notes).not.toContain("Original")
+    })
+
+    it("should include notes in context snapshot", () => {
+      client.setSystemPrompt("You are a game agent.")
+      client.updateNotes("Contract: 2 copper bars -> 5 ore")
+      client.updateActionSummary("T0: Enrol Mining -> OK")
+      client.updateLearningSummary("KNOWN: Enrol costs 3 ticks")
+
+      const snapshot = client.getContextSnapshot()
+
+      expect(snapshot.systemPrompt).toBe("You are a game agent.")
+      expect(snapshot.notes).toBe("Contract: 2 copper bars -> 5 ore")
+      expect(snapshot.actionSummary).toBe("T0: Enrol Mining -> OK")
+      expect(snapshot.learningSummary).toBe("KNOWN: Enrol costs 3 ticks")
+    })
+
+    it("should clear notes when history is cleared", () => {
+      client.updateNotes("Some notes")
+      client.clearHistory()
+
+      const snapshot = client.getContextSnapshot()
+      expect(snapshot.notes).toBe("")
+    })
+
+    it("should handle empty notes", () => {
+      client.updateNotes("")
+
+      const snapshot = client.getContextSnapshot()
+      expect(snapshot.notes).toBe("")
+    })
+
+    it("should handle multiline notes", () => {
+      const multilineNotes = `Discoveries:
+- Miners Guild contract: 2 copper bars -> 5 ore
+- Smithing recipes available
+- Travel to mine: 2 ticks`
+
+      client.updateNotes(multilineNotes)
+
+      const snapshot = client.getContextSnapshot()
+      expect(snapshot.notes).toBe(multilineNotes)
+      expect(snapshot.notes).toContain("Miners Guild")
+      expect(snapshot.notes).toContain("Smithing recipes")
+    })
+
+    it("should set notes via setContextConfig", () => {
+      client.setContextConfig({
+        notes: "Config-set notes",
+        recentExchangeCount: 3,
+      })
+
+      const snapshot = client.getContextSnapshot()
+      expect(snapshot.notes).toBe("Config-set notes")
+    })
+  })
 })

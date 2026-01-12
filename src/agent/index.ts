@@ -163,6 +163,22 @@ async function main(): Promise<void> {
         learning: result.learning,
       })
 
+      // Write verbose trace entry with full LLM context
+      if (result.contextSnapshot) {
+        writer.writeVerboseEntry(
+          state.time.currentTick,
+          {
+            systemPrompt: result.contextSnapshot.systemPrompt,
+            notes: result.contextSnapshot.notes,
+            actionSummary: result.contextSnapshot.actionSummary,
+            learningSummary: result.contextSnapshot.learningSummary,
+            recentMessages: result.contextSnapshot.recentMessages,
+            currentPrompt: result.currentPrompt ?? "",
+          },
+          result.llmResponse ?? ""
+        )
+      }
+
       if (result.done) {
         break
       }

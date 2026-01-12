@@ -15,6 +15,18 @@ export interface TraceEntry {
 }
 
 /**
+ * Full LLM context for verbose tracing
+ */
+export interface VerboseContext {
+  systemPrompt: string
+  notes: string
+  actionSummary: string
+  learningSummary: string
+  recentMessages: string[]
+  currentPrompt: string
+}
+
+/**
  * Session statistics for the summary
  */
 export interface AgentSessionStats {
@@ -63,6 +75,11 @@ export interface TraceWriter {
   writeEntry(entry: TraceEntry): void
 
   /**
+   * Write a verbose trace entry with full LLM context
+   */
+  writeVerboseEntry(tick: number, context: VerboseContext, response: string): void
+
+  /**
    * Write the session summary
    */
   writeSummary(stats: AgentSessionStats): void
@@ -84,6 +101,7 @@ export interface TraceWriter {
 export function createTraceWriter(config: TraceWriterConfig): TraceWriter {
   const outputDir = join(config.baseDir, RULES_VERSION, config.seed)
   const tracePath = join(outputDir, "trace.txt")
+  const verbosePath = join(outputDir, "trace-verbose.txt")
   const knowledgePath = join(outputDir, "knowledge.txt")
 
   return {
@@ -111,6 +129,26 @@ TRACE LOG
 ================================================================================
 `
       writeFileSync(tracePath, header.trim() + "\n\n")
+
+      // Also write verbose header
+      const verboseHeader = `
+================================================================================
+LLM AGENT TRACE (VERBOSE - Full Context)
+================================================================================
+
+Seed: ${config.seed}
+Ticks: ${config.ticks}
+Objective: ${config.objective}
+Rules version: ${RULES_VERSION}
+Timestamp: ${new Date().toISOString()}
+
+This file shows the FULL context sent to the LLM at each tick,
+including system prompt, static world data, action history, and learnings.
+Use this to debug what information the agent actually sees.
+
+================================================================================
+`
+      writeFileSync(verbosePath, verboseHeader.trim() + "\n\n")
     },
 
     writeEntry(entry: TraceEntry): void {
@@ -159,6 +197,50 @@ TRACE LOG
       lines.push("")
 
       appendFileSync(tracePath, lines.join("\n"))
+    },
+
+    writeVerboseEntry(tick: number, context: VerboseContext, response: string): void {
+      const lines: string[] = []
+
+      lines.push(`${"=".repeat(80)}`)
+      lines.push(`TICK ${tick}`)
+      lines.push(`${"=".repeat(80)}`)
+      lines.push("")
+
+      lines.push("--- SYSTEM PROMPT ---")
+      lines.push(context.systemPrompt)
+      lines.push("")
+
+      lines.push("--- AGENT NOTES (Persistent Memory) ---")
+      lines.push(context.notes || "(none)")
+      lines.push("")
+
+      lines.push("--- ACTION SUMMARY (Summarized History) ---")
+      lines.push(context.actionSummary || "(none)")
+      lines.push("")
+
+      lines.push("--- LEARNING SUMMARY ---")
+      lines.push(context.learningSummary || "(none)")
+      lines.push("")
+
+      if (context.recentMessages.length > 0) {
+        lines.push("--- RECENT MESSAGES (Full Detail) ---")
+        for (const msg of context.recentMessages) {
+          lines.push(msg)
+          lines.push("")
+        }
+      }
+
+      lines.push("--- CURRENT PROMPT ---")
+      lines.push(context.currentPrompt)
+      lines.push("")
+
+      lines.push("--- LLM RESPONSE ---")
+      lines.push(response)
+      lines.push("")
+      lines.push("")
+
+      appendFileSync(verbosePath, lines.join("\n"))
     },
 
     writeSummary(stats: AgentSessionStats): void {
