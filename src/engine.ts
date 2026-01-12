@@ -123,7 +123,23 @@ function extractParameters(action: Action): Record<string, unknown> {
   return params
 }
 
-export async function executeAction(state: WorldState, action: Action): Promise<ActionLog> {
+/**
+ * Helper to create a generator that immediately yields a failure log
+ */
+function* createFailureGenerator(
+  state: WorldState,
+  action: Action,
+  failureType: FailureType
+): ActionGenerator {
+  yield { done: true, log: createFailureLog(state, action, failureType) }
+}
+
+/**
+ * Get the action generator for any action type, with resolution.
+ * This handles destination resolution for Move/FarTravel actions and returns
+ * the appropriate generator. Used by both executeAction and interactive mode.
+ */
+export function getActionGenerator(state: WorldState, action: Action): ActionGenerator {
   switch (action.type) {
     case "Move": {
       // Resolve the destination string to a specific location or area
@@ -131,78 +147,74 @@ export async function executeAction(state: WorldState, action: Action): Promise<
 
       switch (resolved.type) {
         case "location":
-          return executeToCompletion(
-            executeTravelToLocation(state, {
-              type: "TravelToLocation",
-              locationId: resolved.locationId!,
-            })
-          )
+          return executeTravelToLocation(state, {
+            type: "TravelToLocation",
+            locationId: resolved.locationId!,
+          })
         case "area":
-          return executeToCompletion(
-            executeExplorationTravel(state, {
-              type: "ExplorationTravel",
-              destinationAreaId: resolved.areaId!,
-            })
-          )
+          return executeExplorationTravel(state, {
+            type: "ExplorationTravel",
+            destinationAreaId: resolved.areaId!,
+          })
         case "farTravel":
-          return executeToCompletion(
-            executeFarTravel(state, {
-              type: "FarTravel",
-              destinationAreaId: resolved.areaId!,
-            })
-          )
+          return executeFarTravel(state, {
+            type: "FarTravel",
+            destinationAreaId: resolved.areaId!,
+          })
         case "notFound":
-          return createFailureLog(state, action, "NO_PATH_TO_DESTINATION")
+          return createFailureGenerator(state, action, "NO_PATH_TO_DESTINATION")
       }
       break
     }
     case "AcceptContract":
-      return executeToCompletion(executeAcceptContract(state, action))
+      return executeAcceptContract(state, action)
     case "Gather":
-      return executeToCompletion(executeGather(state, action))
+      return executeGather(state, action)
     case "Mine":
-      return executeToCompletion(executeMine(state, action))
+      return executeMine(state, action)
     case "Chop":
-      return executeToCompletion(executeChop(state, action))
+      return executeChop(state, action)
     case "Fight":
-      return executeToCompletion(executeFight(state, action))
+      return executeFight(state, action)
     case "Craft":
-      return executeToCompletion(executeCraft(state, action))
+      return executeCraft(state, action)
     case "Store":
-      return executeToCompletion(executeStore(state, action))
+      return executeStore(state, action)
     case "Drop":
-      return executeToCompletion(executeDrop(state, action))
+      return executeDrop(state, action)
     case "Enrol":
-      return executeToCompletion(executeGuildEnrolment(state, action))
+      return executeGuildEnrolment(state, action)
     case "TurnInCombatToken":
-      return executeToCompletion(executeTurnInCombatToken(state, action))
+      return executeTurnInCombatToken(state, action)
     case "Survey":
-      return executeToCompletion(executeSurvey(state, action))
+      return executeSurvey(state, action)
     case "Explore":
-      return executeToCompletion(executeExplore(state, action))
+      return executeExplore(state, action)
     case "ExplorationTravel":
-      return executeToCompletion(executeExplorationTravel(state, action))
+      return executeExplorationTravel(state, action)
     case "FarTravel": {
       // Resolve the destination string to an area ID
       const resolved = resolveDestination(state, action.destinationAreaId, "far")
 
       if (resolved.type === "area" || resolved.type === "farTravel") {
-        return executeToCompletion(
-          executeFarTravel(state, {
-            type: "FarTravel",
-            destinationAreaId: resolved.areaId!,
-            scavenge: action.scavenge,
-          })
-        )
+        return executeFarTravel(state, {
+          type: "FarTravel",
+          destinationAreaId: resolved.areaId!,
+          scavenge: action.scavenge,
+        })
       } else {
-        return createFailureLog(state, action, "NO_PATH_TO_DESTINATION")
+        return createFailureGenerator(state, action, "NO_PATH_TO_DESTINATION")
       }
     }
     case "TravelToLocation":
-      return executeToCompletion(executeTravelToLocation(state, action))
+      return executeTravelToLocation(state, action)
     case "Leave":
-      return executeToCompletion(executeLeave(state, action))
+      return executeLeave(state, action)
   }
+}
+
+export async function executeAction(state: WorldState, action: Action): Promise<ActionLog> {
+  return executeToCompletion(getActionGenerator(state, action))
 }
 
 async function* executeAcceptContract(

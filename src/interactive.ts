@@ -586,68 +586,8 @@ export function getActionLabel(action: Action): string {
   }
 }
 
-/**
- * Get the action generator for any action type.
- * This replicates the switch in executeAction but returns the generator instead of completing it.
- * NOTE: This function will use imports from engine.js that will be added in the next step.
- */
-async function getActionGenerator(state: WorldState, action: Action): Promise<ActionGenerator> {
-  // Dynamically import from engine.js - these will be exported in the next step
-  const {
-    executeAcceptContract,
-    executeGather,
-    executeMine,
-    executeChop,
-    executeFight,
-    executeCraft,
-    executeStore,
-    executeDrop,
-    executeGuildEnrolment,
-    executeTurnInCombatToken,
-    executeTravelToLocation,
-    executeLeave,
-  } = await import("./engine.js")
-
-  switch (action.type) {
-    case "Move":
-      return executeExplorationTravel(state, {
-        type: "ExplorationTravel",
-        destinationAreaId: action.destination,
-      })
-    case "AcceptContract":
-      return executeAcceptContract(state, action)
-    case "Gather":
-      return executeGather(state, action)
-    case "Mine":
-      return executeMine(state, action)
-    case "Chop":
-      return executeChop(state, action)
-    case "Fight":
-      return executeFight(state, action)
-    case "Craft":
-      return executeCraft(state, action)
-    case "Store":
-      return executeStore(state, action)
-    case "Drop":
-      return executeDrop(state, action)
-    case "Enrol":
-      return executeGuildEnrolment(state, action)
-    case "TurnInCombatToken":
-      return executeTurnInCombatToken(state, action)
-    case "Survey":
-      return executeSurvey(state, action)
-    case "Explore":
-      return executeExplore(state, action)
-    case "ExplorationTravel":
-      return executeExplorationTravel(state, action)
-    case "FarTravel":
-      return executeFarTravel(state, action)
-    case "TravelToLocation":
-      return executeTravelToLocation(state, action)
-    case "Leave":
-      return executeLeave(state, action)
-  }
-}
+// Import getActionGenerator from the engine - it handles resolution and returns the appropriate generator
+import { getActionGenerator } from "./engine.js"
 
 /**
  * Execute any action with animation (for TTY mode)
