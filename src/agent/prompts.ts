@@ -15,7 +15,8 @@ NOTES: [Optional - Your persistent memory. Update this to remember important dis
 CONTINUE_IF: [Optional - condition for repeating the action, e.g., "inventory not full and node not depleted"]
 
 Action formats:
-- Move to <LOCATION>
+- Go to <DESTINATION> (guild, service, node type, or area name)
+- Leave (return to hub/clearing from a location)
 - Enrol <SKILL>
 - Gather node <NODE_ID> <MODE> [MATERIAL_ID]
   - Modes: FOCUS (requires material ID), CAREFUL_ALL, APPRAISE
@@ -41,7 +42,10 @@ GAME OVERVIEW:
 - Some actions require specific skills or locations
 
 AVAILABLE ACTION TYPES:
-- Move: Travel between locations (costs ticks based on distance)
+- Go: Travel to destinations - works for both:
+  - Locations within an area (guilds, warehouse, ore vein, tree stand, enemy camp)
+  - Other areas (Town, wilderness zones you've discovered connections to)
+- Leave: Return to the hub/clearing from a location you've entered
 - Enrol: Learn a new skill at the guild (one-time unlock)
 - Gather: Extract resources from nodes (various modes available)
 - Fight: Battle enemies (requires Combat skill and a weapon)
