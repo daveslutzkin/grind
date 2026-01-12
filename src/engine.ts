@@ -126,7 +126,7 @@ function extractParameters(action: Action): Record<string, unknown> {
 /**
  * Helper to create a generator that immediately yields a failure log
  */
-function* createFailureGenerator(
+async function* createFailureGenerator(
   state: WorldState,
   action: Action,
   failureType: FailureType
