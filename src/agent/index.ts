@@ -76,7 +76,6 @@ EXAMPLES:
 OUTPUT:
   Traces are written to traces/<rules-version>/<seed>/
     trace.txt       Detailed play log with reasoning
-    knowledge.txt   What the agent learned about the game
 `)
 }
 
@@ -192,13 +191,11 @@ async function main(): Promise<void> {
   console.log("Session complete!")
   console.log()
 
-  // Get final stats and knowledge
+  // Get final stats
   const stats = loop.getStats()
-  const knowledge = loop.getKnowledge()
 
-  // Write summary and knowledge
+  // Write summary
   writer.writeSummary(stats)
-  writer.writeKnowledge(knowledge)
 
   // Print summary
   console.log("=".repeat(60))
