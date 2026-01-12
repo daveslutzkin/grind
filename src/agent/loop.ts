@@ -64,11 +64,6 @@ export interface AgentLoop {
   getStats(): AgentSessionStats
 
   /**
-   * Get accumulated knowledge
-   */
-  getKnowledge(): AgentKnowledge
-
-  /**
    * Add a learning to the knowledge base
    */
   addLearning(learning: string): void
@@ -391,15 +386,6 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
 
     getStats(): AgentSessionStats {
       return { ...stats }
-    },
-
-    getKnowledge(): AgentKnowledge {
-      return {
-        world: [...knowledge.world],
-        mechanics: [...knowledge.mechanics],
-        items: [...knowledge.items],
-        strategies: [...knowledge.strategies],
-      }
     },
 
     addLearning(learning: string): void {

@@ -61,7 +61,7 @@ export interface TraceWriterConfig {
 }
 
 /**
- * Interface for writing trace and knowledge files
+ * Interface for writing trace files
  */
 export interface TraceWriter {
   /**
@@ -85,11 +85,6 @@ export interface TraceWriter {
   writeSummary(stats: AgentSessionStats): void
 
   /**
-   * Write the knowledge file
-   */
-  writeKnowledge(knowledge: AgentKnowledge): void
-
-  /**
    * Get the output directory path
    */
   getOutputDir(): string
@@ -102,7 +97,6 @@ export function createTraceWriter(config: TraceWriterConfig): TraceWriter {
   const outputDir = join(config.baseDir, RULES_VERSION, config.seed)
   const tracePath = join(outputDir, "trace.txt")
   const verbosePath = join(outputDir, "trace-verbose.txt")
-  const knowledgePath = join(outputDir, "knowledge.txt")
 
   return {
     getOutputDir(): string {
@@ -278,53 +272,6 @@ Use this to debug what information the agent actually sees.
       lines.push("")
 
       appendFileSync(tracePath, lines.join("\n"))
-    },
-
-    writeKnowledge(knowledge: AgentKnowledge): void {
-      const lines: string[] = []
-
-      lines.push("================================================================================")
-      lines.push("AGENT KNOWLEDGE")
-      lines.push("================================================================================")
-      lines.push("")
-
-      if (knowledge.world.length > 0) {
-        lines.push("## WORLD")
-        lines.push("")
-        for (const item of knowledge.world) {
-          lines.push(`- ${item}`)
-        }
-        lines.push("")
-      }
-
-      if (knowledge.mechanics.length > 0) {
-        lines.push("## MECHANICS")
-        lines.push("")
-        for (const item of knowledge.mechanics) {
-          lines.push(`- ${item}`)
-        }
-        lines.push("")
-      }
-
-      if (knowledge.items.length > 0) {
-        lines.push("## ITEMS")
-        lines.push("")
-        for (const item of knowledge.items) {
-          lines.push(`- ${item}`)
-        }
-        lines.push("")
-      }
-
-      if (knowledge.strategies.length > 0) {
-        lines.push("## STRATEGIES")
-        lines.push("")
-        for (const item of knowledge.strategies) {
-          lines.push(`- ${item}`)
-        }
-        lines.push("")
-      }
-
-      writeFileSync(knowledgePath, lines.join("\n"))
     },
   }
 }

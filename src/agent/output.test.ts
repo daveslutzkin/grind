@@ -114,27 +114,5 @@ describe("Output", () => {
       expect(content).toContain("Actions: 10 attempted")
       expect(content).toContain("8 succeeded")
     })
-
-    it("should write knowledge file", () => {
-      writer.writeHeader()
-
-      const knowledge = {
-        world: ["TOWN is a hub location", "OUTSKIRTS_MINE has ore nodes"],
-        mechanics: ["Gathering costs 5 ticks", "FOCUS mode extracts one material"],
-        items: ["iron_ore can be gathered from ore nodes"],
-        strategies: ["Enrol in skills before trying to gather"],
-      }
-
-      writer.writeKnowledge(knowledge)
-
-      const knowledgePath = join(testDir, RULES_VERSION, "test-seed-123", "knowledge.txt")
-      expect(existsSync(knowledgePath)).toBe(true)
-
-      const content = readFileSync(knowledgePath, "utf-8")
-      expect(content).toContain("WORLD")
-      expect(content).toContain("TOWN is a hub location")
-      expect(content).toContain("MECHANICS")
-      expect(content).toContain("STRATEGIES")
-    })
   })
 })
