@@ -375,6 +375,41 @@ describe("getAvailableActions", () => {
 
       expect(goAction?.timeCost).toBe(0)
     })
+
+    it("should include go action for connected areas in wilderness", async () => {
+      const state = createWorld("test-seed")
+      state.player.skills.Exploration = { level: 1, xp: 0 }
+
+      // Discover some distance 1 areas
+      await grantExplorationGuildBenefits(state)
+
+      // Move to a wilderness area hub (no locations discovered yet)
+      const wildernessAreaId = state.exploration.playerState.knownAreaIds.find(
+        (id) => id !== "TOWN"
+      )
+      if (wildernessAreaId) {
+        state.exploration.playerState.currentAreaId = wildernessAreaId
+        state.exploration.playerState.currentLocationId = null // At hub
+
+        // Ensure there are no discovered locations in this area
+        // (so TravelToLocation won't be available)
+        const area = state.exploration.areas.get(wildernessAreaId)
+        if (area && area.locations) {
+          // Remove all location IDs from known list for this area
+          state.exploration.playerState.knownLocationIds =
+            state.exploration.playerState.knownLocationIds.filter(
+              (id) => !id.startsWith(wildernessAreaId)
+            )
+        }
+      }
+
+      const actions = getAvailableActions(state)
+
+      // Should show go action for traveling to adjacent areas
+      // Either "go <location>" or "go <area>" depending on implementation
+      // The key is that "go" should be available to travel to known connected areas
+      expect(hasAction(actions, "go")).toBe(true)
+    })
   })
 
   describe("Variable time costs", () => {
