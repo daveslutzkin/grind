@@ -151,17 +151,17 @@ Use this to debug what information the agent actually sees.
       lines.push(`=== TICK ${entry.tick} ===`)
       lines.push("")
 
-      if (entry.state) {
-        lines.push("STATE:")
-        for (const line of entry.state.split("\n")) {
+      if (entry.reasoning) {
+        lines.push("REASONING:")
+        for (const line of entry.reasoning.split("\n")) {
           lines.push(`  ${line}`)
         }
         lines.push("")
       }
 
-      if (entry.reasoning) {
-        lines.push("REASONING:")
-        for (const line of entry.reasoning.split("\n")) {
+      if (entry.learning) {
+        lines.push("LEARNING:")
+        for (const line of entry.learning.split("\n")) {
           lines.push(`  ${line}`)
         }
         lines.push("")
@@ -180,9 +180,9 @@ Use this to debug what information the agent actually sees.
         lines.push("")
       }
 
-      if (entry.learning) {
-        lines.push("LEARNING:")
-        for (const line of entry.learning.split("\n")) {
+      if (entry.state) {
+        lines.push("STATE:")
+        for (const line of entry.state.split("\n")) {
           lines.push(`  ${line}`)
         }
         lines.push("")
