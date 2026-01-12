@@ -15,7 +15,8 @@ NOTES: [Optional - Your persistent memory. Update this to remember important dis
 CONTINUE_IF: [Optional - condition for repeating the action, e.g., "inventory not full and node not depleted"]
 
 Action formats:
-- go <area name | location in current area>
+- go <area name>
+- go <location in current area>
 - fartravel <far away area name>
 - leave
 - explore
@@ -73,5 +74,20 @@ Remember:
 - You only see your current location - use NOTES to remember other places
 - Failed actions still cost time - learn from failures
 - Document learnings, but put facts to remember in NOTES
-- Your inventory has limited space - manage it wisely`
+- Your inventory has limited space - manage it wisely
+
+EXAMPLE OF GOOD NOTES FORMAT:
+"Areas visited: [list]. Travel times: [A→B: Xt].
+Skills: [name] L[n] ([x]/[y] XP). Current plan: [goal]."
+
+EXAMPLE OF GOOD REASONING:
+"I see [observation]. My notes say [relevant fact].
+I should [action] because [reason]. If it fails, I'll try [backup]."
+
+NOTE-TAKING STRATEGY:
+- Use consistent shorthand (L2 = level 2, t = ticks)
+- Group related facts (all travel times together)
+- Update incrementally - don't rewrite everything each turn
+- Prioritize: contracts > resources > travel > misc
+`
 }
