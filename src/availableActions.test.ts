@@ -410,6 +410,41 @@ describe("getAvailableActions", () => {
       // The key is that "go" should be available to travel to known connected areas
       expect(hasAction(actions, "go")).toBe(true)
     })
+
+    it("should show go <area> with timeCost 0 when only areas available", async () => {
+      const state = createWorld("test-seed")
+      state.player.skills.Exploration = { level: 1, xp: 0 }
+
+      // Discover some distance 1 areas
+      await grantExplorationGuildBenefits(state)
+
+      // Move to a wilderness area hub (no locations discovered yet)
+      const wildernessAreaId = state.exploration.playerState.knownAreaIds.find(
+        (id) => id !== "TOWN"
+      )
+      if (wildernessAreaId) {
+        state.exploration.playerState.currentAreaId = wildernessAreaId
+        state.exploration.playerState.currentLocationId = null
+
+        // Remove all location IDs from known list for this area
+        const area = state.exploration.areas.get(wildernessAreaId)
+        if (area && area.locations) {
+          state.exploration.playerState.knownLocationIds =
+            state.exploration.playerState.knownLocationIds.filter(
+              (id) => !id.startsWith(wildernessAreaId)
+            )
+        }
+      }
+
+      const actions = getAvailableActions(state)
+      const goAction = findAction(actions, "go")
+
+      expect(goAction).toBeDefined()
+      expect(goAction?.displayName).toBe("go <area>")
+      // timeCost should be 0 to trigger "varies" display without misleading estimate
+      expect(goAction?.timeCost).toBe(0)
+      expect(goAction?.isVariable).toBe(true)
+    })
   })
 
   describe("Variable time costs", () => {

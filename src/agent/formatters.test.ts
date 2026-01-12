@@ -508,6 +508,53 @@ describe("Formatters", () => {
         expect(formatted).not.toContain("Connections:")
       })
     })
+
+    it("should show 'varies' for variable actions with timeCost 0", async () => {
+      const state = createWorld("test-seed")
+      state.player.skills.Exploration = { level: 1, xp: 0 }
+
+      // Discover some distance 1 areas
+      const explorationGuild = TOWN_LOCATIONS.EXPLORERS_GUILD
+      setTownLocation(state, explorationGuild)
+      await executeAction(state, { type: "Enrol" })
+
+      // Get the exploration guild benefit to discover an area
+      const area = state.exploration.areas.get("TOWN")
+      if (area) {
+        const location = area.locations.find((l) => l.id === explorationGuild)
+        if (location && location.type === ExplorationLocationType.GUILD_HALL) {
+          const explorationSkill = state.player.skills.Exploration
+          if (explorationSkill) {
+            location.guildLevel = explorationSkill.level
+          }
+        }
+      }
+
+      // Move to a wilderness area hub with no locations discovered
+      const wildernessAreaId = state.exploration.playerState.knownAreaIds.find(
+        (id) => id !== "TOWN"
+      )
+      if (wildernessAreaId) {
+        state.exploration.playerState.currentAreaId = wildernessAreaId
+        state.exploration.playerState.currentLocationId = null
+
+        // Remove all location IDs from known list for this area
+        const area = state.exploration.areas.get(wildernessAreaId)
+        if (area && area.locations) {
+          state.exploration.playerState.knownLocationIds =
+            state.exploration.playerState.knownLocationIds.filter(
+              (id) => !id.startsWith(wildernessAreaId)
+            )
+        }
+
+        const formatted = formatWorldState(state)
+
+        // Should show "go <area> (varies)" not "go <area> (~0t, varies)"
+        expect(formatted).toContain("Available actions:")
+        expect(formatted).toContain("- go <area> (varies)")
+        expect(formatted).not.toContain("~0t")
+      }
+    })
   })
 
   describe("formatActionLog", () => {
