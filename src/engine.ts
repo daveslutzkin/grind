@@ -293,8 +293,9 @@ async function* executeGather(state: WorldState, action: GatherAction): ActionGe
     if (!nodeId) {
       yield {
         done: true,
-        log: createFailureLog(state, action, "NODE_NOT_FOUND", 0, "location_not_found", {
-          locationId: action.nodeId,
+        log: createFailureLog(state, action, "NODE_NOT_FOUND", 0, "cannot_infer_node", {
+          currentLocationId: getCurrentLocationId(state),
+          currentAreaId: getCurrentAreaId(state),
         }),
       }
       return
@@ -310,7 +311,17 @@ async function* executeGather(state: WorldState, action: GatherAction): ActionGe
   // Use shared precondition check
   const check = checkGatherAction(state, resolvedAction)
   if (!check.valid) {
-    yield { done: true, log: createFailureLog(state, resolvedAction, check.failureType!) }
+    yield {
+      done: true,
+      log: createFailureLog(
+        state,
+        resolvedAction,
+        check.failureType!,
+        0,
+        check.failureReason,
+        check.failureContext
+      ),
+    }
     return
   }
 

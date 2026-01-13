@@ -136,12 +136,30 @@ export function checkAcceptContractAction(
   const contract = state.world.contracts.find((c) => c.id === action.contractId)
 
   if (!contract) {
-    return { valid: false, failureType: "CONTRACT_NOT_FOUND", timeCost: 0, successProbability: 0 }
+    return {
+      valid: false,
+      failureType: "CONTRACT_NOT_FOUND",
+      failureReason: "not_found",
+      failureContext: { contractId: action.contractId },
+      timeCost: 0,
+      successProbability: 0,
+    }
   }
 
   // Must be at the specific location where this contract is offered
   if (getCurrentLocationId(state) !== contract.acceptLocationId) {
-    return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
+    return {
+      valid: false,
+      failureType: "WRONG_LOCATION",
+      failureReason: "must_be_at_contract_location",
+      failureContext: {
+        requiredLocationId: contract.acceptLocationId,
+        currentLocationId: getCurrentLocationId(state),
+        contractId: contract.id,
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
   }
 
   // Check guild hall level meets contract level
@@ -151,6 +169,13 @@ export function checkAcceptContractAction(
       return {
         valid: false,
         failureType: "GUILD_LEVEL_TOO_LOW",
+        failureReason: "contract_level_too_high",
+        failureContext: {
+          requiredLevel: contract.level,
+          currentLevel: location.guildLevel,
+          contractId: contract.id,
+          guildType: contract.guildType,
+        },
         timeCost: 0,
         successProbability: 0,
       }
@@ -158,7 +183,16 @@ export function checkAcceptContractAction(
   }
 
   if (state.player.activeContracts.includes(action.contractId)) {
-    return { valid: false, failureType: "ALREADY_HAS_CONTRACT", timeCost: 0, successProbability: 0 }
+    return {
+      valid: false,
+      failureType: "ALREADY_HAS_CONTRACT",
+      failureReason: "already_active",
+      failureContext: {
+        contractId: action.contractId,
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
   }
 
   return { valid: true, timeCost: 0, successProbability: 1 }
@@ -278,12 +312,33 @@ function checkMultiMaterialGatherAction(
   const node = state.world.nodes?.find((n) => n.nodeId === action.nodeId)
 
   if (!node) {
-    return { valid: false, failureType: "NODE_NOT_FOUND", timeCost: 0, successProbability: 0 }
+    return {
+      valid: false,
+      failureType: "NODE_NOT_FOUND",
+      failureReason: "node_does_not_exist",
+      failureContext: {
+        nodeId: action.nodeId,
+        currentAreaId: getCurrentAreaId(state),
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
   }
 
   // Check location
   if (getCurrentAreaId(state) !== node.areaId) {
-    return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
+    return {
+      valid: false,
+      failureType: "WRONG_LOCATION",
+      failureReason: "wrong_area",
+      failureContext: {
+        requiredAreaId: node.areaId,
+        currentAreaId: getCurrentAreaId(state),
+        nodeId: node.nodeId,
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
   }
 
   // Check if node's location has been discovered via Explore
@@ -327,7 +382,18 @@ function checkMultiMaterialGatherAction(
   // Check if node is depleted
   const hasAnyMaterials = node.materials.some((m) => m.remainingUnits > 0)
   if (!hasAnyMaterials || node.depleted) {
-    return { valid: false, failureType: "NODE_DEPLETED", timeCost: 0, successProbability: 0 }
+    return {
+      valid: false,
+      failureType: "NODE_DEPLETED",
+      failureReason: "no_materials_remaining",
+      failureContext: {
+        nodeId: node.nodeId,
+        nodeType: node.nodeType,
+        areaId: node.areaId,
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
   }
 
   const skill = getNodeSkill(node)
@@ -336,12 +402,38 @@ function checkMultiMaterialGatherAction(
   // Check location access based on skill level (L5 for MID, L9 for FAR)
   const locationRequirement = getLocationSkillRequirement(node.areaId)
   if (skillLevel < locationRequirement) {
-    return { valid: false, failureType: "INSUFFICIENT_SKILL", timeCost: 0, successProbability: 0 }
+    return {
+      valid: false,
+      failureType: "INSUFFICIENT_SKILL",
+      failureReason: "location_access",
+      failureContext: {
+        skill,
+        currentLevel: skillLevel,
+        requiredLevel: locationRequirement,
+        nodeAreaId: node.areaId,
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
   }
 
   // Check if mode is unlocked
   if (!isModeUnlocked(mode, skillLevel)) {
-    return { valid: false, failureType: "MODE_NOT_UNLOCKED", timeCost: 0, successProbability: 0 }
+    const nextUnlock = getNextModeUnlock(skillLevel)
+    return {
+      valid: false,
+      failureType: "MODE_NOT_UNLOCKED",
+      failureReason: "skill_level_too_low",
+      failureContext: {
+        mode,
+        currentSkillLevel: skillLevel,
+        skill,
+        nextMode: nextUnlock?.mode,
+        nextModeLevel: nextUnlock?.level,
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
   }
 
   // FOCUS mode requires focusMaterialId
@@ -350,6 +442,11 @@ function checkMultiMaterialGatherAction(
       return {
         valid: false,
         failureType: "MISSING_FOCUS_MATERIAL",
+        failureReason: "no_material_specified",
+        failureContext: {
+          nodeId: node.nodeId,
+          availableMaterials: node.materials.map((m) => m.materialId),
+        },
         timeCost: 0,
         successProbability: 0,
       }
@@ -361,6 +458,14 @@ function checkMultiMaterialGatherAction(
       return {
         valid: false,
         failureType: "MISSING_FOCUS_MATERIAL",
+        failureReason: focusMaterial ? "material_depleted" : "material_not_in_node",
+        failureContext: {
+          materialId: action.focusMaterialId,
+          nodeId: node.nodeId,
+          availableMaterials: node.materials
+            .filter((m) => m.remainingUnits > 0)
+            .map((m) => m.materialId),
+        },
         timeCost: 0,
         successProbability: 0,
       }
@@ -368,7 +473,19 @@ function checkMultiMaterialGatherAction(
 
     // Check skill level for focus material
     if (skillLevel < focusMaterial.requiredLevel) {
-      return { valid: false, failureType: "INSUFFICIENT_SKILL", timeCost: 0, successProbability: 0 }
+      return {
+        valid: false,
+        failureType: "INSUFFICIENT_SKILL",
+        failureReason: "material_level",
+        failureContext: {
+          skill,
+          currentLevel: skillLevel,
+          requiredLevel: focusMaterial.requiredLevel,
+          materialId: action.focusMaterialId,
+        },
+        timeCost: 0,
+        successProbability: 0,
+      }
     }
   }
 
@@ -399,12 +516,45 @@ export function getWeaponParameters(
 }
 
 /**
+/**
  * Check Fight action preconditions
  * NOTE: Combat is not yet fully implemented - enemies are not generated in the world
  */
-export function checkFightAction(_state: WorldState, _action: FightAction): ActionCheckResult {
+export function checkFightAction(state: WorldState, _action: FightAction): ActionCheckResult {
+  // Get current location to provide context
+  const currentLocation = getCurrentLocation(state)
+  const currentAreaId = getCurrentAreaId(state)
+
   // Combat not yet implemented - no enemies exist in the world
-  return { valid: false, failureType: "ENEMY_NOT_FOUND", timeCost: 0, successProbability: 0 }
+  // But we can provide helpful context about the current location
+  if (currentLocation?.type === ExplorationLocationType.MOB_CAMP) {
+    // At a mob camp, but enemies not implemented yet
+    return {
+      valid: false,
+      failureType: "ENEMY_NOT_FOUND",
+      failureReason: "enemies_not_implemented",
+      failureContext: {
+        locationId: currentLocation.id,
+        locationType: currentLocation.type,
+        creatureType: currentLocation.creatureType,
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
+  } else {
+    // Not at a mob camp - no enemy here
+    return {
+      valid: false,
+      failureType: "ENEMY_NOT_FOUND",
+      failureReason: "not_at_mob_camp",
+      failureContext: {
+        currentAreaId,
+        currentLocationId: getCurrentLocationId(state),
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
+  }
 }
 
 /**
@@ -414,35 +564,113 @@ export function checkCraftAction(state: WorldState, action: CraftAction): Action
   const recipe = state.world.recipes.find((r) => r.id === action.recipeId)
 
   if (!recipe) {
-    return { valid: false, failureType: "RECIPE_NOT_FOUND", timeCost: 0, successProbability: 0 }
+    return {
+      valid: false,
+      failureType: "RECIPE_NOT_FOUND",
+      failureReason: "recipe_does_not_exist",
+      failureContext: {
+        recipeId: action.recipeId,
+        currentLocationId: getCurrentLocationId(state),
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
   }
 
   // Must be at a guild hall of the correct type
   const { at, location } = isAtGuildHallOfType(state, recipe.guildType)
   if (!at) {
-    return { valid: false, failureType: "WRONG_GUILD_TYPE", timeCost: 0, successProbability: 0 }
+    const currentLocation = getCurrentLocation(state)
+    return {
+      valid: false,
+      failureType: "WRONG_GUILD_TYPE",
+      failureReason: "wrong_guild",
+      failureContext: {
+        requiredGuildType: recipe.guildType,
+        currentGuildType: currentLocation?.guildType,
+        currentLocationId: getCurrentLocationId(state),
+        recipeId: recipe.id,
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
   }
 
   // Check guild hall level meets recipe level
   if (location?.guildLevel !== undefined && location.guildLevel < recipe.requiredSkillLevel) {
-    return { valid: false, failureType: "GUILD_LEVEL_TOO_LOW", timeCost: 0, successProbability: 0 }
+    return {
+      valid: false,
+      failureType: "GUILD_LEVEL_TOO_LOW",
+      failureReason: "recipe_level_too_high",
+      failureContext: {
+        requiredLevel: recipe.requiredSkillLevel,
+        currentLevel: location.guildLevel,
+        recipeId: recipe.id,
+        guildType: recipe.guildType,
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
   }
 
   // Check player has required skill level
   const skillLevel = state.player.skills[recipe.guildType]?.level ?? 0
   if (skillLevel < recipe.requiredSkillLevel) {
-    return { valid: false, failureType: "INSUFFICIENT_SKILL", timeCost: 0, successProbability: 0 }
+    return {
+      valid: false,
+      failureType: "INSUFFICIENT_SKILL",
+      failureReason: "recipe_level",
+      failureContext: {
+        skill: recipe.guildType,
+        currentLevel: skillLevel,
+        requiredLevel: recipe.requiredSkillLevel,
+        recipeId: recipe.id,
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
   }
 
   if (!hasItems(state.player.inventory, recipe.inputs)) {
-    return { valid: false, failureType: "MISSING_ITEMS", timeCost: 0, successProbability: 0 }
+    // Calculate missing items
+    const missing: { itemId: string; have: number; need: number }[] = []
+    for (const req of recipe.inputs) {
+      const have = state.player.inventory.filter((i) => i.itemId === req.itemId).length
+      if (have < req.quantity) {
+        missing.push({ itemId: req.itemId, have, need: req.quantity })
+      }
+    }
+    return {
+      valid: false,
+      failureType: "MISSING_ITEMS",
+      failureReason: "craft_materials",
+      failureContext: {
+        recipeId: recipe.id,
+        missingItems: missing,
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
   }
 
   // Check if output will fit after consuming inputs
   const outputItem = { itemId: recipe.output.itemId, quantity: recipe.output.quantity }
   const inputItems = recipe.inputs.map((i) => ({ itemId: i.itemId, quantity: i.quantity }))
   if (!canFitItems(state, [outputItem], inputItems)) {
-    return { valid: false, failureType: "INVENTORY_FULL", timeCost: 0, successProbability: 0 }
+    return {
+      valid: false,
+      failureType: "INVENTORY_FULL",
+      failureReason: "craft_output",
+      failureContext: {
+        outputItem: recipe.output.itemId,
+        outputQuantity: recipe.output.quantity,
+        currentInventoryCount: state.player.inventory.length,
+        maxInventoryCapacity: state.player.inventoryCapacity,
+        slotsNeeded: recipe.output.quantity - recipe.inputs.reduce((sum, i) => sum + i.quantity, 0),
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
   }
 
   return { valid: true, timeCost: recipe.craftTime, successProbability: 1 }
@@ -457,13 +685,34 @@ export function checkStoreAction(state: WorldState, action: StoreAction): Action
   // Must be at a warehouse location
   const location = getCurrentLocation(state)
   if (!location || location.type !== ExplorationLocationType.WAREHOUSE) {
-    return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
+    return {
+      valid: false,
+      failureType: "WRONG_LOCATION",
+      failureReason: "must_be_at_warehouse",
+      failureContext: {
+        requiredLocationType: ExplorationLocationType.WAREHOUSE,
+        currentLocationId: getCurrentLocationId(state),
+        currentLocationType: location?.type,
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
   }
 
   // Non-stacking: count all slots with matching itemId
   const itemCount = state.player.inventory.filter((i) => i.itemId === action.itemId).length
   if (itemCount === 0) {
-    return { valid: false, failureType: "ITEM_NOT_FOUND", timeCost: 0, successProbability: 0 }
+    return {
+      valid: false,
+      failureType: "ITEM_NOT_FOUND",
+      failureReason: "not_in_inventory",
+      failureContext: {
+        itemId: action.itemId,
+        actionType: "Store",
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
   }
 
   if (itemCount < action.quantity) {
@@ -482,7 +731,17 @@ export function checkDropAction(state: WorldState, action: DropAction): ActionCh
   // Non-stacking: count all slots with matching itemId
   const itemCount = state.player.inventory.filter((i) => i.itemId === action.itemId).length
   if (itemCount === 0) {
-    return { valid: false, failureType: "ITEM_NOT_FOUND", timeCost: 0, successProbability: 0 }
+    return {
+      valid: false,
+      failureType: "ITEM_NOT_FOUND",
+      failureReason: "not_in_inventory",
+      failureContext: {
+        itemId: action.itemId,
+        actionType: "Drop",
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
   }
 
   if (itemCount < action.quantity) {
@@ -508,18 +767,44 @@ export function checkGuildEnrolmentAction(
 
   // Must be at a guild hall
   if (!skill) {
-    return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
+    return {
+      valid: false,
+      failureType: "WRONG_LOCATION",
+      failureReason: "must_be_at_guild_hall",
+      failureContext: {
+        currentLocationId: currentLocationId,
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
   }
 
   // Check if skill exists (defensive check for invalid skill names)
   const skillState = state.player.skills[skill]
   if (!skillState) {
-    return { valid: false, failureType: "INSUFFICIENT_SKILL", timeCost: 0, successProbability: 0 }
+    return {
+      valid: false,
+      failureType: "INSUFFICIENT_SKILL",
+      failureReason: "invalid_skill",
+      failureContext: { skill },
+      timeCost: 0,
+      successProbability: 0,
+    }
   }
 
   // Check if skill is already level 1 or higher
   if (skillState.level >= 1) {
-    return { valid: false, failureType: "ALREADY_ENROLLED", timeCost: 0, successProbability: 0 }
+    return {
+      valid: false,
+      failureType: "ALREADY_ENROLLED",
+      failureReason: "already_member",
+      failureContext: {
+        skill,
+        currentLevel: skillState.level,
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
   }
 
   return { valid: true, timeCost: enrolTime, successProbability: 1 }
@@ -536,13 +821,34 @@ export function checkTurnInCombatTokenAction(
   // Must be at Combat Guild
   const requiredLocation = getGuildLocationForSkill("Combat")
   if (getCurrentLocationId(state) !== requiredLocation) {
-    return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
+    return {
+      valid: false,
+      failureType: "WRONG_LOCATION",
+      failureReason: "must_be_at_combat_guild",
+      failureContext: {
+        requiredLocationId: requiredLocation,
+        currentLocationId: getCurrentLocationId(state),
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
   }
 
   // Must have COMBAT_GUILD_TOKEN
   const token = state.player.inventory.find((i) => i.itemId === "COMBAT_GUILD_TOKEN")
   if (!token || token.quantity < 1) {
-    return { valid: false, failureType: "MISSING_ITEMS", timeCost: 0, successProbability: 0 }
+    return {
+      valid: false,
+      failureType: "MISSING_ITEMS",
+      failureReason: "token_required",
+      failureContext: {
+        itemId: "COMBAT_GUILD_TOKEN",
+        have: token?.quantity ?? 0,
+        need: 1,
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
   }
 
   return { valid: true, timeCost: 0, successProbability: 1 }

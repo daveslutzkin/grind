@@ -828,7 +828,13 @@ export async function* executeSurvey(state: WorldState, _action: SurveyAction): 
 
   // Check preconditions
   if (state.player.skills.Exploration.level === 0) {
-    yield { done: true, log: createFailureLog(state, "Survey", "NOT_IN_EXPLORATION_GUILD") }
+    yield {
+      done: true,
+      log: createFailureLog(state, "Survey", "NOT_IN_EXPLORATION_GUILD", "not_enrolled", {
+        skill: "Exploration",
+        currentLevel: 0,
+      }),
+    }
     return
   }
 
@@ -840,10 +846,15 @@ export async function* executeSurvey(state: WorldState, _action: SurveyAction): 
     prepareSurveyData(state, currentArea)
 
   if (allConnections.length === 0) {
+    const areaName = getAreaDisplayName(currentArea.id, currentArea)
     yield {
       done: true,
       log: {
-        ...createFailureLog(state, "Survey", "NO_CONNECTIONS"),
+        ...createFailureLog(state, "Survey", "NO_CONNECTIONS", "no_connections_from_area", {
+          currentAreaId: currentArea.id,
+          currentAreaName: areaName,
+          distance: currentArea.distance,
+        }),
         timeConsumed: 0,
       },
     }
@@ -851,10 +862,21 @@ export async function* executeSurvey(state: WorldState, _action: SurveyAction): 
   }
 
   if (!hasUndiscoveredAreas) {
+    const areaName = getAreaDisplayName(currentArea.id, currentArea)
     yield {
       done: true,
       log: {
-        ...createFailureLog(state, "Survey", "NO_UNDISCOVERED_AREAS"),
+        ...createFailureLog(
+          state,
+          "Survey",
+          "NO_UNDISCOVERED_AREAS",
+          "all_connections_discovered",
+          {
+            currentAreaId: currentArea.id,
+            currentAreaName: areaName,
+            totalConnections: allConnections.length,
+          }
+        ),
         timeConsumed: 0,
       },
     }
@@ -1093,7 +1115,13 @@ export async function* executeExplore(state: WorldState, _action: ExploreAction)
 
   // Check preconditions
   if (state.player.skills.Exploration.level === 0) {
-    yield { done: true, log: createFailureLog(state, "Explore", "NOT_IN_EXPLORATION_GUILD") }
+    yield {
+      done: true,
+      log: createFailureLog(state, "Explore", "NOT_IN_EXPLORATION_GUILD", "not_enrolled", {
+        skill: "Exploration",
+        currentLevel: 0,
+      }),
+    }
     return
   }
 
@@ -1108,10 +1136,15 @@ export async function* executeExplore(state: WorldState, _action: ExploreAction)
   const { discoverables } = buildDiscoverables(state, currentArea)
 
   if (discoverables.length === 0) {
+    const areaName = getAreaDisplayName(currentArea.id, currentArea)
     yield {
       done: true,
       log: {
-        ...createFailureLog(state, "Explore", "AREA_FULLY_EXPLORED"),
+        ...createFailureLog(state, "Explore", "AREA_FULLY_EXPLORED", "all_discoverable_found", {
+          currentAreaId: currentArea.id,
+          currentAreaName: areaName,
+          distance: currentArea.distance,
+        }),
         explorationLog: { areaFullyExplored: true },
       },
     }
