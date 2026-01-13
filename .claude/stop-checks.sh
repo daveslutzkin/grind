@@ -77,12 +77,20 @@ fi
 # CHECK 2: Branch sync - Feature branch behind main
 # ============================================================================
 
+# Skip branch sync check if:
+# 1. Agent just asked a question via AskUserQuestion (waiting for user response)
+# 2. No changes on this branch (nothing uncommitted and no commits ahead of main)
+
+skip_branch_sync=false
+
+# Skip if Claude just asked a question
+if [ "$CLAUDE_STOP_TOOL_NAME" = "AskUserQuestion" ]; then
+    skip_branch_sync=true
+fi
+
 current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
 
-if [ "$current_branch" != "main" ] && [ "$current_branch" != "master" ]; then
-    # Fetch main silently (best effort)
-    git fetch origin main 2>/dev/null || git fetch origin master 2>/dev/null || true
-
+if [ "$skip_branch_sync" = false ] && [ "$current_branch" != "main" ] && [ "$current_branch" != "master" ]; then
     # Determine which main branch exists
     if git rev-parse --verify origin/main &>/dev/null; then
         main_branch="origin/main"
@@ -93,15 +101,29 @@ if [ "$current_branch" != "main" ] && [ "$current_branch" != "master" ]; then
     fi
 
     if [ -n "$main_branch" ]; then
-        behind_count=$(git rev-list --count HEAD.."$main_branch" 2>/dev/null || echo "0")
+        # Check if there are any changes on this branch
+        has_uncommitted=$(git status --porcelain 2>/dev/null)
+        commits_ahead=$(git rev-list --count "$main_branch"..HEAD 2>/dev/null || echo "0")
 
-        if [ "$behind_count" -gt 0 ]; then
-            errors+="
+        # Skip if no uncommitted changes AND no commits ahead of main
+        if [ -z "$has_uncommitted" ] && [ "$commits_ahead" -eq 0 ]; then
+            skip_branch_sync=true
+        fi
+
+        if [ "$skip_branch_sync" = false ]; then
+            # Fetch main silently (best effort)
+            git fetch origin main 2>/dev/null || git fetch origin master 2>/dev/null || true
+
+            behind_count=$(git rev-list --count HEAD.."$main_branch" 2>/dev/null || echo "0")
+
+            if [ "$behind_count" -gt 0 ]; then
+                errors+="
 BRANCH SYNC WARNING: Your branch '$current_branch' is $behind_count commit(s) behind $main_branch.
 
 Consider rebasing to stay up-to-date:
   git fetch origin main && git rebase origin/main
 "
+            fi
         fi
     fi
 fi
