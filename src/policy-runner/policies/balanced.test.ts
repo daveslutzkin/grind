@@ -210,4 +210,3 @@ describe("balancedMiner", () => {
     expect(action.type).toBe("Wait")
   })
 })
-

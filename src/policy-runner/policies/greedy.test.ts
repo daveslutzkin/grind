@@ -176,4 +176,3 @@ describe("greedyMiner", () => {
     expect(action.type).toBe("Mine")
   })
 })
-

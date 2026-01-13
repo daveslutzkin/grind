@@ -144,4 +144,3 @@ describe("safeMiner", () => {
     expect(action.type).toBe("Wait")
   })
 })
-

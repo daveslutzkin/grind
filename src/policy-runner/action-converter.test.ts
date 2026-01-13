@@ -166,4 +166,3 @@ describe("action-converter", () => {
     })
   })
 })
-

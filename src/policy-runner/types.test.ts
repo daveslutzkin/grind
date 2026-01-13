@@ -126,4 +126,3 @@ describe("types", () => {
     expect(result.ticksSpent.mining).toBe(500)
   })
 })
-

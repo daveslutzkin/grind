@@ -10,6 +10,7 @@
     "demo": "npm run build && node dist/demo.js",
     "repl": "npm run build && node dist/repl.js",
     "agent": "npm run build && node dist/agent/index.js",
+    "policy": "npx tsx src/policy-runner/cli.ts",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
     "lint": "eslint src/",
