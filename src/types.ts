@@ -549,6 +549,7 @@ export interface ExtractionLog {
   mode: GatherMode
   focusMaterial?: MaterialID
   extracted: ItemStack[]
+  discardedItems?: ItemStack[] // Items that couldn't fit in inventory
   focusWaste: number
   collateralDamage: Record<MaterialID, number>
   variance?: {

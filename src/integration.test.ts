@@ -221,8 +221,9 @@ describe("Integration: Full Session Flow", () => {
     // - COPPER_BAR consumed (should be gone)
     expect(state.player.inventory.find((i) => i.itemId === "COPPER_BAR")).toBeUndefined()
 
-    // - COPPER_ORE granted (should have 5)
-    expect(state.player.inventory.find((i) => i.itemId === "COPPER_ORE")?.quantity).toBe(5)
+    // - COPPER_ORE granted (should have 5 slots)
+    const copperOreCount = state.player.inventory.filter((i) => i.itemId === "COPPER_ORE").length
+    expect(copperOreCount).toBe(5)
 
     // - Reputation awarded
     expect(state.player.guildReputation).toBe(10)

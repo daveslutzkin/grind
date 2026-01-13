@@ -51,6 +51,7 @@ import {
   consumeTime,
   addToInventory,
   removeFromInventory,
+  addToInventoryWithOverflow,
   addToStorage,
   grantXP,
   checkAndCompleteContracts,
@@ -544,9 +545,13 @@ function executeFocusExtraction(
   const extracted: ItemStack[] =
     actualExtracted > 0 ? [{ itemId: focusMaterialId, quantity: actualExtracted }] : []
 
-  // Add to inventory
+  // Add to inventory with overflow handling
+  const discardedItems: ItemStack[] = []
   if (actualExtracted > 0) {
-    addToInventory(state, focusMaterialId, actualExtracted)
+    const result = addToInventoryWithOverflow(state, focusMaterialId, actualExtracted)
+    if (result.discarded > 0) {
+      discardedItems.push({ itemId: focusMaterialId, quantity: result.discarded })
+    }
   }
 
   // Calculate and apply collateral damage
@@ -579,6 +584,7 @@ function executeFocusExtraction(
     mode: GatherMode.FOCUS,
     focusMaterial: focusMaterialId,
     extracted,
+    discardedItems: discardedItems.length > 0 ? discardedItems : undefined,
     focusWaste,
     collateralDamage,
     variance: {
@@ -621,6 +627,7 @@ function executeCarefulAllExtraction(
   parameters: Record<string, unknown>
 ): ActionLog {
   const extracted: ItemStack[] = []
+  const discardedItems: ItemStack[] = []
   let totalXP = 0
 
   // Extract from each material the player can gather
@@ -635,7 +642,13 @@ function executeCarefulAllExtraction(
     if (actualExtracted > 0) {
       material.remainingUnits -= actualExtracted
       extracted.push({ itemId: material.materialId, quantity: actualExtracted })
-      addToInventory(state, material.materialId, actualExtracted)
+
+      // Add to inventory with overflow handling
+      const result = addToInventoryWithOverflow(state, material.materialId, actualExtracted)
+      if (result.discarded > 0) {
+        discardedItems.push({ itemId: material.materialId, quantity: result.discarded })
+      }
+
       totalXP += material.tier
     }
   }
@@ -654,6 +667,7 @@ function executeCarefulAllExtraction(
   const extraction: ExtractionLog = {
     mode: GatherMode.CAREFUL_ALL,
     extracted,
+    discardedItems: discardedItems.length > 0 ? discardedItems : undefined,
     focusWaste: 0,
     collateralDamage: {}, // No collateral in CAREFUL_ALL
   }

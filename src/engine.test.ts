@@ -441,8 +441,8 @@ describe("Engine", () => {
       }
     })
 
-    it("should succeed if inventory full but already has that item (slot-based)", async () => {
-      const state = createWorld("ore-test")
+    it("should succeed with full inventory but discard overflow (non-stacking)", async () => {
+      const state = createWorld("overflow-test")
       const areaId = getOreAreaId(state)
       makeAreaKnown(state, areaId)
       state.exploration.playerState.currentAreaId = areaId
@@ -450,23 +450,74 @@ describe("Engine", () => {
       state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
       expect(node).toBeDefined()
-      const material = node!.materials[0]
-      // Fill 19 slots with other items, 1 slot with the material from the node
-      for (let i = 0; i < 19; i++) {
+      moveToNodeLocation(state, node!.nodeId, areaId)
+      // Find a material that requires level 1 or less
+      const material = node!.materials.find((m) => m.requiredLevel <= 1)
+      expect(material).toBeDefined()
+      // Fill all 10 slots - inventory is completely full
+      for (let i = 0; i < 10; i++) {
         state.player.inventory.push({ itemId: `ITEM_${i}`, quantity: 1 })
       }
-      state.player.inventory.push({ itemId: material.materialId, quantity: 1 })
       const action: GatherAction = {
         type: "Gather",
         nodeId: node!.nodeId,
         mode: GatherMode.FOCUS,
-        focusMaterialId: material.materialId,
+        focusMaterialId: material!.materialId,
       }
 
       const log = await await executeAction(state, action)
 
-      // Should not fail with INVENTORY_FULL because we can stack on existing material
-      expect(log.failureType).not.toBe("INVENTORY_FULL")
+      // Should succeed but discard all gathered items (no room)
+      expect(log.success).toBe(true)
+      expect(log.extraction?.discardedItems).toBeDefined()
+      expect(log.extraction?.discardedItems?.length).toBeGreaterThan(0)
+      // Inventory should still be full with the original items
+      expect(state.player.inventory.length).toBe(10)
+    })
+
+    it("should report partial discard when inventory nearly full", async () => {
+      const state = createWorld("partial-overflow-test")
+      const areaId = getOreAreaId(state)
+      makeAreaKnown(state, areaId)
+      state.exploration.playerState.currentAreaId = areaId
+      discoverAllLocations(state, areaId)
+      state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
+      const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
+      expect(node).toBeDefined()
+      moveToNodeLocation(state, node!.nodeId, areaId)
+      // Find a material that requires level 1 or less
+      const material = node!.materials.find((m) => m.requiredLevel <= 1)
+      expect(material).toBeDefined()
+      // Fill 8 of 10 slots - 2 slots available
+      for (let i = 0; i < 8; i++) {
+        state.player.inventory.push({ itemId: `ITEM_${i}`, quantity: 1 })
+      }
+      const action: GatherAction = {
+        type: "Gather",
+        nodeId: node!.nodeId,
+        mode: GatherMode.FOCUS,
+        focusMaterialId: material!.materialId,
+      }
+
+      const log = await await executeAction(state, action)
+
+      // Should succeed
+      expect(log.success).toBe(true)
+      // extracted = amount taken from node (may exceed inventory space)
+      const extracted = log.extraction?.extracted?.[0]?.quantity ?? 0
+      // discarded = amount that couldn't fit
+      const discarded = log.extraction?.discardedItems?.[0]?.quantity ?? 0
+      // Amount actually added = extracted - discarded
+      const actuallyAdded = extracted - discarded
+      // With 8 slots filled and 2 available, should have added at most 2
+      expect(actuallyAdded).toBeLessThanOrEqual(2)
+      expect(actuallyAdded).toBeGreaterThan(0)
+      // If we extracted more than 2, some must have been discarded
+      if (extracted > 2) {
+        expect(discarded).toBeGreaterThan(0)
+      }
+      // Inventory should be at capacity
+      expect(state.player.inventory.length).toBe(10)
     })
   })
 
@@ -581,23 +632,29 @@ describe("Engine", () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD)
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
-      state.player.inventory.push({ itemId: "IRON_ORE", quantity: 5 })
+      // Non-stacking inventory: push 5 separate slots
+      for (let i = 0; i < 5; i++) {
+        state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
+      }
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar" }
 
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(true)
-      const ironOre = state.player.inventory.find((i) => i.itemId === "IRON_ORE")
-      expect(ironOre?.quantity).toBe(3) // 5 - 2 = 3
-      const ironBar = state.player.inventory.find((i) => i.itemId === "IRON_BAR")
-      expect(ironBar?.quantity).toBe(1)
+      const ironOreCount = state.player.inventory.filter((i) => i.itemId === "IRON_ORE").length
+      expect(ironOreCount).toBe(3) // 5 - 2 = 3
+      const ironBarCount = state.player.inventory.filter((i) => i.itemId === "IRON_BAR").length
+      expect(ironBarCount).toBe(1)
     })
 
     it("should consume craft time", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD)
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
-      state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
+      // Non-stacking inventory: push 2 separate slots
+      for (let i = 0; i < 2; i++) {
+        state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
+      }
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar" }
 
       const log = await await executeAction(state, action)
@@ -609,7 +666,10 @@ describe("Engine", () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.SMITHING_GUILD)
       state.player.skills.Smithing = { level: 1, xp: 0 } // Need level 1 to craft
-      state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
+      // Non-stacking inventory: push 2 separate slots
+      for (let i = 0; i < 2; i++) {
+        state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
+      }
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar" }
 
       const log = await await executeAction(state, action)
@@ -662,16 +722,19 @@ describe("Engine", () => {
     it("should move item from inventory to storage", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.WAREHOUSE)
-      state.player.inventory.push({ itemId: "IRON_ORE", quantity: 5 })
+      // Non-stacking inventory: push 5 separate slots
+      for (let i = 0; i < 5; i++) {
+        state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
+      }
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 3 }
 
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(true)
-      const invOre = state.player.inventory.find((i) => i.itemId === "IRON_ORE")
-      expect(invOre?.quantity).toBe(2)
+      const invOreCount = state.player.inventory.filter((i) => i.itemId === "IRON_ORE").length
+      expect(invOreCount).toBe(2)
       const storageOre = state.player.storage.find((i) => i.itemId === "IRON_ORE")
-      expect(storageOre?.quantity).toBe(3)
+      expect(storageOre?.quantity).toBe(3) // Storage still stacks
     })
 
     it("should consume 0 ticks (free action)", async () => {
@@ -725,7 +788,10 @@ describe("Engine", () => {
     it("should fail if not enough quantity", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.WAREHOUSE)
-      state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
+      // Non-stacking inventory: push 2 separate slots
+      for (let i = 0; i < 2; i++) {
+        state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
+      }
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 5 }
 
       const log = await await executeAction(state, action)
@@ -738,14 +804,17 @@ describe("Engine", () => {
   describe("Drop action", () => {
     it("should remove item from inventory", async () => {
       const state = createWorld("ore-test")
-      state.player.inventory.push({ itemId: "IRON_ORE", quantity: 5 })
+      // Non-stacking inventory: push 5 separate slots
+      for (let i = 0; i < 5; i++) {
+        state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
+      }
       const action: DropAction = { type: "Drop", itemId: "IRON_ORE", quantity: 3 }
 
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(true)
-      const invOre = state.player.inventory.find((i) => i.itemId === "IRON_ORE")
-      expect(invOre?.quantity).toBe(2)
+      const invOreCount = state.player.inventory.filter((i) => i.itemId === "IRON_ORE").length
+      expect(invOreCount).toBe(2)
     })
 
     it("should consume 1 tick", async () => {
@@ -780,7 +849,10 @@ describe("Engine", () => {
 
     it("should fail if not enough quantity", async () => {
       const state = createWorld("ore-test")
-      state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
+      // Non-stacking inventory: push 2 separate slots
+      for (let i = 0; i < 2; i++) {
+        state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
+      }
       const action: DropAction = { type: "Drop", itemId: "IRON_ORE", quantity: 5 }
 
       const log = await await executeAction(state, action)
@@ -791,7 +863,10 @@ describe("Engine", () => {
 
     it("should remove item stack if quantity becomes 0", async () => {
       const state = createWorld("ore-test")
-      state.player.inventory.push({ itemId: "IRON_ORE", quantity: 3 })
+      // Non-stacking inventory: push 3 separate slots
+      for (let i = 0; i < 3; i++) {
+        state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
+      }
       const action: DropAction = { type: "Drop", itemId: "IRON_ORE", quantity: 3 }
 
       const log = await await executeAction(state, action)

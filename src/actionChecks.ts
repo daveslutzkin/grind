@@ -41,11 +41,13 @@ export interface ActionCheckResult {
 
 /**
  * Check if inventory has all required items
+ * Non-stacking: counts all slots with matching itemId
  */
 export function hasItems(inventory: ItemStack[], required: ItemStack[]): boolean {
   for (const req of required) {
-    const item = inventory.find((i) => i.itemId === req.itemId)
-    if (!item || item.quantity < req.quantity) {
+    // Count all slots with this itemId
+    const itemCount = inventory.filter((i) => i.itemId === req.itemId).length
+    if (itemCount < req.quantity) {
       return false
     }
   }
@@ -73,37 +75,18 @@ export function canGatherItem(state: WorldState, itemId: string): boolean {
 /**
  * Check if adding items would exceed inventory capacity
  * Takes into account items that will be removed first (for crafting)
+ * Non-stacking: checks total item count (each unit = 1 slot)
  */
 export function canFitItems(
   state: WorldState,
   itemsToAdd: ItemStack[],
   itemsToRemove: ItemStack[] = []
 ): boolean {
-  // Simulate the inventory after removing items
-  const simulatedInventory = new Map<string, number>()
-  for (const item of state.player.inventory) {
-    simulatedInventory.set(item.itemId, item.quantity)
-  }
+  const currentCount = state.player.inventory.length
+  const removeCount = itemsToRemove.reduce((sum, i) => sum + i.quantity, 0)
+  const addCount = itemsToAdd.reduce((sum, i) => sum + i.quantity, 0)
 
-  // Remove items
-  for (const item of itemsToRemove) {
-    const current = simulatedInventory.get(item.itemId) ?? 0
-    const newQty = current - item.quantity
-    if (newQty <= 0) {
-      simulatedInventory.delete(item.itemId)
-    } else {
-      simulatedInventory.set(item.itemId, newQty)
-    }
-  }
-
-  // Add items
-  for (const item of itemsToAdd) {
-    const current = simulatedInventory.get(item.itemId) ?? 0
-    simulatedInventory.set(item.itemId, current + item.quantity)
-  }
-
-  // Check slot count
-  return simulatedInventory.size <= state.player.inventoryCapacity
+  return currentCount - removeCount + addCount <= state.player.inventoryCapacity
 }
 
 /**
@@ -464,12 +447,13 @@ export function checkStoreAction(state: WorldState, action: StoreAction): Action
     return { valid: false, failureType: "WRONG_LOCATION", timeCost: 0, successProbability: 0 }
   }
 
-  const item = state.player.inventory.find((i) => i.itemId === action.itemId)
-  if (!item) {
+  // Non-stacking: count all slots with matching itemId
+  const itemCount = state.player.inventory.filter((i) => i.itemId === action.itemId).length
+  if (itemCount === 0) {
     return { valid: false, failureType: "ITEM_NOT_FOUND", timeCost: 0, successProbability: 0 }
   }
 
-  if (item.quantity < action.quantity) {
+  if (itemCount < action.quantity) {
     return { valid: false, failureType: "MISSING_ITEMS", timeCost: 0, successProbability: 0 }
   }
 
@@ -482,12 +466,13 @@ export function checkStoreAction(state: WorldState, action: StoreAction): Action
 export function checkDropAction(state: WorldState, action: DropAction): ActionCheckResult {
   const dropTime = 1
 
-  const item = state.player.inventory.find((i) => i.itemId === action.itemId)
-  if (!item) {
+  // Non-stacking: count all slots with matching itemId
+  const itemCount = state.player.inventory.filter((i) => i.itemId === action.itemId).length
+  if (itemCount === 0) {
     return { valid: false, failureType: "ITEM_NOT_FOUND", timeCost: 0, successProbability: 0 }
   }
 
-  if (item.quantity < action.quantity) {
+  if (itemCount < action.quantity) {
     return { valid: false, failureType: "MISSING_ITEMS", timeCost: 0, successProbability: 0 }
   }
 

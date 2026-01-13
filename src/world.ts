@@ -474,7 +474,7 @@ export function createWorld(seed: string): WorldState {
 
     player: {
       inventory: [],
-      inventoryCapacity: 20,
+      inventoryCapacity: 10,
       storage: [],
       skills: {
         Mining: { level: 0, xp: 0 },
