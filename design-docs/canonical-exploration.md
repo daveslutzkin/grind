@@ -177,7 +177,7 @@ Areas form a graph with discoverable edges.
 - **Town exception**: Town (distance 0) connects to ALL distance 1 areas
 
 Connection properties:
-- Travel time multiplier: 0.5x to 4.5x (normally distributed, centered at 2.5x)
+- Travel time multiplier: 0.5x to 4.5x (normal distribution centered at 2.5x, stdDev 1.0)
 - Base travel time: 10 ticks × multiplier
 - Connections are discovered via:
   - Surveying (auto-discovers connection to newly found area)

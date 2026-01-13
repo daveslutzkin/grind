@@ -22,7 +22,7 @@ import type {
   FailureType,
 } from "./types.js"
 import { ExplorationLocationType } from "./types.js"
-import { rollFloat, roll } from "./rng.js"
+import { rollFloat, roll, rollNormal } from "./rng.js"
 import { consumeTime } from "./stateHelpers.js"
 import { generateNodesForArea, getLocationDisplayName } from "./world.js"
 import { generateAreaName, getNeighborNames } from "./areaNaming.js"
@@ -487,13 +487,21 @@ function rollConnectionCount(rng: RngState, label: string): number {
 }
 
 /**
- * Roll for travel time multiplier (0.5-4.5)
- * Uses uniform distribution for varied non-round travel times
+ * Roll for travel time multiplier (0.5x-4.5x)
+ * Uses normal distribution centered at 2.5x so middle values are more common.
+ * Clamped to [0.5, 4.5] range, rounded to 1 decimal place.
  */
-function rollTravelMultiplier(rng: RngState, label: string): number {
-  // Roll 0.5 to 4.5, round to 1 decimal place for cleaner numbers
-  const rawValue = rollFloat(rng, 0.5, 4.5, label)
-  return Math.round(rawValue * 10) / 10
+export function rollTravelMultiplier(rng: RngState, label: string): number {
+  // Normal distribution: mean 2.5, stdDev 1.0
+  // ~68% of values will be between 1.5x and 3.5x
+  // ~95% of values will be between 0.5x and 4.5x
+  const rawValue = rollNormal(rng, 2.5, 1.0, label)
+
+  // Clamp to valid range
+  const clamped = Math.max(0.5, Math.min(4.5, rawValue))
+
+  // Round to 1 decimal place for cleaner display
+  return Math.round(clamped * 10) / 10
 }
 
 /**
