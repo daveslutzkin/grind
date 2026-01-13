@@ -15,6 +15,7 @@ import {
   grantExplorationGuildBenefits,
   buildDiscoverables,
   prepareSurveyData,
+  rollTravelMultiplier,
 } from "./exploration.js"
 import { executeToCompletion } from "./engine.js"
 import type {
@@ -1285,5 +1286,39 @@ describe("Explore Discovering Unknown Connections", () => {
         expect(log.explorationLog.connectionToUnknownArea).toBe(true)
       }
     }
+  })
+})
+
+describe("rollTravelMultiplier", () => {
+  it("should return values in range 0.5-4.5", () => {
+    const rng = createRng("test-travel-range")
+    for (let i = 0; i < 1000; i++) {
+      const multiplier = rollTravelMultiplier(rng, `test_${i}`)
+      expect(multiplier).toBeGreaterThanOrEqual(0.5)
+      expect(multiplier).toBeLessThanOrEqual(4.5)
+    }
+  })
+
+  it("should produce normally distributed values centered around 2.5", () => {
+    const rng = createRng("test-normal-dist")
+    const samples = 10000
+    let sum = 0
+    let middleCount = 0 // Count values between 1.5 and 3.5
+
+    for (let i = 0; i < samples; i++) {
+      const multiplier = rollTravelMultiplier(rng, `dist_${i}`)
+      sum += multiplier
+      if (multiplier >= 1.5 && multiplier <= 3.5) {
+        middleCount++
+      }
+    }
+
+    const mean = sum / samples
+    // Mean should be close to 2.5
+    expect(mean).toBeCloseTo(2.5, 1)
+
+    // ~68% of values should be within 1 std dev (1.5-3.5)
+    // Allow some tolerance for clamping effects at edges
+    expect(middleCount / samples).toBeGreaterThan(0.6)
   })
 })
