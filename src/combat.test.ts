@@ -120,7 +120,7 @@ describe.skip("Combat Progression (combat not yet implemented)", () => {
       const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("MISSING_WEAPON")
+      expect(log.failureDetails?.type).toBe("MISSING_WEAPON")
       expect(log.timeConsumed).toBe(0)
     })
 
@@ -136,7 +136,7 @@ describe.skip("Combat Progression (combat not yet implemented)", () => {
       const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("MISSING_WEAPON")
+      expect(log.failureDetails?.type).toBe("MISSING_WEAPON")
       expect(log.timeConsumed).toBe(0)
     })
 
@@ -151,7 +151,7 @@ describe.skip("Combat Progression (combat not yet implemented)", () => {
       const log = await executeAction(state, action)
 
       // Should not fail due to missing weapon (may still fail due to RNG)
-      expect(log.failureType).not.toBe("MISSING_WEAPON")
+      expect(log.failureDetails?.type).not.toBe("MISSING_WEAPON")
     })
 
     it("should succeed Fight if IMPROVED_WEAPON equipped", async () => {
@@ -164,7 +164,7 @@ describe.skip("Combat Progression (combat not yet implemented)", () => {
 
       const log = await executeAction(state, action)
 
-      expect(log.failureType).not.toBe("MISSING_WEAPON")
+      expect(log.failureDetails?.type).not.toBe("MISSING_WEAPON")
     })
   })
 
@@ -211,7 +211,7 @@ describe.skip("Combat Progression (combat not yet implemented)", () => {
 
       const log = await executeAction(state, action)
 
-      if (log.failureType === "COMBAT_FAILURE") {
+      if (log.failureDetails?.type === "COMBAT_FAILURE") {
         // Player should stay at combat area, not relocate to TOWN
         expect(state.exploration.playerState.currentAreaId).toBe(areaId)
         expect(log.timeConsumed).toBe(3)
@@ -229,7 +229,7 @@ describe.skip("Combat Progression (combat not yet implemented)", () => {
 
       const log = await executeAction(state, action)
 
-      if (log.failureType === "COMBAT_FAILURE") {
+      if (log.failureDetails?.type === "COMBAT_FAILURE") {
         expect(log.timeConsumed).toBe(3)
       }
     })
@@ -350,7 +350,7 @@ describe.skip("Combat Progression (combat not yet implemented)", () => {
       const log = await executeAction(state, { type: "TurnInCombatToken" })
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("WRONG_LOCATION")
+      expect(log.failureDetails?.type).toBe("WRONG_LOCATION")
     })
 
     it("should fail if player does not have token", async () => {
@@ -362,7 +362,7 @@ describe.skip("Combat Progression (combat not yet implemented)", () => {
       const log = await executeAction(state, { type: "TurnInCombatToken" })
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("MISSING_ITEMS")
+      expect(log.failureDetails?.type).toBe("MISSING_ITEMS")
     })
 
     it("should unlock combat-guild-1 contract", async () => {

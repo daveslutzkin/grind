@@ -592,8 +592,8 @@ export interface ActionLog {
   actionType: ActionType
   parameters: Record<string, unknown>
   success: boolean
-  failureType?: FailureType // KEEP during migration (remove in cleanup phase)
-  failureDetails?: FailureDetails // NEW - structured failure info
+  // failureType was removed in Package 9 cleanup - use failureDetails.type instead
+  failureDetails?: FailureDetails // Structured failure info with context for helpful hints
   timeConsumed: number
   skillGained?: { skill: SkillID; amount: number }
   levelUps?: LevelUp[]

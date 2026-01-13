@@ -207,7 +207,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
       const log = await await executeAction(world, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("MISSING_FOCUS_MATERIAL")
+      expect(log.failureDetails?.type).toBe("MISSING_FOCUS_MATERIAL")
     })
 
     it("should extract focus material with variance", async () => {
@@ -499,7 +499,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
       const log = await await executeAction(world, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("NODE_DEPLETED")
+      expect(log.failureDetails?.type).toBe("NODE_DEPLETED")
     })
   })
 
@@ -525,7 +525,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
       const log = await await executeAction(world, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("INSUFFICIENT_SKILL")
+      expect(log.failureDetails?.type).toBe("INSUFFICIENT_SKILL")
     })
   })
 
@@ -543,7 +543,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
       const log = await await executeAction(world, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("WRONG_LOCATION")
+      expect(log.failureDetails?.type).toBe("WRONG_LOCATION")
     })
   })
 
@@ -600,7 +600,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         const log = await await executeAction(world, action)
 
         expect(log.success).toBe(false)
-        expect(log.failureType).toBe("INSUFFICIENT_SKILL")
+        expect(log.failureDetails?.type).toBe("INSUFFICIENT_SKILL")
       })
 
       it("should allow L5+ Mining to access MID mining locations", async () => {
@@ -653,7 +653,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         const log = await await executeAction(world, action)
 
         expect(log.success).toBe(false)
-        expect(log.failureType).toBe("INSUFFICIENT_SKILL")
+        expect(log.failureDetails?.type).toBe("INSUFFICIENT_SKILL")
       })
 
       it("should allow L9+ Mining to access FAR mining locations", async () => {
@@ -697,7 +697,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         const log = await await executeAction(world, action)
 
         expect(log.success).toBe(false)
-        expect(log.failureType).toBe("MODE_NOT_UNLOCKED")
+        expect(log.failureDetails?.type).toBe("MODE_NOT_UNLOCKED")
       })
 
       it("should allow L3+ Mining for APPRAISE mode", async () => {
@@ -840,7 +840,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
       const log = await await executeAction(world, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("NODE_NOT_FOUND")
+      expect(log.failureDetails?.type).toBe("NODE_NOT_FOUND")
     })
   })
 
@@ -944,7 +944,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
       const log = await await executeAction(world, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("NODE_NOT_FOUND")
+      expect(log.failureDetails?.type).toBe("NODE_NOT_FOUND")
     })
   })
 })

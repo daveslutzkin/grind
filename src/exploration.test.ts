@@ -661,7 +661,7 @@ describe("Survey Action", () => {
       const log = await executeToCompletion(executeSurvey(state, action))
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("NOT_IN_EXPLORATION_GUILD")
+      expect(log.failureDetails?.type).toBe("NOT_IN_EXPLORATION_GUILD")
     })
   })
 
@@ -756,7 +756,7 @@ describe("Explore Action", () => {
       const log = await executeToCompletion(executeExplore(state, action))
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("NOT_IN_EXPLORATION_GUILD")
+      expect(log.failureDetails?.type).toBe("NOT_IN_EXPLORATION_GUILD")
     })
 
     it("should fail if area is fully explored", async () => {
@@ -783,7 +783,7 @@ describe("Explore Action", () => {
       const log = await executeToCompletion(executeExplore(state, action))
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("AREA_FULLY_EXPLORED")
+      expect(log.failureDetails?.type).toBe("AREA_FULLY_EXPLORED")
     })
   })
 
@@ -851,7 +851,7 @@ describe("ExplorationTravel Action", () => {
       const log = await executeToCompletion(executeExplorationTravel(state, action))
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("NO_PATH_TO_DESTINATION")
+      expect(log.failureDetails?.type).toBe("NO_PATH_TO_DESTINATION")
     })
 
     it("should fail if no path to destination", async () => {
@@ -866,7 +866,7 @@ describe("ExplorationTravel Action", () => {
       const log = await executeToCompletion(executeExplorationTravel(state, action))
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("NO_PATH_TO_DESTINATION")
+      expect(log.failureDetails?.type).toBe("NO_PATH_TO_DESTINATION")
     })
 
     it("should fail if already in destination area", async () => {
@@ -879,7 +879,7 @@ describe("ExplorationTravel Action", () => {
       const log = await executeToCompletion(executeExplorationTravel(state, action))
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("ALREADY_IN_AREA")
+      expect(log.failureDetails?.type).toBe("ALREADY_IN_AREA")
     })
   })
 
@@ -992,7 +992,7 @@ describe("ExplorationTravel Action", () => {
 
       // Multi-hop travel is not allowed - must have direct connection
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("NO_PATH_TO_DESTINATION")
+      expect(log.failureDetails?.type).toBe("NO_PATH_TO_DESTINATION")
     })
   })
 })
@@ -1010,7 +1010,7 @@ describe("FarTravel Action", () => {
       const log = await executeToCompletion(executeFarTravel(state, action))
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("AREA_NOT_KNOWN")
+      expect(log.failureDetails?.type).toBe("AREA_NOT_KNOWN")
     })
 
     it("should fail if no path exists to destination", async () => {
@@ -1025,7 +1025,7 @@ describe("FarTravel Action", () => {
       const log = await executeToCompletion(executeFarTravel(state, action))
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("NO_PATH_TO_DESTINATION")
+      expect(log.failureDetails?.type).toBe("NO_PATH_TO_DESTINATION")
     })
 
     it("should fail if already in destination area", async () => {
@@ -1038,7 +1038,7 @@ describe("FarTravel Action", () => {
       const log = await executeToCompletion(executeFarTravel(state, action))
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("ALREADY_IN_AREA")
+      expect(log.failureDetails?.type).toBe("ALREADY_IN_AREA")
     })
   })
 
@@ -1135,7 +1135,7 @@ describe("ExplorationTravel vs FarTravel - Regression Tests", () => {
 
     // This should FAIL - ExplorationTravel only allows direct connections
     expect(log.success).toBe(false)
-    expect(log.failureType).toBe("NO_PATH_TO_DESTINATION")
+    expect(log.failureDetails?.type).toBe("NO_PATH_TO_DESTINATION")
   })
 
   it("FarTravel SHOULD allow multi-hop travel to same destination", async () => {

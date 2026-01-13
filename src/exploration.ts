@@ -19,6 +19,7 @@ import type {
   ExplorationLuckInfo,
   LevelUp,
   ActionGenerator,
+  FailureType,
 } from "./types.js"
 import { ExplorationLocationType } from "./types.js"
 import { rollFloat, roll } from "./rng.js"
@@ -626,15 +627,13 @@ function createFailureLog(
   reason?: string,
   context?: Record<string, unknown>
 ): ActionLog {
-  const typedFailureType = failureType as ActionLog["failureType"]
   return {
     tickBefore: state.time.currentTick,
     actionType,
     parameters: {},
     success: false,
-    failureType: typedFailureType,
     failureDetails: {
-      type: typedFailureType!,
+      type: failureType as FailureType,
       reason,
       context,
     },
@@ -959,7 +958,9 @@ export async function* executeSurvey(state: WorldState, _action: SurveyAction): 
         actionType: "Survey",
         parameters: {},
         success: false,
-        failureType: "NO_UNDISCOVERED_AREAS",
+        failureDetails: {
+          type: "NO_UNDISCOVERED_AREAS",
+        },
         timeConsumed: ticksConsumed,
         rngRolls: rolls,
         stateDeltaSummary: "Survey interrupted",
@@ -1286,7 +1287,9 @@ export async function* executeExplore(state: WorldState, _action: ExploreAction)
         actionType: "Explore",
         parameters: {},
         success: false,
-        failureType: "AREA_FULLY_EXPLORED",
+        failureDetails: {
+          type: "AREA_FULLY_EXPLORED",
+        },
         timeConsumed: ticksConsumed,
         rngRolls: rolls,
         stateDeltaSummary: "Explore interrupted",

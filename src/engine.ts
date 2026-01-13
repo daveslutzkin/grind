@@ -114,7 +114,6 @@ function createFailureLog(
     actionType: action.type,
     parameters: extractParameters(action),
     success: false,
-    failureType,
     failureDetails: {
       type: failureType,
       reason,

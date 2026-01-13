@@ -1082,7 +1082,7 @@ describe("generateFailureHint", () => {
 
       // Should fail immediately
       expect(log2.success).toBe(false)
-      expect(log2.failureType).toBe("ALREADY_AT_LOCATION")
+      expect(log2.failureDetails?.type).toBe("ALREADY_AT_LOCATION")
       expect(log2.failureDetails).toBeDefined()
       expect(log2.failureDetails?.type).toBe("ALREADY_AT_LOCATION")
       expect(log2.failureDetails?.reason).toBe("already_here")
@@ -1105,7 +1105,7 @@ describe("generateFailureHint", () => {
 
       // Should fail immediately
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("ALREADY_AT_HUB")
+      expect(log.failureDetails?.type).toBe("ALREADY_AT_HUB")
       expect(log.failureDetails).toBeDefined()
       expect(log.failureDetails?.type).toBe("ALREADY_AT_HUB")
       expect(log.failureDetails?.reason).toBe("at_hub")
@@ -1135,7 +1135,7 @@ describe("generateFailureHint", () => {
 
       // Should fail immediately
       expect(log2.success).toBe(false)
-      expect(log2.failureType).toBe("NOT_AT_HUB")
+      expect(log2.failureDetails?.type).toBe("NOT_AT_HUB")
       expect(log2.failureDetails).toBeDefined()
       expect(log2.failureDetails?.type).toBe("NOT_AT_HUB")
       expect(log2.failureDetails?.reason).toBe("at_location")
@@ -1156,7 +1156,7 @@ describe("generateFailureHint", () => {
 
       // Should fail immediately
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("UNKNOWN_LOCATION")
+      expect(log.failureDetails?.type).toBe("UNKNOWN_LOCATION")
       expect(log.failureDetails).toBeDefined()
       expect(log.failureDetails?.type).toBe("UNKNOWN_LOCATION")
       expect(log.failureDetails?.reason).toBe("not_found")
@@ -1178,7 +1178,7 @@ describe("generateFailureHint", () => {
 
       // Should fail immediately
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("NOT_IN_EXPLORATION_GUILD")
+      expect(log.failureDetails?.type).toBe("NOT_IN_EXPLORATION_GUILD")
       expect(log.failureDetails).toBeDefined()
       expect(log.failureDetails?.type).toBe("NOT_IN_EXPLORATION_GUILD")
     })
@@ -1227,7 +1227,7 @@ describe("generateFailureHint", () => {
 
       // Should fail immediately
       expect(log2.success).toBe(false)
-      expect(log2.failureType).toBe("NO_UNDISCOVERED_AREAS")
+      expect(log2.failureDetails?.type).toBe("NO_UNDISCOVERED_AREAS")
       expect(log2.failureDetails).toBeDefined()
       expect(log2.failureDetails?.type).toBe("NO_UNDISCOVERED_AREAS")
       expect(log2.failureDetails?.reason).toBe("all_connections_discovered")
@@ -1296,7 +1296,7 @@ describe("generateFailureHint", () => {
 
       // Should fail immediately
       expect(log2.success).toBe(false)
-      expect(log2.failureType).toBe("AREA_FULLY_EXPLORED")
+      expect(log2.failureDetails?.type).toBe("AREA_FULLY_EXPLORED")
       expect(log2.failureDetails).toBeDefined()
       expect(log2.failureDetails?.type).toBe("AREA_FULLY_EXPLORED")
       expect(log2.failureDetails?.reason).toBe("all_discoverable_found")
@@ -1371,7 +1371,7 @@ describe("generateFailureHint", () => {
 
       // Verify structured failure
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("INSUFFICIENT_SKILL")
+      expect(log.failureDetails?.type).toBe("INSUFFICIENT_SKILL")
       expect(log.failureDetails).toBeDefined()
       expect(log.failureDetails?.type).toBe("INSUFFICIENT_SKILL")
       expect(log.failureDetails?.reason).toBe("location_access")
@@ -1405,7 +1405,7 @@ describe("generateFailureHint", () => {
 
       // Verify structured failure
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("MISSING_ITEMS")
+      expect(log.failureDetails?.type).toBe("MISSING_ITEMS")
       expect(log.failureDetails).toBeDefined()
       expect(log.failureDetails?.type).toBe("MISSING_ITEMS")
       expect(log.failureDetails?.reason).toBe("craft_materials")
@@ -1457,7 +1457,7 @@ describe("generateFailureHint", () => {
 
       // Verify structured failure
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("INVENTORY_FULL")
+      expect(log.failureDetails?.type).toBe("INVENTORY_FULL")
       expect(log.failureDetails).toBeDefined()
       expect(log.failureDetails?.type).toBe("INVENTORY_FULL")
       expect(log.failureDetails?.reason).toBe("craft_output")
@@ -1527,7 +1527,7 @@ describe("generateFailureHint", () => {
 
       // Verify structured failure
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("MISSING_FOCUS_MATERIAL")
+      expect(log.failureDetails?.type).toBe("MISSING_FOCUS_MATERIAL")
       expect(log.failureDetails).toBeDefined()
       expect(log.failureDetails?.type).toBe("MISSING_FOCUS_MATERIAL")
       expect(log.failureDetails?.reason).toBe("material_not_in_node")
@@ -1557,7 +1557,7 @@ describe("generateFailureHint", () => {
 
       // Should fail immediately
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("CONTRACT_NOT_FOUND")
+      expect(log.failureDetails?.type).toBe("CONTRACT_NOT_FOUND")
       expect(log.failureDetails).toBeDefined()
       expect(log.failureDetails?.type).toBe("CONTRACT_NOT_FOUND")
       expect(log.failureDetails?.reason).toBe("not_found")
@@ -1593,7 +1593,7 @@ describe("generateFailureHint", () => {
 
       // Should fail immediately
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("ALREADY_HAS_CONTRACT")
+      expect(log.failureDetails?.type).toBe("ALREADY_HAS_CONTRACT")
       expect(log.failureDetails).toBeDefined()
       expect(log.failureDetails?.type).toBe("ALREADY_HAS_CONTRACT")
       expect(log.failureDetails?.reason).toBe("already_active")
@@ -1631,7 +1631,7 @@ describe("generateFailureHint", () => {
 
       // Should fail
       expect(log3.success).toBe(false)
-      expect(log3.failureType).toBe("ALREADY_ENROLLED")
+      expect(log3.failureDetails?.type).toBe("ALREADY_ENROLLED")
       expect(log3.failureDetails).toBeDefined()
       expect(log3.failureDetails?.type).toBe("ALREADY_ENROLLED")
       expect(log3.failureDetails?.reason).toBe("already_member")
@@ -1655,7 +1655,7 @@ describe("generateFailureHint", () => {
 
       // Should fail immediately
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("NOT_IN_EXPLORATION_GUILD")
+      expect(log.failureDetails?.type).toBe("NOT_IN_EXPLORATION_GUILD")
       expect(log.failureDetails).toBeDefined()
       expect(log.failureDetails?.type).toBe("NOT_IN_EXPLORATION_GUILD")
       expect(log.failureDetails?.reason).toBe("not_enrolled")
@@ -1693,7 +1693,7 @@ describe("generateFailureHint", () => {
 
         // Should fail
         expect(log2.success).toBe(false)
-        expect(log2.failureType).toBe("WRONG_GUILD_TYPE")
+        expect(log2.failureDetails?.type).toBe("WRONG_GUILD_TYPE")
         expect(log2.failureDetails).toBeDefined()
         expect(log2.failureDetails?.type).toBe("WRONG_GUILD_TYPE")
         expect(log2.failureDetails?.reason).toBe("wrong_guild")
@@ -1749,7 +1749,7 @@ describe("generateFailureHint", () => {
 
       // Should fail
       expect(log2.success).toBe(false)
-      expect(log2.failureType).toBe("GUILD_LEVEL_TOO_LOW")
+      expect(log2.failureDetails?.type).toBe("GUILD_LEVEL_TOO_LOW")
       expect(log2.failureDetails).toBeDefined()
       expect(log2.failureDetails?.type).toBe("GUILD_LEVEL_TOO_LOW")
       expect(log2.failureDetails?.reason).toBe("contract_level_too_high")
@@ -1780,7 +1780,7 @@ describe("generateFailureHint", () => {
 
       // Should fail immediately
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("NODE_NOT_FOUND")
+      expect(log.failureDetails?.type).toBe("NODE_NOT_FOUND")
       expect(log.failureDetails).toBeDefined()
       expect(log.failureDetails?.type).toBe("NODE_NOT_FOUND")
       expect(log.failureDetails?.reason).toBe("node_does_not_exist")
@@ -1837,7 +1837,7 @@ describe("generateFailureHint", () => {
 
       // Should fail immediately
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("NODE_DEPLETED")
+      expect(log.failureDetails?.type).toBe("NODE_DEPLETED")
       expect(log.failureDetails).toBeDefined()
       expect(log.failureDetails?.type).toBe("NODE_DEPLETED")
       expect(log.failureDetails?.reason).toBe("no_materials_remaining")
@@ -1872,7 +1872,7 @@ describe("generateFailureHint", () => {
 
       // Should fail immediately
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("RECIPE_NOT_FOUND")
+      expect(log.failureDetails?.type).toBe("RECIPE_NOT_FOUND")
       expect(log.failureDetails).toBeDefined()
       expect(log.failureDetails?.type).toBe("RECIPE_NOT_FOUND")
       expect(log.failureDetails?.reason).toBe("recipe_does_not_exist")
@@ -1904,7 +1904,7 @@ describe("generateFailureHint", () => {
 
       // Should fail immediately
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("NODE_NOT_FOUND")
+      expect(log.failureDetails?.type).toBe("NODE_NOT_FOUND")
       expect(log.failureDetails).toBeDefined()
       expect(log.failureDetails?.type).toBe("NODE_NOT_FOUND")
       expect(log.failureDetails?.reason).toBe("no_node_in_area")
@@ -1934,7 +1934,7 @@ describe("generateFailureHint", () => {
 
       // Should fail immediately
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("WRONG_LOCATION")
+      expect(log.failureDetails?.type).toBe("WRONG_LOCATION")
       expect(log.failureDetails).toBeDefined()
       expect(log.failureDetails?.type).toBe("WRONG_LOCATION")
       expect(log.failureDetails?.reason).toBe("must_be_at_warehouse")
@@ -1992,7 +1992,7 @@ describe("generateFailureHint", () => {
 
       // Should fail immediately
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("MODE_NOT_UNLOCKED")
+      expect(log.failureDetails?.type).toBe("MODE_NOT_UNLOCKED")
       expect(log.failureDetails).toBeDefined()
       expect(log.failureDetails?.type).toBe("MODE_NOT_UNLOCKED")
       expect(log.failureDetails?.reason).toBe("skill_level_too_low")
@@ -2017,7 +2017,7 @@ describe("generateFailureHint", () => {
 
       // Should fail immediately
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("ITEM_NOT_FOUND")
+      expect(log.failureDetails?.type).toBe("ITEM_NOT_FOUND")
       expect(log.failureDetails).toBeDefined()
       expect(log.failureDetails?.type).toBe("ITEM_NOT_FOUND")
       expect(log.failureDetails?.reason).toBe("not_in_inventory")
@@ -2043,7 +2043,7 @@ describe("generateFailureHint", () => {
 
       // Should fail immediately
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("ENEMY_NOT_FOUND")
+      expect(log.failureDetails?.type).toBe("ENEMY_NOT_FOUND")
       expect(log.failureDetails).toBeDefined()
       expect(log.failureDetails?.type).toBe("ENEMY_NOT_FOUND")
       expect(log.failureDetails?.reason).toBe("not_at_mob_camp")
@@ -2105,7 +2105,7 @@ describe("generateFailureHint", () => {
 
         // Should fail because combat not implemented
         expect(log.success).toBe(false)
-        expect(log.failureType).toBe("ENEMY_NOT_FOUND")
+        expect(log.failureDetails?.type).toBe("ENEMY_NOT_FOUND")
         expect(log.failureDetails).toBeDefined()
         expect(log.failureDetails?.type).toBe("ENEMY_NOT_FOUND")
         expect(log.failureDetails?.reason).toBe("enemies_not_implemented")

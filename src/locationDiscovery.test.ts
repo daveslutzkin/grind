@@ -126,7 +126,7 @@ describe("Location Discovery", () => {
       const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("LOCATION_NOT_DISCOVERED")
+      expect(log.failureDetails?.type).toBe("LOCATION_NOT_DISCOVERED")
     })
 
     it("should succeed Gather if node location IS discovered", async () => {
@@ -153,7 +153,7 @@ describe("Location Discovery", () => {
       const log = await executeAction(state, action)
 
       // Should not fail due to location not discovered
-      expect(log.failureType).not.toBe("LOCATION_NOT_DISCOVERED")
+      expect(log.failureDetails?.type).not.toBe("LOCATION_NOT_DISCOVERED")
     })
   })
 
@@ -231,7 +231,7 @@ describe("Location Discovery", () => {
           const gatherLog = await executeAction(state, gatherAction)
 
           // Should NOT fail due to location not discovered
-          expect(gatherLog.failureType).not.toBe("LOCATION_NOT_DISCOVERED")
+          expect(gatherLog.failureDetails?.type).not.toBe("LOCATION_NOT_DISCOVERED")
         }
       }
     })
