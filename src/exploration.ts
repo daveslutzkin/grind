@@ -1447,7 +1447,15 @@ export async function* executeExplorationTravel(
 
   // Check preconditions
   if (exploration.playerState.currentAreaId === destinationAreaId) {
-    yield { done: true, log: createFailureLog(state, "ExplorationTravel", "ALREADY_IN_AREA") }
+    const destinationArea = exploration.areas.get(destinationAreaId)
+    const destinationName = getAreaDisplayName(destinationAreaId, destinationArea)
+    yield {
+      done: true,
+      log: createFailureLog(state, "ExplorationTravel", "ALREADY_IN_AREA", "already_here", {
+        destination: destinationName,
+        destinationId: destinationAreaId,
+      }),
+    }
     return
   }
 
@@ -1544,7 +1552,15 @@ export async function* executeFarTravel(
 
   // Check preconditions
   if (exploration.playerState.currentAreaId === destinationAreaId) {
-    yield { done: true, log: createFailureLog(state, "FarTravel", "ALREADY_IN_AREA") }
+    const destinationArea = exploration.areas.get(destinationAreaId)
+    const destinationName = getAreaDisplayName(destinationAreaId, destinationArea)
+    yield {
+      done: true,
+      log: createFailureLog(state, "FarTravel", "ALREADY_IN_AREA", "already_here", {
+        destination: destinationName,
+        destinationId: destinationAreaId,
+      }),
+    }
     return
   }
 

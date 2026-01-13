@@ -297,6 +297,11 @@ function checkMultiMaterialGatherAction(
       return {
         valid: false,
         failureType: "LOCATION_NOT_DISCOVERED",
+        failureReason: "not_discovered",
+        failureContext: {
+          locationId,
+          nodeType: node.nodeType,
+        },
         timeCost: 0,
         successProbability: 0,
       }
@@ -307,6 +312,12 @@ function checkMultiMaterialGatherAction(
       return {
         valid: false,
         failureType: "NOT_AT_NODE_LOCATION",
+        failureReason: "wrong_location",
+        failureContext: {
+          requiredLocationId: locationId,
+          currentLocationId,
+          nodeType: node.nodeType,
+        },
         timeCost: 0,
         successProbability: 0,
       }
@@ -551,7 +562,14 @@ export function checkTravelToLocationAction(
 
   // Can't travel to current location (more specific error first)
   if (action.locationId === currentLocationId) {
-    return { valid: false, failureType: "ALREADY_AT_LOCATION", timeCost: 0, successProbability: 0 }
+    return {
+      valid: false,
+      failureType: "ALREADY_AT_LOCATION",
+      failureReason: "already_here",
+      failureContext: { locationId: action.locationId },
+      timeCost: 0,
+      successProbability: 0,
+    }
   }
 
   // Location must exist in current area (check before hub check for better error message)
@@ -561,6 +579,11 @@ export function checkTravelToLocationAction(
     return {
       valid: false,
       failureType: "UNKNOWN_LOCATION",
+      failureReason: "not_found",
+      failureContext: {
+        locationId: action.locationId,
+        currentAreaId,
+      },
       timeCost: 0,
       successProbability: 0,
     }
@@ -568,7 +591,14 @@ export function checkTravelToLocationAction(
 
   // Must be at hub (null) to travel to a location
   if (currentLocationId !== null) {
-    return { valid: false, failureType: "NOT_AT_HUB", timeCost: 0, successProbability: 0 }
+    return {
+      valid: false,
+      failureType: "NOT_AT_HUB",
+      failureReason: "at_location",
+      failureContext: { currentLocationId },
+      timeCost: 0,
+      successProbability: 0,
+    }
   }
 
   // Location must be discovered (known)
@@ -577,6 +607,11 @@ export function checkTravelToLocationAction(
     return {
       valid: false,
       failureType: "LOCATION_NOT_DISCOVERED",
+      failureReason: "not_discovered",
+      failureContext: {
+        locationId: action.locationId,
+        locationType: location.type,
+      },
       timeCost: 0,
       successProbability: 0,
     }
@@ -598,7 +633,14 @@ export function checkLeaveAction(state: WorldState, _action: LeaveAction): Actio
 
   // Must be at a location (not at hub)
   if (currentLocationId === null) {
-    return { valid: false, failureType: "ALREADY_AT_HUB", timeCost: 0, successProbability: 0 }
+    return {
+      valid: false,
+      failureType: "ALREADY_AT_HUB",
+      failureReason: "at_hub",
+      failureContext: { currentAreaId: getCurrentAreaId(state) },
+      timeCost: 0,
+      successProbability: 0,
+    }
   }
 
   // Time cost: 0 in town, 1 in wilderness

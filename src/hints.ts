@@ -102,6 +102,65 @@ export function generateFailureHint(details: FailureDetails, state: WorldState):
       }
     }
 
+    case "ALREADY_IN_AREA": {
+      const dest = (context?.destination as string) ?? "area"
+      return {
+        message: `Already in ${dest}`,
+        reason: "You are already at this area",
+        hint: "No need to travel - you're already here.",
+      }
+    }
+
+    case "LOCATION_NOT_DISCOVERED": {
+      return {
+        message: `Location not discovered`,
+        reason: "This location hasn't been found yet",
+        hint: "Use the 'explore' action to discover locations in your current area.",
+      }
+    }
+
+    case "UNKNOWN_LOCATION": {
+      const locationId = (context?.locationId as string) ?? "location"
+      return {
+        message: `Unknown location: ${locationId}`,
+        reason: "Location not found in current area",
+        hint: "Check available locations with the 'look' command or try exploring.",
+      }
+    }
+
+    case "ALREADY_AT_LOCATION": {
+      return {
+        message: `Already at this location`,
+        reason: "You are already here",
+        hint: "No need to travel - you're already at this location.",
+      }
+    }
+
+    case "NOT_AT_HUB": {
+      return {
+        message: `Cannot travel to location`,
+        reason: "Must be at area hub to travel to locations",
+        hint: "Use the 'leave' action to return to the hub first.",
+      }
+    }
+
+    case "ALREADY_AT_HUB": {
+      return {
+        message: `Already at hub`,
+        reason: "You are not at a location",
+        hint: "Use 'go <location>' to travel to a specific location first.",
+      }
+    }
+
+    case "NOT_AT_NODE_LOCATION": {
+      const nodeType = (context?.nodeType as string) ?? "node"
+      return {
+        message: `Not at gathering location`,
+        reason: `Must be at the ${nodeType} location to gather`,
+        hint: "Use 'go <location>' to travel to the gathering node first.",
+      }
+    }
+
     // Other failure types - use generic messages for now
     default:
       return {
