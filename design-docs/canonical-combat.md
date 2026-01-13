@@ -1,5 +1,7 @@
 ## Combat Canon — Risk Exposure, Not Execution
 
+> **Implementation Status**: Combat is not yet implemented. Mob camp locations are generated in the world, but the Fight action always fails. Weapons exist (CRUDE_WEAPON, IMPROVED_WEAPON) and Combat guild enrollment works, but actual combat execution, enemies, loot drops, and death mechanics are not functional. This document describes the target design.
+
 ### Purpose
 
 Combat exists to test preparation, risk selection, and adaptation, not reflexes or tactical optimisation.

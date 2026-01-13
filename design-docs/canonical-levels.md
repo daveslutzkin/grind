@@ -1,5 +1,12 @@
 ## Progression Canon — Levels, Unlocks, and Feasibility Cliffs
 
+> **Implementation Status**: XP/level system exists using N² formula for thresholds. Currently implemented unlocks:
+> - **Gathering**: L1 = FOCUS mode, L3 = APPRAISE mode, L4 = CAREFUL_ALL mode
+> - **Gathering location access**: L5 required for MID distance (d=2), L9 required for FAR distance (d=3+)
+> - **Exploration**: Custom XP thresholds tuned to discovery counts per distance
+>
+> Not yet implemented: combat unlocks (attack profiles, enemy access), crafting unlocks (overcrafting, specialisation branches), and most capability unlocks described below.
+
 ### Purpose
 
 Progression exists to create new strategic possibilities, not to smoothly increase output.

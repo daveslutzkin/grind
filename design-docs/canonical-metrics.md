@@ -1,5 +1,7 @@
 ## Metrics Canon — What the Game Measures and Rewards
 
+> **Implementation Status**: The metrics/leaderboard system described in this document is not yet implemented. Currently, only exploration luck tracking exists (actual vs expected ticks, luck delta, streaks). XP per tick tracking, efficiency leaderboards, variance/volatility metrics, and multi-metric comparisons are not yet functional.
+
 ### Purpose
 
 Metrics define what mastery looks like.

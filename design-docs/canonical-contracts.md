@@ -1,5 +1,7 @@
 ## Contract Canon — Structured Risk Selection
 
+> **Implementation Status**: Contract infrastructure exists but is minimal. Currently only 1-2 hardcoded sample contracts exist. The procedural contract generation system described below is not yet implemented. Basic item requirements and kill requirements work, but time limits, variance contracts, challenge contracts, and risk modifiers are not yet functional.
+
 ### Purpose
 
 Contracts are the primary interface for choosing risk, variance, and commitment.
@@ -63,6 +65,8 @@ Raw XP is secondary.
 - Hybrid contracts (multi-location, multi-skill)
 - Challenge contracts (no failures, time limits)
 - Variance contracts (explicitly high-risk, high-upside)
+
+> *Currently only basic item-delivery and kill-count contracts are implemented. The full grammar above is not yet supported.*
 
 ⸻
 

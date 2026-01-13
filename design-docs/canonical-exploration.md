@@ -31,7 +31,7 @@ Locations are discoverable points of interest within an area.
 
 Location types:
 - **GATHERING_NODE**: Resource extraction points (mining nodes, tree stands, etc.)
-- **MOB_CAMP**: Combat encounters, typed by creature, difficulty = area distance ± 3 (normally distributed around 0)
+- **MOB_CAMP**: Combat encounters, typed by creature, difficulty = area distance ± 3 (normally distributed around 0). *Note: Currently all mob camps use placeholder "creature" type; creature variety by distance is not yet implemented.*
 - **GUILD_HALL**: Guild buildings for enrolment, contracts, and crafting
 - **WAREHOUSE**: Storage facilities
 
@@ -101,6 +101,8 @@ level: number          // Maximum contract/recipe level supported here
 - Contracts and recipes are only available if their level ≤ guild hall level
 
 **One guild per location**: Each location belongs to exactly one guild. An outpost area with multiple guilds would have multiple GUILD_HALL locations.
+
+> **Implementation Status**: Wilderness guild outposts are not yet implemented. Currently only town guild halls exist. All guild-related actions (enrol, craft, contracts) must be done in town.
 
 #### Contracts and Locations
 
@@ -175,7 +177,7 @@ Areas form a graph with discoverable edges.
 - **Town exception**: Town (distance 0) connects to ALL distance 1 areas
 
 Connection properties:
-- Travel time multiplier: 1x to 4x (distribution: 15% = 1x, 35% = 2x, 35% = 3x, 15% = 4x)
+- Travel time multiplier: 0.5x to 4.5x (normally distributed, centered at 2.5x)
 - Base travel time: 10 ticks × multiplier
 - Connections are discovered via:
   - Surveying (auto-discovers connection to newly found area)
@@ -227,6 +229,8 @@ Move between areas while foraging.
 - **Effect**: Small chance of finding resources appropriate to your gathering skill at ~current distance level
 - **Level range**: Can find resources up to +3 levels above your current gathering skill level, but with correspondingly lower probability
 - **Resources**: Rarer than dedicated gathering, but "free" opportunity during travel
+
+> **Implementation Status**: Scavenge mode is not yet implemented. The `scavenge` parameter is accepted on travel actions but currently has no effect.
 
 ---
 
@@ -392,6 +396,8 @@ Town always has an explorer NPC who sells map information.
 **Pricing**:
 - Scales with distance
 - Future: Explorer NPCs in distant areas offer better prices for nearby regions
+
+> **Implementation Status**: The NPC Explorer Service is not yet implemented.
 
 ---
 

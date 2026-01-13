@@ -1,5 +1,7 @@
 ## Inventory Canon — Logistics as Mastery
 
+> **Implementation Status**: Basic slot-based inventory exists with a fixed capacity (default 10 slots). Storage at the warehouse works. However, inventory expansion (via skills/guilds/crafting) and specialised containers (profession-specific, compression) are not yet implemented.
+
 ### Purpose
 
 Inventory is a strategic constraint, not a convenience problem.

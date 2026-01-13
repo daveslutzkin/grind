@@ -1,5 +1,7 @@
 ## RNG & Variance Canon — Planning Under Known Uncertainty
 
+> **Implementation Status**: Seeded deterministic RNG exists with counter-based draws. Every roll is logged (label, probability, result, rngCounter). Luck tracking (deltas, streaks, cumulative) is currently only implemented for exploration. Gathering and combat do not yet surface luck information.
+
 ### Purpose
 
 Randomness exists to create divergence, asymmetry, and decision pressure, not surprise or drama.
@@ -56,6 +58,8 @@ RNG is a tool the player plans around.
   - is visible
   - has known thresholds
   - does not fully eliminate variance
+
+> *Bad-luck protection is not yet implemented.*
 
 6.	RNG never invalidates mastery
 
