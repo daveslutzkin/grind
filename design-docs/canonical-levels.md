@@ -127,6 +127,20 @@ Example:
 
 ⸻
 
+5.4 Discrete Mastery Improvements
+
+	•	Material mastery levels do not represent continuous improvement.
+	•	Each mastery level unlocks exactly one discrete improvement to a specific capability of that material.
+	•	All other capabilities remain unchanged at that level.
+
+Corollaries:
+	•	Mastery numbers are ordinal, not scalar
+	•	Two players at Mastery 10 may have identical stats, not “slightly different”
+	•	The order of improvements is fixed and inspectable
+
+
+⸻
+
 6. Mastery Curve
 
 Material mastery follows diminishing returns.
@@ -146,7 +160,7 @@ No material ever becomes “solved”.
 
 7. What Mastery Improves (Knob Set)
 
-Each material’s mastery affects multiple internal knobs, including:
+Each material’s mastery can affect multiple internal knobs, including:
 	•	Gather speed for that material
 	•	Waste when gathering other materials from the same node
 	•	Chance to find the material while scavenging
@@ -156,10 +170,20 @@ Each material’s mastery affects multiple internal knobs, including:
 	•	Sale price / value realisation
 	•	Ability to extract higher-quality variants
 
-These knobs:
-	•	are not individually levelled
-	•	are driven by the single mastery number
-	•	are summarised textually in the UI
+Each material has a fixed mastery improvement table.
+Each mastery level activates one row of that table.
+
+Example (conceptual):
+
+Mastery Level | Improvement
+1             | Can gather the material at all
+2             | Base gather speed +30%
+3             | Waste when mixed-node mining −25%
+4             | Stack size +10
+5             | Scavenge chance unlocked
+…
+…
+30            | High-grade extraction unlocked
 
 ⸻
 
