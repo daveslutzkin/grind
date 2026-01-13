@@ -474,6 +474,15 @@ export type ActionTick = { done: false; feedback?: TickFeedback } | { done: true
  */
 export type ActionGenerator = AsyncGenerator<ActionTick, void, undefined>
 
+/**
+ * Structured failure information with context for generating helpful hints
+ */
+export interface FailureDetails {
+  type: FailureType
+  reason?: string // Sub-reason e.g., "undiscovered", "level_too_low"
+  context?: Record<string, unknown> // Dynamic context e.g., { destination: "Silvermark Ridge", required: 15, current: 10 }
+}
+
 // Failure types
 export type FailureType =
   | "INSUFFICIENT_SKILL"
@@ -583,7 +592,8 @@ export interface ActionLog {
   actionType: ActionType
   parameters: Record<string, unknown>
   success: boolean
-  failureType?: FailureType
+  // failureType was removed in Package 9 cleanup - use failureDetails.type instead
+  failureDetails?: FailureDetails // Structured failure info with context for helpful hints
   timeConsumed: number
   skillGained?: { skill: SkillID; amount: number }
   levelUps?: LevelUp[]

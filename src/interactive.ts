@@ -104,7 +104,9 @@ export async function runAnimatedAction(
         actionType: "Drop", // Placeholder - doesn't matter for cancellation
         parameters: {},
         success: false,
-        failureType: "WRONG_LOCATION",
+        failureDetails: {
+          type: "WRONG_LOCATION",
+        },
         timeConsumed: ticksCompleted,
         rngRolls: [],
         stateDeltaSummary: `Action cancelled after ${ticksCompleted} ticks`,

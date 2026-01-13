@@ -105,14 +105,20 @@ function createFailureLog(
   state: WorldState,
   action: Action,
   failureType: FailureType,
-  timeConsumed: number = 0
+  timeConsumed: number = 0,
+  reason?: string,
+  context?: Record<string, unknown>
 ): ActionLog {
   return {
     tickBefore: state.time.currentTick,
     actionType: action.type,
     parameters: extractParameters(action),
     success: false,
-    failureType,
+    failureDetails: {
+      type: failureType,
+      reason,
+      context,
+    },
     timeConsumed,
     rngRolls: [],
     stateDeltaSummary: `Failed: ${failureType}`,
@@ -130,9 +136,11 @@ function extractParameters(action: Action): Record<string, unknown> {
 async function* createFailureGenerator(
   state: WorldState,
   action: Action,
-  failureType: FailureType
+  failureType: FailureType,
+  reason?: string,
+  context?: Record<string, unknown>
 ): ActionGenerator {
-  yield { done: true, log: createFailureLog(state, action, failureType) }
+  yield { done: true, log: createFailureLog(state, action, failureType, 0, reason, context) }
 }
 
 /**
@@ -228,7 +236,17 @@ async function* executeAcceptContract(
   // Use shared precondition check
   const check = checkAcceptContractAction(state, action)
   if (!check.valid) {
-    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    yield {
+      done: true,
+      log: createFailureLog(
+        state,
+        action,
+        check.failureType!,
+        0,
+        check.failureReason,
+        check.failureContext
+      ),
+    }
     return
   }
 
@@ -274,7 +292,10 @@ async function* executeGather(state: WorldState, action: GatherAction): ActionGe
     if (!nodeId) {
       yield {
         done: true,
-        log: createFailureLog(state, action, "NODE_NOT_FOUND"),
+        log: createFailureLog(state, action, "NODE_NOT_FOUND", 0, "cannot_infer_node", {
+          currentLocationId: getCurrentLocationId(state),
+          currentAreaId: getCurrentAreaId(state),
+        }),
       }
       return
     }
@@ -289,7 +310,17 @@ async function* executeGather(state: WorldState, action: GatherAction): ActionGe
   // Use shared precondition check
   const check = checkGatherAction(state, resolvedAction)
   if (!check.valid) {
-    yield { done: true, log: createFailureLog(state, resolvedAction, check.failureType!) }
+    yield {
+      done: true,
+      log: createFailureLog(
+        state,
+        resolvedAction,
+        check.failureType!,
+        0,
+        check.failureReason,
+        check.failureContext
+      ),
+    }
     return
   }
 
@@ -429,7 +460,13 @@ async function* executeMine(state: WorldState, action: MineAction): ActionGenera
   const node = findNodeByTypeInCurrentArea(state, NodeType.ORE_VEIN)
 
   if (!node) {
-    yield { done: true, log: createFailureLog(state, action, "NODE_NOT_FOUND") }
+    yield {
+      done: true,
+      log: createFailureLog(state, action, "NODE_NOT_FOUND", 0, "no_node_in_area", {
+        nodeType: NodeType.ORE_VEIN,
+        currentAreaId: getCurrentAreaId(state),
+      }),
+    }
     return
   }
 
@@ -453,7 +490,13 @@ async function* executeChop(state: WorldState, action: ChopAction): ActionGenera
   const node = findNodeByTypeInCurrentArea(state, NodeType.TREE_STAND)
 
   if (!node) {
-    yield { done: true, log: createFailureLog(state, action, "NODE_NOT_FOUND") }
+    yield {
+      done: true,
+      log: createFailureLog(state, action, "NODE_NOT_FOUND", 0, "no_node_in_area", {
+        nodeType: NodeType.TREE_STAND,
+        currentAreaId: getCurrentAreaId(state),
+      }),
+    }
     return
   }
 
@@ -699,7 +742,17 @@ async function* executeFight(state: WorldState, action: FightAction): ActionGene
   // Use shared precondition check (will always fail - no enemies exist)
   const check = checkFightAction(state, action)
   if (!check.valid) {
-    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    yield {
+      done: true,
+      log: createFailureLog(
+        state,
+        action,
+        check.failureType!,
+        0,
+        check.failureReason,
+        check.failureContext
+      ),
+    }
     return
   }
 
@@ -714,7 +767,17 @@ async function* executeCraft(state: WorldState, action: CraftAction): ActionGene
   // Use shared precondition check
   const check = checkCraftAction(state, action)
   if (!check.valid) {
-    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    yield {
+      done: true,
+      log: createFailureLog(
+        state,
+        action,
+        check.failureType!,
+        0,
+        check.failureReason,
+        check.failureContext
+      ),
+    }
     return
   }
 
@@ -782,7 +845,17 @@ async function* executeStore(state: WorldState, action: StoreAction): ActionGene
   // Use shared precondition check
   const check = checkStoreAction(state, action)
   if (!check.valid) {
-    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    yield {
+      done: true,
+      log: createFailureLog(
+        state,
+        action,
+        check.failureType!,
+        0,
+        check.failureReason,
+        check.failureContext
+      ),
+    }
     return
   }
 
@@ -819,7 +892,17 @@ async function* executeDrop(state: WorldState, action: DropAction): ActionGenera
   // Use shared precondition check
   const check = checkDropAction(state, action)
   if (!check.valid) {
-    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    yield {
+      done: true,
+      log: createFailureLog(
+        state,
+        action,
+        check.failureType!,
+        0,
+        check.failureReason,
+        check.failureContext
+      ),
+    }
     return
   }
 
@@ -861,7 +944,17 @@ async function* executeTurnInCombatToken(
   // Use shared precondition check
   const check = checkTurnInCombatTokenAction(state, action)
   if (!check.valid) {
-    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    yield {
+      done: true,
+      log: createFailureLog(
+        state,
+        action,
+        check.failureType!,
+        0,
+        check.failureReason,
+        check.failureContext
+      ),
+    }
     return
   }
 
@@ -916,7 +1009,17 @@ async function* executeGuildEnrolment(
   // Use shared precondition check
   const check = checkGuildEnrolmentAction(state, action)
   if (!check.valid) {
-    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    yield {
+      done: true,
+      log: createFailureLog(
+        state,
+        action,
+        check.failureType!,
+        0,
+        check.failureReason,
+        check.failureContext
+      ),
+    }
     return
   }
 
@@ -988,7 +1091,17 @@ async function* executeTravelToLocation(
   // Use shared precondition check
   const check = checkTravelToLocationAction(state, action)
   if (!check.valid) {
-    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    yield {
+      done: true,
+      log: createFailureLog(
+        state,
+        action,
+        check.failureType!,
+        0,
+        check.failureReason,
+        check.failureContext
+      ),
+    }
     return
   }
 
@@ -1034,7 +1147,17 @@ async function* executeLeave(state: WorldState, action: LeaveAction): ActionGene
   // Use shared precondition check
   const check = checkLeaveAction(state, action)
   if (!check.valid) {
-    yield { done: true, log: createFailureLog(state, action, check.failureType!) }
+    yield {
+      done: true,
+      log: createFailureLog(
+        state,
+        action,
+        check.failureType!,
+        0,
+        check.failureReason,
+        check.failureContext
+      ),
+    }
     return
   }
 

@@ -33,7 +33,9 @@ describe("summarizeAction", () => {
       actionType: "Gather",
       parameters: { nodeId: "node_1", mode: "CAREFUL_ALL" },
       success: false,
-      failureType: "INSUFFICIENT_SKILL",
+      failureDetails: {
+        type: "INSUFFICIENT_SKILL",
+      },
       tickBefore: 5,
       timeConsumed: 0,
       stateDeltaSummary: "",

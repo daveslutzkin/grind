@@ -154,7 +154,7 @@ describe("Engine", () => {
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("ALREADY_IN_AREA")
+      expect(log.failureDetails?.type).toBe("ALREADY_IN_AREA")
       expect(log.timeConsumed).toBe(0)
     })
 
@@ -240,7 +240,7 @@ describe("Engine", () => {
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("WRONG_LOCATION")
+      expect(log.failureDetails?.type).toBe("WRONG_LOCATION")
     })
 
     it("should fail if contract not found", async () => {
@@ -250,7 +250,7 @@ describe("Engine", () => {
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("CONTRACT_NOT_FOUND")
+      expect(log.failureDetails?.type).toBe("CONTRACT_NOT_FOUND")
     })
 
     it("should fail if already has contract", async () => {
@@ -262,7 +262,7 @@ describe("Engine", () => {
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("ALREADY_HAS_CONTRACT")
+      expect(log.failureDetails?.type).toBe("ALREADY_HAS_CONTRACT")
     })
   })
 
@@ -369,7 +369,7 @@ describe("Engine", () => {
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("WRONG_LOCATION")
+      expect(log.failureDetails?.type).toBe("WRONG_LOCATION")
       expect(log.timeConsumed).toBe(0)
     })
 
@@ -383,7 +383,7 @@ describe("Engine", () => {
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("NODE_NOT_FOUND")
+      expect(log.failureDetails?.type).toBe("NODE_NOT_FOUND")
     })
 
     it("should log RNG roll", async () => {
@@ -581,7 +581,7 @@ describe("Engine", () => {
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("WRONG_LOCATION")
+      expect(log.failureDetails?.type).toBe("WRONG_LOCATION")
       expect(log.timeConsumed).toBe(0)
     })
 
@@ -597,7 +597,7 @@ describe("Engine", () => {
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("ENEMY_NOT_FOUND")
+      expect(log.failureDetails?.type).toBe("ENEMY_NOT_FOUND")
     })
 
     it("should NOT relocate player on RNG failure (per spec)", async () => {
@@ -608,7 +608,7 @@ describe("Engine", () => {
 
       const log = await await executeAction(state, action)
 
-      if (!log.success && log.failureType === "COMBAT_FAILURE") {
+      if (!log.success && log.failureDetails?.type === "COMBAT_FAILURE") {
         // Per spec: player stays at location, is NOT relocated
         expect(state.exploration.playerState.currentAreaId).toBe(areaId)
       }
@@ -691,7 +691,7 @@ describe("Engine", () => {
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("WRONG_GUILD_TYPE")
+      expect(log.failureDetails?.type).toBe("WRONG_GUILD_TYPE")
     })
 
     it("should fail if recipe not found", async () => {
@@ -701,7 +701,7 @@ describe("Engine", () => {
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("RECIPE_NOT_FOUND")
+      expect(log.failureDetails?.type).toBe("RECIPE_NOT_FOUND")
     })
 
     it("should fail if missing inputs", async () => {
@@ -714,7 +714,7 @@ describe("Engine", () => {
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("MISSING_ITEMS")
+      expect(log.failureDetails?.type).toBe("MISSING_ITEMS")
     })
   })
 
@@ -771,7 +771,7 @@ describe("Engine", () => {
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("WRONG_LOCATION")
+      expect(log.failureDetails?.type).toBe("WRONG_LOCATION")
     })
 
     it("should fail if item not in inventory", async () => {
@@ -782,7 +782,7 @@ describe("Engine", () => {
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("ITEM_NOT_FOUND")
+      expect(log.failureDetails?.type).toBe("ITEM_NOT_FOUND")
     })
 
     it("should fail if not enough quantity", async () => {
@@ -797,7 +797,7 @@ describe("Engine", () => {
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("MISSING_ITEMS")
+      expect(log.failureDetails?.type).toBe("MISSING_ITEMS")
     })
   })
 
@@ -844,7 +844,7 @@ describe("Engine", () => {
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("ITEM_NOT_FOUND")
+      expect(log.failureDetails?.type).toBe("ITEM_NOT_FOUND")
     })
 
     it("should fail if not enough quantity", async () => {
@@ -858,7 +858,7 @@ describe("Engine", () => {
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("MISSING_ITEMS")
+      expect(log.failureDetails?.type).toBe("MISSING_ITEMS")
     })
 
     it("should remove item stack if quantity becomes 0", async () => {
@@ -917,7 +917,7 @@ describe("Engine", () => {
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("INSUFFICIENT_SKILL")
+      expect(log.failureDetails?.type).toBe("INSUFFICIENT_SKILL")
       expect(log.timeConsumed).toBe(0)
     })
 
@@ -943,7 +943,7 @@ describe("Engine", () => {
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("INSUFFICIENT_SKILL")
+      expect(log.failureDetails?.type).toBe("INSUFFICIENT_SKILL")
     })
 
     it.skip("should fail Fight when Combat is level 0 (combat not yet implemented)", async () => {
@@ -961,7 +961,7 @@ describe("Engine", () => {
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("INSUFFICIENT_SKILL")
+      expect(log.failureDetails?.type).toBe("INSUFFICIENT_SKILL")
       expect(log.timeConsumed).toBe(0)
     })
 
@@ -975,7 +975,7 @@ describe("Engine", () => {
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("INSUFFICIENT_SKILL")
+      expect(log.failureDetails?.type).toBe("INSUFFICIENT_SKILL")
       expect(log.timeConsumed).toBe(0)
     })
 
@@ -1003,7 +1003,7 @@ describe("Engine", () => {
       const log = await await executeAction(state, action)
 
       // Should not fail due to skill
-      expect(log.failureType).not.toBe("INSUFFICIENT_SKILL")
+      expect(log.failureDetails?.type).not.toBe("INSUFFICIENT_SKILL")
       expect(log.timeConsumed).toBeGreaterThan(0)
     })
   })
@@ -1041,7 +1041,7 @@ describe("Engine", () => {
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("WRONG_LOCATION")
+      expect(log.failureDetails?.type).toBe("WRONG_LOCATION")
     })
 
     it("should fail if not at a guild location", async () => {
@@ -1053,7 +1053,7 @@ describe("Engine", () => {
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("WRONG_LOCATION")
+      expect(log.failureDetails?.type).toBe("WRONG_LOCATION")
     })
 
     it("should not grant XP (just unlocks the skill)", async () => {
@@ -1076,7 +1076,7 @@ describe("Engine", () => {
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("ALREADY_ENROLLED")
+      expect(log.failureDetails?.type).toBe("ALREADY_ENROLLED")
       expect(log.timeConsumed).toBe(0)
     })
 
@@ -1176,7 +1176,7 @@ describe("Engine", () => {
       })
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("LOCATION_NOT_DISCOVERED")
+      expect(log.failureDetails?.type).toBe("LOCATION_NOT_DISCOVERED")
     })
 
     it("should fail if already at location", async () => {
@@ -1189,7 +1189,7 @@ describe("Engine", () => {
       })
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("ALREADY_AT_LOCATION")
+      expect(log.failureDetails?.type).toBe("ALREADY_AT_LOCATION")
     })
 
     it("should fail if not at hub (null)", async () => {
@@ -1202,7 +1202,7 @@ describe("Engine", () => {
       })
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("NOT_AT_HUB")
+      expect(log.failureDetails?.type).toBe("NOT_AT_HUB")
     })
 
     it("should fail with UNKNOWN_LOCATION for invalid location even when not at hub", async () => {
@@ -1215,7 +1215,7 @@ describe("Engine", () => {
       })
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("UNKNOWN_LOCATION")
+      expect(log.failureDetails?.type).toBe("UNKNOWN_LOCATION")
     })
   })
 
@@ -1255,7 +1255,7 @@ describe("Engine", () => {
       const log = await executeAction(state, { type: "Leave" })
 
       expect(log.success).toBe(false)
-      expect(log.failureType).toBe("ALREADY_AT_HUB")
+      expect(log.failureDetails?.type).toBe("ALREADY_AT_HUB")
     })
   })
 })

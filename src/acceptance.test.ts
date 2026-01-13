@@ -454,7 +454,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
       }
       const failLog = await executeAction(world, appraiseAction)
       expect(failLog.success).toBe(false)
-      expect(failLog.failureType).toBe("MODE_NOT_UNLOCKED")
+      expect(failLog.failureDetails?.type).toBe("MODE_NOT_UNLOCKED")
 
       // L3: APPRAISE should succeed
       world.player.skills.Mining.level = 3
@@ -481,7 +481,7 @@ describe("Acceptance Tests: Gathering MVP", () => {
       }
       const failLog = await executeAction(world, appraiseAction)
       expect(failLog.success).toBe(false)
-      expect(failLog.failureType).toBe("INSUFFICIENT_SKILL")
+      expect(failLog.failureDetails?.type).toBe("INSUFFICIENT_SKILL")
 
       // L5: MID should succeed
       world.player.skills.Mining.level = 5

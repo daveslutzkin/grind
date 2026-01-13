@@ -64,7 +64,7 @@ function formatActionBrief(log: ActionLog): string {
  */
 function formatOutcomeBrief(log: ActionLog): string {
   if (!log.success) {
-    return `FAIL: ${log.failureType || "unknown"}`
+    return `FAIL: ${log.failureDetails?.type || "unknown"}`
   }
 
   const parts: string[] = []

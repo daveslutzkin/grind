@@ -19,6 +19,7 @@ import type {
   ExplorationLuckInfo,
   LevelUp,
   ActionGenerator,
+  FailureType,
 } from "./types.js"
 import { ExplorationLocationType } from "./types.js"
 import { rollFloat, roll } from "./rng.js"
@@ -622,14 +623,20 @@ export async function grantExplorationGuildBenefits(state: WorldState): Promise<
 function createFailureLog(
   state: WorldState,
   actionType: "Survey" | "Explore" | "ExplorationTravel" | "FarTravel",
-  failureType: string
+  failureType: string,
+  reason?: string,
+  context?: Record<string, unknown>
 ): ActionLog {
   return {
     tickBefore: state.time.currentTick,
     actionType,
     parameters: {},
     success: false,
-    failureType: failureType as ActionLog["failureType"],
+    failureDetails: {
+      type: failureType as FailureType,
+      reason,
+      context,
+    },
     timeConsumed: 0,
     rngRolls: [],
     stateDeltaSummary: `Failed: ${failureType}`,
@@ -820,7 +827,13 @@ export async function* executeSurvey(state: WorldState, _action: SurveyAction): 
 
   // Check preconditions
   if (state.player.skills.Exploration.level === 0) {
-    yield { done: true, log: createFailureLog(state, "Survey", "NOT_IN_EXPLORATION_GUILD") }
+    yield {
+      done: true,
+      log: createFailureLog(state, "Survey", "NOT_IN_EXPLORATION_GUILD", "not_enrolled", {
+        skill: "Exploration",
+        currentLevel: 0,
+      }),
+    }
     return
   }
 
@@ -832,10 +845,15 @@ export async function* executeSurvey(state: WorldState, _action: SurveyAction): 
     prepareSurveyData(state, currentArea)
 
   if (allConnections.length === 0) {
+    const areaName = getAreaDisplayName(currentArea.id, currentArea)
     yield {
       done: true,
       log: {
-        ...createFailureLog(state, "Survey", "NO_CONNECTIONS"),
+        ...createFailureLog(state, "Survey", "NO_CONNECTIONS", "no_connections_from_area", {
+          currentAreaId: currentArea.id,
+          currentAreaName: areaName,
+          distance: currentArea.distance,
+        }),
         timeConsumed: 0,
       },
     }
@@ -843,10 +861,21 @@ export async function* executeSurvey(state: WorldState, _action: SurveyAction): 
   }
 
   if (!hasUndiscoveredAreas) {
+    const areaName = getAreaDisplayName(currentArea.id, currentArea)
     yield {
       done: true,
       log: {
-        ...createFailureLog(state, "Survey", "NO_UNDISCOVERED_AREAS"),
+        ...createFailureLog(
+          state,
+          "Survey",
+          "NO_UNDISCOVERED_AREAS",
+          "all_connections_discovered",
+          {
+            currentAreaId: currentArea.id,
+            currentAreaName: areaName,
+            totalConnections: allConnections.length,
+          }
+        ),
         timeConsumed: 0,
       },
     }
@@ -929,7 +958,9 @@ export async function* executeSurvey(state: WorldState, _action: SurveyAction): 
         actionType: "Survey",
         parameters: {},
         success: false,
-        failureType: "NO_UNDISCOVERED_AREAS",
+        failureDetails: {
+          type: "NO_UNDISCOVERED_AREAS",
+        },
         timeConsumed: ticksConsumed,
         rngRolls: rolls,
         stateDeltaSummary: "Survey interrupted",
@@ -1085,7 +1116,13 @@ export async function* executeExplore(state: WorldState, _action: ExploreAction)
 
   // Check preconditions
   if (state.player.skills.Exploration.level === 0) {
-    yield { done: true, log: createFailureLog(state, "Explore", "NOT_IN_EXPLORATION_GUILD") }
+    yield {
+      done: true,
+      log: createFailureLog(state, "Explore", "NOT_IN_EXPLORATION_GUILD", "not_enrolled", {
+        skill: "Exploration",
+        currentLevel: 0,
+      }),
+    }
     return
   }
 
@@ -1100,10 +1137,15 @@ export async function* executeExplore(state: WorldState, _action: ExploreAction)
   const { discoverables } = buildDiscoverables(state, currentArea)
 
   if (discoverables.length === 0) {
+    const areaName = getAreaDisplayName(currentArea.id, currentArea)
     yield {
       done: true,
       log: {
-        ...createFailureLog(state, "Explore", "AREA_FULLY_EXPLORED"),
+        ...createFailureLog(state, "Explore", "AREA_FULLY_EXPLORED", "all_discoverable_found", {
+          currentAreaId: currentArea.id,
+          currentAreaName: areaName,
+          distance: currentArea.distance,
+        }),
         explorationLog: { areaFullyExplored: true },
       },
     }
@@ -1245,7 +1287,9 @@ export async function* executeExplore(state: WorldState, _action: ExploreAction)
         actionType: "Explore",
         parameters: {},
         success: false,
-        failureType: "AREA_FULLY_EXPLORED",
+        failureDetails: {
+          type: "AREA_FULLY_EXPLORED",
+        },
         timeConsumed: ticksConsumed,
         rngRolls: rolls,
         stateDeltaSummary: "Explore interrupted",
@@ -1439,7 +1483,15 @@ export async function* executeExplorationTravel(
 
   // Check preconditions
   if (exploration.playerState.currentAreaId === destinationAreaId) {
-    yield { done: true, log: createFailureLog(state, "ExplorationTravel", "ALREADY_IN_AREA") }
+    const destinationArea = exploration.areas.get(destinationAreaId)
+    const destinationName = getAreaDisplayName(destinationAreaId, destinationArea)
+    yield {
+      done: true,
+      log: createFailureLog(state, "ExplorationTravel", "ALREADY_IN_AREA", "already_here", {
+        destination: destinationName,
+        destinationId: destinationAreaId,
+      }),
+    }
     return
   }
 
@@ -1458,9 +1510,17 @@ export async function* executeExplorationTravel(
 
   if (!directConnection) {
     // No direct connection - cannot travel (must have a known connection from current area)
+    // Determine sub-reason: undiscovered vs no_route
+    const reason = destinationIsKnown ? "no_route" : "undiscovered"
+    const destinationArea = exploration.areas.get(destinationAreaId)
+    const destinationName = getAreaDisplayName(destinationAreaId, destinationArea)
+
     yield {
       done: true,
-      log: createFailureLog(state, "ExplorationTravel", "NO_PATH_TO_DESTINATION"),
+      log: createFailureLog(state, "ExplorationTravel", "NO_PATH_TO_DESTINATION", reason, {
+        destination: destinationName,
+        destinationId: destinationAreaId,
+      }),
     }
     return
   }
@@ -1528,7 +1588,15 @@ export async function* executeFarTravel(
 
   // Check preconditions
   if (exploration.playerState.currentAreaId === destinationAreaId) {
-    yield { done: true, log: createFailureLog(state, "FarTravel", "ALREADY_IN_AREA") }
+    const destinationArea = exploration.areas.get(destinationAreaId)
+    const destinationName = getAreaDisplayName(destinationAreaId, destinationArea)
+    yield {
+      done: true,
+      log: createFailureLog(state, "FarTravel", "ALREADY_IN_AREA", "already_here", {
+        destination: destinationName,
+        destinationId: destinationAreaId,
+      }),
+    }
     return
   }
 
@@ -1536,7 +1604,15 @@ export async function* executeFarTravel(
 
   // Destination must be known for far travel
   if (!exploration.playerState.knownAreaIds.includes(destinationAreaId)) {
-    yield { done: true, log: createFailureLog(state, "FarTravel", "AREA_NOT_KNOWN") }
+    const destinationArea = exploration.areas.get(destinationAreaId)
+    const destinationName = getAreaDisplayName(destinationAreaId, destinationArea)
+    yield {
+      done: true,
+      log: createFailureLog(state, "FarTravel", "AREA_NOT_KNOWN", "undiscovered", {
+        destination: destinationName,
+        destinationId: destinationAreaId,
+      }),
+    }
     return
   }
 
@@ -1544,7 +1620,15 @@ export async function* executeFarTravel(
   const pathResult = findPath(state, currentAreaId, destinationAreaId)
 
   if (!pathResult) {
-    yield { done: true, log: createFailureLog(state, "FarTravel", "NO_PATH_TO_DESTINATION") }
+    const destinationArea = exploration.areas.get(destinationAreaId)
+    const destinationName = getAreaDisplayName(destinationAreaId, destinationArea)
+    yield {
+      done: true,
+      log: createFailureLog(state, "FarTravel", "NO_PATH_TO_DESTINATION", "no_route", {
+        destination: destinationName,
+        destinationId: destinationAreaId,
+      }),
+    }
     return
   }
 
