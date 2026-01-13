@@ -1,89 +1,242 @@
-## Progression Canon — Levels, Unlocks, and Feasibility Cliffs
+Canonical Levelling Spec
 
-> **Implementation Status**: XP/level system exists using N² formula for thresholds. Currently implemented unlocks:
-> - **Gathering**: L1 = FOCUS mode, L3 = APPRAISE mode, L4 = CAREFUL_ALL mode
-> - **Gathering location access**: L5 required for MID distance (d=2), L9 required for FAR distance (d=3+)
-> - **Exploration**: Custom XP thresholds tuned to discovery counts per distance
->
-> Not yet implemented: combat unlocks (attack profiles, enemy access), crafting unlocks (overcrafting, specialisation branches), and most capability unlocks described below.
+(Gathering Skills – v1)
 
-### Purpose
+1. Purpose
 
-Progression exists to create new strategic possibilities, not to smoothly increase output.
+The levelling system exists to make the player feel increasingly special because they endured and mastered the grind.
 
-XP is bookkeeping.
-Levels and unlocks are the real currency of mastery.
+Levels are not rewards for time spent.
+They are recognition of accumulated constraint, trade-offs, and persistence.
 
 ⸻
 
-### Laws of Progression
+2. High-Level Structure
 
-1.	Levels must change what is possible, not just how efficient
+2.1 Headline Level
 
-- A level that only adds a small % bonus is incomplete
-- Every meaningful level unlocks:
-  - a new action
-  - a new risk profile
-  - a new contract type
-  - or removes a previous constraint
+Each gathering skill (e.g. Mining, Forestry) has:
+	•	A single headline skill level (1–100 initially)
+	•	This is:
+	•	the primary progression indicator
+	•	what contracts, access gates, and content key off
+	•	slow, deliberate, and effortful to increase
 
-2.	Progression is intentionally lumpy
+Time-to-next-level rule (canonical):
 
-- Power arrives in steps, not gradients
-- Feasibility cliffs are desirable
-- It should be common for: “This plan was impossible yesterday, trivial today”
+Advancing from level N → N+1 should require approximately N minutes of solid, constraint-engaging play.
 
-3.	Levels justify risk retroactively
+“Solid play” includes:
+	•	running into inventory pressure
+	•	rerouting
+	•	abandoning items
+	•	suboptimal but human decisions
 
-- Early risk is often taken hoping for a breakthrough
-- When a level unlocks, past inefficiency becomes rational in hindsight
-
-4.	Unlocks are explicit and inspectable
-
-- The player always knows:
-  - what the next level grants
-  - what it enables
-  - what strategies it invalidates or supersedes
-
-5.	Numerical scaling is secondary
-
-- Roughly:
-  - 50% of progression = new capabilities
-  - 50% = numerical improvements
-- Numerical buffs exist to reinforce unlocks, not replace them
-
-6.	Levels interact with variance
-
-- Higher levels often unlock higher-variance options
-- Mastery is choosing when to expose yourself to volatility
+Idle optimisation does not count as design intent.
 
 ⸻
 
-### Explicit Non-Goals
+3. Material Mastery (Core Mechanism)
 
-- No smooth power curves
-- No invisible stat growth
-- No “everything gets slightly better forever”
-- No global character level
+3.1 Mastery Tracks
+
+Each gathering material has its own explicit, inspectable mastery level.
+
+Example:
+	•	Copper Mastery: 17
+	•	Iron Mastery: 6
+	•	Platinum: Locked
+
+Material mastery is:
+	•	deterministic
+	•	visible
+	•	asymmetric across materials
+	•	the main carrier of progression impact
+
+Skill level is the headline.
+Material mastery is where progress actually lives.
 
 ⸻
 
-### Canonical Examples
+3.2 Locked → Unlocked Materials
 
-- Combat level unlocks:
-  - New attack profiles (safe / volatile / greedy)
-  - Access to new enemy types
-- Gathering level unlocks:
-  - Vein sampling
-  - Double-yield attempts
-- Crafting level unlocks:
-  - Overcrafting
-  - Specialisation branches
+Materials follow a strict reveal-based progression.
+	•	Before unlock:
+	•	Material may be visible in the world
+	•	Player cannot meaningfully gather it
+	•	No mastery number exists
+	•	The first mastery increase is the unlock
+	•	“You can now work this material at all”
+
+This creates anticipation and prevents premature complexity.
 
 ⸻
 
-### Guiding Check
+4. Material Unlock Cadence
+	•	~9 materials per gathering skill (initially)
+	•	~100 skill levels total
+	•	One new material unlocked approximately every 10 levels
 
-Does this level unlock create a new plan that didn’t exist before?
+Example pattern:
+	•	Material 1: unlocked at level 1
+	•	Material 2: unlocked ~level 10
+	•	Material 3: unlocked ~level 20
+	•	…
+	•	Material 9: unlocked ~level 80
 
-If not, it doesn’t belong
+Late levels are primarily about finishing mastery, not unlocking novelty.
+
+⸻
+
+5. Mastery Progression Shape
+
+5.1 Determinism
+	•	All level-up effects are guaranteed
+	•	No RNG affects mastery gains
+	•	Players are never “unlucky” when levelling
+
+Variance belongs in actions, not progression.
+
+⸻
+
+5.2 Focus Material Rule
+
+At most non-headline levels:
+	•	Exactly one material is designated the focus material
+	•	That material gains a mastery increase
+	•	Other materials remain unchanged
+
+This:
+	•	preserves clarity
+	•	nudges player behaviour
+	•	creates “eras” of identity (e.g. iron phase)
+
+⸻
+
+5.3 Weighted Rotation
+
+Between material unlocks:
+	•	Mastery progression is weighted toward the newest unlocked material
+	•	Earlier materials still advance, but more slowly
+
+Example:
+	•	Stone unlocked at L1, finishes ~L30
+	•	Copper unlocked at L10, finishes ~L40
+	•	Iron unlocked at L20, finishes ~L50
+	•	etc.
+
+⸻
+
+6. Mastery Curve
+
+Material mastery follows diminishing returns.
+	•	Early mastery levels:
+	•	large, felt improvements
+	•	relief from frustration
+	•	Mid mastery:
+	•	steady, meaningful refinement
+	•	Late mastery:
+	•	small optimisations
+	•	logistics and variance smoothing
+	•	approach perfection asymptotically
+
+No material ever becomes “solved”.
+
+⸻
+
+7. What Mastery Improves (Knob Set)
+
+Each material’s mastery affects multiple internal knobs, including:
+	•	Gather speed for that material
+	•	Waste when gathering other materials from the same node
+	•	Chance to find the material while scavenging
+	•	Speed of recognising exact quantities
+	•	Maximum stack size in inventory
+	•	Eligibility for specialised containers
+	•	Sale price / value realisation
+	•	Ability to extract higher-quality variants
+
+These knobs:
+	•	are not individually levelled
+	•	are driven by the single mastery number
+	•	are summarised textually in the UI
+
+⸻
+
+8. Grandmaster Threshold
+
+Each material has a final qualitative threshold (“Grandmaster”).
+	•	Mastery continues asymptotically beyond it
+	•	But reaching Grandmaster unlocks:
+	•	the ability to liberate small amounts of high-grade material
+	•	by processing large volumes of the base material
+
+This:
+	•	gives late mastery meaning
+	•	preserves scale
+	•	reinforces that expertise enables transformation, not shortcuts
+
+⸻
+
+9. Level-Up Feedback (Hard Requirement)
+
+Every level-up must be explicit and explanatory.
+
+On level-up, the player is told:
+	•	which material improved
+	•	the mastery change
+	•	what that concretely means in play terms
+
+Example:
+
+Mining Level 27
+Iron Mastery: 14 → 15
+• Iron gathering is slightly faster
+• Less iron is wasted when mining mixed veins
+• Iron stacks hold +2 more units
+
+Silent progress is forbidden.
+
+⸻
+
+10. Headline Levels (Every ~4 Levels)
+
+Roughly every 4 levels:
+	•	A headline change may occur:
+	•	new gathering mode
+	•	access gate
+	•	container eligibility
+	•	contract tier
+	•	distance unlock
+	•	These are additive, not the primary progression driver
+
+Most levels are still meaningful without these.
+
+⸻
+
+11. Cognitive Load Rules
+
+Expected material engagement:
+	•	Early game: ~1 material
+	•	Mid game: ~2 materials
+	•	Late game: 3+ materials
+
+Inventory pressure scales accordingly and is intentional.
+
+⸻
+
+12. Non-Goals (Explicit)
+	•	No per-material XP (for v1)
+	•	No hidden progression
+	•	No RNG on level-ups
+	•	No smooth “everything gets slightly better” curves
+	•	No early access to high-tier materials
+
+⸻
+
+13. Design Test
+
+A level-up is valid only if:
+
+The player can clearly say
+“I am better at this now, and I understand why that matters.”
