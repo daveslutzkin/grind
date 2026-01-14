@@ -150,6 +150,7 @@ export interface RunConfig {
   maxTicks: number
   stallWindowSize?: number // Default 1000
   recordActions?: boolean // If true, include action log in result
+  onAction?: (record: ActionRecord) => void // Called after each action for streaming output
 }
 
 /**

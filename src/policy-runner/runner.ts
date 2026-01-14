@@ -188,7 +188,7 @@ async function executePolicyAction(
  * @returns The run result with metrics
  */
 export async function runSimulation(config: RunConfig): Promise<RunResult> {
-  const { seed, policy, targetLevel, maxTicks } = config
+  const { seed, policy, targetLevel, maxTicks, onAction } = config
   const stallWindowSize = config.stallWindowSize ?? DEFAULT_STALL_WINDOW_SIZE
   const recordActions = config.recordActions ?? false
 
@@ -282,8 +282,8 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
     }
 
     // Record action if logging enabled
-    if (recordActions) {
-      actionLog.push({
+    if (recordActions || onAction) {
+      const record: ActionRecord = {
         tick: tickBefore,
         policyAction,
         ticksConsumed,
@@ -291,7 +291,13 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
         xpGained,
         levelsAfter: getCurrentLevels(state, skillsWithXp),
         levelUps,
-      })
+      }
+      if (recordActions) {
+        actionLog.push(record)
+      }
+      if (onAction) {
+        onAction(record)
+      }
     }
 
     // Record metrics

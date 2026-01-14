@@ -403,18 +403,42 @@ async function runSingle(args: ReturnType<typeof parseArgs>): Promise<void> {
 
   const startTime = Date.now()
 
+  // If logging actions, print header and stream each action as it happens
+  if (args.logActions) {
+    console.log("=".repeat(60))
+    console.log("ACTION LOG (streaming)")
+    console.log("=".repeat(60))
+    console.log()
+    console.log("Tick\tTicks\tXP\t\tLevels\t\tAction")
+    console.log("-".repeat(80))
+  }
+
   const result = await runSimulation({
     seed: args.seed!,
     policy,
     targetLevel: args.targetLevel,
     maxTicks: args.maxTicks,
     stallWindowSize: args.stallWindowSize,
-    recordActions: args.logActions,
+    recordActions: false, // Don't collect in memory, we stream instead
+    onAction: args.logActions
+      ? (record) => {
+          const status = record.success ? "" : " [FAILED]"
+          const xpStr = formatXpGains(record.xpGained).padEnd(12)
+          const levelStr = formatLevels(record).padEnd(12)
+          const levelUpStr = formatLevelUps(record)
+
+          let line = `${record.tick}\t${record.ticksConsumed}\t${xpStr}\t${levelStr}\t${formatPolicyAction(record.policyAction)}${status}`
+          if (levelUpStr) {
+            line += `\n\t\t${levelUpStr}`
+          }
+          console.log(line)
+        }
+      : undefined,
   })
 
   const elapsed = Date.now() - startTime
 
-  printResult(result, args.verbose, args.logActions)
+  printResult(result, args.verbose, false) // Don't print action log again
   console.log()
   console.log(`Completed in ${formatDuration(elapsed)}`)
 }
