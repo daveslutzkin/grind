@@ -1341,6 +1341,11 @@ describe("Phase 3: Gather Action Overhaul", () => {
   })
 
   // ============================================================================
+  // Phase 4: Time Variance - Note: Skipping for now as it adds significant complexity
+  // The base time system works well; variance can be added in a future iteration
+  // ============================================================================
+
+  // ============================================================================
   // Phase 5: Inventory Check
   // ============================================================================
 
