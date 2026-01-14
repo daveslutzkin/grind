@@ -107,7 +107,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         mode: GatherMode.APPRAISE,
       }
 
-      const log = await await executeAction(world, action)
+      const log = await executeAction(world, action)
 
       expect(log.success).toBe(true)
       expect(log.timeConsumed).toBe(1)
@@ -138,13 +138,13 @@ describe("Phase 3: Gather Action Overhaul", () => {
         mode: GatherMode.APPRAISE,
       }
 
-      const log = await await executeAction(world, action)
+      const log = await executeAction(world, action)
 
       expect(log.skillGained).toBeUndefined()
     })
 
     it("should include node info in log", async () => {
-      world.player.skills.Mining.level = 3 // L3 required for APPRAISE
+      world.player.skills.Mining.level = 6 // L6 = STONE M6 (Appraise)
       const node = getFirstOreNode()
       const action: GatherAction = {
         type: "Gather",
@@ -152,7 +152,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         mode: GatherMode.APPRAISE,
       }
 
-      const log = await await executeAction(world, action)
+      const log = await executeAction(world, action)
 
       // Log should contain extraction info with node details
       expect(log.extraction).toBeDefined()
@@ -167,11 +167,18 @@ describe("Phase 3: Gather Action Overhaul", () => {
       // Each material should have all required fields
       const firstMat = log.extraction!.appraisal!.materials[0]
       expect(firstMat.materialId).toBeDefined()
-      expect(firstMat.remaining).toBeDefined()
-      expect(firstMat.max).toBeDefined()
+      expect(firstMat.canSeeQuantity).toBeDefined() // Now includes mastery-based visibility
       expect(firstMat.tier).toBeDefined()
       expect(firstMat.requiresSkill).toBeDefined()
       expect(firstMat.requiredLevel).toBeDefined()
+
+      // At L6, STONE should have Appraise mastery - remaining/max should be visible
+      const stoneMat = log.extraction!.appraisal!.materials.find((m) => m.materialId === "STONE")
+      if (stoneMat) {
+        expect(stoneMat.canSeeQuantity).toBe(true)
+        expect(stoneMat.remaining).toBeDefined()
+        expect(stoneMat.max).toBeDefined()
+      }
     })
   })
 
@@ -186,7 +193,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         // Missing focusMaterialId
       }
 
-      const log = await await executeAction(world, action)
+      const log = await executeAction(world, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("MISSING_FOCUS_MATERIAL")
@@ -208,7 +215,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         focusMaterialId: focusMat.materialId,
       }
 
-      const log = await await executeAction(world, action)
+      const log = await executeAction(world, action)
 
       expect(log.success).toBe(true)
       expect(log.extraction).toBeDefined()
@@ -258,7 +265,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         focusMaterialId: focusMat.materialId,
       }
 
-      const log = await await executeAction(world, action)
+      const log = await executeAction(world, action)
 
       expect(log.skillGained).toBeDefined()
       expect(log.skillGained!.skill).toBe("Mining")
@@ -282,7 +289,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         focusMaterialId: focusMat.materialId,
       }
 
-      const log = await await executeAction(world, action)
+      const log = await executeAction(world, action)
 
       expect(log.extraction!.variance).toBeDefined()
       expect(log.extraction!.variance!.expected).toBeDefined()
@@ -413,7 +420,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         focusMaterialId: focusMat.materialId,
       }
 
-      const log = await await executeAction(world, action)
+      const log = await executeAction(world, action)
 
       // Even at L10, collateral should be at least 20% of impacted units
       const collateralDamage = log.extraction!.collateralDamage[collateralMat.materialId] ?? 0
@@ -437,7 +444,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         focusMaterialId: focusMat.materialId,
       }
 
-      const log = await await executeAction(world, action)
+      const log = await executeAction(world, action)
 
       // Expected yield should be around 40% of base attempt
       // This is approximate due to variance
@@ -456,7 +463,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         focusMaterialId: focusMat.materialId,
       }
 
-      const log = await await executeAction(world, action)
+      const log = await executeAction(world, action)
 
       // At L10, focusWaste should be 0
       expect(log.extraction!.focusWaste).toBe(0)
@@ -479,7 +486,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         focusMaterialId: node.materials[0].materialId,
       }
 
-      const log = await await executeAction(world, action)
+      const log = await executeAction(world, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("NODE_DEPLETED")
@@ -531,7 +538,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         mode: GatherMode.APPRAISE,
       }
 
-      const log = await await executeAction(world, action)
+      const log = await executeAction(world, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("WRONG_LOCATION")
@@ -554,7 +561,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         focusMaterialId: focusMat.materialId,
       }
 
-      const log = await await executeAction(world, action)
+      const log = await executeAction(world, action)
 
       expect(log.success).toBe(true)
       expect(log.xpSource).toBe("node_extraction")
@@ -577,7 +584,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
           mode: GatherMode.APPRAISE,
         }
 
-        const log = await await executeAction(world, action)
+        const log = await executeAction(world, action)
 
         expect(log.success).toBe(false)
         expect(log.failureDetails?.type).toBe("MODE_NOT_UNLOCKED")
@@ -593,7 +600,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
           mode: GatherMode.APPRAISE,
         }
 
-        const log = await await executeAction(world, action)
+        const log = await executeAction(world, action)
 
         expect(log.success).toBe(true)
       })
@@ -672,7 +679,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         focusMaterialId: focusMat.materialId,
       }
 
-      const log = await await executeAction(world, action)
+      const log = await executeAction(world, action)
 
       expect(log.success).toBe(true)
       expect(log.actionType).toBe("Gather") // Should be recorded as Gather in log
@@ -704,7 +711,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         mode: GatherMode.APPRAISE,
       }
 
-      const log = await await executeAction(world, action)
+      const log = await executeAction(world, action)
 
       expect(log.success).toBe(true)
       expect(log.extraction!.appraisal).toBeDefined()
@@ -720,7 +727,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         mode: GatherMode.APPRAISE,
       }
 
-      const log = await await executeAction(world, action)
+      const log = await executeAction(world, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("NODE_NOT_FOUND")
@@ -768,7 +775,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         focusMaterialId: focusMat.materialId,
       }
 
-      const log = await await executeAction(world, action)
+      const log = await executeAction(world, action)
 
       expect(log.success).toBe(true)
       expect(log.actionType).toBe("Gather") // Should be recorded as Gather in log
@@ -797,7 +804,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         mode: GatherMode.CAREFUL_ALL,
       }
 
-      const log = await await executeAction(world, action)
+      const log = await executeAction(world, action)
 
       expect(log.success).toBe(true)
       expect(log.extraction).toBeDefined()
@@ -826,7 +833,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         mode: GatherMode.APPRAISE,
       }
 
-      const log = await await executeAction(world, action)
+      const log = await executeAction(world, action)
 
       expect(log.success).toBe(true)
       expect(log.extraction!.appraisal).toBeDefined()
@@ -842,7 +849,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
         mode: GatherMode.APPRAISE,
       }
 
-      const log = await await executeAction(world, action)
+      const log = await executeAction(world, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("NODE_NOT_FOUND")
@@ -1344,6 +1351,73 @@ describe("Phase 3: Gather Action Overhaul", () => {
   // Phase 4: Time Variance - Note: Skipping for now as it adds significant complexity
   // The base time system works well; variance can be added in a future iteration
   // ============================================================================
+
+  describe("Canonical Gathering: APPRAISE Mastery Filtering", () => {
+    it("should only show quantities for materials with M6 (Appraise) unlock", async () => {
+      world.player.skills.Mining.level = 6 // STONE M6 = Appraise (L6)
+      const node = getFirstOreNode()
+
+      // Ensure node has both STONE (will have Appraise) and COPPER_ORE (won't have Appraise until L25)
+      const copperMat = node.materials.find((m) => m.materialId === "COPPER_ORE")
+      if (!copperMat) {
+        node.materials.push({
+          materialId: "COPPER_ORE",
+          remainingUnits: 5,
+          maxUnitsInitial: 10,
+          requiresSkill: "Mining",
+          requiredLevel: 20,
+          tier: 2,
+        })
+      }
+
+      const action: GatherAction = {
+        type: "Gather",
+        nodeId: node.nodeId,
+        mode: GatherMode.APPRAISE,
+      }
+
+      const log = await executeAction(world, action)
+
+      expect(log.success).toBe(true)
+      expect(log.extraction!.appraisal).toBeDefined()
+
+      const appraisal = log.extraction!.appraisal!
+      const stoneMat = appraisal.materials.find((m) => m.materialId === "STONE")
+      const copperMatResult = appraisal.materials.find((m) => m.materialId === "COPPER_ORE")
+
+      // STONE should have canSeeQuantity = true (has M6 at L6)
+      expect(stoneMat).toBeDefined()
+      expect(stoneMat!.canSeeQuantity).toBe(true)
+      expect(stoneMat!.remaining).toBeDefined()
+      expect(stoneMat!.max).toBeDefined()
+
+      // COPPER_ORE should have canSeeQuantity = false (needs L25 for M6)
+      expect(copperMatResult).toBeDefined()
+      expect(copperMatResult!.canSeeQuantity).toBe(false)
+      expect(copperMatResult!.remaining).toBeUndefined()
+      expect(copperMatResult!.max).toBeUndefined()
+    })
+
+    it("should show all quantities at high skill level", async () => {
+      world.player.skills.Mining.level = 50 // Has Appraise for STONE (L6) and COPPER_ORE (L25), TIN_ORE (L45)
+      const node = getFirstOreNode()
+
+      const action: GatherAction = {
+        type: "Gather",
+        nodeId: node.nodeId,
+        mode: GatherMode.APPRAISE,
+      }
+
+      const log = await executeAction(world, action)
+
+      expect(log.success).toBe(true)
+      const appraisal = log.extraction!.appraisal!
+
+      // All materials up to TIN_ORE should have canSeeQuantity = true
+      const stoneMat = appraisal.materials.find((m) => m.materialId === "STONE")
+      expect(stoneMat?.canSeeQuantity).toBe(true)
+    })
+  })
 
   // ============================================================================
   // Phase 5: Inventory Check

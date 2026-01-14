@@ -114,7 +114,7 @@ describe("Engine", () => {
       makeAreaKnown(state, areaId)
       const action: MoveAction = { type: "Move", destination: areaId }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(true)
       expect(state.exploration.playerState.currentAreaId).toBe(areaId)
@@ -126,7 +126,7 @@ describe("Engine", () => {
       makeAreaKnown(state, areaId)
       const action: MoveAction = { type: "Move", destination: areaId }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       // Travel time is BASE_TRAVEL_TIME (10) * multiplier (1-4) = 10-40 ticks
       expect(log.timeConsumed).toBeGreaterThanOrEqual(10)
@@ -140,7 +140,7 @@ describe("Engine", () => {
       makeAreaKnown(state, areaId)
       const action: MoveAction = { type: "Move", destination: areaId }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.skillGained).toBeUndefined()
     })
@@ -151,7 +151,7 @@ describe("Engine", () => {
       state.exploration.playerState.currentAreaId = areaId
       const action: MoveAction = { type: "Move", destination: areaId }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("ALREADY_IN_AREA")
@@ -164,7 +164,7 @@ describe("Engine", () => {
       makeAreaKnown(state, areaId)
       const action: MoveAction = { type: "Move", destination: areaId }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.tickBefore).toBe(0)
       expect(log.actionType).toBe("ExplorationTravel")
@@ -203,7 +203,7 @@ describe("Engine", () => {
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD) // Must be at miners guild
       const action: AcceptContractAction = { type: "AcceptContract", contractId: "miners-guild-1" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(true)
       expect(state.player.activeContracts).toContain("miners-guild-1")
@@ -214,7 +214,7 @@ describe("Engine", () => {
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       const action: AcceptContractAction = { type: "AcceptContract", contractId: "miners-guild-1" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.timeConsumed).toBe(0)
     })
@@ -224,7 +224,7 @@ describe("Engine", () => {
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       const action: AcceptContractAction = { type: "AcceptContract", contractId: "miners-guild-1" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.skillGained).toBeUndefined()
     })
@@ -237,7 +237,7 @@ describe("Engine", () => {
       state.exploration.playerState.currentLocationId = null // At clearing
       const action: AcceptContractAction = { type: "AcceptContract", contractId: "miners-guild-1" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("WRONG_LOCATION")
@@ -247,7 +247,7 @@ describe("Engine", () => {
       const state = createWorld("ore-test")
       const action: AcceptContractAction = { type: "AcceptContract", contractId: "nonexistent" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("CONTRACT_NOT_FOUND")
@@ -259,7 +259,7 @@ describe("Engine", () => {
       state.player.activeContracts.push("miners-guild-1")
       const action: AcceptContractAction = { type: "AcceptContract", contractId: "miners-guild-1" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("ALREADY_HAS_CONTRACT")
@@ -288,7 +288,7 @@ describe("Engine", () => {
       }
 
       // Try multiple times to find a successful gather
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       // The RNG should produce a consistent result
       if (log.success) {
@@ -319,7 +319,7 @@ describe("Engine", () => {
         focusMaterialId: material!.materialId,
       }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.timeConsumed).toBeGreaterThan(0)
     })
@@ -344,7 +344,7 @@ describe("Engine", () => {
         focusMaterialId: material!.materialId,
       }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       if (log.success) {
         expect(log.skillGained).toEqual({ skill: "Mining", amount: expect.any(Number) })
@@ -366,7 +366,7 @@ describe("Engine", () => {
         focusMaterialId: material.materialId,
       }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("WRONG_LOCATION")
@@ -380,7 +380,7 @@ describe("Engine", () => {
       state.exploration.playerState.currentAreaId = areaId
       const action: GatherAction = { type: "Gather", nodeId: "nonexistent-node" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("NODE_NOT_FOUND")
@@ -403,7 +403,7 @@ describe("Engine", () => {
         focusMaterialId: material.materialId,
       }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       // FOCUS mode doesn't use RNG rolls, so this test may not have rolls
       // Just check that it completes
@@ -430,7 +430,7 @@ describe("Engine", () => {
         focusMaterialId: material.materialId,
       }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       if (log.success) {
         const item = state.player.inventory.find((i) => i.itemId === material.materialId)
@@ -466,7 +466,7 @@ describe("Engine", () => {
         focusMaterialId: material!.materialId,
       }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       // In new mastery system, gathering fails upfront if inventory is full
       expect(log.success).toBe(false)
@@ -500,7 +500,7 @@ describe("Engine", () => {
         focusMaterialId: material!.materialId,
       }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       // Should succeed
       expect(log.success).toBe(true)
@@ -511,8 +511,9 @@ describe("Engine", () => {
       // With 8 slots filled and 2 available, 1 or 2 units should fit
       const discarded = log.extraction?.discardedItems?.[0]?.quantity ?? 0
       expect(discarded).toBe(0) // 1-2 units should fit in 2 available slots
-      // Inventory should have grown by extracted amount
-      expect(state.player.inventory.length).toBe(9) // 8 + 1 (or could be more with stacking)
+      // Inventory should have grown by extracted amount (1 or 2 units depending on bonus yield)
+      expect(state.player.inventory.length).toBeGreaterThanOrEqual(9) // 8 + 1
+      expect(state.player.inventory.length).toBeLessThanOrEqual(10) // 8 + 2 max with bonus yield
     })
   })
 
@@ -533,7 +534,7 @@ describe("Engine", () => {
       setupCombatState(state)
       const action: FightAction = { type: "Fight" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       if (log.success) {
         // cave-rat drops COPPER_ORE or other items based on loot table
@@ -546,7 +547,7 @@ describe("Engine", () => {
       setupCombatState(state)
       const action: FightAction = { type: "Fight" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.timeConsumed).toBe(3) // CrudeWeapon fightTime is 3
     })
@@ -556,7 +557,7 @@ describe("Engine", () => {
       setupCombatState(state)
       const action: FightAction = { type: "Fight" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       if (log.success) {
         expect(log.skillGained).toEqual({ skill: "Combat", amount: 1 })
@@ -573,7 +574,7 @@ describe("Engine", () => {
       // NOTE: Enemies not yet implemented - this describe block is skipped
       const action: FightAction = { type: "Fight" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("WRONG_LOCATION")
@@ -589,7 +590,7 @@ describe("Engine", () => {
       state.player.equippedWeapon = "CRUDE_WEAPON"
       const action: FightAction = { type: "Fight" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("ENEMY_NOT_FOUND")
@@ -601,7 +602,7 @@ describe("Engine", () => {
       state.rng.seed = "force-fight-fail"
       const action: FightAction = { type: "Fight" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       if (!log.success && log.failureDetails?.type === "COMBAT_FAILURE") {
         // Per spec: player stays at location, is NOT relocated
@@ -614,7 +615,7 @@ describe("Engine", () => {
       setupCombatState(state)
       const action: FightAction = { type: "Fight" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       // At least 1 roll for fight success, possibly more for loot drops
       expect(log.rngRolls.length).toBeGreaterThanOrEqual(1)
@@ -633,7 +634,7 @@ describe("Engine", () => {
       }
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(true)
       const ironOreCount = state.player.inventory.filter((i) => i.itemId === "IRON_ORE").length
@@ -652,7 +653,7 @@ describe("Engine", () => {
       }
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.timeConsumed).toBe(3) // iron-bar craftTime is 3
     })
@@ -667,7 +668,7 @@ describe("Engine", () => {
       }
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.skillGained).toEqual({ skill: "Smithing", amount: 1 })
       expect(state.player.skills.Smithing).toEqual({ level: 1, xp: 1 }) // Started at level 1/0xp, gained 1 XP
@@ -683,7 +684,7 @@ describe("Engine", () => {
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 2 })
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("WRONG_GUILD_TYPE")
@@ -693,7 +694,7 @@ describe("Engine", () => {
       const state = createWorld("ore-test")
       const action: CraftAction = { type: "Craft", recipeId: "nonexistent" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("RECIPE_NOT_FOUND")
@@ -706,7 +707,7 @@ describe("Engine", () => {
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 }) // need 2
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("MISSING_ITEMS")
@@ -723,7 +724,7 @@ describe("Engine", () => {
       }
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 3 }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(true)
       const invOreCount = state.player.inventory.filter((i) => i.itemId === "IRON_ORE").length
@@ -738,7 +739,7 @@ describe("Engine", () => {
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.timeConsumed).toBe(0)
     })
@@ -749,7 +750,7 @@ describe("Engine", () => {
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.skillGained).toBeUndefined()
     })
@@ -763,7 +764,7 @@ describe("Engine", () => {
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("WRONG_LOCATION")
@@ -774,7 +775,7 @@ describe("Engine", () => {
       setTownLocation(state, TOWN_LOCATIONS.WAREHOUSE)
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 1 }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("ITEM_NOT_FOUND")
@@ -789,7 +790,7 @@ describe("Engine", () => {
       }
       const action: StoreAction = { type: "Store", itemId: "IRON_ORE", quantity: 5 }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("MISSING_ITEMS")
@@ -805,7 +806,7 @@ describe("Engine", () => {
       }
       const action: DropAction = { type: "Drop", itemId: "IRON_ORE", quantity: 3 }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(true)
       const invOreCount = state.player.inventory.filter((i) => i.itemId === "IRON_ORE").length
@@ -817,7 +818,7 @@ describe("Engine", () => {
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const action: DropAction = { type: "Drop", itemId: "IRON_ORE", quantity: 1 }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.timeConsumed).toBe(1)
     })
@@ -827,7 +828,7 @@ describe("Engine", () => {
       state.player.inventory.push({ itemId: "IRON_ORE", quantity: 1 })
       const action: DropAction = { type: "Drop", itemId: "IRON_ORE", quantity: 1 }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.skillGained).toBeUndefined()
     })
@@ -836,7 +837,7 @@ describe("Engine", () => {
       const state = createWorld("ore-test")
       const action: DropAction = { type: "Drop", itemId: "IRON_ORE", quantity: 1 }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("ITEM_NOT_FOUND")
@@ -850,7 +851,7 @@ describe("Engine", () => {
       }
       const action: DropAction = { type: "Drop", itemId: "IRON_ORE", quantity: 5 }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("MISSING_ITEMS")
@@ -864,7 +865,7 @@ describe("Engine", () => {
       }
       const action: DropAction = { type: "Drop", itemId: "IRON_ORE", quantity: 3 }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(true)
       const invOre = state.player.inventory.find((i) => i.itemId === "IRON_ORE")
@@ -909,7 +910,7 @@ describe("Engine", () => {
         focusMaterialId: material.materialId,
       }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("NOT_ENROLLED")
@@ -935,7 +936,7 @@ describe("Engine", () => {
         focusMaterialId: material.materialId,
       }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("NOT_ENROLLED")
@@ -953,7 +954,7 @@ describe("Engine", () => {
       // Skills start at 0, so Combat should be 0
       const action: FightAction = { type: "Fight" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("INSUFFICIENT_SKILL")
@@ -967,7 +968,7 @@ describe("Engine", () => {
       // Skills start at 0, so Smithing should be 0
       const action: CraftAction = { type: "Craft", recipeId: "iron-bar" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("INSUFFICIENT_SKILL")
@@ -995,7 +996,7 @@ describe("Engine", () => {
         focusMaterialId: material!.materialId,
       }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       // Should not fail due to skill
       expect(log.failureDetails?.type).not.toBe("INSUFFICIENT_SKILL")
@@ -1010,7 +1011,7 @@ describe("Engine", () => {
       expect(state.player.skills.Mining.level).toBe(0)
       const action: GuildEnrolmentAction = { type: "Enrol" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(true)
       expect(state.player.skills.Mining.level).toBe(1)
@@ -1022,7 +1023,7 @@ describe("Engine", () => {
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       const action: GuildEnrolmentAction = { type: "Enrol" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.timeConsumed).toBe(3)
     })
@@ -1033,7 +1034,7 @@ describe("Engine", () => {
       setTownLocation(state, null)
       const action: GuildEnrolmentAction = { type: "Enrol" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("WRONG_LOCATION")
@@ -1045,7 +1046,7 @@ describe("Engine", () => {
       setTownLocation(state, TOWN_LOCATIONS.WAREHOUSE)
       const action: GuildEnrolmentAction = { type: "Enrol" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("WRONG_LOCATION")
@@ -1056,7 +1057,7 @@ describe("Engine", () => {
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       const action: GuildEnrolmentAction = { type: "Enrol" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.skillGained).toBeUndefined()
       expect(state.player.skills.Mining.xp).toBe(0)
@@ -1068,7 +1069,7 @@ describe("Engine", () => {
       state.player.skills.Mining = { level: 1, xp: 0 }
       const action: GuildEnrolmentAction = { type: "Enrol" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("ALREADY_ENROLLED")
@@ -1108,7 +1109,7 @@ describe("Engine", () => {
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
       const action: GuildEnrolmentAction = { type: "Enrol" }
 
-      const log = await await executeAction(state, action)
+      const log = await executeAction(state, action)
 
       expect(log.actionType).toBe("Enrol")
       // Log includes resolved skill for clarity

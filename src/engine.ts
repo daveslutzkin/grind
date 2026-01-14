@@ -376,14 +376,19 @@ function executeMultiMaterialGatherInternal(
       appraisal: {
         nodeId: node.nodeId,
         nodeType: node.nodeType,
-        materials: node.materials.map((m) => ({
-          materialId: m.materialId,
-          remaining: m.remainingUnits,
-          max: m.maxUnitsInitial,
-          requiredLevel: m.requiredLevel,
-          requiresSkill: m.requiresSkill,
-          tier: m.tier,
-        })),
+        materials: node.materials.map((m) => {
+          // Only show quantities if player has Appraise mastery (M6) for this material
+          const canSeeQuantity = hasMasteryUnlock(skillLevel, m.materialId, "Appraise")
+          return {
+            materialId: m.materialId,
+            remaining: canSeeQuantity ? m.remainingUnits : undefined,
+            max: canSeeQuantity ? m.maxUnitsInitial : undefined,
+            requiredLevel: m.requiredLevel,
+            requiresSkill: m.requiresSkill,
+            tier: m.tier,
+            canSeeQuantity,
+          }
+        }),
       },
     }
 

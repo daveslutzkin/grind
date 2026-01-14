@@ -550,11 +550,12 @@ export interface AppraisalInfo {
   nodeType: NodeType
   materials: {
     materialId: MaterialID
-    remaining: number
-    max: number
+    remaining?: number // Only shown if player has Appraise mastery (M6) for this material
+    max?: number // Only shown if player has Appraise mastery (M6) for this material
     requiredLevel: number
     requiresSkill: GatheringSkillID
     tier: number
+    canSeeQuantity: boolean // True if player has Appraise mastery (M6) for this material
   }[]
 }
 

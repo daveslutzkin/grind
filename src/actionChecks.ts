@@ -258,20 +258,6 @@ export function getLocationSkillRequirement(_locationId: string): number {
 }
 
 /**
- * Get base time cost for gathering mode (legacy - used by non-mastery code)
- */
-function getGatheringTimeCost(mode: GatherMode): number {
-  switch (mode) {
-    case GatherMode.APPRAISE:
-      return 1
-    case GatherMode.FOCUS:
-      return 5 // Base time for focus extraction
-    case GatherMode.CAREFUL_ALL:
-      return 10 // Slower but safer
-  }
-}
-
-/**
  * Get time cost based on mastery for the canonical gathering system.
  * APPRAISE: 1 tick
  * FOCUS: Based on material's speed mastery (20/15/10/5 ticks)
@@ -291,13 +277,10 @@ function getMasteryBasedTimeCost(
 
   if (mode === GatherMode.CAREFUL_ALL) {
     // Find materials with Careful unlock
+    // Note: We've already validated NO_CAREFUL_MATERIALS earlier, so this list should never be empty
     const carefulMaterials = node.materials.filter(
       (m) => m.remainingUnits > 0 && hasMasteryUnlock(skillLevel, m.materialId, "Careful")
     )
-
-    if (carefulMaterials.length === 0) {
-      return 20 * 2 // Fallback to base speed * 2
-    }
 
     // 2x the slowest material's speed
     const slowest = Math.max(
@@ -306,7 +289,8 @@ function getMasteryBasedTimeCost(
     return slowest * 2
   }
 
-  return 20 // Default fallback
+  // This should be unreachable for valid gather modes, but TypeScript needs a return
+  throw new Error(`Unknown gather mode: ${mode}`)
 }
 
 /**
@@ -568,7 +552,7 @@ function checkMultiMaterialGatherAction(
 /**
  * Export for engine use
  */
-export { getNodeSkill, getGatheringTimeCost }
+export { getNodeSkill }
 
 /**
  * Get weapon parameters for combat

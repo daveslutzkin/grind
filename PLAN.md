@@ -434,7 +434,12 @@ if (mode === GatherMode.APPRAISE) {
 
 ---
 
-## Phase 4: Time Variance and Luck Surfacing
+## Phase 4: Time Variance and Luck Surfacing (DEFERRED)
+
+> **Status: DEFERRED** - This phase has been deferred to a future iteration. The core
+> mastery system works well with deterministic timing, and adding variance adds significant
+> complexity for testing. The feature can be added later if player feedback indicates
+> it would improve the experience.
 
 ### 4.1 Add time variance to extraction
 
