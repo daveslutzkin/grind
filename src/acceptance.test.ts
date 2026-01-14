@@ -426,14 +426,17 @@ describe("Acceptance Tests: Gathering MVP", () => {
 
       const log = await executeAction(world, action)
 
-      // Variance should include expected, actual, and range
+      // Variance should include expected (base time), actual (with variance), range (yield), and luckDelta
       const variance = log.extraction!.variance!
-      expect(typeof variance.expected).toBe("number")
-      expect(typeof variance.actual).toBe("number")
-      expect(Array.isArray(variance.range)).toBe(true)
-      // Use toBeCloseTo for floating point comparisons
-      expect(variance.range[0]).toBeLessThanOrEqual(variance.expected + 0.01)
-      expect(variance.range[1]).toBeGreaterThanOrEqual(variance.expected - 0.01)
+      expect(typeof variance.expected).toBe("number") // Base time before variance
+      expect(typeof variance.actual).toBe("number") // Actual time with variance applied
+      expect(Array.isArray(variance.range)).toBe(true) // Yield range [min, max]
+      expect(typeof variance.luckDelta).toBe("number") // Ticks saved/lost
+      // Actual time should be within reasonable bounds of expected (±50% due to normal distribution)
+      expect(variance.actual).toBeGreaterThanOrEqual(1)
+      expect(variance.actual).toBeLessThanOrEqual(variance.expected * 2)
+      // luckDelta = expected - actual
+      expect(variance.luckDelta).toBe(variance.expected - variance.actual)
     })
   })
 

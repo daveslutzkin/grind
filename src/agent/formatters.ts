@@ -220,6 +220,13 @@ export function formatWorldState(state: WorldState): string {
     })
   lines.push(`Skills: ${enrolledSkills.length > 0 ? enrolledSkills.join(", ") : "none"}`)
 
+  // Show cumulative gathering luck if non-zero
+  if (state.player.gatheringLuckDelta !== 0) {
+    const luck = state.player.gatheringLuckDelta
+    const luckStr = luck > 0 ? `+${luck}` : `${luck}`
+    lines.push(`Gathering Luck: ${luckStr} ticks`)
+  }
+
   // Active contracts - compact
   if (state.player.activeContracts.length > 0) {
     const contracts = state.player.activeContracts
@@ -796,6 +803,13 @@ export function formatActionLog(log: ActionLog, state?: WorldState): string {
         .map(([m, d]) => `-${d} ${m}`)
         .join(", ")
       lines.push(`  Collateral: ${dmg}`)
+    }
+
+    // Show time variance luck if significant
+    if (log.extraction.variance?.luckDelta && log.extraction.variance.luckDelta !== 0) {
+      const { expected, actual, luckDelta } = log.extraction.variance
+      const luckStr = luckDelta > 0 ? `+${luckDelta} luck` : `${luckDelta} luck`
+      lines.push(`  Time: ${actual} ticks (${expected} base, ${luckStr})`)
     }
   }
 

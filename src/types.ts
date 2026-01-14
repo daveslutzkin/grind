@@ -215,6 +215,7 @@ export interface WorldState {
     equippedWeapon: WeaponID | null
     contractKillProgress: Record<ContractID, Record<string, number>>
     appraisedNodeIds: NodeID[] // Nodes that have been appraised (show full details)
+    gatheringLuckDelta: number // Cumulative ticks saved/lost from gathering variance
   }
 
   world: {
@@ -567,9 +568,10 @@ export interface ExtractionLog {
   focusWaste: number
   collateralDamage: Record<MaterialID, number>
   variance?: {
-    expected: number
-    actual: number
-    range: [number, number]
+    expected: number // Base time without variance
+    actual: number // Actual time with variance applied
+    range: [number, number] // For yield variance (bonus yield)
+    luckDelta?: number // Ticks saved (positive) or lost (negative) from time variance
   }
   appraisal?: AppraisalInfo // For APPRAISE mode
 }

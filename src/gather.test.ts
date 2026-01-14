@@ -1000,7 +1000,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
   })
 
   describe("Canonical Gathering: Mastery-Based Time Cost", () => {
-    it("should use 20 ticks for STONE at L1 (base speed)", async () => {
+    it("should use 20 ticks base for STONE at L1 (base speed)", async () => {
       world.player.skills.Mining.level = 1
       const node = getFirstOreNode()
       const stoneMat = node.materials.find((m) => m.materialId === "STONE" && m.requiredLevel === 1)
@@ -1016,11 +1016,12 @@ describe("Phase 3: Gather Action Overhaul", () => {
       const log = await executeAction(world, action)
 
       if (log.success) {
-        expect(log.timeConsumed).toBe(20)
+        // Check base time (expected), actual time has variance applied
+        expect(log.extraction!.variance!.expected).toBe(20)
       }
     })
 
-    it("should use 15 ticks for STONE at L2 (Speed I)", async () => {
+    it("should use 15 ticks base for STONE at L2 (Speed I)", async () => {
       world.player.skills.Mining.level = 2
       const node = getFirstOreNode()
       const stoneMat = node.materials.find((m) => m.materialId === "STONE" && m.requiredLevel <= 2)
@@ -1036,11 +1037,12 @@ describe("Phase 3: Gather Action Overhaul", () => {
       const log = await executeAction(world, action)
 
       if (log.success) {
-        expect(log.timeConsumed).toBe(15)
+        // Check base time (expected), actual time has variance applied
+        expect(log.extraction!.variance!.expected).toBe(15)
       }
     })
 
-    it("should use 10 ticks for STONE at L9 (Speed II)", async () => {
+    it("should use 10 ticks base for STONE at L9 (Speed II)", async () => {
       world.player.skills.Mining.level = 9
       const node = getFirstOreNode()
       const stoneMat = node.materials.find((m) => m.materialId === "STONE")
@@ -1056,11 +1058,12 @@ describe("Phase 3: Gather Action Overhaul", () => {
       const log = await executeAction(world, action)
 
       if (log.success) {
-        expect(log.timeConsumed).toBe(10)
+        // Check base time (expected), actual time has variance applied
+        expect(log.extraction!.variance!.expected).toBe(10)
       }
     })
 
-    it("should use 5 ticks for STONE at L17 (Speed III)", async () => {
+    it("should use 5 ticks base for STONE at L17 (Speed III)", async () => {
       world.player.skills.Mining.level = 17
       const node = getFirstOreNode()
       const stoneMat = node.materials.find((m) => m.materialId === "STONE")
@@ -1076,7 +1079,8 @@ describe("Phase 3: Gather Action Overhaul", () => {
       const log = await executeAction(world, action)
 
       if (log.success) {
-        expect(log.timeConsumed).toBe(5)
+        // Check base time (expected), actual time has variance applied
+        expect(log.extraction!.variance!.expected).toBe(5)
       }
     })
   })
@@ -1348,9 +1352,97 @@ describe("Phase 3: Gather Action Overhaul", () => {
   })
 
   // ============================================================================
-  // Phase 4: Time Variance - Note: Skipping for now as it adds significant complexity
-  // The base time system works well; variance can be added in a future iteration
+  // Phase 4: Time Variance and Luck Surfacing
   // ============================================================================
+
+  describe("Canonical Gathering: Time Variance", () => {
+    it("should apply time variance to FOCUS extraction", async () => {
+      // Run multiple extractions and check that times vary
+      const times: number[] = []
+
+      for (let i = 0; i < 20; i++) {
+        const testWorld = createWorld(`time-variance-${i}`)
+        const testAreaId = getOreAreaId(testWorld)
+        testWorld.exploration.playerState.currentAreaId = testAreaId
+        testWorld.player.skills.Mining.level = 1 // Base speed = 20 ticks
+        discoverAllLocations(testWorld, testAreaId)
+        const testNode = testWorld.world.nodes!.find((n) => n.areaId === testAreaId)!
+        moveToNodeLocation(testWorld, testNode)
+
+        const action: GatherAction = {
+          type: "Gather",
+          nodeId: testNode.nodeId,
+          mode: GatherMode.FOCUS,
+          focusMaterialId: "STONE",
+        }
+
+        const log = await executeAction(testWorld, action)
+
+        if (log.success) {
+          times.push(log.timeConsumed)
+        }
+      }
+
+      // With variance, we should see some variation in times
+      // Base is 20 ticks, variance is ±25% (±5 ticks)
+      const uniqueTimes = new Set(times)
+      expect(uniqueTimes.size).toBeGreaterThan(1) // Should have variation
+      expect(Math.min(...times)).toBeGreaterThanOrEqual(1) // Minimum 1 tick
+    })
+
+    it("should include luck delta in extraction log", async () => {
+      world.player.skills.Mining.level = 1
+      const node = getFirstOreNode()
+
+      const action: GatherAction = {
+        type: "Gather",
+        nodeId: node.nodeId,
+        mode: GatherMode.FOCUS,
+        focusMaterialId: "STONE",
+      }
+
+      const log = await executeAction(world, action)
+
+      if (log.success) {
+        // Extraction log should include variance info with luckDelta
+        expect(log.extraction!.variance).toBeDefined()
+        expect(log.extraction!.variance!.expected).toBe(20) // Base time at L1
+        expect(typeof log.extraction!.variance!.luckDelta).toBe("number")
+      }
+    })
+
+    it("should track cumulative luck in player state", async () => {
+      world.player.skills.Mining.level = 1
+      const node = getFirstOreNode()
+
+      // Ensure node has enough materials for multiple extractions
+      const stoneMat = node.materials.find((m) => m.materialId === "STONE")
+      if (stoneMat) stoneMat.remainingUnits = 100
+
+      const initialLuck = world.player.gatheringLuckDelta ?? 0
+
+      // Perform multiple extractions
+      let totalExpectedLuckChange = 0
+      for (let i = 0; i < 3; i++) {
+        const action: GatherAction = {
+          type: "Gather",
+          nodeId: node.nodeId,
+          mode: GatherMode.FOCUS,
+          focusMaterialId: "STONE",
+        }
+
+        const log = await executeAction(world, action)
+
+        if (log.success && log.extraction?.variance) {
+          totalExpectedLuckChange += log.extraction.variance.luckDelta ?? 0
+        }
+      }
+
+      // Player's cumulative luck should reflect all extractions
+      const finalLuck = world.player.gatheringLuckDelta ?? 0
+      expect(finalLuck - initialLuck).toBeCloseTo(totalExpectedLuckChange, 5)
+    })
+  })
 
   describe("Canonical Gathering: APPRAISE Mastery Filtering", () => {
     it("should only show quantities for materials with M6 (Appraise) unlock", async () => {

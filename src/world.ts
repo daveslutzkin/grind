@@ -486,6 +486,7 @@ export function createWorld(seed: string): WorldState {
       equippedWeapon: null,
       contractKillProgress: {},
       appraisedNodeIds: [],
+      gatheringLuckDelta: 0,
     },
 
     world: {

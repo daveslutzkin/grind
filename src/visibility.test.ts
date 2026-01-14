@@ -32,6 +32,7 @@ function createTestState(overrides: Partial<WorldState> = {}): WorldState {
       equippedWeapon: null,
       contractKillProgress: {},
       appraisedNodeIds: [],
+      gatheringLuckDelta: 0,
     },
     world: {
       nodes: [],

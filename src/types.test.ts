@@ -23,6 +23,7 @@ describe("Types", () => {
         equippedWeapon: null,
         contractKillProgress: {},
         appraisedNodeIds: [],
+        gatheringLuckDelta: 0,
       },
       world: {
         nodes: [],

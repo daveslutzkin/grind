@@ -434,12 +434,7 @@ if (mode === GatherMode.APPRAISE) {
 
 ---
 
-## Phase 4: Time Variance and Luck Surfacing (DEFERRED)
-
-> **Status: DEFERRED** - This phase has been deferred to a future iteration. The core
-> mastery system works well with deterministic timing, and adding variance adds significant
-> complexity for testing. The feature can be added later if player feedback indicates
-> it would improve the experience.
+## Phase 4: Time Variance and Luck Surfacing ✅
 
 ### 4.1 Add time variance to extraction
 
@@ -618,7 +613,7 @@ Following TDD (from CLAUDE.md):
 1. Phase 1: Mastery Data Model (foundation) ✅
 2. Phase 2: Validation Changes (gates) ✅
 3. Phase 3: Extraction Logic (core mechanics) ✅
-4. Phase 4: Time Variance and Luck (polish) - **DEFERRED**
+4. Phase 4: Time Variance and Luck (polish) ✅
 5. Phase 5: Inventory Check (edge case) ✅
 6. Phase 6: Cleanup and Polish (UX) ✅
 
@@ -628,7 +623,7 @@ Each phase should be a separate commit after tests pass.
 
 ## Implementation Complete
 
-All phases except Phase 4 (Time Variance) have been implemented. Phase 4 was deferred because:
-- The core mastery system works well with deterministic timing
-- Adding variance significantly complicates testing
-- Can be added in a future iteration based on player feedback
+All phases have been implemented:
+- Time variance applies ±25% normal distribution to gathering time
+- Luck delta (ticks saved/lost) tracked per extraction and cumulatively
+- Formatters show luck info in action logs and world state

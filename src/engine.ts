@@ -25,7 +25,7 @@ import type {
   ActionGenerator,
 } from "./types.js"
 import { isInTown, GatherMode, NodeType, getCurrentAreaId, getCurrentLocationId } from "./types.js"
-import { rollFloat } from "./rng.js"
+import { rollFloat, rollNormal } from "./rng.js"
 import {
   executeSurvey,
   executeExplore,
@@ -325,10 +325,21 @@ async function* executeGather(state: WorldState, action: GatherAction): ActionGe
     return
   }
 
-  const totalTicks = check.timeCost
+  const baseTicks = check.timeCost
+
+  // Apply time variance (±25% using normal distribution)
+  // Skip variance for APPRAISE mode (always 1 tick)
+  let actualTicks = baseTicks
+  let luckDelta = 0
+  if (resolvedAction.mode !== GatherMode.APPRAISE && baseTicks > 1) {
+    const variance = baseTicks * 0.25 // Standard deviation = 25% of base
+    const variedTime = rollNormal(state.rng, baseTicks, variance, "time_variance")
+    actualTicks = Math.max(1, Math.round(variedTime))
+    luckDelta = baseTicks - actualTicks // Positive = lucky (faster), negative = unlucky (slower)
+  }
 
   // Yield ticks during gathering
-  for (let tick = 0; tick < totalTicks; tick++) {
+  for (let tick = 0; tick < actualTicks; tick++) {
     consumeTime(state, 1)
     yield { done: false }
   }
@@ -339,7 +350,9 @@ async function* executeGather(state: WorldState, action: GatherAction): ActionGe
     resolvedAction,
     rolls,
     tickBefore,
-    check.timeCost
+    actualTicks,
+    baseTicks,
+    luckDelta
   )
 
   yield { done: true, log }
@@ -351,7 +364,9 @@ function executeMultiMaterialGatherInternal(
   action: GatherAction,
   rolls: RngRoll[],
   tickBefore: number,
-  timeCost: number
+  actualTicks: number,
+  baseTicks: number,
+  luckDelta: number
 ): ActionLog {
   const mode = action.mode!
   const node = state.world.nodes!.find((n) => n.nodeId === action.nodeId)!
@@ -405,7 +420,7 @@ function executeMultiMaterialGatherInternal(
       actionType: "Gather",
       parameters,
       success: true,
-      timeConsumed: timeCost,
+      timeConsumed: actualTicks, // Always 1 for APPRAISE
       rngRolls: rolls,
       extraction,
       stateDeltaSummary: `Appraised node ${action.nodeId}`,
@@ -424,7 +439,9 @@ function executeMultiMaterialGatherInternal(
       skillLevel,
       rolls,
       tickBefore,
-      timeCost,
+      actualTicks,
+      baseTicks,
+      luckDelta,
       parameters
     )
   }
@@ -438,7 +455,9 @@ function executeMultiMaterialGatherInternal(
       skillLevel,
       rolls,
       tickBefore,
-      timeCost,
+      actualTicks,
+      baseTicks,
+      luckDelta,
       parameters
     )
   }
@@ -533,7 +552,9 @@ function executeFocusExtraction(
   skillLevel: number,
   rolls: RngRoll[],
   tickBefore: number,
-  timeCost: number,
+  actualTicks: number,
+  baseTicks: number,
+  luckDelta: number,
   parameters: Record<string, unknown>
 ): ActionLog {
   const focusMaterial = node.materials.find((m) => m.materialId === focusMaterialId)!
@@ -587,6 +608,9 @@ function executeFocusExtraction(
   // No focus waste in new model (always 100% of 1 unit)
   const focusWaste = 0
 
+  // Update player's cumulative luck
+  state.player.gatheringLuckDelta += luckDelta
+
   const extraction: ExtractionLog = {
     mode: GatherMode.FOCUS,
     focusMaterial: focusMaterialId,
@@ -595,9 +619,10 @@ function executeFocusExtraction(
     focusWaste,
     collateralDamage,
     variance: {
-      expected: 1,
-      actual: actualExtracted,
-      range: [1, bonusChance > 0 ? 2 : 1],
+      expected: baseTicks,
+      actual: actualTicks,
+      range: [1, bonusChance > 0 ? 2 : 1], // Yield range
+      luckDelta,
     },
   }
 
@@ -609,7 +634,7 @@ function executeFocusExtraction(
     actionType: "Gather",
     parameters,
     success: true,
-    timeConsumed: timeCost,
+    timeConsumed: actualTicks,
     skillGained: { skill, amount: xpAmount },
     levelUps: mergeLevelUps(levelUps, contractsCompleted),
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
@@ -636,7 +661,9 @@ function executeCarefulAllExtraction(
   skillLevel: number,
   rolls: RngRoll[],
   tickBefore: number,
-  timeCost: number,
+  actualTicks: number,
+  baseTicks: number,
+  luckDelta: number,
   parameters: Record<string, unknown>
 ): ActionLog {
   // Get materials with Careful (M16) unlock
@@ -682,12 +709,21 @@ function executeCarefulAllExtraction(
   const xpAmount = actualExtracted
   const levelUps = grantXP(state, skill, xpAmount)
 
+  // Update player's cumulative luck
+  state.player.gatheringLuckDelta += luckDelta
+
   const extraction: ExtractionLog = {
     mode: GatherMode.CAREFUL_ALL,
     extracted,
     discardedItems: discardedItems.length > 0 ? discardedItems : undefined,
     focusWaste: 0,
     collateralDamage: {}, // No collateral in CAREFUL mode
+    variance: {
+      expected: baseTicks,
+      actual: actualTicks,
+      range: [1, bonusChance > 0 ? 2 : 1], // Yield range
+      luckDelta,
+    },
   }
 
   // Check for contract completion
@@ -698,7 +734,7 @@ function executeCarefulAllExtraction(
     actionType: "Gather",
     parameters,
     success: true,
-    timeConsumed: timeCost,
+    timeConsumed: actualTicks,
     skillGained: { skill, amount: xpAmount },
     levelUps: mergeLevelUps(levelUps, contractsCompleted),
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
