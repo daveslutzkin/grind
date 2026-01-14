@@ -9,7 +9,7 @@ describe("metrics", () => {
   describe("createMetricsCollector", () => {
     it("starts with zero ticks in all categories", () => {
       const collector = createMetricsCollector()
-      const result = collector.finalize("max_ticks", 1, 0, 0)
+      const result = collector.finalize("max_ticks", 1, 0, [], 0)
 
       expect(result.ticksSpent.mining).toBe(0)
       expect(result.ticksSpent.traveling).toBe(0)
@@ -23,7 +23,7 @@ describe("metrics", () => {
       collector.recordAction("Mine", 5)
       collector.recordAction("Mine", 5)
 
-      const result = collector.finalize("max_ticks", 1, 0, 10)
+      const result = collector.finalize("max_ticks", 1, 0, [], 10)
       expect(result.ticksSpent.mining).toBe(10)
     })
 
@@ -32,7 +32,7 @@ describe("metrics", () => {
       collector.recordAction("Travel", 15)
       collector.recordAction("ReturnToTown", 20)
 
-      const result = collector.finalize("max_ticks", 1, 0, 35)
+      const result = collector.finalize("max_ticks", 1, 0, [], 35)
       expect(result.ticksSpent.traveling).toBe(35)
     })
 
@@ -40,7 +40,7 @@ describe("metrics", () => {
       const collector = createMetricsCollector()
       collector.recordAction("Explore", 10)
 
-      const result = collector.finalize("max_ticks", 1, 0, 10)
+      const result = collector.finalize("max_ticks", 1, 0, [], 10)
       expect(result.ticksSpent.exploring).toBe(10)
     })
 
@@ -48,7 +48,7 @@ describe("metrics", () => {
       const collector = createMetricsCollector()
       collector.recordAction("DepositInventory", 3)
 
-      const result = collector.finalize("max_ticks", 1, 0, 3)
+      const result = collector.finalize("max_ticks", 1, 0, [], 3)
       expect(result.ticksSpent.inventoryManagement).toBe(3)
     })
 
@@ -56,19 +56,33 @@ describe("metrics", () => {
       const collector = createMetricsCollector()
       collector.recordAction("Wait", 1)
 
-      const result = collector.finalize("max_ticks", 1, 0, 1)
+      const result = collector.finalize("max_ticks", 1, 0, [], 1)
       expect(result.ticksSpent.waiting).toBe(1)
     })
 
     it("records level-ups", () => {
       const collector = createMetricsCollector()
-      collector.recordLevelUp(2, 100, 4)
-      collector.recordLevelUp(3, 250, 13)
+      collector.recordLevelUp("Mining", 2, 100, 4, 1, 10)
+      collector.recordLevelUp("Mining", 3, 250, 13, 1, 25)
 
-      const result = collector.finalize("target_reached", 3, 13, 250)
+      const result = collector.finalize("target_reached", 3, 13, [], 250)
       expect(result.levelUpTicks).toHaveLength(2)
-      expect(result.levelUpTicks[0]).toEqual({ level: 2, tick: 100, cumulativeXp: 4 })
-      expect(result.levelUpTicks[1]).toEqual({ level: 3, tick: 250, cumulativeXp: 13 })
+      expect(result.levelUpTicks[0]).toEqual({
+        skill: "Mining",
+        level: 2,
+        tick: 100,
+        cumulativeXp: 4,
+        distance: 1,
+        actionCount: 10,
+      })
+      expect(result.levelUpTicks[1]).toEqual({
+        skill: "Mining",
+        level: 3,
+        tick: 250,
+        cumulativeXp: 13,
+        distance: 1,
+        actionCount: 25,
+      })
     })
 
     it("tracks max distance reached", () => {
@@ -77,7 +91,7 @@ describe("metrics", () => {
       collector.recordMaxDistance(2)
       collector.recordMaxDistance(1) // Going back shouldn't reduce max
 
-      const result = collector.finalize("max_ticks", 1, 0, 100)
+      const result = collector.finalize("max_ticks", 1, 0, [], 100)
       expect(result.maxDistanceReached).toBe(2)
     })
 
@@ -91,7 +105,7 @@ describe("metrics", () => {
         lastAction: { type: "Wait" as const },
       }
 
-      const result = collector.finalize("stall", 2, 10, 1000, stallSnapshot)
+      const result = collector.finalize("stall", 2, 10, [], 1000, stallSnapshot)
       expect(result.stallSnapshot).toEqual(stallSnapshot)
     })
   })
@@ -109,6 +123,7 @@ describe("metrics", () => {
       terminationReason,
       finalLevel: 2,
       finalXp,
+      finalSkills: [{ skill: "Mining", level: 2, totalXp: finalXp }],
       totalTicks,
       ticksSpent: { mining: 0, traveling: 0, exploring: 0, inventoryManagement: 0, waiting: 0 },
       levelUpTicks: [],
@@ -193,6 +208,7 @@ describe("metrics", () => {
           terminationReason: "target_reached",
           finalLevel: 2,
           finalXp: 10,
+          finalSkills: [{ skill: "Mining", level: 2, totalXp: 10 }],
           totalTicks: 100,
           ticksSpent: {
             mining: 50,
@@ -210,6 +226,7 @@ describe("metrics", () => {
           terminationReason: "target_reached",
           finalLevel: 2,
           finalXp: 10,
+          finalSkills: [{ skill: "Mining", level: 2, totalXp: 10 }],
           totalTicks: 80,
           ticksSpent: {
             mining: 40,

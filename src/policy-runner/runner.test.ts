@@ -129,7 +129,9 @@ describe("runner", () => {
         expect(record.policyAction.type).toBeDefined()
         expect(typeof record.ticksConsumed).toBe("number")
         expect(typeof record.success).toBe("boolean")
-        expect(typeof record.xpGained).toBe("number")
+        expect(Array.isArray(record.xpGained)).toBe(true)
+        expect(Array.isArray(record.levelsAfter)).toBe(true)
+        expect(Array.isArray(record.levelUps)).toBe(true)
       }
     })
 

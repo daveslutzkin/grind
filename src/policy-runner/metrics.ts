@@ -5,6 +5,7 @@
  * and aggregating results across multiple runs.
  */
 
+import type { SkillID } from "../types.js"
 import type {
   MetricsCollector,
   TicksSpent,
@@ -14,6 +15,7 @@ import type {
   RunResult,
   PolicyAggregates,
   PolicyAction,
+  SkillSnapshot,
 } from "./types.js"
 
 /**
@@ -52,8 +54,15 @@ export function createMetricsCollector(): MetricsCollector {
       }
     },
 
-    recordLevelUp(level: number, tick: number, cumulativeXp: number): void {
-      levelUpTicks.push({ level, tick, cumulativeXp })
+    recordLevelUp(
+      skill: SkillID,
+      level: number,
+      tick: number,
+      cumulativeXp: number,
+      distance: number,
+      actionCount: number
+    ): void {
+      levelUpTicks.push({ skill, level, tick, cumulativeXp, distance, actionCount })
     },
 
     recordMaxDistance(distance: number): void {
@@ -66,13 +75,15 @@ export function createMetricsCollector(): MetricsCollector {
       terminationReason: TerminationReason,
       finalLevel: number,
       finalXp: number,
+      finalSkills: SkillSnapshot[],
       totalTicks: number,
       stallSnapshot?: StallSnapshot
-    ): Omit<RunResult, "seed" | "policyId"> {
+    ): Omit<RunResult, "seed" | "policyId" | "actionLog"> {
       return {
         terminationReason,
         finalLevel,
         finalXp,
+        finalSkills,
         totalTicks,
         ticksSpent: { ...ticksSpent },
         levelUpTicks: [...levelUpTicks],

@@ -11,7 +11,15 @@ import { runBatch } from "./batch.js"
 import { safeMiner } from "./policies/safe.js"
 import { greedyMiner } from "./policies/greedy.js"
 import { balancedMiner } from "./policies/balanced.js"
-import type { Policy, PolicyAction, RunResult } from "./types.js"
+import type {
+  Policy,
+  PolicyAction,
+  RunResult,
+  ActionRecord,
+  SkillXpGain,
+  LevelUpRecord,
+} from "./types.js"
+import type { SkillID } from "../types.js"
 
 const POLICIES: Record<string, Policy> = {
   safe: safeMiner,
@@ -166,6 +174,122 @@ export function formatPolicyAction(action: PolicyAction): string {
 }
 
 /**
+ * Format XP gains for display
+ */
+function formatXpGains(xpGained: SkillXpGain[]): string {
+  if (xpGained.length === 0) return "0"
+  return xpGained.map((g) => `${g.skill.slice(0, 3)}:${g.amount}`).join(" ")
+}
+
+/**
+ * Format levels for display
+ */
+function formatLevels(record: ActionRecord): string {
+  if (record.levelsAfter.length === 0) return ""
+  return record.levelsAfter.map((l) => `${l.skill.slice(0, 3)}:${l.level}`).join(" ")
+}
+
+/**
+ * Format level-ups for highlighting
+ */
+function formatLevelUps(record: ActionRecord): string {
+  if (record.levelUps.length === 0) return ""
+  return record.levelUps.map((l) => `*** ${l.skill} LEVEL ${l.level} ***`).join(" ")
+}
+
+/**
+ * Sort level-up records by skill name then level
+ */
+function sortLevelUps(levelUps: LevelUpRecord[]): LevelUpRecord[] {
+  return [...levelUps].sort((a, b) => {
+    const skillCompare = a.skill.localeCompare(b.skill)
+    if (skillCompare !== 0) return skillCompare
+    return a.level - b.level
+  })
+}
+
+/**
+ * Calculate percentile from a sorted array of numbers
+ */
+function percentile(sortedValues: number[], p: number): number {
+  if (sortedValues.length === 0) return 0
+  const index = Math.ceil(p * sortedValues.length) - 1
+  return sortedValues[Math.max(0, Math.min(index, sortedValues.length - 1))]
+}
+
+/**
+ * Aggregate level-up data across multiple runs for a specific skill/level
+ */
+interface LevelUpAggregate {
+  skill: SkillID
+  level: number
+  tick: { p10: number; p50: number; p90: number }
+  actions: { p10: number; p50: number; p90: number }
+  distance: { p10: number; p50: number; p90: number }
+  count: number // How many runs reached this level
+}
+
+/**
+ * Compute level progression aggregates from multiple run results
+ */
+function computeLevelProgressionAggregates(results: RunResult[]): LevelUpAggregate[] {
+  // Group level-ups by skill and level
+  const grouped = new Map<string, LevelUpRecord[]>()
+
+  for (const result of results) {
+    for (const lu of result.levelUpTicks) {
+      const key = `${lu.skill}:${lu.level}`
+      if (!grouped.has(key)) {
+        grouped.set(key, [])
+      }
+      grouped.get(key)!.push(lu)
+    }
+  }
+
+  // Compute aggregates for each skill/level
+  const aggregates: LevelUpAggregate[] = []
+
+  for (const [key, records] of grouped) {
+    const [skill, levelStr] = key.split(":")
+    const level = parseInt(levelStr, 10)
+
+    const ticks = records.map((r) => r.tick).sort((a, b) => a - b)
+    const actions = records.map((r) => r.actionCount).sort((a, b) => a - b)
+    const distances = records.map((r) => r.distance).sort((a, b) => a - b)
+
+    aggregates.push({
+      skill: skill as SkillID,
+      level,
+      tick: {
+        p10: percentile(ticks, 0.1),
+        p50: percentile(ticks, 0.5),
+        p90: percentile(ticks, 0.9),
+      },
+      actions: {
+        p10: percentile(actions, 0.1),
+        p50: percentile(actions, 0.5),
+        p90: percentile(actions, 0.9),
+      },
+      distance: {
+        p10: percentile(distances, 0.1),
+        p50: percentile(distances, 0.5),
+        p90: percentile(distances, 0.9),
+      },
+      count: records.length,
+    })
+  }
+
+  // Sort by skill then level
+  aggregates.sort((a, b) => {
+    const skillCompare = a.skill.localeCompare(b.skill)
+    if (skillCompare !== 0) return skillCompare
+    return a.level - b.level
+  })
+
+  return aggregates
+}
+
+/**
  * Print single run result
  */
 function printResult(result: RunResult, verbose: boolean, logActions: boolean): void {
@@ -177,11 +301,21 @@ function printResult(result: RunResult, verbose: boolean, logActions: boolean): 
   console.log(`Seed: ${result.seed}`)
   console.log(`Policy: ${result.policyId}`)
   console.log(`Termination: ${result.terminationReason}`)
-  console.log(`Final Level: ${result.finalLevel}`)
-  console.log(`Final XP: ${result.finalXp}`)
   console.log(`Total Ticks: ${result.totalTicks}`)
   console.log(`Max Distance: ${result.maxDistanceReached}`)
   console.log()
+
+  // Show all skill XP
+  console.log("Final Skills:")
+  if (result.finalSkills.length === 0) {
+    console.log(`  Mining: Level ${result.finalLevel}, ${result.finalXp} XP`)
+  } else {
+    for (const skill of result.finalSkills) {
+      console.log(`  ${skill.skill}: Level ${skill.level}, ${skill.totalXp} XP`)
+    }
+  }
+  console.log()
+
   console.log("Time Breakdown:")
   console.log(
     `  Mining: ${result.ticksSpent.mining} ticks (${((result.ticksSpent.mining / result.totalTicks) * 100).toFixed(1)}%)`
@@ -195,11 +329,21 @@ function printResult(result: RunResult, verbose: boolean, logActions: boolean): 
   console.log(`  Inventory: ${result.ticksSpent.inventoryManagement} ticks`)
   console.log(`  Waiting: ${result.ticksSpent.waiting} ticks`)
 
-  if (verbose && result.levelUpTicks.length > 0) {
+  // Always show level progression with enhanced info (sorted by skill then level)
+  if (result.levelUpTicks.length > 0) {
+    const sortedLevelUps = sortLevelUps(result.levelUpTicks)
     console.log()
     console.log("Level Progression:")
-    for (const lu of result.levelUpTicks) {
-      console.log(`  Level ${lu.level} at tick ${lu.tick} (${lu.cumulativeXp} total XP)`)
+    console.log("  Skill       Level  Tick    Actions  Distance  XP")
+    console.log("  " + "-".repeat(50))
+    for (const lu of sortedLevelUps) {
+      const skillName = lu.skill.padEnd(10)
+      const level = String(lu.level).padStart(5)
+      const tick = String(lu.tick).padStart(6)
+      const actions = String(lu.actionCount).padStart(8)
+      const distance = String(lu.distance).padStart(8)
+      const xp = String(lu.cumulativeXp).padStart(5)
+      console.log(`  ${skillName} ${level} ${tick} ${actions} ${distance} ${xp}`)
     }
   }
 
@@ -219,13 +363,19 @@ function printResult(result: RunResult, verbose: boolean, logActions: boolean): 
     console.log("ACTION LOG")
     console.log("=".repeat(60))
     console.log()
-    console.log("Tick\tTicks\tXP\tAction")
-    console.log("-".repeat(60))
+    console.log("Tick\tTicks\tXP\t\tLevels\t\tAction")
+    console.log("-".repeat(80))
     for (const record of result.actionLog) {
       const status = record.success ? "" : " [FAILED]"
-      console.log(
-        `${record.tick}\t${record.ticksConsumed}\t${record.xpGained}\t${formatPolicyAction(record.policyAction)}${status}`
-      )
+      const xpStr = formatXpGains(record.xpGained).padEnd(12)
+      const levelStr = formatLevels(record).padEnd(12)
+      const levelUpStr = formatLevelUps(record)
+
+      let line = `${record.tick}\t${record.ticksConsumed}\t${xpStr}\t${levelStr}\t${formatPolicyAction(record.policyAction)}${status}`
+      if (levelUpStr) {
+        line += `\n\t\t${levelUpStr}`
+      }
+      console.log(line)
     }
   }
 }
@@ -320,6 +470,11 @@ async function runBatchMode(args: ReturnType<typeof parseArgs>): Promise<void> {
 
   for (const policyId of Object.keys(result.aggregates.byPolicy)) {
     const agg = result.aggregates.byPolicy[policyId]
+    const policyResults = result.results.filter((r) => r.policyId === policyId)
+    const stalledSeeds = policyResults
+      .filter((r) => r.terminationReason === "stall")
+      .map((r) => r.seed)
+
     console.log(`Policy: ${policyId}`)
     console.log(`  Runs: ${agg.runCount}`)
     console.log(`  Stall Rate: ${(agg.stallRate * 100).toFixed(1)}%`)
@@ -328,6 +483,29 @@ async function runBatchMode(args: ReturnType<typeof parseArgs>): Promise<void> {
     )
     console.log(`  Avg XP/Tick: ${agg.avgXpPerTick.toFixed(3)}`)
     console.log(`  Avg Max Distance: ${agg.avgMaxDistance.toFixed(1)}`)
+
+    // Show stalled seeds for debugging
+    if (stalledSeeds.length > 0) {
+      console.log(`  Stalled Seeds: ${stalledSeeds.join(", ")}`)
+    }
+
+    // Show level progression summary with p10/p50/p90
+    const levelAggregates = computeLevelProgressionAggregates(policyResults)
+    if (levelAggregates.length > 0) {
+      console.log()
+      console.log("  Level Progression (p10 / p50 / p90):")
+      console.log("  Skill       Level  Count   Tick                Actions             Distance")
+      console.log("  " + "-".repeat(80))
+      for (const la of levelAggregates) {
+        const skillName = la.skill.padEnd(10)
+        const level = String(la.level).padStart(5)
+        const count = String(la.count).padStart(5)
+        const tickStr = `${la.tick.p10} / ${la.tick.p50} / ${la.tick.p90}`.padStart(18)
+        const actionsStr = `${la.actions.p10} / ${la.actions.p50} / ${la.actions.p90}`.padStart(18)
+        const distStr = `${la.distance.p10} / ${la.distance.p50} / ${la.distance.p90}`.padStart(18)
+        console.log(`  ${skillName} ${level} ${count}   ${tickStr}  ${actionsStr}  ${distStr}`)
+      }
+    }
     console.log()
   }
 

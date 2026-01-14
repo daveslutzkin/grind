@@ -6,7 +6,7 @@
  * WorldState to policies - only the sanitized PolicyObservation.
  */
 
-import type { AreaID, NodeID, MaterialID, GatherMode } from "../types.js"
+import type { AreaID, NodeID, MaterialID, GatherMode, SkillID } from "../types.js"
 
 // ============================================================================
 // Policy Observation Types
@@ -167,15 +167,34 @@ export interface TicksSpent {
  * Record of a level-up event.
  */
 export interface LevelUpRecord {
+  skill: SkillID
   level: number
   tick: number
   cumulativeXp: number
+  distance: number // Max distance reached at time of level-up
+  actionCount: number // Total actions taken at time of level-up
 }
 
 /**
  * Termination reason for a run.
  */
 export type TerminationReason = "target_reached" | "max_ticks" | "stall"
+
+/**
+ * XP gained for a single skill.
+ */
+export interface SkillXpGain {
+  skill: SkillID
+  amount: number
+}
+
+/**
+ * Skill level snapshot.
+ */
+export interface SkillLevelSnapshot {
+  skill: SkillID
+  level: number
+}
 
 /**
  * Record of a single action taken during simulation.
@@ -185,7 +204,18 @@ export interface ActionRecord {
   policyAction: PolicyAction
   ticksConsumed: number
   success: boolean
-  xpGained: number
+  xpGained: SkillXpGain[] // XP gained per skill
+  levelsAfter: SkillLevelSnapshot[] // Levels after this action (only skills that have gained XP)
+  levelUps: SkillLevelSnapshot[] // Skills that leveled up on this action
+}
+
+/**
+ * Skill state snapshot.
+ */
+export interface SkillSnapshot {
+  skill: SkillID
+  level: number
+  totalXp: number
 }
 
 /**
@@ -197,8 +227,9 @@ export interface RunResult {
 
   // Termination
   terminationReason: TerminationReason
-  finalLevel: number
-  finalXp: number
+  finalLevel: number // Mining level (for backwards compat)
+  finalXp: number // Mining XP (for backwards compat)
+  finalSkills: SkillSnapshot[] // All skills that gained XP
   totalTicks: number
 
   // Time breakdown
@@ -268,13 +299,21 @@ export interface BatchResult {
  */
 export interface MetricsCollector {
   recordAction(actionType: PolicyAction["type"], ticksConsumed: number): void
-  recordLevelUp(level: number, tick: number, cumulativeXp: number): void
+  recordLevelUp(
+    skill: SkillID,
+    level: number,
+    tick: number,
+    cumulativeXp: number,
+    distance: number,
+    actionCount: number
+  ): void
   recordMaxDistance(distance: number): void
   finalize(
     terminationReason: TerminationReason,
     finalLevel: number,
     finalXp: number,
+    finalSkills: SkillSnapshot[],
     totalTicks: number,
     stallSnapshot?: StallSnapshot
-  ): Omit<RunResult, "seed" | "policyId">
+  ): Omit<RunResult, "seed" | "policyId" | "actionLog">
 }

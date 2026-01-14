@@ -3,6 +3,7 @@
  */
 
 import { formatDuration, formatPolicyAction } from "./cli.js"
+import { GatherMode } from "../types.js"
 import type { PolicyAction } from "./types.js"
 
 describe("cli", () => {
@@ -34,8 +35,12 @@ describe("cli", () => {
     })
 
     it("formats Mine action with mode", () => {
-      const action: PolicyAction = { type: "Mine", nodeId: "node-123", mode: "CAREFUL" }
-      expect(formatPolicyAction(action)).toBe("Mine(node-123, CAREFUL)")
+      const action: PolicyAction = {
+        type: "Mine",
+        nodeId: "node-123",
+        mode: GatherMode.CAREFUL_ALL,
+      }
+      expect(formatPolicyAction(action)).toBe("Mine(node-123, CAREFUL_ALL)")
     })
 
     it("formats Explore action", () => {

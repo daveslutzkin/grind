@@ -9,13 +9,21 @@
  * 4. Returns structured results
  */
 
-import type { WorldState } from "../types.js"
+import type { WorldState, SkillID, SkillState } from "../types.js"
 import { getTotalXP } from "../types.js"
 import { createWorld } from "../world.js"
 import { executeAction } from "../engine.js"
 import { consumeTime } from "../stateHelpers.js"
 
-import type { RunConfig, RunResult, PolicyAction, ActionRecord } from "./types.js"
+import type {
+  RunConfig,
+  RunResult,
+  PolicyAction,
+  ActionRecord,
+  SkillXpGain,
+  SkillLevelSnapshot,
+  SkillSnapshot,
+} from "./types.js"
 import { getObservation, getMaxDiscoveredDistance } from "./observation.js"
 import { toEngineActions } from "./action-converter.js"
 import {
@@ -46,35 +54,104 @@ async function initializeWorld(seed: string): Promise<WorldState> {
 }
 
 /**
- * Calculate XP gained between two states.
+ * All skills that can gain XP in the policy runner.
  */
-function calculateXpGained(prevXp: number, prevLevel: number, state: WorldState): number {
-  const currentTotalXp = getTotalXP(state.player.skills.Mining)
-  const prevTotalXp = prevXp + sumXpToLevel(prevLevel)
-  return currentTotalXp - prevTotalXp
+const TRACKED_SKILLS: SkillID[] = ["Mining", "Exploration"]
+
+/**
+ * Capture a snapshot of all tracked skill states.
+ */
+function captureSkillStates(state: WorldState): Record<SkillID, SkillState> {
+  const snapshot: Partial<Record<SkillID, SkillState>> = {}
+  for (const skill of TRACKED_SKILLS) {
+    snapshot[skill] = { ...state.player.skills[skill] }
+  }
+  return snapshot as Record<SkillID, SkillState>
 }
 
 /**
- * Sum of XP required to reach a level (not including that level's threshold).
+ * Calculate XP gained for each skill between snapshots.
  */
-function sumXpToLevel(level: number): number {
-  let total = 0
-  for (let l = 1; l < level; l++) {
-    total += (l + 1) * (l + 1) // XP to go from l to l+1
+function calculateAllXpGained(
+  prevStates: Record<SkillID, SkillState>,
+  state: WorldState
+): SkillXpGain[] {
+  const gains: SkillXpGain[] = []
+  for (const skill of TRACKED_SKILLS) {
+    const prevTotal = getTotalXP(prevStates[skill])
+    const currentTotal = getTotalXP(state.player.skills[skill])
+    const gained = currentTotal - prevTotal
+    if (gained > 0) {
+      gains.push({ skill, amount: gained })
+    }
   }
-  return total
+  return gains
+}
+
+/**
+ * Get current levels for all skills that have gained XP.
+ */
+function getCurrentLevels(state: WorldState, skillsWithXp: Set<SkillID>): SkillLevelSnapshot[] {
+  const levels: SkillLevelSnapshot[] = []
+  for (const skill of skillsWithXp) {
+    levels.push({ skill, level: state.player.skills[skill].level })
+  }
+  return levels
+}
+
+/**
+ * Detect level-ups between skill state snapshots.
+ */
+function detectLevelUps(
+  prevStates: Record<SkillID, SkillState>,
+  state: WorldState
+): SkillLevelSnapshot[] {
+  const levelUps: SkillLevelSnapshot[] = []
+  for (const skill of TRACKED_SKILLS) {
+    const prevLevel = prevStates[skill].level
+    const newLevel = state.player.skills[skill].level
+    if (newLevel > prevLevel) {
+      levelUps.push({ skill, level: newLevel })
+    }
+  }
+  return levelUps
+}
+
+/**
+ * Get final skill snapshots for all skills that gained XP during the run.
+ */
+function getFinalSkillSnapshots(state: WorldState, skillsWithXp: Set<SkillID>): SkillSnapshot[] {
+  const snapshots: SkillSnapshot[] = []
+  for (const skill of skillsWithXp) {
+    snapshots.push({
+      skill,
+      level: state.player.skills[skill].level,
+      totalXp: getTotalXP(state.player.skills[skill]),
+    })
+  }
+  return snapshots
+}
+
+/**
+ * Result from executing a policy action.
+ */
+interface ActionExecutionResult {
+  ticksConsumed: number
+  xpGained: SkillXpGain[]
+  levelUps: SkillLevelSnapshot[]
+  nodesDiscovered: number
+  success: boolean
 }
 
 /**
  * Execute a policy action, handling multi-action conversions and waits.
- * Returns the total ticks consumed, XP gained, and success status.
+ * Returns the total ticks consumed, XP gained for all skills, level-ups, and success status.
  */
 async function executePolicyAction(
   state: WorldState,
   policyAction: PolicyAction
-): Promise<{ ticksConsumed: number; xpGained: number; nodesDiscovered: number; success: boolean }> {
-  const prevXp = state.player.skills.Mining.xp
-  const prevLevel = state.player.skills.Mining.level
+): Promise<ActionExecutionResult> {
+  const prevSkillStates = captureSkillStates(state)
   const prevKnownLocations = state.exploration.playerState.knownLocationIds.length
 
   const converted = toEngineActions(policyAction, state)
@@ -97,10 +174,11 @@ async function executePolicyAction(
     }
   }
 
-  const xpGained = calculateXpGained(prevXp, prevLevel, state)
+  const xpGained = calculateAllXpGained(prevSkillStates, state)
+  const levelUps = detectLevelUps(prevSkillStates, state)
   const nodesDiscovered = state.exploration.playerState.knownLocationIds.length - prevKnownLocations
 
-  return { ticksConsumed: totalTicks, xpGained, nodesDiscovered, success: allSucceeded }
+  return { ticksConsumed: totalTicks, xpGained, levelUps, nodesDiscovered, success: allSucceeded }
 }
 
 /**
@@ -125,6 +203,12 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
   // Action log (only populated if recordActions is true)
   const actionLog: ActionRecord[] = []
 
+  // Track which skills have gained XP during the run
+  const skillsWithXp = new Set<SkillID>()
+
+  // Track action count for level-up records
+  let actionCount = 0
+
   // Helper to build result with optional action log
   const buildResult = (metricsResult: Omit<RunResult, "seed" | "policyId" | "actionLog">) => ({
     seed,
@@ -143,6 +227,7 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
         "target_reached",
         currentLevel,
         getTotalXP(state.player.skills.Mining),
+        getFinalSkillSnapshots(state, skillsWithXp),
         state.time.currentTick
       )
       return buildResult(metricsResult)
@@ -153,6 +238,7 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
         "max_ticks",
         currentLevel,
         getTotalXP(state.player.skills.Mining),
+        getFinalSkillSnapshots(state, skillsWithXp),
         state.time.currentTick
       )
       return buildResult(metricsResult)
@@ -164,6 +250,7 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
         "stall",
         currentLevel,
         getTotalXP(state.player.skills.Mining),
+        getFinalSkillSnapshots(state, skillsWithXp),
         state.time.currentTick,
         stallSnapshot
       )
@@ -175,20 +262,24 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
     const policyAction = policy.decide(observation)
     lastPolicyAction = policyAction
 
-    // Track max distance
-    metrics.recordMaxDistance(getMaxDiscoveredDistance(observation))
+    // Track max distance before action (for level-up records)
+    const maxDistance = getMaxDiscoveredDistance(observation)
+    metrics.recordMaxDistance(maxDistance)
 
     // Record tick before execution for action log
     const tickBefore = state.time.currentTick
 
-    // Record previous level for level-up detection
-    const prevLevel = state.player.skills.Mining.level
-
     // Execute the action
-    const { ticksConsumed, xpGained, nodesDiscovered, success } = await executePolicyAction(
-      state,
-      policyAction
-    )
+    const { ticksConsumed, xpGained, levelUps, nodesDiscovered, success } =
+      await executePolicyAction(state, policyAction)
+
+    // Increment action count
+    actionCount++
+
+    // Track which skills gained XP
+    for (const gain of xpGained) {
+      skillsWithXp.add(gain.skill)
+    }
 
     // Record action if logging enabled
     if (recordActions) {
@@ -198,20 +289,27 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
         ticksConsumed,
         success,
         xpGained,
+        levelsAfter: getCurrentLevels(state, skillsWithXp),
+        levelUps,
       })
     }
 
     // Record metrics
     metrics.recordAction(policyAction.type, ticksConsumed)
-    stallDetector.recordTick(xpGained, nodesDiscovered)
 
-    // Record level-ups
-    const newLevel = state.player.skills.Mining.level
-    if (newLevel > prevLevel) {
+    // Calculate total XP gained for stall detection (only mining XP for backwards compat)
+    const miningXpGained = xpGained.find((g) => g.skill === "Mining")?.amount ?? 0
+    stallDetector.recordTick(miningXpGained, nodesDiscovered)
+
+    // Record level-ups for each skill
+    for (const levelUp of levelUps) {
       metrics.recordLevelUp(
-        newLevel,
+        levelUp.skill,
+        levelUp.level,
         state.time.currentTick,
-        getTotalXP(state.player.skills.Mining)
+        getTotalXP(state.player.skills[levelUp.skill]),
+        maxDistance,
+        actionCount
       )
     }
   }

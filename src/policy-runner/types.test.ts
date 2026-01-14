@@ -108,6 +108,7 @@ describe("types", () => {
       terminationReason: "target_reached",
       finalLevel: 5,
       finalXp: 100,
+      finalSkills: [{ skill: "Mining", level: 5, totalXp: 100 }],
       totalTicks: 1000,
       ticksSpent: {
         mining: 500,
@@ -117,8 +118,8 @@ describe("types", () => {
         waiting: 50,
       },
       levelUpTicks: [
-        { level: 2, tick: 100, cumulativeXp: 4 },
-        { level: 3, tick: 250, cumulativeXp: 13 },
+        { skill: "Mining", level: 2, tick: 100, cumulativeXp: 4, distance: 1, actionCount: 10 },
+        { skill: "Mining", level: 3, tick: 250, cumulativeXp: 13, distance: 1, actionCount: 25 },
       ],
       maxDistanceReached: 2,
     }
