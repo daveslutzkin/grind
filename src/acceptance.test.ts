@@ -322,11 +322,14 @@ describe("Acceptance Tests: Gathering MVP", () => {
       const log1 = await executeAction(world1, action1)
       const log10 = await executeAction(world10, action10)
 
-      // L1 should have significant waste (~60%)
-      expect(log1.extraction!.focusWaste).toBeGreaterThan(0.3)
-
-      // L10 should have 0% waste (perfect focus)
+      // In new mastery system, focus waste is always 0 (100% of 1 unit)
+      // Efficiency improvements come from Speed unlocks (faster time)
+      expect(log1.extraction!.focusWaste).toBe(0)
       expect(log10.extraction!.focusWaste).toBe(0)
+
+      // L10 should be faster than L1 due to Speed unlocks
+      // L1: 20 ticks (base), L10: should have Speed_II (10 ticks)
+      expect(log10.timeConsumed).toBeLessThan(log1.timeConsumed)
     })
 
     it("should have collateral damage with hard floor at high levels", async () => {
@@ -497,9 +500,10 @@ describe("Acceptance Tests: Gathering MVP", () => {
 
       const log = await executeAction(world, action)
 
-      // XP should be ticks × tier
+      // XP = 1 per unit extracted (new mastery system)
       expect(log.skillGained).toBeDefined()
-      expect(log.skillGained!.amount).toBe(log.timeConsumed * focusMat.tier)
+      const unitsExtracted = log.extraction!.extracted[0]?.quantity ?? 0
+      expect(log.skillGained!.amount).toBe(unitsExtracted)
     })
 
     it("should not double-punish bad RNG (yield varies, XP stays constant)", async () => {
@@ -550,15 +554,18 @@ describe("Acceptance Tests: Gathering MVP", () => {
         const log1 = await executeAction(world1, action1)
         const log2 = await executeAction(world2, action2)
 
-        // Yields may differ due to RNG
-        // But XP should be based on ticks × tier (constant for same tier)
-        expect(log1.skillGained!.amount).toBe(log1.timeConsumed * focusMat1.tier)
-        expect(log2.skillGained!.amount).toBe(log2.timeConsumed * focusMat2.tier)
+        // In new mastery system: XP = 1 per unit extracted
+        const units1 = log1.extraction!.extracted[0]?.quantity ?? 0
+        const units2 = log2.extraction!.extracted[0]?.quantity ?? 0
+        expect(log1.skillGained!.amount).toBe(units1)
+        expect(log2.skillGained!.amount).toBe(units2)
 
-        // If tiers match, XP should be the same even if yields differ
-        if (focusMat1.tier === focusMat2.tier) {
-          expect(log1.skillGained!.amount).toBe(log2.skillGained!.amount)
-        }
+        // XP varies only by bonus yield (1 or 2 units)
+        // Not punished by variance in old yield system
+        expect(units1).toBeGreaterThanOrEqual(1)
+        expect(units2).toBeGreaterThanOrEqual(1)
+        expect(units1).toBeLessThanOrEqual(2)
+        expect(units2).toBeLessThanOrEqual(2)
       }
     })
   })

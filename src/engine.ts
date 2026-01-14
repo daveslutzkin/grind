@@ -47,6 +47,7 @@ import {
   checkLeaveAction,
   getNodeSkill,
 } from "./actionChecks.js"
+import { getCollateralRate, getBonusYieldChance, hasMasteryUnlock } from "./masteryData.js"
 import {
   consumeTime,
   addToInventory,
@@ -512,49 +513,12 @@ async function* executeChop(state: WorldState, action: ChopAction): ActionGenera
 }
 
 /**
- * Calculate focus yield percentage based on skill level and material required level
- * At unlock level (matching required level): ~40%
- * At level 10 (max level): 100%
- */
-function calculateFocusYieldPercent(skillLevel: number, requiredLevel: number): number {
-  // Levels above required determine efficiency
-  const levelsAboveRequired = Math.max(0, skillLevel - requiredLevel)
-  // Base yield at unlock level is 40%
-  // Each level above adds ~7% (60% spread over ~9 levels = ~6.67% per level)
-  const yieldPercent = 0.4 + levelsAboveRequired * 0.0667
-  return Math.min(1.0, yieldPercent) // Cap at 100%
-}
-
-/**
- * Calculate collateral damage percentage based on skill level
- * High levels still have a 20% floor
- */
-function calculateCollateralPercent(skillLevel: number): number {
-  // At level 1: 60% collateral
-  // At level 10: 20% collateral (floor)
-  const reduction = (skillLevel - 1) * 0.0444 // ~4.44% per level above 1
-  const collateral = 0.6 - reduction
-  return Math.max(0.2, collateral) // Floor at 20%
-}
-
-/**
- * Calculate yield variance range based on distance band
- * NEAR: ±10%, MID: ±20%, FAR: ±30%
- */
-function getVarianceRange(locationId: string): [number, number] {
-  // Determine band from location ID prefix
-  if (locationId.includes("OUTSKIRTS") || locationId.includes("COPSE")) {
-    return [0.9, 1.1] // NEAR: ±10%
-  } else if (locationId.includes("QUARRY") || locationId.includes("DEEP_FOREST")) {
-    return [0.8, 1.2] // MID: ±20%
-  } else if (locationId.includes("SHAFT") || locationId.includes("GROVE")) {
-    return [0.7, 1.3] // FAR: ±30%
-  }
-  return [0.95, 1.05] // Default minimal variance
-}
-
-/**
  * Execute FOCUS mode extraction
+ *
+ * New model (Phase 3):
+ * - Extract exactly 1 unit (or 2 with bonus yield)
+ * - Collateral damage based on material mastery (getCollateralRate)
+ * - XP = 1 per unit extracted
  */
 function executeFocusExtraction(
   state: WorldState,
@@ -569,22 +533,15 @@ function executeFocusExtraction(
 ): ActionLog {
   const focusMaterial = node.materials.find((m) => m.materialId === focusMaterialId)!
 
-  // Calculate yield
-  const yieldPercent = calculateFocusYieldPercent(skillLevel, focusMaterial.requiredLevel)
-  const focusWaste = 1 - yieldPercent
+  // Check bonus yield (M10 = 5%, M20 = 10%)
+  const bonusChance = getBonusYieldChance(skillLevel, focusMaterialId)
+  const bonusRoll = rollFloat(state.rng, 0, 1, "bonus_yield")
+  const unitsToExtract = bonusRoll < bonusChance ? 2 : 1
 
-  // Get variance range based on area
-  const [varMin, varMax] = getVarianceRange(node.areaId)
-  const variance = rollFloat(state.rng, varMin, varMax, `variance_${focusMaterialId}`)
-
-  // Base extraction amount (units per 5-tick action)
-  const baseExtraction = 10
-  const expected = baseExtraction * yieldPercent
-  const actual = Math.round(expected * variance)
-  const actualExtracted = Math.min(actual, focusMaterial.remainingUnits)
-
-  // Extract from focus material
+  // Extract from node (max available)
+  const actualExtracted = Math.min(unitsToExtract, focusMaterial.remainingUnits)
   focusMaterial.remainingUnits -= actualExtracted
+
   const extracted: ItemStack[] =
     actualExtracted > 0 ? [{ itemId: focusMaterialId, quantity: actualExtracted }] : []
 
@@ -597,18 +554,17 @@ function executeFocusExtraction(
     }
   }
 
-  // Calculate and apply collateral damage
-  const collateralPercent = calculateCollateralPercent(skillLevel)
+  // Apply mastery-based collateral damage to other materials
+  const collateralRate = getCollateralRate(skillLevel, focusMaterialId)
   const collateralDamage: Record<string, number> = {}
 
   for (const material of node.materials) {
     if (material.materialId !== focusMaterialId && material.remainingUnits > 0) {
-      // Collateral affects other materials proportionally
-      const damageAmount = Math.round(actualExtracted * collateralPercent * 0.5)
-      const actualDamage = Math.min(damageAmount, material.remainingUnits)
-      material.remainingUnits -= actualDamage
-      if (actualDamage > 0) {
-        collateralDamage[material.materialId] = actualDamage
+      // Fractional damage: extracted units × collateral rate
+      const damage = actualExtracted * collateralRate
+      material.remainingUnits = Math.max(0, material.remainingUnits - damage)
+      if (damage > 0) {
+        collateralDamage[material.materialId] = damage
       }
     }
   }
@@ -619,9 +575,12 @@ function executeFocusExtraction(
     node.depleted = true
   }
 
-  // Grant XP: ticks × tier
-  const xpAmount = timeCost * focusMaterial.tier
+  // Grant XP: 1 per unit extracted
+  const xpAmount = actualExtracted
   const levelUps = grantXP(state, skill, xpAmount)
+
+  // No focus waste in new model (always 100% of 1 unit)
+  const focusWaste = 0
 
   const extraction: ExtractionLog = {
     mode: GatherMode.FOCUS,
@@ -631,9 +590,9 @@ function executeFocusExtraction(
     focusWaste,
     collateralDamage,
     variance: {
-      expected,
+      expected: 1,
       actual: actualExtracted,
-      range: [Math.round(expected * varMin), Math.round(expected * varMax)],
+      range: [1, bonusChance > 0 ? 2 : 1],
     },
   }
 
@@ -658,6 +617,12 @@ function executeFocusExtraction(
 
 /**
  * Execute CAREFUL_ALL mode extraction
+ *
+ * New model (Phase 3):
+ * - Select 1 random material from M16-unlocked materials
+ * - Extract 1 unit (or 2 with bonus yield)
+ * - No collateral damage
+ * - XP = 1 per unit extracted
  */
 function executeCarefulAllExtraction(
   state: WorldState,
@@ -669,37 +634,38 @@ function executeCarefulAllExtraction(
   timeCost: number,
   parameters: Record<string, unknown>
 ): ActionLog {
-  const extracted: ItemStack[] = []
+  // Get materials with Careful (M16) unlock
+  const carefulMaterials = node.materials.filter(
+    (m) => m.remainingUnits > 0 && hasMasteryUnlock(skillLevel, m.materialId, "Careful")
+  )
+
+  // Random selection from careful-unlocked materials
+  const selectionRoll = rollFloat(state.rng, 0, carefulMaterials.length, "careful_select")
+  const selectedIndex = Math.floor(selectionRoll)
+  const selectedMaterial = carefulMaterials[selectedIndex]
+
+  // Check bonus yield for selected material
+  const bonusChance = getBonusYieldChance(skillLevel, selectedMaterial.materialId)
+  const bonusRoll = rollFloat(state.rng, 0, 1, "bonus_yield")
+  const unitsToExtract = bonusRoll < bonusChance ? 2 : 1
+
+  // Extract from node (max available)
+  const actualExtracted = Math.min(unitsToExtract, selectedMaterial.remainingUnits)
+  selectedMaterial.remainingUnits -= actualExtracted
+
+  const extracted: ItemStack[] =
+    actualExtracted > 0 ? [{ itemId: selectedMaterial.materialId, quantity: actualExtracted }] : []
+
+  // Add to inventory with overflow handling
   const discardedItems: ItemStack[] = []
-  let totalXP = 0
-
-  // Extract from each material the player can gather
-  for (const material of node.materials) {
-    if (material.remainingUnits <= 0) continue
-    if (skillLevel < material.requiredLevel) continue
-
-    // CAREFUL_ALL is slower but gets 100% yield (no waste)
-    const baseExtraction = 5 // Slower extraction rate
-    const actualExtracted = Math.min(baseExtraction, material.remainingUnits)
-
-    if (actualExtracted > 0) {
-      material.remainingUnits -= actualExtracted
-      extracted.push({ itemId: material.materialId, quantity: actualExtracted })
-
-      // Add to inventory with overflow handling
-      const result = addToInventoryWithOverflow(state, material.materialId, actualExtracted)
-      if (result.discarded > 0) {
-        discardedItems.push({ itemId: material.materialId, quantity: result.discarded })
-      }
-
-      totalXP += material.tier
+  if (actualExtracted > 0) {
+    const result = addToInventoryWithOverflow(state, selectedMaterial.materialId, actualExtracted)
+    if (result.discarded > 0) {
+      discardedItems.push({ itemId: selectedMaterial.materialId, quantity: result.discarded })
     }
   }
 
-  // Scale XP by time
-  const xpAmount =
-    timeCost * (totalXP / node.materials.filter((m) => skillLevel >= m.requiredLevel).length || 1)
-  const levelUps = grantXP(state, skill, Math.round(xpAmount))
+  // No collateral damage in CAREFUL mode
 
   // Check if node is depleted
   const allDepleted = node.materials.every((m) => m.remainingUnits <= 0)
@@ -707,12 +673,16 @@ function executeCarefulAllExtraction(
     node.depleted = true
   }
 
+  // Grant XP: 1 per unit extracted
+  const xpAmount = actualExtracted
+  const levelUps = grantXP(state, skill, xpAmount)
+
   const extraction: ExtractionLog = {
     mode: GatherMode.CAREFUL_ALL,
     extracted,
     discardedItems: discardedItems.length > 0 ? discardedItems : undefined,
     focusWaste: 0,
-    collateralDamage: {}, // No collateral in CAREFUL_ALL
+    collateralDamage: {}, // No collateral in CAREFUL mode
   }
 
   // Check for contract completion
@@ -724,13 +694,13 @@ function executeCarefulAllExtraction(
     parameters,
     success: true,
     timeConsumed: timeCost,
-    skillGained: { skill, amount: Math.round(xpAmount) },
+    skillGained: { skill, amount: xpAmount },
     levelUps: mergeLevelUps(levelUps, contractsCompleted),
     contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
     rngRolls: rolls,
     extraction,
     xpSource: "node_extraction",
-    stateDeltaSummary: `Carefully extracted ${extracted.map((e) => `${e.quantity} ${e.itemId}`).join(", ")}`,
+    stateDeltaSummary: `Carefully extracted ${actualExtracted} ${selectedMaterial.materialId}`,
   }
 }
 

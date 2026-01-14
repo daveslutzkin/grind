@@ -243,7 +243,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
       expect(collateralMat.remainingUnits).toBeLessThan(collateralBefore)
     })
 
-    it("should grant XP based on ticks × tier", async () => {
+    it("should grant XP based on units extracted (1 per unit)", async () => {
       world.player.skills.Mining.level = 5 // High enough for any material
       const node = getFirstOreNode()
       // Find a material the player can extract
@@ -262,8 +262,9 @@ describe("Phase 3: Gather Action Overhaul", () => {
 
       expect(log.skillGained).toBeDefined()
       expect(log.skillGained!.skill).toBe("Mining")
-      // XP should be ticks × tier
-      expect(log.skillGained!.amount).toBe(log.timeConsumed * focusMat.tier)
+      // XP should be 1 per unit extracted (new mastery system)
+      const unitsExtracted = log.extraction!.extracted[0]?.quantity ?? 0
+      expect(log.skillGained!.amount).toBe(unitsExtracted)
     })
 
     it("should log variance info (expected, actual, range)", async () => {
@@ -1069,6 +1070,272 @@ describe("Phase 3: Gather Action Overhaul", () => {
 
       if (log.success) {
         expect(log.timeConsumed).toBe(5)
+      }
+    })
+  })
+
+  // ============================================================================
+  // Phase 3: 1-Unit Extraction Model
+  // ============================================================================
+
+  describe("Canonical Gathering: 1-Unit Extraction", () => {
+    it("should extract exactly 1 unit in FOCUS mode (no bonus yield)", async () => {
+      // Use a seed that doesn't trigger bonus yield
+      world = createWorld("no-bonus-seed")
+      oreAreaId = getOreAreaId(world)
+      world.exploration.playerState.currentAreaId = oreAreaId
+      world.player.skills.Mining.level = 9 // Before M10 Bonus_I
+      discoverAllLocations(world, oreAreaId)
+
+      const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
+      moveToNodeLocation(world, node)
+
+      const stoneMat = node.materials.find((m) => m.materialId === "STONE")!
+      const initialUnits = stoneMat.remainingUnits
+
+      const action: GatherAction = {
+        type: "Gather",
+        nodeId: node.nodeId,
+        mode: GatherMode.FOCUS,
+        focusMaterialId: "STONE",
+      }
+
+      const log = await executeAction(world, action)
+
+      if (log.success) {
+        // Should extract exactly 1 unit
+        expect(log.extraction!.extracted.length).toBe(1)
+        expect(log.extraction!.extracted[0].quantity).toBe(1)
+        expect(stoneMat.remainingUnits).toBe(initialUnits - 1)
+      }
+    })
+
+    it("should grant 1 XP per unit extracted (not ticks × tier)", async () => {
+      world.player.skills.Mining.level = 9 // Before M10 Bonus_I
+      const node = getFirstOreNode()
+
+      const action: GatherAction = {
+        type: "Gather",
+        nodeId: node.nodeId,
+        mode: GatherMode.FOCUS,
+        focusMaterialId: "STONE",
+      }
+
+      const log = await executeAction(world, action)
+
+      if (log.success) {
+        // XP = 1 per unit extracted (should be 1 unit = 1 XP)
+        expect(log.skillGained!.amount).toBe(1)
+      }
+    })
+  })
+
+  describe("Canonical Gathering: Mastery-Based Collateral Damage", () => {
+    it("should have 40% collateral at L1 (base rate)", async () => {
+      world.player.skills.Mining.level = 1
+      const node = getFirstOreNode()
+
+      // Find another material (not STONE) to check collateral damage
+      const otherMat = node.materials.find((m) => m.materialId !== "STONE" && m.remainingUnits > 0)
+      if (!otherMat) return // Skip if no other material
+
+      const otherBefore = otherMat.remainingUnits
+
+      const action: GatherAction = {
+        type: "Gather",
+        nodeId: node.nodeId,
+        mode: GatherMode.FOCUS,
+        focusMaterialId: "STONE",
+      }
+
+      const log = await executeAction(world, action)
+
+      if (log.success) {
+        // 1 unit extracted × 0.40 collateral = 0.4 fractional damage
+        const damage = otherBefore - otherMat.remainingUnits
+        expect(damage).toBeCloseTo(0.4, 1)
+      }
+    })
+
+    it("should have 30% collateral at L3 (Waste_I)", async () => {
+      world.player.skills.Mining.level = 3
+      const node = getFirstOreNode()
+
+      const otherMat = node.materials.find((m) => m.materialId !== "STONE" && m.remainingUnits > 0)
+      if (!otherMat) return
+
+      const otherBefore = otherMat.remainingUnits
+
+      const action: GatherAction = {
+        type: "Gather",
+        nodeId: node.nodeId,
+        mode: GatherMode.FOCUS,
+        focusMaterialId: "STONE",
+      }
+
+      const log = await executeAction(world, action)
+
+      if (log.success) {
+        // 1 unit extracted × 0.30 collateral = 0.3 fractional damage
+        const damage = otherBefore - otherMat.remainingUnits
+        expect(damage).toBeCloseTo(0.3, 1)
+      }
+    })
+
+    it("should have 15% collateral at L11 (Waste_II)", async () => {
+      world.player.skills.Mining.level = 11
+      const node = getFirstOreNode()
+
+      const otherMat = node.materials.find((m) => m.materialId !== "STONE" && m.remainingUnits > 0)
+      if (!otherMat) return
+
+      const otherBefore = otherMat.remainingUnits
+
+      const action: GatherAction = {
+        type: "Gather",
+        nodeId: node.nodeId,
+        mode: GatherMode.FOCUS,
+        focusMaterialId: "STONE",
+      }
+
+      const log = await executeAction(world, action)
+
+      if (log.success) {
+        const damage = otherBefore - otherMat.remainingUnits
+        expect(damage).toBeCloseTo(0.15, 2)
+      }
+    })
+
+    it("should have 5% collateral at L19 (Waste_III)", async () => {
+      world.player.skills.Mining.level = 19
+      const node = getFirstOreNode()
+
+      const otherMat = node.materials.find((m) => m.materialId !== "STONE" && m.remainingUnits > 0)
+      if (!otherMat) return
+
+      const otherBefore = otherMat.remainingUnits
+
+      const action: GatherAction = {
+        type: "Gather",
+        nodeId: node.nodeId,
+        mode: GatherMode.FOCUS,
+        focusMaterialId: "STONE",
+      }
+
+      const log = await executeAction(world, action)
+
+      if (log.success) {
+        const damage = otherBefore - otherMat.remainingUnits
+        expect(damage).toBeCloseTo(0.05, 2)
+      }
+    })
+  })
+
+  describe("Canonical Gathering: Bonus Yield", () => {
+    it("should have 0% bonus yield before M10", async () => {
+      world.player.skills.Mining.level = 9 // Just before M10
+
+      // Run multiple times - should never get 2 units
+      for (let i = 0; i < 10; i++) {
+        const testWorld = createWorld(`bonus-test-${i}`)
+        const testAreaId = getOreAreaId(testWorld)
+        testWorld.exploration.playerState.currentAreaId = testAreaId
+        testWorld.player.skills.Mining.level = 9
+        discoverAllLocations(testWorld, testAreaId)
+        const testNode = testWorld.world.nodes!.find((n) => n.areaId === testAreaId)!
+        moveToNodeLocation(testWorld, testNode)
+
+        const action: GatherAction = {
+          type: "Gather",
+          nodeId: testNode.nodeId,
+          mode: GatherMode.FOCUS,
+          focusMaterialId: "STONE",
+        }
+
+        const log = await executeAction(testWorld, action)
+
+        if (log.success) {
+          // Before M10, should never get 2 units
+          expect(log.extraction!.extracted[0].quantity).toBe(1)
+        }
+      }
+    })
+
+    it("should occasionally get 2 units with Bonus_I at M10 (5% chance)", async () => {
+      // This is a probabilistic test - we just verify it's possible
+      // With 5% chance, in 100 trials we expect ~5 doubles
+      let doubleCount = 0
+
+      for (let i = 0; i < 100; i++) {
+        const testWorld = createWorld(`bonus-m10-test-${i}`)
+        const testAreaId = getOreAreaId(testWorld)
+        testWorld.exploration.playerState.currentAreaId = testAreaId
+        testWorld.player.skills.Mining.level = 10 // M10 Bonus_I
+        discoverAllLocations(testWorld, testAreaId)
+        const testNode = testWorld.world.nodes!.find((n) => n.areaId === testAreaId)!
+        moveToNodeLocation(testWorld, testNode)
+
+        const action: GatherAction = {
+          type: "Gather",
+          nodeId: testNode.nodeId,
+          mode: GatherMode.FOCUS,
+          focusMaterialId: "STONE",
+        }
+
+        const log = await executeAction(testWorld, action)
+
+        if (log.success && log.extraction!.extracted[0].quantity === 2) {
+          doubleCount++
+        }
+      }
+
+      // Should get at least one double with 5% chance over 100 trials
+      // (99.4% probability of at least 1 double)
+      expect(doubleCount).toBeGreaterThan(0)
+    })
+  })
+
+  describe("Canonical Gathering: CAREFUL Mode Extraction", () => {
+    it("should extract 1 random material from M16-unlocked materials", async () => {
+      world.player.skills.Mining.level = 16 // STONE M16 = Careful
+      const node = getFirstOreNode()
+
+      const action: GatherAction = {
+        type: "Gather",
+        nodeId: node.nodeId,
+        mode: GatherMode.CAREFUL_ALL,
+      }
+
+      const log = await executeAction(world, action)
+
+      if (log.success) {
+        // Should extract exactly 1 material type with 1 unit
+        expect(log.extraction!.extracted.length).toBe(1)
+        expect(log.extraction!.extracted[0].quantity).toBe(1)
+      }
+    })
+
+    it("should have zero collateral damage in CAREFUL mode", async () => {
+      world.player.skills.Mining.level = 16
+      const node = getFirstOreNode()
+
+      // Find another material to check collateral
+      const otherMat = node.materials.find((m) => m.materialId !== "STONE" && m.remainingUnits > 0)
+      if (!otherMat) return
+
+      const otherBefore = otherMat.remainingUnits
+
+      const action: GatherAction = {
+        type: "Gather",
+        nodeId: node.nodeId,
+        mode: GatherMode.CAREFUL_ALL,
+      }
+
+      const log = await executeAction(world, action)
+
+      if (log.success) {
+        // No collateral damage
+        expect(otherMat.remainingUnits).toBe(otherBefore)
       }
     })
   })

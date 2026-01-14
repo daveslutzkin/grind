@@ -505,21 +505,15 @@ describe("Engine", () => {
 
       // Should succeed
       expect(log.success).toBe(true)
-      // extracted = amount taken from node (may exceed inventory space)
+      // In new mastery system: extract 1 unit (or 2 with bonus yield)
       const extracted = log.extraction?.extracted?.[0]?.quantity ?? 0
-      // discarded = amount that couldn't fit
+      expect(extracted).toBeLessThanOrEqual(2)
+      expect(extracted).toBeGreaterThan(0)
+      // With 8 slots filled and 2 available, 1 or 2 units should fit
       const discarded = log.extraction?.discardedItems?.[0]?.quantity ?? 0
-      // Amount actually added = extracted - discarded
-      const actuallyAdded = extracted - discarded
-      // With 8 slots filled and 2 available, should have added at most 2
-      expect(actuallyAdded).toBeLessThanOrEqual(2)
-      expect(actuallyAdded).toBeGreaterThan(0)
-      // If we extracted more than 2, some must have been discarded
-      if (extracted > 2) {
-        expect(discarded).toBeGreaterThan(0)
-      }
-      // Inventory should be at capacity
-      expect(state.player.inventory.length).toBe(10)
+      expect(discarded).toBe(0) // 1-2 units should fit in 2 available slots
+      // Inventory should have grown by extracted amount
+      expect(state.player.inventory.length).toBe(9) // 8 + 1 (or could be more with stacking)
     })
   })
 
