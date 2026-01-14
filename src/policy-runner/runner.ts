@@ -67,12 +67,12 @@ function sumXpToLevel(level: number): number {
 
 /**
  * Execute a policy action, handling multi-action conversions and waits.
- * Returns the total ticks consumed and XP gained.
+ * Returns the total ticks consumed, XP gained, and success status.
  */
 async function executePolicyAction(
   state: WorldState,
   policyAction: PolicyAction
-): Promise<{ ticksConsumed: number; xpGained: number; nodesDiscovered: number }> {
+): Promise<{ ticksConsumed: number; xpGained: number; nodesDiscovered: number; success: boolean }> {
   const prevXp = state.player.skills.Mining.xp
   const prevLevel = state.player.skills.Mining.level
   const prevKnownLocations = state.exploration.playerState.knownLocationIds.length
@@ -80,6 +80,7 @@ async function executePolicyAction(
   const converted = toEngineActions(policyAction, state)
 
   let totalTicks = 0
+  let allSucceeded = true
 
   if (converted.isWait) {
     // Wait action - consume 1 tick
@@ -90,13 +91,16 @@ async function executePolicyAction(
     for (const action of converted.actions) {
       const log = await executeAction(state, action)
       totalTicks += log.timeConsumed
+      if (!log.success) {
+        allSucceeded = false
+      }
     }
   }
 
   const xpGained = calculateXpGained(prevXp, prevLevel, state)
   const nodesDiscovered = state.exploration.playerState.knownLocationIds.length - prevKnownLocations
 
-  return { ticksConsumed: totalTicks, xpGained, nodesDiscovered }
+  return { ticksConsumed: totalTicks, xpGained, nodesDiscovered, success: allSucceeded }
 }
 
 /**
@@ -181,7 +185,7 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
     const prevLevel = state.player.skills.Mining.level
 
     // Execute the action
-    const { ticksConsumed, xpGained, nodesDiscovered } = await executePolicyAction(
+    const { ticksConsumed, xpGained, nodesDiscovered, success } = await executePolicyAction(
       state,
       policyAction
     )
@@ -192,7 +196,7 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
         tick: tickBefore,
         policyAction,
         ticksConsumed,
-        success: ticksConsumed > 0 || policyAction.type === "Wait",
+        success,
         xpGained,
       })
     }

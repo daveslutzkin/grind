@@ -19,6 +19,7 @@ import type {
   MaterialID,
 } from "../types.js"
 import { GatherMode } from "../types.js"
+import { isConnectionKnown } from "../exploration.js"
 import type { PolicyAction } from "./types.js"
 
 /**
@@ -135,27 +136,93 @@ function convertExploreAction(
 }
 
 /**
- * Convert a Travel policy action to an engine travel action.
+ * Convert a Travel policy action to engine travel actions.
  * Uses FarTravel for known areas, ExplorationTravel for unknown (frontier) areas.
+ * For unknown areas, may return multiple actions if we need to navigate to a
+ * connecting area first.
  */
 function convertTravelAction(
   action: Extract<PolicyAction, { type: "Travel" }>,
   state: WorldState
-): FarTravelAction | ExplorationTravelAction {
-  const isKnownArea = state.exploration.playerState.knownAreaIds.includes(action.toAreaId)
+): Action[] {
+  const destinationId = action.toAreaId
+  const currentAreaId = state.exploration.playerState.currentAreaId
+  const knownAreaIds = state.exploration.playerState.knownAreaIds
+  const knownConnectionIds = new Set(state.exploration.playerState.knownConnectionIds)
+  const isKnownArea = knownAreaIds.includes(destinationId)
 
   if (isKnownArea) {
-    return {
-      type: "FarTravel",
-      destinationAreaId: action.toAreaId,
+    // Known area - simple FarTravel
+    return [
+      {
+        type: "FarTravel",
+        destinationAreaId: destinationId,
+      } as FarTravelAction,
+    ]
+  }
+
+  // Unknown (frontier) area - need to find a connecting known area
+  // Check if we have a direct connection from current area
+  const hasDirectConnection = state.exploration.connections.some(
+    (conn) =>
+      isConnectionKnown(knownConnectionIds, conn.fromAreaId, conn.toAreaId) &&
+      ((conn.fromAreaId === currentAreaId && conn.toAreaId === destinationId) ||
+        (conn.toAreaId === currentAreaId && conn.fromAreaId === destinationId))
+  )
+
+  if (hasDirectConnection) {
+    // Can ExplorationTravel directly from here
+    return [
+      {
+        type: "ExplorationTravel",
+        destinationAreaId: destinationId,
+      } as ExplorationTravelAction,
+    ]
+  }
+
+  // Need to find a known area that connects to the destination
+  // and FarTravel there first
+  for (const conn of state.exploration.connections) {
+    if (!isConnectionKnown(knownConnectionIds, conn.fromAreaId, conn.toAreaId)) {
+      continue
     }
-  } else {
-    // Unknown area - use ExplorationTravel for single-hop to frontier
-    return {
-      type: "ExplorationTravel",
-      destinationAreaId: action.toAreaId,
+
+    // Check if this connection links a known area to our destination
+    let connectingKnownArea: string | null = null
+    if (conn.fromAreaId === destinationId && knownAreaIds.includes(conn.toAreaId)) {
+      connectingKnownArea = conn.toAreaId
+    } else if (conn.toAreaId === destinationId && knownAreaIds.includes(conn.fromAreaId)) {
+      connectingKnownArea = conn.fromAreaId
+    }
+
+    if (connectingKnownArea) {
+      // Found it - FarTravel to the connecting area, then ExplorationTravel to destination
+      const actions: Action[] = []
+
+      if (currentAreaId !== connectingKnownArea) {
+        actions.push({
+          type: "FarTravel",
+          destinationAreaId: connectingKnownArea,
+        } as FarTravelAction)
+      }
+
+      actions.push({
+        type: "ExplorationTravel",
+        destinationAreaId: destinationId,
+      } as ExplorationTravelAction)
+
+      return actions
     }
   }
+
+  // No known connection to this area - this shouldn't happen if the policy is correct
+  // but fall back to ExplorationTravel which will fail with a clear error
+  return [
+    {
+      type: "ExplorationTravel",
+      destinationAreaId: destinationId,
+    } as ExplorationTravelAction,
+  ]
 }
 
 /**
@@ -169,11 +236,27 @@ function convertReturnToTownAction(_state: WorldState): FarTravelAction {
 }
 
 /**
- * Convert a DepositInventory policy action to engine Store actions.
- * Returns an array of Store actions, one for each item type in inventory.
+ * Convert a DepositInventory policy action to engine actions.
+ * May include a TravelToLocation action if not at the warehouse.
+ * Returns an array of actions: optional navigation + Store actions.
  */
-function convertDepositInventoryAction(state: WorldState): StoreAction[] {
-  const actions: StoreAction[] = []
+function convertDepositInventoryAction(state: WorldState): Action[] {
+  // First check if there's anything to deposit
+  if (state.player.inventory.length === 0) {
+    return []
+  }
+
+  const actions: Action[] = []
+  const currentLocationId = state.exploration.playerState.currentLocationId
+  const warehouseLocationId = "TOWN_WAREHOUSE"
+
+  // Navigate to warehouse if not already there
+  if (currentLocationId !== warehouseLocationId) {
+    actions.push({
+      type: "TravelToLocation",
+      locationId: warehouseLocationId,
+    } as TravelToLocationAction)
+  }
 
   // Group inventory items by type
   const itemCounts = new Map<string, number>()
@@ -187,7 +270,7 @@ function convertDepositInventoryAction(state: WorldState): StoreAction[] {
       type: "Store",
       itemId,
       quantity,
-    })
+    } as StoreAction)
   }
 
   return actions
@@ -226,7 +309,7 @@ export function toEngineActions(action: PolicyAction, state: WorldState): Conver
 
     case "Travel":
       return {
-        actions: [convertTravelAction(action, state)],
+        actions: convertTravelAction(action, state),
         isWait: false,
       }
 

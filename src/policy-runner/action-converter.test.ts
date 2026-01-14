@@ -151,7 +151,7 @@ describe("action-converter", () => {
       expect(result.actions[0].type).toBe("FarTravel")
     })
 
-    it("converts DepositInventory to Store actions", () => {
+    it("converts DepositInventory to TravelToLocation + Store actions when not at warehouse", () => {
       const state = createWorld("test-seed")
 
       // Add items to inventory
@@ -162,8 +162,28 @@ describe("action-converter", () => {
       const result = toEngineActions({ type: "DepositInventory" }, state)
 
       expect(result.isWait).toBe(false)
-      // Should have Store actions for each item type
-      expect(result.actions.length).toBe(2) // COPPER_ORE and STONE
+      // Should have TravelToLocation + Store actions for each item type
+      expect(result.actions.length).toBe(3) // TravelToLocation + COPPER_ORE + STONE
+      expect(result.actions[0].type).toBe("TravelToLocation")
+      expect((result.actions[0] as { locationId: string }).locationId).toBe("TOWN_WAREHOUSE")
+      expect(result.actions.slice(1).every((a) => a.type === "Store")).toBe(true)
+    })
+
+    it("converts DepositInventory to Store actions only when already at warehouse", () => {
+      const state = createWorld("test-seed")
+
+      // Set player at warehouse
+      state.exploration.playerState.currentLocationId = "TOWN_WAREHOUSE"
+
+      // Add items to inventory
+      state.player.inventory.push({ itemId: "COPPER_ORE", quantity: 1 })
+      state.player.inventory.push({ itemId: "STONE", quantity: 1 })
+
+      const result = toEngineActions({ type: "DepositInventory" }, state)
+
+      expect(result.isWait).toBe(false)
+      // Should have only Store actions (no TravelToLocation needed)
+      expect(result.actions.length).toBe(2)
       expect(result.actions.every((a) => a.type === "Store")).toBe(true)
     })
 
