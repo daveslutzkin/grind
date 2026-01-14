@@ -142,10 +142,12 @@ describe("Acceptance Tests: Gathering MVP", () => {
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
       discoverAllLocations(world, oreAreaId)
-      world.player.skills.Mining.level = 5
 
       const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
       moveToNodeLocation(world, node)
+      // Set level high enough to mine the lowest-level material in this node
+      const minRequiredLevel = Math.min(...node.materials.map((m) => m.requiredLevel))
+      world.player.skills.Mining.level = minRequiredLevel
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Mining.level
       )!
@@ -177,10 +179,11 @@ describe("Acceptance Tests: Gathering MVP", () => {
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
       discoverAllLocations(world, oreAreaId)
-      world.player.skills.Mining.level = 5
-
       const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
       moveToNodeLocation(world, node)
+      // Set level high enough to mine the lowest-level material in this node
+      const minRequiredLevel = Math.min(...node.materials.map((m) => m.requiredLevel))
+      world.player.skills.Mining.level = minRequiredLevel
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Mining.level
       )!
@@ -228,13 +231,14 @@ describe("Acceptance Tests: Gathering MVP", () => {
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
       discoverAllLocations(world, oreAreaId)
-      world.player.skills.Mining.level = 5
-
       const node = world.world.nodes!.find(
         (n) => n.areaId === oreAreaId && n.materials.length >= 2
       )!
       moveToNodeLocation(world, node)
       expect(node.materials.length).toBeGreaterThanOrEqual(2)
+      // Set level high enough to mine the lowest-level material in this node
+      const minRequiredLevel = Math.min(...node.materials.map((m) => m.requiredLevel))
+      world.player.skills.Mining.level = minRequiredLevel
 
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Mining.level
@@ -262,10 +266,11 @@ describe("Acceptance Tests: Gathering MVP", () => {
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
       discoverAllLocations(world, oreAreaId)
-      world.player.skills.Mining.level = 5 // L4+ for CAREFUL_ALL
-
       const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
       moveToNodeLocation(world, node)
+      // Set level high enough to mine materials (also need L4+ for CAREFUL_ALL mode)
+      const minRequiredLevel = Math.min(...node.materials.map((m) => m.requiredLevel))
+      world.player.skills.Mining.level = Math.max(minRequiredLevel, 4) // L4+ for CAREFUL_ALL
 
       const action: GatherAction = {
         type: "Gather",
@@ -346,14 +351,14 @@ describe("Acceptance Tests: Gathering MVP", () => {
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
       discoverAllLocations(world, oreAreaId)
-      world.player.skills.Mining.level = 10 // Max level
-
       const node = world.world.nodes!.find(
         (n) => n.areaId === oreAreaId && n.materials.length >= 2
       )!
       moveToNodeLocation(world, node)
       const focusMat = node.materials[0]
       const collateralMat = node.materials.find((m) => m.materialId !== focusMat.materialId)!
+      // Set level high enough to mine the focus material (need to be significantly above for the test)
+      world.player.skills.Mining.level = focusMat.requiredLevel + 9 // "Max level" relative to material
 
       const action: GatherAction = {
         type: "Gather",
@@ -382,10 +387,11 @@ describe("Acceptance Tests: Gathering MVP", () => {
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
       discoverAllLocations(world, oreAreaId)
-      world.player.skills.Mining.level = 5
-
       const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
       moveToNodeLocation(world, node)
+      // Set level high enough to mine the lowest-level material in this node
+      const minRequiredLevel = Math.min(...node.materials.map((m) => m.requiredLevel))
+      world.player.skills.Mining.level = minRequiredLevel
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Mining.level
       )!
@@ -414,10 +420,11 @@ describe("Acceptance Tests: Gathering MVP", () => {
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
       discoverAllLocations(world, oreAreaId)
-      world.player.skills.Mining.level = 5
-
       const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
       moveToNodeLocation(world, node)
+      // Set level high enough to mine the lowest-level material in this node
+      const minRequiredLevel = Math.min(...node.materials.map((m) => m.requiredLevel))
+      world.player.skills.Mining.level = minRequiredLevel
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Mining.level
       )!
@@ -514,10 +521,11 @@ describe("Acceptance Tests: Gathering MVP", () => {
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
       discoverAllLocations(world, oreAreaId)
-      world.player.skills.Mining.level = 5
-
       const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
       moveToNodeLocation(world, node)
+      // Set level high enough to mine the lowest-level material in this node
+      const minRequiredLevel = Math.min(...node.materials.map((m) => m.requiredLevel))
+      world.player.skills.Mining.level = minRequiredLevel
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Mining.level
       )!

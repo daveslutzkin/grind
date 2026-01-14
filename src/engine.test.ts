@@ -447,12 +447,13 @@ describe("Engine", () => {
       makeAreaKnown(state, areaId)
       state.exploration.playerState.currentAreaId = areaId
       discoverAllLocations(state, areaId)
-      state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
       expect(node).toBeDefined()
       moveToNodeLocation(state, node!.nodeId, areaId)
-      // Find a material that requires level 1 or less
-      const material = node!.materials.find((m) => m.requiredLevel <= 1)
+      // Set level high enough to mine the lowest-level material in this node
+      const minRequiredLevel = Math.min(...node!.materials.map((m) => m.requiredLevel))
+      state.player.skills.Mining = { level: minRequiredLevel, xp: 0 }
+      const material = node!.materials.find((m) => m.requiredLevel <= minRequiredLevel)
       expect(material).toBeDefined()
       // Fill all 10 slots - inventory is completely full
       for (let i = 0; i < 10; i++) {
@@ -481,12 +482,13 @@ describe("Engine", () => {
       makeAreaKnown(state, areaId)
       state.exploration.playerState.currentAreaId = areaId
       discoverAllLocations(state, areaId)
-      state.player.skills.Mining = { level: 1, xp: 0 } // Need level 1 to gather
       const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
       expect(node).toBeDefined()
       moveToNodeLocation(state, node!.nodeId, areaId)
-      // Find a material that requires level 1 or less
-      const material = node!.materials.find((m) => m.requiredLevel <= 1)
+      // Set level high enough to mine the lowest-level material in this node
+      const minRequiredLevel = Math.min(...node!.materials.map((m) => m.requiredLevel))
+      state.player.skills.Mining = { level: minRequiredLevel, xp: 0 }
+      const material = node!.materials.find((m) => m.requiredLevel <= minRequiredLevel)
       expect(material).toBeDefined()
       // Fill 8 of 10 slots - 2 slots available
       for (let i = 0; i < 8; i++) {

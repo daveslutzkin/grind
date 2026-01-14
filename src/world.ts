@@ -214,18 +214,15 @@ export interface MaterialDefinition {
 }
 
 export const MATERIALS: Record<string, MaterialDefinition> = {
-  // Mining materials - distance 1 (tier 1-2)
+  // Mining materials - per mining-levels-1-200.md
   STONE: { tier: 1, skill: "Mining", requiredLevel: 1, baseUnits: 100 },
-  COPPER_ORE: { tier: 1, skill: "Mining", requiredLevel: 1, baseUnits: 80 },
-  TIN_ORE: { tier: 2, skill: "Mining", requiredLevel: 2, baseUnits: 60 },
-
-  // Mining materials - distance 2 (tier 3-4)
-  IRON_ORE: { tier: 3, skill: "Mining", requiredLevel: 5, baseUnits: 50 },
-  SILVER_ORE: { tier: 4, skill: "Mining", requiredLevel: 8, baseUnits: 30 },
-
-  // Mining materials - distance 3+ (tier 5)
-  DEEP_ORE: { tier: 5, skill: "Mining", requiredLevel: 9, baseUnits: 40 },
-  MITHRIL_ORE: { tier: 5, skill: "Mining", requiredLevel: 10, baseUnits: 20 },
+  COPPER_ORE: { tier: 2, skill: "Mining", requiredLevel: 20, baseUnits: 80 },
+  TIN_ORE: { tier: 3, skill: "Mining", requiredLevel: 40, baseUnits: 60 },
+  IRON_ORE: { tier: 4, skill: "Mining", requiredLevel: 60, baseUnits: 50 },
+  SILVER_ORE: { tier: 5, skill: "Mining", requiredLevel: 80, baseUnits: 40 },
+  GOLD_ORE: { tier: 6, skill: "Mining", requiredLevel: 100, baseUnits: 30 },
+  MITHRIL_ORE: { tier: 7, skill: "Mining", requiredLevel: 120, baseUnits: 25 },
+  OBSIDIUM_ORE: { tier: 8, skill: "Mining", requiredLevel: 140, baseUnits: 20 },
 
   // Woodcutting materials - distance 1 (tier 1-2)
   GREEN_WOOD: { tier: 1, skill: "Woodcutting", requiredLevel: 1, baseUnits: 100 },
@@ -293,7 +290,7 @@ function getNodePoolsForDistance(distance: number): NodePoolConfig[] {
   return [
     {
       nodeType: NodeType.ORE_VEIN,
-      materialsPool: ["IRON_ORE", "SILVER_ORE", "DEEP_ORE", "MITHRIL_ORE"],
+      materialsPool: ["SILVER_ORE", "GOLD_ORE", "MITHRIL_ORE", "OBSIDIUM_ORE"],
       probability: 0.2, // Slightly lower at higher distances
     },
     {
