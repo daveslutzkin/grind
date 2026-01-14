@@ -4,7 +4,7 @@ This table lists **every Mining level** with exactly: **Level, Focus, Mastery, G
 |---:|---|---:|---|---|
 | 1 | Stone | M1 | Unlock | You can now mine Stone. |
 | 2 | Stone | M2 | Speed I | You mine Stone noticeably faster. |
-| 3 | Stone | M3 | Waste I | You waste less Stone when mining mixed veins. |
+| 3 | Stone | M3 | Waste I | Focusing on Stone causes less collateral damage to other materials. |
 | 4 | Stone | M4 | Stack I | You can carry larger stacks of Stone. |
 | 5 | Stone | M5 | Recognition I | You identify Stone quantities more quickly. |
 | 6 | Stone | M6 | Handling I | Carrying Stone slows you less. |
@@ -12,7 +12,7 @@ This table lists **every Mining level** with exactly: **Level, Focus, Mastery, G
 | 8 | Stone | M8 | Container I | You can store Stone in specialised containers. |
 | 9 | Stone | M9 | Speed II | You mine Stone faster. |
 | 10 | Stone | M10 | Reliability I | Stone yields are more consistent. |
-| 11 | Stone | M11 | Waste II | You waste even less Stone when mining mixed veins. |
+| 11 | Stone | M11 | Waste II | Focusing on Stone causes even less collateral damage. |
 | 12 | Stone | M12 | Value I | You get better prices for Stone. |
 | 13 | Stone | M13 | Stack II | You can carry even larger stacks of Stone. |
 | 14 | Stone | M14 | Recognition II | You instantly recognise exact Stone quantities. |
@@ -20,10 +20,10 @@ This table lists **every Mining level** with exactly: **Level, Focus, Mastery, G
 | 16 | Stone | M16 | Handling II | Carrying Stone slows you much less. |
 | 17 | Stone | M17 | Speed III | You mine Stone much faster. |
 | 18 | Stone | M18 | Container II | You can store Stone in advanced containers. |
-| 19 | Stone | M19 | Waste III | Stone waste is now extremely low. |
+| 19 | Stone | M19 | Waste III | Focusing on Stone causes minimal collateral damage. |
 | 20 | Copper | M1 | Unlock | You can now mine Copper. |
 | 21 | Copper | M2 | Speed I | You mine Copper noticeably faster. |
-| 22 | Copper | M3 | Waste I | You waste less Copper when mining mixed veins. |
+| 22 | Copper | M3 | Waste I | Focusing on Copper causes less collateral damage to other materials. |
 | 23 | Copper | M4 | Stack I | You can carry larger stacks of Copper. |
 | 24 | Copper | M5 | Recognition I | You identify Copper quantities more quickly. |
 | 25 | Copper | M6 | Handling I | Carrying Copper slows you less. |
@@ -31,7 +31,7 @@ This table lists **every Mining level** with exactly: **Level, Focus, Mastery, G
 | 27 | Copper | M8 | Container I | You can store Copper in specialised containers. |
 | 28 | Copper | M9 | Speed II | You mine Copper faster. |
 | 29 | Copper | M10 | Reliability I | Copper yields are more consistent. |
-| 30 | Copper | M11 | Waste II | You waste even less Copper when mining mixed veins. |
+| 30 | Copper | M11 | Waste II | Focusing on Copper causes even less collateral damage. |
 | 31 | Copper | M12 | Value I | You get better prices for Copper. |
 | 32 | Copper | M13 | Stack II | You can carry even larger stacks of Copper. |
 | 33 | Copper | M14 | Recognition II | You instantly recognise exact Copper quantities. |
@@ -40,10 +40,10 @@ This table lists **every Mining level** with exactly: **Level, Focus, Mastery, G
 | 36 | Copper | M17 | Speed III | You mine Copper much faster. |
 | 37 | Stone | M20 | Reliability II | Stone yields are now extremely consistent. |
 | 38 | Copper | M18 | Container II | You can store Copper in advanced containers. |
-| 39 | Copper | M19 | Waste III | Copper waste is now extremely low. |
+| 39 | Copper | M19 | Waste III | Focusing on Copper causes minimal collateral damage. |
 | 40 | Tin | M1 | Unlock | You can now mine Tin. |
 | 41 | Tin | M2 | Speed I | You mine Tin noticeably faster. |
-| 42 | Tin | M3 | Waste I | You waste less Tin when mining mixed veins. |
+| 42 | Tin | M3 | Waste I | Focusing on Tin causes less collateral damage to other materials. |
 | 43 | Tin | M4 | Stack I | You can carry larger stacks of Tin. |
 | 44 | Tin | M5 | Recognition I | You identify Tin quantities more quickly. |
 | 45 | Tin | M6 | Handling I | Carrying Tin slows you less. |
@@ -51,7 +51,7 @@ This table lists **every Mining level** with exactly: **Level, Focus, Mastery, G
 | 47 | Tin | M8 | Container I | You can store Tin in specialised containers. |
 | 48 | Tin | M9 | Speed II | You mine Tin faster. |
 | 49 | Tin | M10 | Reliability I | Tin yields are more consistent. |
-| 50 | Tin | M11 | Waste II | You waste even less Tin when mining mixed veins. |
+| 50 | Tin | M11 | Waste II | Focusing on Tin causes even less collateral damage. |
 | 51 | Tin | M12 | Value I | You get better prices for Tin. |
 | 52 | Tin | M13 | Stack II | You can carry even larger stacks of Tin. |
 | 53 | Tin | M14 | Recognition II | You instantly recognise exact Tin quantities. |
@@ -63,7 +63,7 @@ This table lists **every Mining level** with exactly: **Level, Focus, Mastery, G
 | 59 | Copper | M20 | Reliability II | Copper yields are now extremely consistent. |
 | 60 | Iron | M1 | Unlock | You can now mine Iron. |
 | 61 | Iron | M2 | Speed I | You mine Iron noticeably faster. |
-| 62 | Iron | M3 | Waste I | You waste less Iron when mining mixed veins. |
+| 62 | Iron | M3 | Waste I | Focusing on Iron causes less collateral damage to other materials. |
 | 63 | Iron | M4 | Stack I | You can carry larger stacks of Iron. |
 | 64 | Iron | M5 | Recognition I | You identify Iron quantities more quickly. |
 | 65 | Iron | M6 | Handling I | Carrying Iron slows you less. |
@@ -71,7 +71,7 @@ This table lists **every Mining level** with exactly: **Level, Focus, Mastery, G
 | 67 | Iron | M8 | Container I | You can store Iron in specialised containers. |
 | 68 | Iron | M9 | Speed II | You mine Iron faster. |
 | 69 | Iron | M10 | Reliability I | Iron yields are more consistent. |
-| 70 | Iron | M11 | Waste II | You waste even less Iron when mining mixed veins. |
+| 70 | Iron | M11 | Waste II | Focusing on Iron causes even less collateral damage. |
 | 71 | Iron | M12 | Value I | You get better prices for Iron. |
 | 72 | Iron | M13 | Stack II | You can carry even larger stacks of Iron. |
 | 73 | Stone | M23 | Ignore minor penalties | Minor penalties no longer affect Stone. |
@@ -83,7 +83,7 @@ This table lists **every Mining level** with exactly: **Level, Focus, Mastery, G
 | 79 | Iron | M16 | Handling II | Carrying Iron slows you much less. |
 | 80 | Silver | M1 | Unlock | You can now mine Silver. |
 | 81 | Silver | M2 | Speed I | You mine Silver noticeably faster. |
-| 82 | Silver | M3 | Waste I | You waste less Silver when mining mixed veins. |
+| 82 | Silver | M3 | Waste I | Focusing on Silver causes less collateral damage to other materials. |
 | 83 | Silver | M4 | Stack I | You can carry larger stacks of Silver. |
 | 84 | Silver | M5 | Recognition I | You identify Silver quantities more quickly. |
 | 85 | Silver | M6 | Handling I | Carrying Silver slows you less. |
@@ -93,8 +93,8 @@ This table lists **every Mining level** with exactly: **Level, Focus, Mastery, G
 | 89 | Silver | M9 | Speed II | You mine Silver faster. |
 | 90 | Silver | M10 | Reliability I | Silver yields are more consistent. |
 | 91 | Copper | M22 | Value II | You get premium prices for Copper. |
-| 92 | Silver | M11 | Waste II | You waste even less Silver when mining mixed veins. |
-| 93 | Tin | M19 | Waste III | Tin waste is now extremely low. |
+| 92 | Silver | M11 | Waste II | Focusing on Silver causes even less collateral damage. |
+| 93 | Tin | M19 | Waste III | Focusing on Tin causes minimal collateral damage. |
 | 94 | Silver | M12 | Value I | You get better prices for Silver. |
 | 95 | Copper | M23 | Ignore minor penalties | Minor penalties no longer affect Copper. |
 | 96 | Silver | M13 | Stack II | You can carry even larger stacks of Silver. |
@@ -103,7 +103,7 @@ This table lists **every Mining level** with exactly: **Level, Focus, Mastery, G
 | 99 | Silver | M14 | Recognition II | You instantly recognise exact Silver quantities. |
 | 100 | Gold | M1 | Unlock | You can now mine Gold. |
 | 101 | Gold | M2 | Speed I | You mine Gold noticeably faster. |
-| 102 | Gold | M3 | Waste I | You waste less Gold when mining mixed veins. |
+| 102 | Gold | M3 | Waste I | Focusing on Gold causes less collateral damage to other materials. |
 | 103 | Gold | M4 | Stack I | You can carry larger stacks of Gold. |
 | 104 | Copper | M24 | Refined fragments | You occasionally extract refined fragments of Copper. |
 | 105 | Gold | M5 | Recognition I | You identify Gold quantities more quickly. |
@@ -116,14 +116,14 @@ This table lists **every Mining level** with exactly: **Level, Focus, Mastery, G
 | 112 | Gold | M10 | Reliability I | Gold yields are more consistent. |
 | 113 | Tin | M22 | Value II | You get premium prices for Tin. |
 | 114 | Iron | M18 | Container II | You can store Iron in advanced containers. |
-| 115 | Gold | M11 | Waste II | You waste even less Gold when mining mixed veins. |
+| 115 | Gold | M11 | Waste II | Focusing on Gold causes even less collateral damage. |
 | 116 | Gold | M12 | Value I | You get better prices for Gold. |
 | 117 | Tin | M23 | Ignore minor penalties | Minor penalties no longer affect Tin. |
-| 118 | Iron | M19 | Waste III | Iron waste is now extremely low. |
+| 118 | Iron | M19 | Waste III | Focusing on Iron causes minimal collateral damage. |
 | 119 | Silver | M15 | Scavenge II | You find Silver more often while scavenging. |
 | 120 | Mithril | M1 | Unlock | You can now mine Mithril. |
 | 121 | Mithril | M2 | Speed I | You mine Mithril noticeably faster. |
-| 122 | Mithril | M3 | Waste I | You waste less Mithril when mining mixed veins. |
+| 122 | Mithril | M3 | Waste I | Focusing on Mithril causes less collateral damage to other materials. |
 | 123 | Mithril | M4 | Stack I | You can carry larger stacks of Mithril. |
 | 124 | Mithril | M5 | Recognition I | You identify Mithril quantities more quickly. |
 | 125 | Tin | M24 | Refined fragments | You occasionally extract refined fragments of Tin. |
@@ -139,11 +139,11 @@ This table lists **every Mining level** with exactly: **Level, Focus, Mastery, G
 | 135 | Gold | M13 | Stack II | You can carry even larger stacks of Gold. |
 | 136 | Iron | M22 | Value II | You get premium prices for Iron. |
 | 137 | Silver | M17 | Speed III | You mine Silver much faster. |
-| 138 | Mithril | M11 | Waste II | You waste even less Mithril when mining mixed veins. |
+| 138 | Mithril | M11 | Waste II | Focusing on Mithril causes even less collateral damage. |
 | 139 | Gold | M14 | Recognition II | You instantly recognise exact Gold quantities. |
 | 140 | Obsidium | M1 | Unlock | You can now mine Obsidium. |
 | 141 | Obsidium | M2 | Speed I | You mine Obsidium noticeably faster. |
-| 142 | Obsidium | M3 | Waste I | You waste less Obsidium when mining mixed veins. |
+| 142 | Obsidium | M3 | Waste I | Focusing on Obsidium causes less collateral damage to other materials. |
 | 143 | Obsidium | M4 | Stack I | You can carry larger stacks of Obsidium. |
 | 144 | Iron | M23 | Ignore minor penalties | Minor penalties no longer affect Iron. |
 | 145 | Obsidium | M5 | Recognition I | You identify Obsidium quantities more quickly. |
@@ -153,7 +153,7 @@ This table lists **every Mining level** with exactly: **Level, Focus, Mastery, G
 | 149 | Iron | M25 | Grandmaster | You can now extract high-grade Iron from bulk ore. |
 | 150 | Silver | M18 | Container II | You can store Silver in advanced containers. |
 | 151 | Obsidium | M8 | Container I | You can store Obsidium in specialised containers. |
-| 152 | Silver | M19 | Waste III | Silver waste is now extremely low. |
+| 152 | Silver | M19 | Waste III | Focusing on Silver causes minimal collateral damage. |
 | 153 | Obsidium | M9 | Speed II | You mine Obsidium faster. |
 | 154 | Silver | M20 | Reliability II | Silver yields are now extremely consistent. |
 | 155 | Gold | M15 | Scavenge II | You find Gold more often while scavenging. |
@@ -161,7 +161,7 @@ This table lists **every Mining level** with exactly: **Level, Focus, Mastery, G
 | 157 | Mithril | M12 | Value I | You get better prices for Mithril. |
 | 158 | Silver | M21 | Stack III | You can carry massive stacks of Silver. |
 | 159 | Gold | M16 | Handling II | Carrying Gold slows you much less. |
-| 160 | Obsidium | M11 | Waste II | You waste even less Obsidium when mining mixed veins. |
+| 160 | Obsidium | M11 | Waste II | Focusing on Obsidium causes even less collateral damage. |
 | 161 | Silver | M22 | Value II | You get premium prices for Silver. |
 | 162 | Mithril | M13 | Stack II | You can carry even larger stacks of Mithril. |
 | 163 | Gold | M17 | Speed III | You mine Gold much faster. |
@@ -171,7 +171,7 @@ This table lists **every Mining level** with exactly: **Level, Focus, Mastery, G
 | 167 | Silver | M24 | Refined fragments | You occasionally extract refined fragments of Silver. |
 | 168 | Gold | M18 | Container II | You can store Gold in advanced containers. |
 | 169 | Silver | M25 | Grandmaster | You can now extract high-grade Silver from bulk ore. |
-| 170 | Gold | M19 | Waste III | Gold waste is now extremely low. |
+| 170 | Gold | M19 | Waste III | Focusing on Gold causes minimal collateral damage. |
 | 171 | Mithril | M15 | Scavenge II | You find Mithril more often while scavenging. |
 | 172 | Obsidium | M13 | Stack II | You can carry even larger stacks of Obsidium. |
 | 173 | Gold | M20 | Reliability II | Gold yields are now extremely consistent. |
@@ -185,14 +185,14 @@ This table lists **every Mining level** with exactly: **Level, Focus, Mastery, G
 | 181 | Gold | M23 | Ignore minor penalties | Minor penalties no longer affect Gold. |
 | 182 | Obsidium | M16 | Handling II | Carrying Obsidium slows you much less. |
 | 183 | Gold | M24 | Refined fragments | You occasionally extract refined fragments of Gold. |
-| 184 | Mithril | M19 | Waste III | Mithril waste is now extremely low. |
+| 184 | Mithril | M19 | Waste III | Focusing on Mithril causes minimal collateral damage. |
 | 185 | Gold | M25 | Grandmaster | You can now extract high-grade Gold from bulk ore. |
 | 186 | Obsidium | M17 | Speed III | You mine Obsidium much faster. |
 | 187 | Mithril | M20 | Reliability II | Mithril yields are now extremely consistent. |
 | 188 | Mithril | M21 | Stack III | You can carry massive stacks of Mithril. |
 | 189 | Obsidium | M18 | Container II | You can store Obsidium in advanced containers. |
 | 190 | Mithril | M22 | Value II | You get premium prices for Mithril. |
-| 191 | Obsidium | M19 | Waste III | Obsidium waste is now extremely low. |
+| 191 | Obsidium | M19 | Waste III | Focusing on Obsidium causes minimal collateral damage. |
 | 192 | Mithril | M23 | Ignore minor penalties | Minor penalties no longer affect Mithril. |
 | 193 | Obsidium | M20 | Reliability II | Obsidium yields are now extremely consistent. |
 | 194 | Mithril | M24 | Refined fragments | You occasionally extract refined fragments of Mithril. |
