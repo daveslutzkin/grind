@@ -3,12 +3,12 @@
 import { describe, it, expect } from "@jest/globals"
 import { generateFailureHint } from "../src/hints.js"
 import type { FailureDetails } from "../src/types.js"
-import { GatherMode, NodeType, getCurrentAreaId, ExplorationLocationType } from "../src/types.js"
+import { GatherMode, NodeType, getCurrentAreaId } from "../src/types.js"
 import { createWorld } from "../src/world.js"
 
 describe("generateFailureHint", () => {
   it("should return a generic message for unimplemented failure types", () => {
-    const state = createWorld()
+    const state = createWorld("test-seed")
     const details: FailureDetails = {
       type: "INSUFFICIENT_SKILL",
       reason: "level_too_low",
@@ -24,7 +24,7 @@ describe("generateFailureHint", () => {
   })
 
   it("should handle missing reason and context", () => {
-    const state = createWorld()
+    const state = createWorld("test-seed")
     const details: FailureDetails = {
       type: "NODE_NOT_FOUND",
     }
@@ -39,7 +39,7 @@ describe("generateFailureHint", () => {
   // Travel/Navigation Errors (Package 2)
   describe("Travel/Navigation Errors (Package 2)", () => {
     it("should provide hint for NO_PATH_TO_DESTINATION with undiscovered area", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "NO_PATH_TO_DESTINATION",
         reason: "undiscovered",
@@ -57,7 +57,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for NO_PATH_TO_DESTINATION with no_route", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "NO_PATH_TO_DESTINATION",
         reason: "no_route",
@@ -75,7 +75,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for AREA_NOT_KNOWN", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "AREA_NOT_KNOWN",
         reason: "undiscovered",
@@ -93,7 +93,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for ALREADY_IN_AREA", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "ALREADY_IN_AREA",
         reason: "already_here",
@@ -111,7 +111,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for LOCATION_NOT_DISCOVERED", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "LOCATION_NOT_DISCOVERED",
         reason: "not_discovered",
@@ -128,7 +128,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for UNKNOWN_LOCATION", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "UNKNOWN_LOCATION",
         reason: "not_found",
@@ -146,7 +146,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for ALREADY_AT_LOCATION", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "ALREADY_AT_LOCATION",
         reason: "already_here",
@@ -163,7 +163,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for NOT_AT_HUB", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "NOT_AT_HUB",
         reason: "at_location",
@@ -180,7 +180,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for ALREADY_AT_HUB", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "ALREADY_AT_HUB",
         reason: "at_hub",
@@ -197,7 +197,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for NOT_AT_NODE_LOCATION", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "NOT_AT_NODE_LOCATION",
         reason: "wrong_location",
@@ -218,7 +218,7 @@ describe("generateFailureHint", () => {
 
   describe("Skill/Resource Errors (Package 3)", () => {
     it("should provide hint for INSUFFICIENT_SKILL with location access", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "INSUFFICIENT_SKILL",
         reason: "location_access",
@@ -239,7 +239,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for INSUFFICIENT_SKILL with material level", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "INSUFFICIENT_SKILL",
         reason: "material_level",
@@ -259,7 +259,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for INSUFFICIENT_SKILL with recipe level", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "INSUFFICIENT_SKILL",
         reason: "recipe_level",
@@ -280,7 +280,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for MISSING_ITEMS with craft materials", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "MISSING_ITEMS",
         reason: "craft_materials",
@@ -303,7 +303,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for MISSING_ITEMS with store insufficient", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "MISSING_ITEMS",
         reason: "store_insufficient",
@@ -322,7 +322,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for MISSING_ITEMS with token required", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "MISSING_ITEMS",
         reason: "token_required",
@@ -341,7 +341,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for INVENTORY_FULL with craft output", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "INVENTORY_FULL",
         reason: "craft_output",
@@ -363,7 +363,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for MISSING_WEAPON", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "MISSING_WEAPON",
         reason: "no_weapon",
@@ -378,7 +378,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for MISSING_FOCUS_MATERIAL with no material specified", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "MISSING_FOCUS_MATERIAL",
         reason: "no_material_specified",
@@ -396,7 +396,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for MISSING_FOCUS_MATERIAL with material depleted", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "MISSING_FOCUS_MATERIAL",
         reason: "material_depleted",
@@ -415,7 +415,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for MISSING_FOCUS_MATERIAL with material not in node", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "MISSING_FOCUS_MATERIAL",
         reason: "material_not_in_node",
@@ -434,7 +434,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for MISSING_FOCUS_MATERIAL when node fully depleted", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "MISSING_FOCUS_MATERIAL",
         reason: "material_depleted",
@@ -455,7 +455,7 @@ describe("generateFailureHint", () => {
 
   describe("Gathering/Crafting Errors (Package 4)", () => {
     it("should provide hint for GATHER_FAILURE with skill check info", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "GATHER_FAILURE",
         reason: "skill_check_failed",
@@ -474,7 +474,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for NODE_NOT_FOUND when node doesn't exist", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "NODE_NOT_FOUND",
         reason: "node_does_not_exist",
@@ -492,7 +492,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for NODE_NOT_FOUND when no node in area", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "NODE_NOT_FOUND",
         reason: "no_node_in_area",
@@ -511,7 +511,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for NODE_NOT_FOUND when cannot infer node", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "NODE_NOT_FOUND",
         reason: "cannot_infer_node",
@@ -529,7 +529,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for NODE_DEPLETED", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "NODE_DEPLETED",
         reason: "no_materials_remaining",
@@ -549,7 +549,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for RECIPE_NOT_FOUND", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "RECIPE_NOT_FOUND",
         reason: "recipe_does_not_exist",
@@ -570,7 +570,7 @@ describe("generateFailureHint", () => {
 
   describe("Combat Errors (Package 5)", () => {
     it("should provide hint for COMBAT_FAILURE with enemy info", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "COMBAT_FAILURE",
         reason: "defeated",
@@ -591,7 +591,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for COMBAT_FAILURE with improved weapon", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "COMBAT_FAILURE",
         reason: "defeated",
@@ -612,7 +612,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for ENEMY_NOT_FOUND when at mob camp", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "ENEMY_NOT_FOUND",
         reason: "enemies_not_implemented",
@@ -632,7 +632,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for ENEMY_NOT_FOUND when not at mob camp", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "ENEMY_NOT_FOUND",
         reason: "not_at_mob_camp",
@@ -651,7 +651,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide generic hint for ENEMY_NOT_FOUND without specific reason", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "ENEMY_NOT_FOUND",
       }
@@ -667,7 +667,7 @@ describe("generateFailureHint", () => {
 
   describe("Guild/Contract Errors (Package 6)", () => {
     it("should provide hint for CONTRACT_NOT_FOUND", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "CONTRACT_NOT_FOUND",
         reason: "not_found",
@@ -684,7 +684,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for ALREADY_HAS_CONTRACT", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "ALREADY_HAS_CONTRACT",
         reason: "already_active",
@@ -701,7 +701,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for ALREADY_ENROLLED", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "ALREADY_ENROLLED",
         reason: "already_member",
@@ -719,7 +719,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for NOT_IN_EXPLORATION_GUILD", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "NOT_IN_EXPLORATION_GUILD",
         reason: "not_enrolled",
@@ -737,7 +737,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for WRONG_GUILD_TYPE with current guild", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "WRONG_GUILD_TYPE",
         reason: "wrong_guild",
@@ -757,7 +757,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for WRONG_GUILD_TYPE without current guild", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "WRONG_GUILD_TYPE",
         reason: "wrong_guild",
@@ -775,7 +775,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for GUILD_LEVEL_TOO_LOW for contract", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "GUILD_LEVEL_TOO_LOW",
         reason: "contract_level_too_high",
@@ -795,7 +795,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for GUILD_LEVEL_TOO_LOW for recipe", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "GUILD_LEVEL_TOO_LOW",
         reason: "recipe_level_too_high",
@@ -817,7 +817,7 @@ describe("generateFailureHint", () => {
 
   describe("Exploration Errors (Package 7)", () => {
     it("should provide hint for NO_CONNECTIONS", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "NO_CONNECTIONS",
         reason: "no_connections_from_area",
@@ -838,7 +838,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for NO_UNDISCOVERED_AREAS", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "NO_UNDISCOVERED_AREAS",
         reason: "all_connections_discovered",
@@ -859,7 +859,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for AREA_FULLY_EXPLORED", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "AREA_FULLY_EXPLORED",
         reason: "all_discoverable_found",
@@ -882,7 +882,7 @@ describe("generateFailureHint", () => {
 
   describe("Location/Mode Errors (Package 8)", () => {
     it("should provide hint for WRONG_LOCATION at contract location", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "WRONG_LOCATION",
         reason: "must_be_at_contract_location",
@@ -902,7 +902,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for WRONG_LOCATION at warehouse", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "WRONG_LOCATION",
         reason: "must_be_at_warehouse",
@@ -920,7 +920,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for WRONG_LOCATION at guild hall", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "WRONG_LOCATION",
         reason: "must_be_at_guild_hall",
@@ -937,7 +937,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for WRONG_LOCATION wrong area", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "WRONG_LOCATION",
         reason: "wrong_area",
@@ -956,7 +956,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for WRONG_LOCATION at combat guild", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "WRONG_LOCATION",
         reason: "must_be_at_combat_guild",
@@ -974,7 +974,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for MODE_NOT_UNLOCKED with next unlock", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "MODE_NOT_UNLOCKED",
         reason: "skill_level_too_low",
@@ -996,7 +996,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for MODE_NOT_UNLOCKED without next unlock", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "MODE_NOT_UNLOCKED",
         reason: "skill_level_too_low",
@@ -1017,7 +1017,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for ITEM_NOT_FOUND for Store action", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "ITEM_NOT_FOUND",
         reason: "not_in_inventory",
@@ -1036,7 +1036,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should provide hint for ITEM_NOT_FOUND for Drop action", () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const details: FailureDetails = {
         type: "ITEM_NOT_FOUND",
         reason: "not_in_inventory",
@@ -1057,7 +1057,7 @@ describe("generateFailureHint", () => {
 
   describe("Integration Tests: Travel/Navigation", () => {
     it("should produce structured failure for ALREADY_AT_LOCATION", async () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
 
       // Try to go to a location we're already at (should be null/hub initially)
       // First, let's travel to a location in TOWN
@@ -1092,7 +1092,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should produce structured failure for ALREADY_AT_HUB", async () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
 
       // Try to leave when already at hub
       const action: import("../src/types.js").LeaveAction = {
@@ -1112,7 +1112,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should produce structured failure for NOT_AT_HUB", async () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
 
       // First, travel to a location
       const action1: import("../src/types.js").TravelToLocationAction = {
@@ -1142,7 +1142,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should produce structured failure for UNKNOWN_LOCATION", async () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
 
       // Try to travel to a non-existent location
       const action: import("../src/types.js").TravelToLocationAction = {
@@ -1165,7 +1165,7 @@ describe("generateFailureHint", () => {
 
   describe("Integration Tests: Exploration", () => {
     it("should produce structured failure for Explore when not in guild", async () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
 
       // Try to explore without being in exploration guild
       const action: import("../src/types.js").ExploreAction = {
@@ -1184,7 +1184,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should produce structured failure for Survey with NO_UNDISCOVERED_AREAS", async () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
 
       const { executeAction } = await import("../src/engine.js")
 
@@ -1238,7 +1238,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should produce structured failure for Explore with AREA_FULLY_EXPLORED", async () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
 
       const { executeAction } = await import("../src/engine.js")
 
@@ -1309,7 +1309,7 @@ describe("generateFailureHint", () => {
 
   describe("Integration Tests: Skill/Resource Errors", () => {
     it("should produce structured failure for MISSING_ITEMS in crafting", async () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const { executeAction } = await import("../src/engine.js")
 
       // Go to Smithing Guild
@@ -1345,7 +1345,7 @@ describe("generateFailureHint", () => {
     })
 
     it.skip("should produce structured failure for INVENTORY_FULL in crafting", async () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const { executeAction } = await import("../src/engine.js")
 
       // Go to Smithing Guild
@@ -1393,9 +1393,8 @@ describe("generateFailureHint", () => {
     })
 
     it("should produce structured failure for MISSING_FOCUS_MATERIAL", async () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const { executeAction } = await import("../src/engine.js")
-      const { NodeType, GatherMode, ExplorationLocationType } = await import("../src/types.js")
 
       // Create a node in TOWN
       const areaId = "TOWN"
@@ -1469,7 +1468,7 @@ describe("generateFailureHint", () => {
 
   describe("Integration Tests: Guild/Contract", () => {
     it("should produce structured failure for CONTRACT_NOT_FOUND", async () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
 
       // Try to accept a non-existent contract
       const action: import("../src/types.js").AcceptContractAction = {
@@ -1493,7 +1492,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should produce structured failure for ALREADY_HAS_CONTRACT", async () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
 
       const { executeAction } = await import("../src/engine.js")
 
@@ -1529,7 +1528,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should produce structured failure for ALREADY_ENROLLED", async () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
 
       // First enroll in Mining guild
       const { executeAction } = await import("../src/engine.js")
@@ -1568,7 +1567,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should produce structured failure for NOT_IN_EXPLORATION_GUILD via Survey", async () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
 
       // Try to survey without being in exploration guild
       const action: import("../src/types.js").SurveyAction = {
@@ -1592,7 +1591,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should produce structured failure for WRONG_GUILD_TYPE", async () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
 
       // Go to Woodcrafting Guild
       const goAction: import("../src/types.js").TravelToLocationAction = {
@@ -1631,7 +1630,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should produce structured failure for GUILD_LEVEL_TOO_LOW for contract", async () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
 
       // Create a high-level contract that requires guild level > current level
       const highLevelContract: import("../src/types.js").Contract = {
@@ -1690,7 +1689,7 @@ describe("generateFailureHint", () => {
 
   describe("Integration Tests: Gathering/Crafting", () => {
     it("should produce structured failure for NODE_NOT_FOUND when node doesn't exist", async () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
 
       // Try to gather from a non-existent node
       const action: import("../src/types.js").GatherAction = {
@@ -1717,7 +1716,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should produce structured failure for NODE_DEPLETED when node is exhausted", async () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
 
       // Find any node in the world
       const node = state.world.nodes[0]
@@ -1775,7 +1774,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should produce structured failure for RECIPE_NOT_FOUND when recipe doesn't exist", async () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
 
       // Travel to a guild hall first (needed for crafting)
       const travelAction: import("../src/types.js").TravelToLocationAction = {
@@ -1809,7 +1808,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should produce structured failure for NODE_NOT_FOUND with Mine action when no ore vein in area", async () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
 
       // Ensure current area has no ORE_VEIN by removing them
       const currentAreaId = getCurrentAreaId(state)
@@ -1843,7 +1842,7 @@ describe("generateFailureHint", () => {
 
   describe("Integration Tests: Location/Mode Errors (Package 8)", () => {
     it("should produce structured failure for WRONG_LOCATION when storing without being at warehouse", async () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const { executeAction } = await import("../src/engine.js")
 
       // Add an item to inventory
@@ -1868,7 +1867,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should produce structured failure for MODE_NOT_UNLOCKED when using locked mode", async () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const { executeAction } = await import("../src/engine.js")
 
       // Set Mining to level 2 (APPRAISE requires level 3)
@@ -1911,7 +1910,7 @@ describe("generateFailureHint", () => {
       const action: import("../src/types.js").GatherAction = {
         type: "Gather",
         nodeId,
-        mode: import("../src/types.js").then((m) => m.GatherMode.APPRAISE),
+        mode: GatherMode.APPRAISE,
       }
 
       const log = await executeAction(state, action as any)
@@ -1929,7 +1928,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should produce structured failure for ITEM_NOT_FOUND when dropping item not in inventory", async () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
       const { executeAction } = await import("../src/engine.js")
 
       // Try to drop an item we don't have
@@ -1956,7 +1955,7 @@ describe("generateFailureHint", () => {
 
   describe("Integration Tests: Combat", () => {
     it("should produce structured failure for ENEMY_NOT_FOUND when not at mob camp", async () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
 
       // Try to fight when not at a mob camp
       const action: import("../src/types.js").FightAction = {
@@ -1980,7 +1979,7 @@ describe("generateFailureHint", () => {
     })
 
     it("should produce structured failure for ENEMY_NOT_FOUND when at mob camp (combat not implemented)", async () => {
-      const state = createWorld()
+      const state = createWorld("test-seed")
 
       // First, discover and travel to a distance-1 area with a mob camp
       // Survey to discover area
@@ -2011,9 +2010,7 @@ describe("generateFailureHint", () => {
 
       // Find a mob camp location
       const area = state.exploration.areas.get(distance1AreaId!)
-      const mobCamp = area?.locations.find(
-        (loc) => loc.type === "MOB_CAMP"
-      )
+      const mobCamp = area?.locations.find((loc) => loc.type === "MOB_CAMP")
 
       if (mobCamp && state.exploration.playerState.knownLocationIds.includes(mobCamp.id)) {
         // Travel to the mob camp

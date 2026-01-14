@@ -16,6 +16,7 @@ import type {
   PolicyAggregates,
   PolicyAction,
   SkillSnapshot,
+  ErrorCounts,
 } from "./types.js"
 
 /**
@@ -113,16 +114,20 @@ export function computeAggregates(results: RunResult[], policyId: string): Polic
     return {
       policyId,
       runCount: 0,
-      stallRate: 0,
+      errorCounts: {},
       ticksToTarget: { p10: 0, p50: 0, p90: 0 },
       avgXpPerTick: 0,
       avgMaxDistance: 0,
     }
   }
 
-  // Stall rate
-  const stalledCount = policyResults.filter((r) => r.terminationReason === "stall").length
-  const stallRate = stalledCount / policyResults.length
+  // Count errors by type (all non-success termination reasons)
+  const errorCounts: ErrorCounts = {}
+  for (const result of policyResults) {
+    if (result.terminationReason !== "target_reached") {
+      errorCounts[result.terminationReason] = (errorCounts[result.terminationReason] ?? 0) + 1
+    }
+  }
 
   // Ticks to target (only for runs that reached target)
   const successfulRuns = policyResults.filter((r) => r.terminationReason === "target_reached")
@@ -146,7 +151,7 @@ export function computeAggregates(results: RunResult[], policyId: string): Polic
   return {
     policyId,
     runCount: policyResults.length,
-    stallRate,
+    errorCounts,
     ticksToTarget,
     avgXpPerTick,
     avgMaxDistance,

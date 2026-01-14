@@ -55,16 +55,26 @@ function getNodeLocationId(nodeId: string): string | null {
 }
 
 /**
+ * Result of converting a Mine action.
+ */
+interface MineConversionResult {
+  actions: Action[]
+  failure?: "node_depleted"
+}
+
+/**
  * Convert a Mine policy action to engine actions.
  * May return multiple actions if navigation is needed:
  * 1. FarTravel to area (if not in correct area)
  * 2. TravelToLocation (if not at correct location within area)
  * 3. Mine action
+ *
+ * Returns a failure indicator if no mineable materials are available.
  */
 function convertMineAction(
   action: Extract<PolicyAction, { type: "Mine" }>,
   state: WorldState
-): Action[] {
+): MineConversionResult {
   const node = findNode(state, action.nodeId)
   if (!node) {
     throw new Error(`Node not found: ${action.nodeId}`)
@@ -100,7 +110,8 @@ function convertMineAction(
     mode === GatherMode.FOCUS ? selectBestFocusMaterial(node, miningLevel) : undefined
 
   if (mode === GatherMode.FOCUS && !focusMaterialId) {
-    throw new Error(`No mineable material found in node: ${action.nodeId}`)
+    // No mineable materials - return failure instead of throwing
+    return { actions: [], failure: "node_depleted" }
   }
 
   actions.push({
@@ -109,7 +120,7 @@ function convertMineAction(
     focusMaterialId,
   } as MineAction)
 
-  return actions
+  return { actions }
 }
 
 /**
@@ -277,12 +288,18 @@ function convertDepositInventoryAction(state: WorldState): Action[] {
 }
 
 /**
+ * Failure reasons that can occur during action conversion.
+ */
+export type ConversionFailure = "node_depleted"
+
+/**
  * Result of converting a policy action.
  * May result in multiple engine actions (e.g., DepositInventory -> multiple Store).
  */
 export interface ConvertedActions {
   actions: Action[]
   isWait: boolean
+  failure?: ConversionFailure
 }
 
 /**
@@ -295,11 +312,13 @@ export interface ConvertedActions {
  */
 export function toEngineActions(action: PolicyAction, state: WorldState): ConvertedActions {
   switch (action.type) {
-    case "Mine":
-      return {
-        actions: convertMineAction(action, state),
-        isWait: false,
+    case "Mine": {
+      const result = convertMineAction(action, state)
+      if (result.failure) {
+        return { actions: [], isWait: false, failure: result.failure }
       }
+      return { actions: result.actions, isWait: false }
+    }
 
     case "Explore":
       return {

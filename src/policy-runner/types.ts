@@ -179,7 +179,7 @@ export interface LevelUpRecord {
 /**
  * Termination reason for a run.
  */
-export type TerminationReason = "target_reached" | "max_ticks" | "stall"
+export type TerminationReason = "target_reached" | "max_ticks" | "stall" | "node_depleted"
 
 /**
  * XP gained for a single skill.
@@ -267,12 +267,17 @@ export interface BatchConfig {
 }
 
 /**
+ * Counts of runs by termination reason (excluding target_reached).
+ */
+export type ErrorCounts = Partial<Record<Exclude<TerminationReason, "target_reached">, number>>
+
+/**
  * Aggregated statistics for a policy across multiple runs.
  */
 export interface PolicyAggregates {
   policyId: string
   runCount: number
-  stallRate: number // 0-1
+  errorCounts: ErrorCounts // Counts by error type (stall, node_depleted, max_ticks)
   ticksToTarget: {
     p10: number
     p50: number

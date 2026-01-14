@@ -25,7 +25,7 @@ import type {
   SkillSnapshot,
 } from "./types.js"
 import { getObservation, getMaxDiscoveredDistance } from "./observation.js"
-import { toEngineActions } from "./action-converter.js"
+import { toEngineActions, type ConversionFailure } from "./action-converter.js"
 import {
   createStallDetector,
   createStallSnapshot,
@@ -141,11 +141,13 @@ interface ActionExecutionResult {
   levelUps: SkillLevelSnapshot[]
   nodesDiscovered: number
   success: boolean
+  failure?: ConversionFailure
 }
 
 /**
  * Execute a policy action, handling multi-action conversions and waits.
  * Returns the total ticks consumed, XP gained for all skills, level-ups, and success status.
+ * May return a failure indicator if the action cannot be executed.
  */
 async function executePolicyAction(
   state: WorldState,
@@ -155,6 +157,18 @@ async function executePolicyAction(
   const prevKnownLocations = state.exploration.playerState.knownLocationIds.length
 
   const converted = toEngineActions(policyAction, state)
+
+  // Check for conversion failure
+  if (converted.failure) {
+    return {
+      ticksConsumed: 0,
+      xpGained: [],
+      levelUps: [],
+      nodesDiscovered: 0,
+      success: false,
+      failure: converted.failure,
+    }
+  }
 
   let totalTicks = 0
   let allSucceeded = true
@@ -270,8 +284,20 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
     const tickBefore = state.time.currentTick
 
     // Execute the action
-    const { ticksConsumed, xpGained, levelUps, nodesDiscovered, success } =
+    const { ticksConsumed, xpGained, levelUps, nodesDiscovered, success, failure } =
       await executePolicyAction(state, policyAction)
+
+    // Check for conversion failure (e.g., no mineable materials in node)
+    if (failure === "node_depleted") {
+      const metricsResult = metrics.finalize(
+        "node_depleted",
+        currentLevel,
+        getTotalXP(state.player.skills.Mining),
+        getFinalSkillSnapshots(state, skillsWithXp),
+        state.time.currentTick
+      )
+      return buildResult(metricsResult)
+    }
 
     // Increment action count
     actionCount++

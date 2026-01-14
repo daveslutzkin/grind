@@ -15,6 +15,8 @@ import type {
   Policy,
   TerminationReason,
   RunResult,
+  ErrorCounts,
+  PolicyAggregates,
 } from "./types.js"
 
 describe("types", () => {
@@ -68,9 +70,35 @@ describe("types", () => {
   })
 
   it("TerminationReason covers all termination types", () => {
-    const reasons: TerminationReason[] = ["target_reached", "max_ticks", "stall"]
+    const reasons: TerminationReason[] = ["target_reached", "max_ticks", "stall", "node_depleted"]
 
-    expect(reasons).toHaveLength(3)
+    expect(reasons).toHaveLength(4)
+  })
+
+  it("ErrorCounts tracks errors by termination reason", () => {
+    const counts: ErrorCounts = {
+      stall: 2,
+      node_depleted: 3,
+      max_ticks: 1,
+    }
+
+    expect(counts.stall).toBe(2)
+    expect(counts.node_depleted).toBe(3)
+    expect(counts.max_ticks).toBe(1)
+  })
+
+  it("PolicyAggregates uses errorCounts instead of stallRate", () => {
+    const agg: PolicyAggregates = {
+      policyId: "test",
+      runCount: 10,
+      errorCounts: { stall: 2, node_depleted: 1 },
+      ticksToTarget: { p10: 100, p50: 200, p90: 300 },
+      avgXpPerTick: 0.1,
+      avgMaxDistance: 2.5,
+    }
+
+    expect(agg.errorCounts.stall).toBe(2)
+    expect(agg.errorCounts.node_depleted).toBe(1)
   })
 
   it("KnownNode has correct shape", () => {

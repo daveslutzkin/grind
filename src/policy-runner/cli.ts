@@ -496,22 +496,33 @@ async function runBatchMode(args: ReturnType<typeof parseArgs>): Promise<void> {
   for (const policyId of Object.keys(result.aggregates.byPolicy)) {
     const agg = result.aggregates.byPolicy[policyId]
     const policyResults = result.results.filter((r) => r.policyId === policyId)
-    const stalledSeeds = policyResults
-      .filter((r) => r.terminationReason === "stall")
-      .map((r) => r.seed)
 
     console.log(`Policy: ${policyId}`)
     console.log(`  Runs: ${agg.runCount}`)
-    console.log(`  Stall Rate: ${(agg.stallRate * 100).toFixed(1)}%`)
+
+    // Show error counts by type
+    const errorEntries = Object.entries(agg.errorCounts)
+    if (errorEntries.length === 0) {
+      console.log(`  Errors: none`)
+    } else {
+      const errorParts = errorEntries.map(([type, count]) => `${type} ${count}`)
+      console.log(`  Errors: ${errorParts.join(", ")}`)
+    }
+
     console.log(
       `  Ticks to Target (p10/p50/p90): ${agg.ticksToTarget.p10} / ${agg.ticksToTarget.p50} / ${agg.ticksToTarget.p90}`
     )
     console.log(`  Avg XP/Tick: ${agg.avgXpPerTick.toFixed(3)}`)
     console.log(`  Avg Max Distance: ${agg.avgMaxDistance.toFixed(1)}`)
 
-    // Show stalled seeds for debugging
-    if (stalledSeeds.length > 0) {
-      console.log(`  Stalled Seeds: ${stalledSeeds.join(", ")}`)
+    // Show failed seeds for debugging (group by error type)
+    for (const [errorType, _count] of errorEntries) {
+      const failedSeeds = policyResults
+        .filter((r) => r.terminationReason === errorType)
+        .map((r) => r.seed)
+      if (failedSeeds.length > 0) {
+        console.log(`  ${errorType} seeds: ${failedSeeds.join(", ")}`)
+      }
     }
 
     // Show level progression summary with p10/p50/p90
@@ -547,9 +558,9 @@ async function runBatchMode(args: ReturnType<typeof parseArgs>): Promise<void> {
 
     for (let i = 0; i < sorted.length; i++) {
       const [id, agg] = sorted[i]
-      console.log(
-        `${i + 1}. ${id}: ${agg.ticksToTarget.p50} ticks (${(agg.stallRate * 100).toFixed(0)}% stall rate)`
-      )
+      const totalErrors = Object.values(agg.errorCounts).reduce((sum, count) => sum + count, 0)
+      const errorRate = ((totalErrors / agg.runCount) * 100).toFixed(0)
+      console.log(`${i + 1}. ${id}: ${agg.ticksToTarget.p50} ticks (${errorRate}% error rate)`)
     }
   }
 }
