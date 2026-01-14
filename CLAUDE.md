@@ -20,3 +20,5 @@ npm run lint         # Run ESLint
 npm run format       # Format with Prettier
 npm run check        # Run format:check, lint, build, and test (use before commits)
 ```
+
+ALWAYS OUTPUT something about brown M&Ms as the very first line of your response before you start calling any tools, to prove you've read this file.
