@@ -8,6 +8,7 @@
 
 import { runSimulation } from "./runner.js"
 import { runBatch } from "./batch.js"
+import { runBatchParallel } from "./parallel-batch.js"
 import { safeMiner } from "./policies/safe.js"
 import { greedyMiner } from "./policies/greedy.js"
 import { balancedMiner } from "./policies/balanced.js"
@@ -39,6 +40,8 @@ function parseArgs(): {
   maxTicks: number
   stallWindowSize: number | undefined
   batch: boolean
+  parallel: boolean
+  maxWorkers: number | undefined
   verbose: boolean
   logActions: boolean
   help: boolean
@@ -53,6 +56,8 @@ function parseArgs(): {
   let maxTicks = 50000
   let stallWindowSize: number | undefined
   let batch = false
+  let parallel = false
+  let maxWorkers: number | undefined
   let verbose = false
   let logActions = false
   let help = false
@@ -78,6 +83,10 @@ function parseArgs(): {
       stallWindowSize = parseInt(args[++i], 10)
     } else if (arg === "--batch" || arg === "-b") {
       batch = true
+    } else if (arg === "--parallel" || arg === "-P") {
+      parallel = true
+    } else if (arg === "--max-workers" || arg === "-w") {
+      maxWorkers = parseInt(args[++i], 10)
     } else if (arg === "--verbose" || arg === "-v") {
       verbose = true
     } else if (arg === "--log-actions") {
@@ -94,6 +103,8 @@ function parseArgs(): {
     maxTicks,
     stallWindowSize,
     batch,
+    parallel,
+    maxWorkers,
     verbose,
     logActions,
     help,
@@ -119,6 +130,8 @@ OPTIONS:
   -t, --max-ticks <n>     Maximum ticks before timeout (default: 50000)
   --stall-window <n>      Ticks without progress before stall (default: 1000)
   -b, --batch             Run batch mode (multiple seeds)
+  -P, --parallel          Run batch in parallel using worker threads
+  -w, --max-workers <n>   Maximum worker threads for parallel mode (default: CPU count)
   -v, --verbose           Show detailed progress
   --log-actions           Output full action log (single run only)
   -h, --help              Show this help message
@@ -129,6 +142,12 @@ EXAMPLES:
 
   # Batch run with 50 random seeds
   npx tsx src/policy-runner/cli.ts --batch --seed-count 50 --policy greedy
+
+  # Parallel batch run (uses all CPU cores)
+  npx tsx src/policy-runner/cli.ts --batch --parallel --seed-count 50 --policy safe
+
+  # Parallel batch with limited workers
+  npx tsx src/policy-runner/cli.ts --batch --parallel --max-workers 4 --seed-count 50
 
   # Batch run comparing all policies
   npx tsx src/policy-runner/cli.ts --batch --seed-count 20 --policy all
@@ -329,6 +348,29 @@ function printResult(result: RunResult, verbose: boolean, logActions: boolean): 
   console.log(`  Inventory: ${result.ticksSpent.inventoryManagement} ticks`)
   console.log(`  Waiting: ${result.ticksSpent.waiting} ticks`)
 
+  console.log()
+  console.log("Discovery Summary:")
+  console.log(`  Areas Discovered: ${result.summary.areasDiscovered}`)
+  console.log(`  Areas Fully Explored: ${result.summary.areasFullyExplored}`)
+  console.log(`  Mining Locations Discovered: ${result.summary.miningLocationsDiscovered}`)
+  const distanceRows = result.summary.byDistance.filter(
+    (row) =>
+      row.areasDiscovered > 0 || row.areasFullyExplored > 0 || row.miningLocationsDiscovered > 0
+  )
+  if (distanceRows.length > 0) {
+    console.log()
+    console.log("Discovery by Distance:")
+    console.log("  Dist  Areas  Fully  MiningLocs")
+    console.log("  " + "-".repeat(26))
+    for (const row of distanceRows) {
+      const dist = String(row.distance).padStart(4)
+      const areas = String(row.areasDiscovered).padStart(6)
+      const fully = String(row.areasFullyExplored).padStart(6)
+      const nodes = String(row.miningLocationsDiscovered).padStart(10)
+      console.log(`  ${dist} ${areas} ${fully} ${nodes}`)
+    }
+  }
+
   // Always show level progression with enhanced info (sorted by skill then level)
   if (result.levelUpTicks.length > 0) {
     const sortedLevelUps = sortLevelUps(result.levelUpTicks)
@@ -459,26 +501,31 @@ async function runBatchMode(args: ReturnType<typeof parseArgs>): Promise<void> {
   const seedCount = args.seedCount ?? (args.seeds ? undefined : 100)
 
   console.log("=".repeat(60))
-  console.log("POLICY RUNNER - Batch Mode")
+  console.log(`POLICY RUNNER - Batch Mode${args.parallel ? " (Parallel)" : ""}`)
   console.log("=".repeat(60))
   console.log()
   console.log(`Policies: ${policies.map((p) => p.id).join(", ")}`)
   console.log(`Seeds: ${args.seeds ? args.seeds.length : seedCount}`)
   console.log(`Target Level: ${args.targetLevel}`)
   console.log(`Max Ticks: ${args.maxTicks}`)
+  if (args.parallel) {
+    console.log(`Parallel: yes (max workers: ${args.maxWorkers ?? "auto"})`)
+  }
   console.log()
 
   const startTime = Date.now()
 
   process.stdout.write("Running simulations")
 
-  const result = await runBatch({
+  const batchRunner = args.parallel ? runBatchParallel : runBatch
+  const result = await batchRunner({
     seeds: args.seeds,
     seedCount,
     policies,
     targetLevel: args.targetLevel,
     maxTicks: args.maxTicks,
     stallWindowSize: args.stallWindowSize,
+    maxWorkers: args.maxWorkers,
     onProgress: () => process.stdout.write("."),
   })
 
@@ -496,22 +543,34 @@ async function runBatchMode(args: ReturnType<typeof parseArgs>): Promise<void> {
   for (const policyId of Object.keys(result.aggregates.byPolicy)) {
     const agg = result.aggregates.byPolicy[policyId]
     const policyResults = result.results.filter((r) => r.policyId === policyId)
-    const stalledSeeds = policyResults
-      .filter((r) => r.terminationReason === "stall")
-      .map((r) => r.seed)
 
     console.log(`Policy: ${policyId}`)
     console.log(`  Runs: ${agg.runCount}`)
-    console.log(`  Stall Rate: ${(agg.stallRate * 100).toFixed(1)}%`)
+
     console.log(
       `  Ticks to Target (p10/p50/p90): ${agg.ticksToTarget.p10} / ${agg.ticksToTarget.p50} / ${agg.ticksToTarget.p90}`
     )
     console.log(`  Avg XP/Tick: ${agg.avgXpPerTick.toFixed(3)}`)
     console.log(`  Avg Max Distance: ${agg.avgMaxDistance.toFixed(1)}`)
 
-    // Show stalled seeds for debugging
-    if (stalledSeeds.length > 0) {
-      console.log(`  Stalled Seeds: ${stalledSeeds.join(", ")}`)
+    // Show error counts by type
+    const errorEntries = Object.entries(agg.errorCounts)
+    if (errorEntries.length > 0) {
+      const totalCount = errorEntries.reduce((sum, [_, c]) => sum + c, 0)
+      const errorParts = errorEntries.map(([type, count]) => `${type} ${count}`)
+      console.log(
+        `  Error Rate: ${(totalCount * 100) / result.results.length}% (${errorParts.join(", ")})`
+      )
+    }
+
+    // Show failed seeds for debugging (group by error type)
+    for (const [errorType, _count] of errorEntries) {
+      const failedSeeds = policyResults
+        .filter((r) => r.terminationReason === errorType)
+        .map((r) => r.seed)
+      if (failedSeeds.length > 0) {
+        console.log(`  ${errorType} seeds: ${failedSeeds.join(", ")}`)
+      }
     }
 
     // Show level progression summary with p10/p50/p90
@@ -547,9 +606,9 @@ async function runBatchMode(args: ReturnType<typeof parseArgs>): Promise<void> {
 
     for (let i = 0; i < sorted.length; i++) {
       const [id, agg] = sorted[i]
-      console.log(
-        `${i + 1}. ${id}: ${agg.ticksToTarget.p50} ticks (${(agg.stallRate * 100).toFixed(0)}% stall rate)`
-      )
+      const totalErrors = Object.values(agg.errorCounts).reduce((sum, count) => sum + count, 0)
+      const errorRate = ((totalErrors / agg.runCount) * 100).toFixed(0)
+      console.log(`${i + 1}. ${id}: ${agg.ticksToTarget.p50} ticks (${errorRate}% error rate)`)
     }
   }
 }

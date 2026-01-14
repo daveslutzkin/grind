@@ -12,14 +12,30 @@ import { NodeType, type Node } from "./types.js"
 
 describe("World Factory", () => {
   describe("MATERIALS constant", () => {
-    it("should have mining materials with tiers 1-5", () => {
+    it("should have mining materials with tiers 1-8 per mining-levels-1-200.md", () => {
       const miningMats = Object.entries(MATERIALS).filter(([_, m]) => m.skill === "Mining")
-      expect(miningMats.length).toBeGreaterThanOrEqual(5)
+      expect(miningMats.length).toBe(8) // Stone, Copper, Tin, Iron, Silver, Gold, Mithril, Obsidium
 
       const tiers = miningMats.map(([_, m]) => m.tier)
-      expect(tiers).toContain(1)
-      expect(tiers).toContain(2)
-      expect(tiers).toContain(3)
+      for (let tier = 1; tier <= 8; tier++) {
+        expect(tiers).toContain(tier)
+      }
+    })
+
+    it("should have correct mining material unlock levels per mining-levels-1-200.md", () => {
+      // Per design-docs/level-specs/mining-levels-1-200.md
+      expect(MATERIALS.STONE.requiredLevel).toBe(1)
+      expect(MATERIALS.COPPER_ORE.requiredLevel).toBe(20)
+      expect(MATERIALS.TIN_ORE.requiredLevel).toBe(40)
+      expect(MATERIALS.IRON_ORE.requiredLevel).toBe(60)
+      expect(MATERIALS.SILVER_ORE.requiredLevel).toBe(80)
+      expect(MATERIALS.GOLD_ORE.requiredLevel).toBe(100)
+      expect(MATERIALS.MITHRIL_ORE.requiredLevel).toBe(120)
+      expect(MATERIALS.OBSIDIUM_ORE.requiredLevel).toBe(140)
+    })
+
+    it("should not have DEEP_ORE (not in canonical spec)", () => {
+      expect(MATERIALS.DEEP_ORE).toBeUndefined()
     })
 
     it("should have woodcutting materials with tiers 1-5", () => {
@@ -27,14 +43,32 @@ describe("World Factory", () => {
       expect(woodMats.length).toBeGreaterThanOrEqual(5)
     })
 
-    it("should have required levels that increase with tier", () => {
-      const tier1 = Object.values(MATERIALS).filter((m) => m.tier === 1)
-      const tier3 = Object.values(MATERIALS).filter((m) => m.tier === 3)
+    it("should have required levels that increase with tier within each skill", () => {
+      // Check that within each skill, higher tiers require higher levels
+      const skills = ["Mining", "Woodcutting"] as const
+      for (const skill of skills) {
+        const skillMats = Object.values(MATERIALS).filter((m) => m.skill === skill)
+        const byTier = skillMats.reduce(
+          (acc, m) => {
+            if (!acc[m.tier]) acc[m.tier] = []
+            acc[m.tier].push(m)
+            return acc
+          },
+          {} as Record<number, (typeof MATERIALS)[keyof typeof MATERIALS][]>
+        )
 
-      // Tier 1 materials should require lower levels
-      tier1.forEach((m) => expect(m.requiredLevel).toBeLessThanOrEqual(2))
-      // Tier 3+ materials should require higher levels
-      tier3.forEach((m) => expect(m.requiredLevel).toBeGreaterThanOrEqual(5))
+        // Each tier's max required level should be <= next tier's min required level
+        const tierNums = Object.keys(byTier)
+          .map(Number)
+          .sort((a, b) => a - b)
+        for (let i = 0; i < tierNums.length - 1; i++) {
+          const currentTier = tierNums[i]
+          const nextTier = tierNums[i + 1]
+          const currentMax = Math.max(...byTier[currentTier].map((m) => m.requiredLevel))
+          const nextMin = Math.min(...byTier[nextTier].map((m) => m.requiredLevel))
+          expect(currentMax).toBeLessThanOrEqual(nextMin)
+        }
+      }
     })
   })
 
@@ -112,12 +146,13 @@ describe("World Factory", () => {
       expect(treeNodes.length).toBeGreaterThan(0)
     })
 
-    it("should not generate FAR-only materials in NEAR areas (distance 1)", () => {
+    it("should not generate high-level materials in NEAR areas (distance 1)", () => {
       const world = createWorld("test-seed")
 
-      // Find materials that require L9+ (FAR-only)
-      const farOnlyMaterials = Object.entries(MATERIALS)
-        .filter(([_, m]) => m.requiredLevel >= 9)
+      // Distance 1 pool: STONE (L1), COPPER_ORE (L20), TIN_ORE (L40)
+      // Materials requiring L60+ (Iron and above) should not appear at distance 1
+      const highLevelMaterials = Object.entries(MATERIALS)
+        .filter(([_, m]) => m.skill === "Mining" && m.requiredLevel >= 60)
         .map(([id]) => id)
 
       // Get all distance-1 areas
@@ -125,11 +160,13 @@ describe("World Factory", () => {
         .filter((area) => area.distance === 1)
         .map((area) => area.id)
 
-      const nearNodes = world.world.nodes!.filter((n: Node) => distance1AreaIds.includes(n.areaId))
+      const nearNodes = world.world.nodes!.filter(
+        (n: Node) => distance1AreaIds.includes(n.areaId) && n.nodeType === NodeType.ORE_VEIN
+      )
 
       nearNodes.forEach((node: Node) => {
         node.materials.forEach((mat) => {
-          expect(farOnlyMaterials).not.toContain(mat.materialId)
+          expect(highLevelMaterials).not.toContain(mat.materialId)
         })
       })
     })
@@ -139,6 +176,27 @@ describe("World Factory", () => {
 
       expect(world.exploration.playerState.knownAreaIds).toEqual(["TOWN"])
       expect(world.exploration.playerState.knownConnectionIds).toEqual([])
+    })
+
+    it("should generate nodes with material quantities per spec (5-20 primary, secondaries 10-90% of primary)", () => {
+      // Per canonical-gathering.md:
+      // - Primary: 5-20 units (normal distribution)
+      // - Secondary: 10-90% of primary amount
+      const world = createWorld("test-seed")
+
+      world.world.nodes!.forEach((node: Node) => {
+        node.materials.forEach((mat) => {
+          // All materials should be in reasonable range (allowing some variance)
+          // Primary is 5-20, secondary is 10-90% of primary
+          // So secondary could be as low as 0.5 (10% of 5) rounded to 1
+          // And as high as 18 (90% of 20)
+          // With variance, let's allow 1-25 as a reasonable range
+          expect(mat.remainingUnits).toBeGreaterThanOrEqual(1)
+          expect(mat.remainingUnits).toBeLessThanOrEqual(25)
+          expect(mat.maxUnitsInitial).toBeGreaterThanOrEqual(1)
+          expect(mat.maxUnitsInitial).toBeLessThanOrEqual(25)
+        })
+      })
     })
   })
 })

@@ -28,6 +28,7 @@ import {
   ExplorationLocationType,
 } from "./types.js"
 import { getGuildLocationForSkill, getSkillForGuildLocation } from "./world.js"
+import { hasMasteryUnlock, getSpeedForMaterial, getMaterialMastery } from "./masteryData.js"
 
 /**
  * Result of checking action preconditions
@@ -247,51 +248,49 @@ export function getNextModeUnlock(skillLevel: number): { mode: GatherMode; level
 }
 
 /**
- * Get required skill level to access a location based on its distance band
- * Per spec:
- * - NEAR (distance 1): L1
- * - MID (distance 2): L5
- * - FAR (distance 3+): L9
+ * Get required skill level to access a location based on its distance band.
+ * Location access is no longer gated by skill level - materials are gated instead.
+ * Per mining-levels-1-200.md, material unlock levels control progression.
  */
-export function getLocationSkillRequirement(locationId: string): number {
-  // TOWN has no gating
-  if (locationId === "TOWN") {
-    return 1
-  }
-
-  // Parse procedural area IDs (format: area-d{distance}-i{index})
-  const match = locationId.match(/^area-d(\d+)-i\d+$/)
-  if (match) {
-    const distance = parseInt(match[1], 10)
-    if (distance === 1) return 1 // NEAR - no gating
-    if (distance === 2) return 5 // MID - requires L5
-    if (distance >= 3) return 9 // FAR - requires L9
-  }
-
-  // Fallback for legacy area IDs (kept for compatibility)
-  if (locationId.includes("OUTSKIRTS") || locationId.includes("COPSE")) {
-    return 1 // NEAR - no gating
-  } else if (locationId.includes("QUARRY") || locationId.includes("DEEP_FOREST")) {
-    return 5 // MID - requires L5
-  } else if (locationId.includes("SHAFT") || locationId.includes("GROVE")) {
-    return 9 // FAR - requires L9
-  }
-
-  return 1 // Default to no gating
+export function getLocationSkillRequirement(_locationId: string): number {
+  // No location-based gating - material levels control progression instead
+  return 1
 }
 
 /**
- * Get base time cost for gathering mode
+ * Get time cost based on mastery for the canonical gathering system.
+ * APPRAISE: 1 tick
+ * FOCUS: Based on material's speed mastery (20/15/10/5 ticks)
+ * CAREFUL: 2x the slowest material's speed among careful-unlocked materials
  */
-function getGatheringTimeCost(mode: GatherMode): number {
-  switch (mode) {
-    case GatherMode.APPRAISE:
-      return 1
-    case GatherMode.FOCUS:
-      return 5 // Base time for focus extraction
-    case GatherMode.CAREFUL_ALL:
-      return 10 // Slower but safer
+function getMasteryBasedTimeCost(
+  mode: GatherMode,
+  skillLevel: number,
+  node: Node,
+  focusMaterialId?: string
+): number {
+  if (mode === GatherMode.APPRAISE) return 1
+
+  if (mode === GatherMode.FOCUS && focusMaterialId) {
+    return getSpeedForMaterial(skillLevel, focusMaterialId)
   }
+
+  if (mode === GatherMode.CAREFUL_ALL) {
+    // Find materials with Careful unlock
+    // Note: We've already validated NO_CAREFUL_MATERIALS earlier, so this list should never be empty
+    const carefulMaterials = node.materials.filter(
+      (m) => m.remainingUnits > 0 && hasMasteryUnlock(skillLevel, m.materialId, "Careful")
+    )
+
+    // 2x the slowest material's speed
+    const slowest = Math.max(
+      ...carefulMaterials.map((m) => getSpeedForMaterial(skillLevel, m.materialId))
+    )
+    return slowest * 2
+  }
+
+  // This should be unreachable for valid gather modes, but TypeScript needs a return
+  throw new Error(`Unknown gather mode: ${mode}`)
 }
 
 /**
@@ -399,6 +398,39 @@ function checkMultiMaterialGatherAction(
   const skill = getNodeSkill(node)
   const skillLevel = state.player.skills[skill].level
 
+  // Check guild enrollment (must have skill level >= 1)
+  if (skillLevel < 1) {
+    return {
+      valid: false,
+      failureType: "NOT_ENROLLED",
+      failureReason: "must_enrol_in_guild",
+      failureContext: {
+        skill,
+        requiredGuild: `${skill} Guild`,
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
+  }
+
+  // Check inventory capacity before extracting (not for APPRAISE)
+  if (mode !== GatherMode.APPRAISE) {
+    const inventoryCapacity = state.player.inventoryCapacity ?? 10
+    if (state.player.inventory.length >= inventoryCapacity) {
+      return {
+        valid: false,
+        failureType: "INVENTORY_FULL",
+        failureReason: "no_space_for_materials",
+        failureContext: {
+          capacity: inventoryCapacity,
+          current: state.player.inventory.length,
+        },
+        timeCost: 0,
+        successProbability: 0,
+      }
+    }
+  }
+
   // Check if mode is unlocked (check mode first for better UX - more specific error)
   if (!isModeUnlocked(mode, skillLevel)) {
     const nextUnlock = getNextModeUnlock(skillLevel)
@@ -471,16 +503,16 @@ function checkMultiMaterialGatherAction(
       }
     }
 
-    // Check skill level for focus material
-    if (skillLevel < focusMaterial.requiredLevel) {
+    // Check mastery unlock for focus material (M1 = Unlock)
+    if (!hasMasteryUnlock(skillLevel, action.focusMaterialId, "Unlock")) {
       return {
         valid: false,
-        failureType: "INSUFFICIENT_SKILL",
-        failureReason: "material_level",
+        failureType: "MATERIAL_NOT_UNLOCKED",
+        failureReason: "need_mastery_unlock",
         failureContext: {
           skill,
-          currentLevel: skillLevel,
-          requiredLevel: focusMaterial.requiredLevel,
+          currentMastery: getMaterialMastery(skillLevel, action.focusMaterialId),
+          requiredMastery: 1,
           materialId: action.focusMaterialId,
         },
         timeCost: 0,
@@ -489,7 +521,30 @@ function checkMultiMaterialGatherAction(
     }
   }
 
-  const timeCost = getGatheringTimeCost(mode)
+  // CAREFUL mode requires at least one material with M16 (Careful) unlock
+  if (mode === GatherMode.CAREFUL_ALL) {
+    const carefulMaterials = node.materials.filter(
+      (m) => m.remainingUnits > 0 && hasMasteryUnlock(skillLevel, m.materialId, "Careful")
+    )
+
+    if (carefulMaterials.length === 0) {
+      return {
+        valid: false,
+        failureType: "NO_CAREFUL_MATERIALS",
+        failureReason: "no_materials_with_careful_mastery",
+        failureContext: {
+          nodeId: node.nodeId,
+          materials: node.materials.map((m) => m.materialId),
+          carefulUnlockLevel: "M16",
+        },
+        timeCost: 0,
+        successProbability: 0,
+      }
+    }
+  }
+
+  // Calculate time cost based on mastery
+  const timeCost = getMasteryBasedTimeCost(mode, skillLevel, node, action.focusMaterialId)
 
   return { valid: true, timeCost, successProbability: 1 }
 }
@@ -497,7 +552,7 @@ function checkMultiMaterialGatherAction(
 /**
  * Export for engine use
  */
-export { getNodeSkill, getGatheringTimeCost }
+export { getNodeSkill }
 
 /**
  * Get weapon parameters for combat

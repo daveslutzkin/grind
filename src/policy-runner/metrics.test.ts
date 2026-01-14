@@ -3,7 +3,7 @@
  */
 
 import { createMetricsCollector, computeAggregates, computeAllAggregates } from "./metrics.js"
-import type { RunResult } from "./types.js"
+import type { RunResult, TerminationReason } from "./types.js"
 
 describe("metrics", () => {
   describe("createMetricsCollector", () => {
@@ -113,7 +113,7 @@ describe("metrics", () => {
   describe("computeAggregates", () => {
     const createMockResult = (
       policyId: string,
-      terminationReason: "target_reached" | "max_ticks" | "stall",
+      terminationReason: TerminationReason,
       totalTicks: number,
       finalXp: number,
       maxDistance: number
@@ -128,6 +128,12 @@ describe("metrics", () => {
       ticksSpent: { mining: 0, traveling: 0, exploring: 0, inventoryManagement: 0, waiting: 0 },
       levelUpTicks: [],
       maxDistanceReached: maxDistance,
+      summary: {
+        areasDiscovered: 0,
+        areasFullyExplored: 0,
+        miningLocationsDiscovered: 0,
+        byDistance: [],
+      },
     })
 
     it("returns zeros for empty results", () => {
@@ -135,20 +141,21 @@ describe("metrics", () => {
 
       expect(agg.policyId).toBe("test")
       expect(agg.runCount).toBe(0)
-      expect(agg.stallRate).toBe(0)
+      expect(agg.errorCounts).toEqual({})
       expect(agg.avgXpPerTick).toBe(0)
     })
 
-    it("calculates stall rate correctly", () => {
+    it("calculates error counts correctly", () => {
       const results = [
         createMockResult("test", "target_reached", 100, 10, 1),
         createMockResult("test", "stall", 50, 5, 1),
         createMockResult("test", "target_reached", 120, 12, 1),
         createMockResult("test", "stall", 60, 6, 1),
+        createMockResult("test", "node_depleted", 40, 4, 1),
       ]
 
       const agg = computeAggregates(results, "test")
-      expect(agg.stallRate).toBe(0.5) // 2 stalls out of 4
+      expect(agg.errorCounts).toEqual({ stall: 2, node_depleted: 1 })
     })
 
     it("calculates percentiles from successful runs only", () => {
@@ -219,6 +226,12 @@ describe("metrics", () => {
           },
           levelUpTicks: [],
           maxDistanceReached: 1,
+          summary: {
+            areasDiscovered: 0,
+            areasFullyExplored: 0,
+            miningLocationsDiscovered: 0,
+            byDistance: [],
+          },
         },
         {
           seed: "s1",
@@ -237,6 +250,12 @@ describe("metrics", () => {
           },
           levelUpTicks: [],
           maxDistanceReached: 2,
+          summary: {
+            areasDiscovered: 0,
+            areasFullyExplored: 0,
+            miningLocationsDiscovered: 0,
+            byDistance: [],
+          },
         },
       ]
 

@@ -13,8 +13,5 @@ Items that require design decisions before implementation. Important but not in 
 ## 3. Transformative Level-Ups (Design Doc Gap)
 **Description:** Design docs say "every meaningful level unlocks a new action, risk profile, or removes a constraint." Currently level-ups feel invisible. Need to make unlocks explicit and impactful. The APPRAISE@L3 teaser is good - need more of this.
 
-## 4. Early Inventory Pressure (Design Doc Gap)
-**Description:** Design docs say "running out of space is expected, not exceptional." With 20 slots and slow gathering, inventory never creates decisions. Need earlier constraint to make inventory strategic.
-
-## 5. Guild Depth (Design Doc Gap)
+## 4. Guild Depth (Design Doc Gap)
 **Description:** Design docs say guilds are "primary progression scaffolding" with faction identity, reputation, and contracts. Currently just enrollment checkpoints. Need to add guild-specific flavor, meaningful reputation, and guild-driven contracts.

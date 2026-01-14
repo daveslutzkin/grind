@@ -215,6 +215,7 @@ export interface WorldState {
     equippedWeapon: WeaponID | null
     contractKillProgress: Record<ContractID, Record<string, number>>
     appraisedNodeIds: NodeID[] // Nodes that have been appraised (show full details)
+    gatheringLuckDelta: number // Cumulative ticks saved/lost from gathering variance
   }
 
   world: {
@@ -520,6 +521,10 @@ export type FailureType =
   | "NOT_AT_NODE_LOCATION"
   | "WRONG_GUILD_TYPE"
   | "GUILD_LEVEL_TOO_LOW"
+  // Canonical gathering failure types
+  | "NOT_ENROLLED"
+  | "MATERIAL_NOT_UNLOCKED"
+  | "NO_CAREFUL_MATERIALS"
 
 // RNG roll log entry
 export interface RngRoll {
@@ -545,11 +550,12 @@ export interface AppraisalInfo {
   nodeType: NodeType
   materials: {
     materialId: MaterialID
-    remaining: number
-    max: number
+    remaining?: number // Only shown if player has Appraise mastery (M6) for this material
+    max?: number // Only shown if player has Appraise mastery (M6) for this material
     requiredLevel: number
     requiresSkill: GatheringSkillID
     tier: number
+    canSeeQuantity: boolean // True if player has Appraise mastery (M6) for this material
   }[]
 }
 
@@ -562,9 +568,10 @@ export interface ExtractionLog {
   focusWaste: number
   collateralDamage: Record<MaterialID, number>
   variance?: {
-    expected: number
-    actual: number
-    range: [number, number]
+    expected: number // Base time without variance
+    actual: number // Actual time with variance applied
+    range: [number, number] // For yield variance (bonus yield)
+    luckDelta?: number // Ticks saved (positive) or lost (negative) from time variance
   }
   appraisal?: AppraisalInfo // For APPRAISE mode
 }

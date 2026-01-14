@@ -47,21 +47,6 @@ function getNearOreAreaId(state: WorldState): AreaID {
   throw new Error("No NEAR ore area found")
 }
 
-/** Get an area at distance 2+ that has ore nodes */
-function getMidOreAreaId(state: WorldState): AreaID {
-  // Sort areas by distance, prefer closer areas that are distance 2+
-  const areas = Array.from(state.exploration.areas.values())
-    .filter((a) => a.distance >= 2)
-    .sort((a, b) => a.distance - b.distance)
-  for (const area of areas) {
-    const hasOre = state.world.nodes?.some(
-      (n) => n.areaId === area.id && n.nodeType === NodeType.ORE_VEIN
-    )
-    if (hasOre) return area.id
-  }
-  throw new Error("No MID ore area found")
-}
-
 /** Make an area and its connection from TOWN known */
 function makeAreaKnown(state: WorldState, areaId: AreaID): void {
   if (!state.exploration.playerState.knownAreaIds.includes(areaId)) {
@@ -142,10 +127,12 @@ describe("Acceptance Tests: Gathering MVP", () => {
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
       discoverAllLocations(world, oreAreaId)
-      world.player.skills.Mining.level = 5
 
       const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
       moveToNodeLocation(world, node)
+      // Set level high enough to mine the lowest-level material in this node
+      const minRequiredLevel = Math.min(...node.materials.map((m) => m.requiredLevel))
+      world.player.skills.Mining.level = minRequiredLevel
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Mining.level
       )!
@@ -177,10 +164,11 @@ describe("Acceptance Tests: Gathering MVP", () => {
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
       discoverAllLocations(world, oreAreaId)
-      world.player.skills.Mining.level = 5
-
       const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
       moveToNodeLocation(world, node)
+      // Set level high enough to mine the lowest-level material in this node
+      const minRequiredLevel = Math.min(...node.materials.map((m) => m.requiredLevel))
+      world.player.skills.Mining.level = minRequiredLevel
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Mining.level
       )!
@@ -228,13 +216,14 @@ describe("Acceptance Tests: Gathering MVP", () => {
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
       discoverAllLocations(world, oreAreaId)
-      world.player.skills.Mining.level = 5
-
       const node = world.world.nodes!.find(
         (n) => n.areaId === oreAreaId && n.materials.length >= 2
       )!
       moveToNodeLocation(world, node)
       expect(node.materials.length).toBeGreaterThanOrEqual(2)
+      // Set level high enough to mine the lowest-level material in this node
+      const minRequiredLevel = Math.min(...node.materials.map((m) => m.requiredLevel))
+      world.player.skills.Mining.level = minRequiredLevel
 
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Mining.level
@@ -262,10 +251,11 @@ describe("Acceptance Tests: Gathering MVP", () => {
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
       discoverAllLocations(world, oreAreaId)
-      world.player.skills.Mining.level = 5 // L4+ for CAREFUL_ALL
-
       const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
       moveToNodeLocation(world, node)
+      // Set level high enough to mine materials (need L16 for STONE M16 Careful unlock for CAREFUL_ALL mode)
+      const minRequiredLevel = Math.min(...node.materials.map((m) => m.requiredLevel))
+      world.player.skills.Mining.level = Math.max(minRequiredLevel, 16) // L16 for STONE Careful unlock
 
       const action: GatherAction = {
         type: "Gather",
@@ -332,11 +322,14 @@ describe("Acceptance Tests: Gathering MVP", () => {
       const log1 = await executeAction(world1, action1)
       const log10 = await executeAction(world10, action10)
 
-      // L1 should have significant waste (~60%)
-      expect(log1.extraction!.focusWaste).toBeGreaterThan(0.3)
-
-      // L10 should have 0% waste (perfect focus)
+      // In new mastery system, focus waste is always 0 (100% of 1 unit)
+      // Efficiency improvements come from Speed unlocks (faster time)
+      expect(log1.extraction!.focusWaste).toBe(0)
       expect(log10.extraction!.focusWaste).toBe(0)
+
+      // L10 should be faster than L1 due to Speed unlocks
+      // L1: 20 ticks (base), L10: should have Speed_II (10 ticks)
+      expect(log10.timeConsumed).toBeLessThan(log1.timeConsumed)
     })
 
     it("should have collateral damage with hard floor at high levels", async () => {
@@ -346,14 +339,14 @@ describe("Acceptance Tests: Gathering MVP", () => {
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
       discoverAllLocations(world, oreAreaId)
-      world.player.skills.Mining.level = 10 // Max level
-
       const node = world.world.nodes!.find(
         (n) => n.areaId === oreAreaId && n.materials.length >= 2
       )!
       moveToNodeLocation(world, node)
       const focusMat = node.materials[0]
       const collateralMat = node.materials.find((m) => m.materialId !== focusMat.materialId)!
+      // Set level high enough to mine the focus material (need to be significantly above for the test)
+      world.player.skills.Mining.level = focusMat.requiredLevel + 9 // "Max level" relative to material
 
       const action: GatherAction = {
         type: "Gather",
@@ -382,10 +375,11 @@ describe("Acceptance Tests: Gathering MVP", () => {
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
       discoverAllLocations(world, oreAreaId)
-      world.player.skills.Mining.level = 5
-
       const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
       moveToNodeLocation(world, node)
+      // Set level high enough to mine the lowest-level material in this node
+      const minRequiredLevel = Math.min(...node.materials.map((m) => m.requiredLevel))
+      world.player.skills.Mining.level = minRequiredLevel
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Mining.level
       )!
@@ -414,10 +408,11 @@ describe("Acceptance Tests: Gathering MVP", () => {
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
       discoverAllLocations(world, oreAreaId)
-      world.player.skills.Mining.level = 5
-
       const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
       moveToNodeLocation(world, node)
+      // Set level high enough to mine the lowest-level material in this node
+      const minRequiredLevel = Math.min(...node.materials.map((m) => m.requiredLevel))
+      world.player.skills.Mining.level = minRequiredLevel
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Mining.level
       )!
@@ -431,14 +426,17 @@ describe("Acceptance Tests: Gathering MVP", () => {
 
       const log = await executeAction(world, action)
 
-      // Variance should include expected, actual, and range
+      // Variance should include expected (base time), actual (with variance), range (yield), and luckDelta
       const variance = log.extraction!.variance!
-      expect(typeof variance.expected).toBe("number")
-      expect(typeof variance.actual).toBe("number")
-      expect(Array.isArray(variance.range)).toBe(true)
-      // Use toBeCloseTo for floating point comparisons
-      expect(variance.range[0]).toBeLessThanOrEqual(variance.expected + 0.01)
-      expect(variance.range[1]).toBeGreaterThanOrEqual(variance.expected - 0.01)
+      expect(typeof variance.expected).toBe("number") // Base time before variance
+      expect(typeof variance.actual).toBe("number") // Actual time with variance applied
+      expect(Array.isArray(variance.range)).toBe(true) // Yield range [min, max]
+      expect(typeof variance.luckDelta).toBe("number") // Ticks saved/lost
+      // Actual time should be within reasonable bounds of expected (±50% due to normal distribution)
+      expect(variance.actual).toBeGreaterThanOrEqual(1)
+      expect(variance.actual).toBeLessThanOrEqual(variance.expected * 2)
+      // luckDelta = expected - actual
+      expect(variance.luckDelta).toBe(variance.expected - variance.actual)
     })
   })
 
@@ -473,33 +471,6 @@ describe("Acceptance Tests: Gathering MVP", () => {
       const successLog = await executeAction(world, appraiseAction)
       expect(successLog.success).toBe(true)
     })
-
-    it("should unlock locations at specific levels", async () => {
-      const world = createWorld("location-unlock-test")
-      // Get a MID area (distance 2) that has ore
-      const midAreaId = getMidOreAreaId(world)
-      makeAreaKnown(world, midAreaId)
-      world.exploration.playerState.currentAreaId = midAreaId
-      discoverAllLocations(world, midAreaId)
-      const node = world.world.nodes!.find((n) => n.areaId === midAreaId)!
-      moveToNodeLocation(world, node)
-
-      // L4: MID should fail (requires L5) - use APPRAISE to avoid material level issues
-      world.player.skills.Mining.level = 4
-      const appraiseAction: GatherAction = {
-        type: "Gather",
-        nodeId: node.nodeId,
-        mode: GatherMode.APPRAISE,
-      }
-      const failLog = await executeAction(world, appraiseAction)
-      expect(failLog.success).toBe(false)
-      expect(failLog.failureDetails?.type).toBe("INSUFFICIENT_SKILL")
-
-      // L5: MID should succeed
-      world.player.skills.Mining.level = 5
-      const successLog = await executeAction(world, appraiseAction)
-      expect(successLog.success).toBe(true)
-    })
   })
 
   // ============================================================================
@@ -514,10 +485,11 @@ describe("Acceptance Tests: Gathering MVP", () => {
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
       discoverAllLocations(world, oreAreaId)
-      world.player.skills.Mining.level = 5
-
       const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
       moveToNodeLocation(world, node)
+      // Set level high enough to mine the lowest-level material in this node
+      const minRequiredLevel = Math.min(...node.materials.map((m) => m.requiredLevel))
+      world.player.skills.Mining.level = minRequiredLevel
       const focusMat = node.materials.find(
         (m) => m.requiredLevel <= world.player.skills.Mining.level
       )!
@@ -531,9 +503,10 @@ describe("Acceptance Tests: Gathering MVP", () => {
 
       const log = await executeAction(world, action)
 
-      // XP should be ticks × tier
+      // XP = 1 per unit extracted (new mastery system)
       expect(log.skillGained).toBeDefined()
-      expect(log.skillGained!.amount).toBe(log.timeConsumed * focusMat.tier)
+      const unitsExtracted = log.extraction!.extracted[0]?.quantity ?? 0
+      expect(log.skillGained!.amount).toBe(unitsExtracted)
     })
 
     it("should not double-punish bad RNG (yield varies, XP stays constant)", async () => {
@@ -584,15 +557,18 @@ describe("Acceptance Tests: Gathering MVP", () => {
         const log1 = await executeAction(world1, action1)
         const log2 = await executeAction(world2, action2)
 
-        // Yields may differ due to RNG
-        // But XP should be based on ticks × tier (constant for same tier)
-        expect(log1.skillGained!.amount).toBe(log1.timeConsumed * focusMat1.tier)
-        expect(log2.skillGained!.amount).toBe(log2.timeConsumed * focusMat2.tier)
+        // In new mastery system: XP = 1 per unit extracted
+        const units1 = log1.extraction!.extracted[0]?.quantity ?? 0
+        const units2 = log2.extraction!.extracted[0]?.quantity ?? 0
+        expect(log1.skillGained!.amount).toBe(units1)
+        expect(log2.skillGained!.amount).toBe(units2)
 
-        // If tiers match, XP should be the same even if yields differ
-        if (focusMat1.tier === focusMat2.tier) {
-          expect(log1.skillGained!.amount).toBe(log2.skillGained!.amount)
-        }
+        // XP varies only by bonus yield (1 or 2 units)
+        // Not punished by variance in old yield system
+        expect(units1).toBeGreaterThanOrEqual(1)
+        expect(units2).toBeGreaterThanOrEqual(1)
+        expect(units1).toBeLessThanOrEqual(2)
+        expect(units2).toBeLessThanOrEqual(2)
       }
     })
   })

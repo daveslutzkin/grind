@@ -57,6 +57,19 @@ describe("Exploration Utilities", () => {
       expect(getAreaCountForDistance(10)).toBe(377)
     })
 
+    // After distance 10, use 10% growth instead of Fibonacci to avoid explosion
+    it("should return 415 areas for distance 11 (377 * 1.1)", () => {
+      expect(getAreaCountForDistance(11)).toBe(415)
+    })
+
+    it("should return 668 areas for distance 16", () => {
+      expect(getAreaCountForDistance(16)).toBe(668)
+    })
+
+    it("should return 64796 areas for distance 64", () => {
+      expect(getAreaCountForDistance(64)).toBe(64796)
+    })
+
     it("should return 1 for distance 0 (town)", () => {
       // Town is special - just one area
       expect(getAreaCountForDistance(0)).toBe(1)

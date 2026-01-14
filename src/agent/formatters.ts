@@ -220,6 +220,13 @@ export function formatWorldState(state: WorldState): string {
     })
   lines.push(`Skills: ${enrolledSkills.length > 0 ? enrolledSkills.join(", ") : "none"}`)
 
+  // Show cumulative gathering luck if non-zero
+  if (state.player.gatheringLuckDelta !== 0) {
+    const luck = state.player.gatheringLuckDelta
+    const luckStr = luck > 0 ? `+${luck}` : `${luck}`
+    lines.push(`Gathering Luck: ${luckStr} ticks`)
+  }
+
   // Active contracts - compact
   if (state.player.activeContracts.length > 0) {
     const contracts = state.player.activeContracts
@@ -763,7 +770,9 @@ export function formatActionLog(log: ActionLog, state?: WorldState): string {
       const mats = visibleMats
         .map((m) => {
           const req = m.requiredLevel > 0 ? ` [${m.requiresSkill} L${m.requiredLevel}]` : ""
-          return `${m.remaining}/${m.max} ${m.materialId}${req}`
+          // Show quantities only if canSeeQuantity is true (M6 Appraise mastery)
+          const qty = m.canSeeQuantity ? `${m.remaining}/${m.max}` : "???/???"
+          return `${qty} ${m.materialId}${req}`
         })
         .join(", ")
       lines.push(`  ${a.nodeId}: ${mats}`)
@@ -794,6 +803,13 @@ export function formatActionLog(log: ActionLog, state?: WorldState): string {
         .map(([m, d]) => `-${d} ${m}`)
         .join(", ")
       lines.push(`  Collateral: ${dmg}`)
+    }
+
+    // Show time variance luck if significant
+    if (log.extraction.variance?.luckDelta && log.extraction.variance.luckDelta !== 0) {
+      const { expected, actual, luckDelta } = log.extraction.variance
+      const luckStr = luckDelta > 0 ? `+${luckDelta} luck` : `${luckDelta} luck`
+      lines.push(`  Time: ${actual} ticks (${expected} base, ${luckStr})`)
     }
   }
 

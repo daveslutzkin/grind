@@ -175,17 +175,17 @@ describe("Formatters", () => {
         }
       })
 
-      it("should show quantities after APPRAISE", async () => {
+      it("should show quantities after APPRAISE with mastery", async () => {
         const state = createWorld("mat-vis-4")
         const areaId = getOreAreaId(state)
         makeAreaKnown(state, areaId)
         state.exploration.playerState.currentAreaId = areaId
         discoverAllLocations(state, areaId)
 
-        // Enrol in Mining and level up to L3 for APPRAISE
+        // Enrol in Mining and level up to L6 for APPRAISE mastery on STONE
         setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
         await executeAction(state, { type: "Enrol" })
-        state.player.skills.Mining = { level: 3, xp: 0 } // L3 unlocks APPRAISE
+        state.player.skills.Mining = { level: 6, xp: 0 } // L6 = STONE M6 (Appraise)
         state.exploration.playerState.currentAreaId = areaId
 
         // Find a node and appraise it
@@ -204,67 +204,40 @@ describe("Formatters", () => {
 
         const formatted = formatWorldState(state)
 
-        // After appraisal, should show quantities like "80/80 Copper Ore ✓"
+        // After appraisal with L6, STONE should show quantities like "80/80 Stone ✓"
         expect(formatted).toMatch(/\d+\/\d+ [A-Z][a-z]+( [A-Z][a-z]+)? ✓/)
       })
 
-      it("should show locked node when skill level is insufficient for location tier", async () => {
-        const state = createWorld("mat-vis-5")
+      it("should show ???/??? for materials without Appraise mastery", async () => {
+        const state = createWorld("mat-vis-no-mastery")
+        const areaId = getOreAreaId(state)
+        makeAreaKnown(state, areaId)
+        state.exploration.playerState.currentAreaId = areaId
+        discoverAllLocations(state, areaId)
 
-        // Find a D2 area (distance 2, requires L5) specifically with ORE_VEIN nodes
-        const d2Area = Array.from(state.exploration.areas.values()).find(
-          (a) =>
-            a.distance === 2 &&
-            state.world.nodes?.some((n) => n.areaId === a.id && n.nodeType === NodeType.ORE_VEIN)
-        )
-        if (!d2Area) throw new Error("No D2 area with ore nodes found")
+        // Mining L3 can use APPRAISE mode but doesn't have M6 Appraise for any material
+        state.player.skills.Mining = { level: 3, xp: 0 }
+        state.exploration.playerState.currentAreaId = areaId
 
-        // Enrol in Mining first (must be at guild)
-        setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-        await executeAction(state, { type: "Enrol" })
+        // Find a node and appraise it
+        const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
+        if (!node) throw new Error("No node found for test")
 
-        // Now move to D2 area (at hub, not at a specific location)
-        makeAreaKnown(state, d2Area.id)
-        state.exploration.playerState.currentAreaId = d2Area.id
-        state.exploration.playerState.currentLocationId = null // At hub/clearing
-        discoverAllLocations(state, d2Area.id)
+        // Move to the node location before APPRAISE
+        moveToNodeLocation(state, node.nodeId, areaId)
 
-        const formatted = formatWorldState(state)
+        // Perform APPRAISE action
+        const log = await executeAction(state, {
+          type: "Gather",
+          nodeId: node.nodeId,
+          mode: "APPRAISE" as GatherMode,
+        })
 
-        // Should show as locked with skill requirement, not list materials
-        expect(formatted).toContain("🔒 (Mining L5)")
-        // Should NOT show any material checkmarks since node is locked
-        expect(formatted).not.toMatch(/[A-Z_]+ ✓/)
-      })
+        // Format the action log with state to test formatter
+        const formatted = formatActionLog(log, state)
 
-      it("should show materials normally when skill level meets location tier requirement", async () => {
-        const state = createWorld("mat-vis-6")
-
-        // Find a D2 area (distance 2, requires L5) specifically with ORE_VEIN nodes
-        const d2Area = Array.from(state.exploration.areas.values()).find(
-          (a) =>
-            a.distance === 2 &&
-            state.world.nodes?.some((n) => n.areaId === a.id && n.nodeType === NodeType.ORE_VEIN)
-        )
-        if (!d2Area) throw new Error("No D2 area with ore nodes found")
-
-        // Enrol in Mining and set to L5 (meets D2 requirement)
-        setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-        await executeAction(state, { type: "Enrol" })
-        state.player.skills.Mining = { level: 5, xp: 0 }
-
-        // Now move to D2 area (at hub, not at a specific location)
-        makeAreaKnown(state, d2Area.id)
-        state.exploration.playerState.currentAreaId = d2Area.id
-        state.exploration.playerState.currentLocationId = null // At hub/clearing
-        discoverAllLocations(state, d2Area.id)
-
-        const formatted = formatWorldState(state)
-
-        // Should NOT show as locked
-        expect(formatted).not.toContain("🔒")
-        // Should show materials with checkmarks (human-readable names now)
-        expect(formatted).toMatch(/\w+ ✓/)
+        // Should show ???/??? for materials without Appraise mastery
+        expect(formatted).toContain("???/???")
       })
     })
 
@@ -692,7 +665,7 @@ describe("Formatters", () => {
       if (!node) throw new Error("No node found for test")
       moveToNodeLocation(state, node.nodeId, areaId)
 
-      // Try to gather without enrolling in Mining - should fail with INSUFFICIENT_SKILL
+      // Try to gather without enrolling in Mining - should fail with NOT_ENROLLED
       const log = await executeAction(state, {
         type: "Gather",
         nodeId: node.nodeId,
@@ -702,9 +675,9 @@ describe("Formatters", () => {
 
       const formatted = formatActionLog(log)
 
-      expect(formatted).toContain("✗ Insufficient skill!")
+      expect(formatted).toContain("✗ Not enrolled in guild!")
       expect(formatted).not.toContain("Gather:")
-      expect(formatted).not.toContain("INSUFFICIENT_SKILL")
+      expect(formatted).not.toContain("NOT_ENROLLED")
     })
 
     it("should show 'Missing required items!' error message", async () => {

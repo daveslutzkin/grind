@@ -9,7 +9,18 @@
 import type { WorldState, Node, Area, AreaID } from "../types.js"
 import { getTotalXP } from "../types.js"
 import type { PolicyObservation, KnownArea, KnownNode, FrontierArea } from "./types.js"
-import { findPath, buildDiscoverables, isConnectionKnown } from "../exploration.js"
+import { buildDiscoverables, isConnectionKnown } from "../exploration.js"
+
+// Cache for fully explored areas - once fully explored, always fully explored
+// This cache is per-run and should be cleared at the start of each run
+const fullyExploredCache = new Map<string, boolean>()
+
+/**
+ * Clear the fully explored cache. Call this at the start of each simulation run.
+ */
+export function clearObservationCache(): void {
+  fullyExploredCache.clear()
+}
 
 /**
  * Build a KnownNode from a game Node, filtered by what the player can see.
@@ -25,9 +36,9 @@ function buildKnownNode(node: Node, miningLevel: number, locationId: string): Kn
     .filter((m) => m.materialId !== primaryMaterial.materialId)
     .map((m) => m.materialId)
 
-  // Node is mineable if player has required level for at least one material
+  // Node is mineable if player has required level for at least one material with remaining units
   const isMineable = node.materials.some(
-    (m) => m.requiresSkill === "Mining" && miningLevel >= m.requiredLevel
+    (m) => m.requiresSkill === "Mining" && miningLevel >= m.requiredLevel && m.remainingUnits > 0
   )
 
   // Calculate remaining charges (sum of all remaining units)
@@ -45,33 +56,43 @@ function buildKnownNode(node: Node, miningLevel: number, locationId: string): Kn
 }
 
 /**
- * Calculate travel time from current area to target area.
- * Uses the pathfinding algorithm to find the shortest route.
+ * Estimate travel time from current area to target area using O(1) heuristic.
+ * Uses distance difference as a proxy - not exact but good enough for policy decisions.
+ * Base travel time is ~10 ticks per hop, and we need ~1 hop per distance level.
  */
-function calculateTravelTicks(state: WorldState, fromAreaId: AreaID, toAreaId: AreaID): number {
+const BASE_TRAVEL_TICKS = 22 // Average travel time per distance level (accounts for varying multipliers)
+
+function estimateTravelTicks(
+  fromAreaId: AreaID,
+  fromDistance: number,
+  toAreaId: AreaID,
+  toDistance: number
+): number {
   if (fromAreaId === toAreaId) return 0
 
-  const pathResult = findPath(state, fromAreaId, toAreaId)
-  if (!pathResult) {
-    // No known path - return a large value
-    return Infinity
+  // Heuristic: travel time is proportional to distance difference
+  // Going from TOWN (distance 0) to distance 3 takes ~3 hops
+  // Going between same-distance areas takes ~2 hops (down and up)
+  const distanceDiff = Math.abs(fromDistance - toDistance)
+
+  if (distanceDiff === 0) {
+    // Same distance level - need to go through a common parent area
+    return BASE_TRAVEL_TICKS * 2
   }
 
-  return Math.round(pathResult.totalTime)
+  return BASE_TRAVEL_TICKS * distanceDiff
 }
 
 /**
  * Build a KnownArea from the game Area, including only discovered nodes.
+ * isFullyExplored is set to false initially - only computed when needed.
  */
 function buildKnownArea(
-  state: WorldState,
   area: Area,
   miningLevel: number,
-  currentAreaId: AreaID
+  knownLocationIds: Set<string>,
+  worldNodes: Node[] | undefined
 ): KnownArea {
-  const exploration = state.exploration
-  const knownLocationIds = new Set(exploration.playerState.knownLocationIds)
-
   // Find all discovered mining nodes in this area
   const discoveredNodes: KnownNode[] = []
 
@@ -89,23 +110,19 @@ function buildKnownArea(
 
     const [, areaId, locIndex] = locMatch
     const nodeId = `${areaId}-node-${locIndex}`
-    const node = state.world.nodes?.find((n) => n.nodeId === nodeId)
+    const node = worldNodes?.find((n) => n.nodeId === nodeId)
 
     if (node && !node.depleted) {
       discoveredNodes.push(buildKnownNode(node, miningLevel, location.id))
     }
   }
 
-  // Check if area is fully explored (no more discoverables)
-  const { discoverables } = buildDiscoverables(state, area)
-  const isFullyExplored = discoverables.length === 0
-
   return {
     areaId: area.id,
     distance: area.distance,
-    travelTicksFromCurrent: calculateTravelTicks(state, currentAreaId, area.id),
+    travelTicksFromCurrent: -1, // Populated later
     discoveredNodes,
-    isFullyExplored,
+    isFullyExplored: false, // Computed later only for areas we might explore
   }
 }
 
@@ -121,13 +138,62 @@ export function getObservation(state: WorldState): PolicyObservation {
   const miningLevel = miningSkill.level
   const exploration = state.exploration
   const currentAreaId = exploration.playerState.currentAreaId
+  const knownLocationIds = new Set(exploration.playerState.knownLocationIds)
+
+  // Get current area's distance (TOWN = 0)
+  const currentAreaData = exploration.areas.get(currentAreaId)
+  const currentDistance = currentAreaData?.distance ?? 0
 
   // Build known areas (only areas the player has discovered)
+  // Skip areas that are fully explored with no mineable nodes - they're not useful
   const knownAreas: KnownArea[] = []
   for (const areaId of exploration.playerState.knownAreaIds) {
     const area = exploration.areas.get(areaId)
     if (area && area.id !== "TOWN") {
-      knownAreas.push(buildKnownArea(state, area, miningLevel, currentAreaId))
+      const knownArea = buildKnownArea(area, miningLevel, knownLocationIds, state.world.nodes)
+      const isCurrentArea = area.id === currentAreaId
+
+      // Check if this area has mineable nodes
+      const hasMineableNode = knownArea.discoveredNodes.some(
+        (n) => n.isMineable && n.remainingCharges
+      )
+
+      if (hasMineableNode) {
+        // Area has mineable nodes - include it
+        knownArea.travelTicksFromCurrent = estimateTravelTicks(
+          currentAreaId,
+          currentDistance,
+          area.id,
+          area.distance
+        )
+        knownAreas.push(knownArea)
+        continue
+      }
+
+      // No mineable nodes - check if fully explored (use cache)
+      let isFullyExplored = fullyExploredCache.get(areaId)
+      if (isFullyExplored === undefined) {
+        // Not in cache - compute it
+        const { discoverables } = buildDiscoverables(state, area)
+        isFullyExplored = discoverables.length === 0
+        if (isFullyExplored) {
+          // Cache positive results (fully explored never changes back)
+          fullyExploredCache.set(areaId, true)
+        }
+      }
+
+      // Include the area if it still has content OR it's the current area
+      if (!isFullyExplored || isCurrentArea) {
+        knownArea.isFullyExplored = isFullyExplored
+        knownArea.travelTicksFromCurrent = estimateTravelTicks(
+          currentAreaId,
+          currentDistance,
+          area.id,
+          area.distance
+        )
+        knownAreas.push(knownArea)
+      }
+      // else: fully explored with no mineable nodes - skip it entirely
     }
   }
 
@@ -162,7 +228,9 @@ export function getObservation(state: WorldState): PolicyObservation {
   }
 
   // Calculate return time to town
-  const returnTimeToTown = isInTown ? 0 : calculateTravelTicks(state, currentAreaId, "TOWN")
+  const returnTimeToTown = isInTown
+    ? 0
+    : estimateTravelTicks(currentAreaId, currentDistance, "TOWN", 0)
 
   // Build frontier areas - unknown areas reachable via known connections
   const knownAreaIds = new Set(exploration.playerState.knownAreaIds)
@@ -199,15 +267,19 @@ export function getObservation(state: WorldState): PolicyObservation {
 
       const unknownArea = exploration.areas.get(unknownAreaId)
       if (unknownArea) {
-        // Calculate travel time: first get to the known area, then one hop to unknown
-        const travelToKnown = calculateTravelTicks(state, currentAreaId, knownAreaId)
-        const oneHopTime = 10 * conn.travelTimeMultiplier // BASE_TRAVEL_TIME = 10
-        const totalTravelTime = travelToKnown + oneHopTime
+        // Use O(1) heuristic for travel time to frontier
+        // Frontier is 1 distance further than the known connecting area
+        const totalTravelTime = estimateTravelTicks(
+          currentAreaId,
+          currentDistance,
+          unknownAreaId,
+          unknownArea.distance
+        )
 
         frontierAreas.push({
           areaId: unknownAreaId,
           distance: unknownArea.distance,
-          travelTicksFromCurrent: Math.round(totalTravelTime),
+          travelTicksFromCurrent: totalTravelTime,
           reachableFrom: knownAreaId,
         })
       }

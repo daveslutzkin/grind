@@ -10,10 +10,12 @@
  */
 
 import type { WorldState, SkillID, SkillState } from "../types.js"
+import { ExplorationLocationType } from "../types.js"
 import { getTotalXP } from "../types.js"
 import { createWorld } from "../world.js"
 import { executeAction } from "../engine.js"
 import { consumeTime } from "../stateHelpers.js"
+import { buildDiscoverables } from "../exploration.js"
 
 import type {
   RunConfig,
@@ -23,9 +25,10 @@ import type {
   SkillXpGain,
   SkillLevelSnapshot,
   SkillSnapshot,
+  RunSummary,
 } from "./types.js"
-import { getObservation, getMaxDiscoveredDistance } from "./observation.js"
-import { toEngineActions } from "./action-converter.js"
+import { getObservation, getMaxDiscoveredDistance, clearObservationCache } from "./observation.js"
+import { toEngineActions, type ConversionFailure } from "./action-converter.js"
 import {
   createStallDetector,
   createStallSnapshot,
@@ -133,6 +136,80 @@ function getFinalSkillSnapshots(state: WorldState, skillsWithXp: Set<SkillID>): 
 }
 
 /**
+ * Build a discovery summary from the final world state.
+ */
+function computeRunSummary(state: WorldState): RunSummary {
+  const exploration = state.exploration
+  const knownAreaIds = exploration.playerState.knownAreaIds.filter((areaId) => areaId !== "TOWN")
+  const knownLocationIds = new Set(exploration.playerState.knownLocationIds)
+
+  let areasFullyExplored = 0
+  const distanceStats = new Map<
+    number,
+    { areasDiscovered: number; areasFullyExplored: number; miningLocationsDiscovered: number }
+  >()
+  for (const areaId of knownAreaIds) {
+    const area = exploration.areas.get(areaId)
+    if (!area) continue
+    const distance = area.distance
+    if (!distanceStats.has(distance)) {
+      distanceStats.set(distance, {
+        areasDiscovered: 0,
+        areasFullyExplored: 0,
+        miningLocationsDiscovered: 0,
+      })
+    }
+    const distanceSummary = distanceStats.get(distance)!
+    distanceSummary.areasDiscovered++
+
+    const { discoverables } = buildDiscoverables(state, area)
+    if (discoverables.length === 0) {
+      areasFullyExplored++
+      distanceSummary.areasFullyExplored++
+    }
+  }
+
+  let miningLocationsDiscovered = 0
+  for (const area of exploration.areas.values()) {
+    if (area.id === "TOWN") continue
+    const distance = area.distance
+    if (!distanceStats.has(distance)) {
+      distanceStats.set(distance, {
+        areasDiscovered: 0,
+        areasFullyExplored: 0,
+        miningLocationsDiscovered: 0,
+      })
+    }
+    const distanceSummary = distanceStats.get(distance)!
+
+    for (const location of area.locations) {
+      if (
+        knownLocationIds.has(location.id) &&
+        location.type === ExplorationLocationType.GATHERING_NODE &&
+        location.gatheringSkillType === "Mining"
+      ) {
+        miningLocationsDiscovered++
+        distanceSummary.miningLocationsDiscovered++
+      }
+    }
+  }
+
+  return {
+    areasDiscovered: knownAreaIds.length,
+    areasFullyExplored,
+    miningLocationsDiscovered,
+    byDistance: Array.from(distanceStats.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([distance, stats]) => ({
+        distance,
+        areasDiscovered: stats.areasDiscovered,
+        areasFullyExplored: stats.areasFullyExplored,
+        miningLocationsDiscovered: stats.miningLocationsDiscovered,
+      })),
+  }
+}
+
+/**
  * Result from executing a policy action.
  */
 interface ActionExecutionResult {
@@ -141,11 +218,13 @@ interface ActionExecutionResult {
   levelUps: SkillLevelSnapshot[]
   nodesDiscovered: number
   success: boolean
+  failure?: ConversionFailure
 }
 
 /**
  * Execute a policy action, handling multi-action conversions and waits.
  * Returns the total ticks consumed, XP gained for all skills, level-ups, and success status.
+ * May return a failure indicator if the action cannot be executed.
  */
 async function executePolicyAction(
   state: WorldState,
@@ -155,6 +234,18 @@ async function executePolicyAction(
   const prevKnownLocations = state.exploration.playerState.knownLocationIds.length
 
   const converted = toEngineActions(policyAction, state)
+
+  // Check for conversion failure
+  if (converted.failure) {
+    return {
+      ticksConsumed: 0,
+      xpGained: [],
+      levelUps: [],
+      nodesDiscovered: 0,
+      success: false,
+      failure: converted.failure,
+    }
+  }
 
   let totalTicks = 0
   let allSucceeded = true
@@ -193,6 +284,7 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
   const recordActions = config.recordActions ?? false
 
   // Initialize
+  clearObservationCache() // Clear cache from any previous run
   const state = await initializeWorld(seed)
   const stallDetector = createStallDetector(stallWindowSize)
   const metrics = createMetricsCollector()
@@ -210,9 +302,12 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
   let actionCount = 0
 
   // Helper to build result with optional action log
-  const buildResult = (metricsResult: Omit<RunResult, "seed" | "policyId" | "actionLog">) => ({
+  const buildResult = (
+    metricsResult: Omit<RunResult, "seed" | "policyId" | "actionLog" | "summary">
+  ) => ({
     seed,
     policyId: policy.id,
+    summary: computeRunSummary(state),
     ...metricsResult,
     ...(recordActions ? { actionLog } : {}),
   })
@@ -270,8 +365,20 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
     const tickBefore = state.time.currentTick
 
     // Execute the action
-    const { ticksConsumed, xpGained, levelUps, nodesDiscovered, success } =
+    const { ticksConsumed, xpGained, levelUps, nodesDiscovered, success, failure } =
       await executePolicyAction(state, policyAction)
+
+    // Check for conversion failure (e.g., no mineable materials in node)
+    if (failure === "node_depleted") {
+      const metricsResult = metrics.finalize(
+        "node_depleted",
+        currentLevel,
+        getTotalXP(state.player.skills.Mining),
+        getFinalSkillSnapshots(state, skillsWithXp),
+        state.time.currentTick
+      )
+      return buildResult(metricsResult)
+    }
 
     // Increment action count
     actionCount++
@@ -303,9 +410,9 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
     // Record metrics
     metrics.recordAction(policyAction.type, ticksConsumed)
 
-    // Calculate total XP gained for stall detection (only mining XP for backwards compat)
-    const miningXpGained = xpGained.find((g) => g.skill === "Mining")?.amount ?? 0
-    stallDetector.recordTick(miningXpGained, nodesDiscovered)
+    // Calculate total XP gained for stall detection (any skill XP counts as progress)
+    const totalXpGained = xpGained.reduce((sum, gain) => sum + gain.amount, 0)
+    stallDetector.recordTick(totalXpGained, nodesDiscovered)
 
     // Record level-ups for each skill
     for (const levelUp of levelUps) {

@@ -132,7 +132,7 @@ describe("getAvailableActions", () => {
           }
         }
 
-        // Ensure node exists
+        // Ensure node exists with STONE (available at L1 mastery)
         const existingNode = state.world.nodes?.find((n) => n.areaId === areaId)
         if (!existingNode) {
           state.world.nodes = state.world.nodes ?? []
@@ -142,7 +142,7 @@ describe("getAvailableActions", () => {
             areaId,
             materials: [
               {
-                materialId: "COPPER_ORE",
+                materialId: "STONE",
                 remainingUnits: 50,
                 maxUnitsInitial: 50,
                 requiresSkill: "Mining",
@@ -175,7 +175,7 @@ describe("getAvailableActions", () => {
       // Should NOT have APPRAISE at L1 (requires L3)
       expect(hasAction(actions, "mine appraise")).toBe(false)
 
-      // Should NOT have CAREFUL_ALL at L1 (requires L4)
+      // Should NOT have CAREFUL_ALL at L1 (requires L16 for STONE M16 Careful)
       expect(hasAction(actions, "mine careful_all")).toBe(false)
     })
 
@@ -193,7 +193,8 @@ describe("getAvailableActions", () => {
       const focusAction = findAction(actions, "mine focus <resource>")
 
       expect(focusAction).toBeDefined()
-      expect(focusAction?.timeCost).toBe(5)
+      // Now mastery-based: L1 STONE = 20 ticks (base speed)
+      expect(focusAction?.timeCost).toBe(20)
       expect(focusAction?.isVariable).toBe(false)
     })
 
@@ -209,15 +210,16 @@ describe("getAvailableActions", () => {
       expect(appraiseAction?.timeCost).toBe(1)
     })
 
-    it("should unlock CAREFUL_ALL at skill level 4", () => {
-      state.player.skills.Mining = { level: 4, xp: 0 }
+    it("should unlock CAREFUL_ALL at skill level 16 (STONE M16 Careful)", () => {
+      state.player.skills.Mining = { level: 16, xp: 0 }
 
       const actions = getAvailableActions(state)
 
       expect(hasAction(actions, "mine careful_all")).toBe(true)
 
       const carefulAction = findAction(actions, "mine careful_all")
-      expect(carefulAction?.timeCost).toBe(10)
+      // Now mastery-based: L16 STONE = M16 → Speed_II (M9) = 10 ticks base * 2 = 20 ticks
+      expect(carefulAction?.timeCost).toBe(20)
     })
   })
 
