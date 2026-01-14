@@ -106,23 +106,30 @@ describe("getAvailableActions", () => {
         // Create a simple test node in area-d1-i0
         const areaId = "area-d1-i0"
         const locationId = `${areaId}-loc-0`
+        const testLocation = {
+          id: locationId,
+          areaId,
+          type: ExplorationLocationType.GATHERING_NODE,
+          gatheringSkillType: "Mining" as const,
+        }
 
-        // Ensure area exists
-        if (!state.exploration.areas.has(areaId)) {
-          state.exploration.areas.set(areaId, {
+        // Ensure area exists with the location
+        let area = state.exploration.areas.get(areaId)
+        if (!area) {
+          area = {
             id: areaId,
             distance: 1,
             generated: true,
-            locations: [
-              {
-                id: locationId,
-                areaId,
-                type: ExplorationLocationType.GATHERING_NODE,
-                gatheringSkillType: "Mining",
-              },
-            ],
+            locations: [testLocation],
             indexInDistance: 0,
-          })
+          }
+          state.exploration.areas.set(areaId, area)
+        } else {
+          // Area exists but may have empty locations - add the test location
+          const existingLoc = area.locations.find((loc) => loc.id === locationId)
+          if (!existingLoc) {
+            area.locations.push(testLocation)
+          }
         }
 
         // Ensure node exists

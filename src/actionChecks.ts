@@ -399,25 +399,7 @@ function checkMultiMaterialGatherAction(
   const skill = getNodeSkill(node)
   const skillLevel = state.player.skills[skill].level
 
-  // Check location access based on skill level (L5 for MID, L9 for FAR)
-  const locationRequirement = getLocationSkillRequirement(node.areaId)
-  if (skillLevel < locationRequirement) {
-    return {
-      valid: false,
-      failureType: "INSUFFICIENT_SKILL",
-      failureReason: "location_access",
-      failureContext: {
-        skill,
-        currentLevel: skillLevel,
-        requiredLevel: locationRequirement,
-        nodeAreaId: node.areaId,
-      },
-      timeCost: 0,
-      successProbability: 0,
-    }
-  }
-
-  // Check if mode is unlocked
+  // Check if mode is unlocked (check mode first for better UX - more specific error)
   if (!isModeUnlocked(mode, skillLevel)) {
     const nextUnlock = getNextModeUnlock(skillLevel)
     return {
@@ -430,6 +412,24 @@ function checkMultiMaterialGatherAction(
         skill,
         nextMode: nextUnlock?.mode,
         nextModeLevel: nextUnlock?.level,
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
+  }
+
+  // Check location access based on skill level (L5 for MID, L9 for FAR)
+  const locationRequirement = getLocationSkillRequirement(node.areaId)
+  if (skillLevel < locationRequirement) {
+    return {
+      valid: false,
+      failureType: "INSUFFICIENT_SKILL",
+      failureReason: "location_access",
+      failureContext: {
+        skill,
+        currentLevel: skillLevel,
+        requiredLevel: locationRequirement,
+        nodeAreaId: node.areaId,
       },
       timeCost: 0,
       successProbability: 0,

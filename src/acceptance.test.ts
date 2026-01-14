@@ -35,6 +35,18 @@ function getOreAreaId(state: WorldState): AreaID {
   throw new Error("No ore area found")
 }
 
+/** Get a NEAR (distance 1) area that has ore nodes */
+function getNearOreAreaId(state: WorldState): AreaID {
+  const areas = Array.from(state.exploration.areas.values()).filter((a) => a.distance === 1)
+  for (const area of areas) {
+    const hasOre = state.world.nodes?.some(
+      (n) => n.areaId === area.id && n.nodeType === NodeType.ORE_VEIN
+    )
+    if (hasOre) return area.id
+  }
+  throw new Error("No NEAR ore area found")
+}
+
 /** Get an area at distance 2+ that has ore nodes */
 function getMidOreAreaId(state: WorldState): AreaID {
   // Sort areas by distance, prefer closer areas that are distance 2+
@@ -436,9 +448,9 @@ describe("Acceptance Tests: Gathering MVP", () => {
 
   describe("Progression", () => {
     it("should unlock new actions at specific levels", async () => {
-      const world = createWorld("unlock-test")
-      // Get ore area and make it known
-      const oreAreaId = getOreAreaId(world)
+      const world = createWorld("near-ore-test")
+      // Get NEAR ore area - must be distance 1 to isolate mode unlock from location unlock
+      const oreAreaId = getNearOreAreaId(world)
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
       discoverAllLocations(world, oreAreaId)

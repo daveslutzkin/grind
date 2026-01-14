@@ -70,6 +70,18 @@ function getFarOreAreaId(state: WorldState): AreaID {
   throw new Error("No far-distance ore area found")
 }
 
+/** Get a NEAR (distance 1) area that has tree nodes - returns undefined if not found */
+function getNearTreeAreaId(state: WorldState): AreaID | undefined {
+  const areas = Array.from(state.exploration.areas.values()).filter((a) => a.distance === 1)
+  for (const area of areas) {
+    const hasTree = state.world.nodes?.some(
+      (n) => n.areaId === area.id && n.nodeType === NodeType.TREE_STAND
+    )
+    if (hasTree) return area.id
+  }
+  return undefined
+}
+
 /** Discover all locations in an area (required for Gather to work) */
 function discoverAllLocations(state: WorldState, areaId: AreaID): void {
   const area = state.exploration.areas.get(areaId)
@@ -894,9 +906,18 @@ describe("Phase 3: Gather Action Overhaul", () => {
 
     it("should find and gather from TREE_STAND with CAREFUL_ALL mode", async () => {
       if (!woodAreaId) return // Skip if no tree area found
+
+      // For mode unlock tests, we need to use a NEAR (distance 1) area to isolate
+      // mode unlock from location access requirements
+      const nearTreeAreaId = getNearTreeAreaId(world)
+      if (!nearTreeAreaId) return // Skip if no NEAR tree area
+
+      world.exploration.playerState.currentAreaId = nearTreeAreaId
+      discoverAllLocations(world, nearTreeAreaId)
       world.player.skills.Woodcutting.level = 4
+
       const node = world.world.nodes!.find(
-        (n) => n.areaId === woodAreaId && n.nodeType === NodeType.TREE_STAND
+        (n) => n.areaId === nearTreeAreaId && n.nodeType === NodeType.TREE_STAND
       )!
       moveToNodeLocation(world, node) // Move to the tree node location
 
@@ -914,9 +935,18 @@ describe("Phase 3: Gather Action Overhaul", () => {
 
     it("should find and appraise TREE_STAND with APPRAISE mode", async () => {
       if (!woodAreaId) return // Skip if no tree area found
+
+      // For mode unlock tests, we need to use a NEAR (distance 1) area to isolate
+      // mode unlock from location access requirements
+      const nearTreeAreaId = getNearTreeAreaId(world)
+      if (!nearTreeAreaId) return // Skip if no NEAR tree area
+
+      world.exploration.playerState.currentAreaId = nearTreeAreaId
+      discoverAllLocations(world, nearTreeAreaId)
       world.player.skills.Woodcutting.level = 3
+
       const node = world.world.nodes!.find(
-        (n) => n.areaId === woodAreaId && n.nodeType === NodeType.TREE_STAND
+        (n) => n.areaId === nearTreeAreaId && n.nodeType === NodeType.TREE_STAND
       )!
       moveToNodeLocation(world, node) // Move to the tree node location
 
