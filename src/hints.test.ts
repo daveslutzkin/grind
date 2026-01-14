@@ -3,7 +3,7 @@
 import { describe, it, expect } from "@jest/globals"
 import { generateFailureHint } from "../src/hints.js"
 import type { FailureDetails } from "../src/types.js"
-import { GatherMode, NodeType, getCurrentAreaId } from "../src/types.js"
+import { GatherMode, NodeType, getCurrentAreaId, ExplorationLocationType } from "../src/types.js"
 import { createWorld } from "../src/world.js"
 
 describe("generateFailureHint", () => {
@@ -1338,10 +1338,12 @@ describe("generateFailureHint", () => {
       expect(log.failureDetails?.context).toMatchObject({
         recipeId: "iron-bar",
       })
-      const missingItems = (log.failureDetails?.context as any)?.missingItems
+      const missingItems = (
+        log.failureDetails?.context as { missingItems?: Array<{ itemId: string }> }
+      )?.missingItems
       expect(missingItems).toBeDefined()
-      expect(missingItems.length).toBeGreaterThan(0)
-      expect(missingItems[0].itemId).toBe("IRON_ORE")
+      expect(missingItems!.length).toBeGreaterThan(0)
+      expect(missingItems![0].itemId).toBe("IRON_ORE")
     })
 
     it.skip("should produce structured failure for INVENTORY_FULL in crafting", async () => {
@@ -1401,14 +1403,14 @@ describe("generateFailureHint", () => {
       const nodeId = `${areaId}-node-test`
       const node = {
         nodeId,
-        nodeType: "ORE_VEIN" as any,
+        nodeType: NodeType.ORE_VEIN,
         areaId,
         materials: [
           {
             materialId: "IRON_ORE",
             remainingUnits: 10,
             maxUnitsInitial: 10,
-            requiresSkill: "Mining" as any,
+            requiresSkill: "Mining" as const,
             requiredLevel: 1,
             tier: 1,
           },
@@ -1416,14 +1418,14 @@ describe("generateFailureHint", () => {
             materialId: "COPPER_ORE",
             remainingUnits: 10,
             maxUnitsInitial: 10,
-            requiresSkill: "Mining" as any,
+            requiresSkill: "Mining" as const,
             requiredLevel: 1,
             tier: 1,
           },
         ],
         depleted: false,
       }
-      state.world.nodes.push(node as any)
+      state.world.nodes.push(node)
 
       // Set Mining to level 1
       state.player.skills.Mining = { level: 1, xp: 0 }
@@ -1434,9 +1436,9 @@ describe("generateFailureHint", () => {
       area.locations.push({
         id: locationId,
         areaId,
-        type: "GATHERING_NODE" as any,
+        type: ExplorationLocationType.GATHERING_NODE,
         gatheringSkillType: "Mining",
-      } as any)
+      })
       state.exploration.playerState.knownLocationIds.push(locationId)
       state.exploration.playerState.currentLocationId = locationId
 
@@ -1444,11 +1446,11 @@ describe("generateFailureHint", () => {
       const action: import("../src/types.js").GatherAction = {
         type: "Gather",
         nodeId,
-        mode: "FOCUS" as any,
+        mode: GatherMode.FOCUS,
         focusMaterialId: "GOLD_ORE", // Not in this node!
       }
 
-      const log = await executeAction(state, action as any)
+      const log = await executeAction(state, action)
 
       // Verify structured failure
       expect(log.success).toBe(false)
@@ -1460,7 +1462,8 @@ describe("generateFailureHint", () => {
         materialId: "GOLD_ORE",
         nodeId,
       })
-      const availableMaterials = (log.failureDetails?.context as any)?.availableMaterials
+      const availableMaterials = (log.failureDetails?.context as { availableMaterials?: string[] })
+        ?.availableMaterials
       expect(availableMaterials).toContain("IRON_ORE")
       expect(availableMaterials).toContain("COPPER_ORE")
     })
@@ -1877,20 +1880,20 @@ describe("generateFailureHint", () => {
       const nodeId = "TOWN-node-1"
       state.world.nodes.push({
         nodeId,
-        nodeType: "ORE_VEIN" as any,
+        nodeType: NodeType.ORE_VEIN,
         areaId: "TOWN",
         materials: [
           {
             materialId: "IRON_ORE",
             remainingUnits: 10,
             maxUnitsInitial: 10,
-            requiresSkill: "Mining" as any,
+            requiresSkill: "Mining" as const,
             requiredLevel: 1,
             tier: 1,
           },
         ],
         depleted: false,
-      } as any)
+      })
 
       // Create location and make it known
       const locationId = "TOWN-loc-1"
@@ -1899,9 +1902,9 @@ describe("generateFailureHint", () => {
         area.locations.push({
           id: locationId,
           areaId: "TOWN",
-          type: "GATHERING_NODE" as any,
+          type: ExplorationLocationType.GATHERING_NODE,
           gatheringSkillType: "Mining",
-        } as any)
+        })
         state.exploration.playerState.knownLocationIds.push(locationId)
         state.exploration.playerState.currentLocationId = locationId
       }
@@ -1913,7 +1916,7 @@ describe("generateFailureHint", () => {
         mode: GatherMode.APPRAISE,
       }
 
-      const log = await executeAction(state, action as any)
+      const log = await executeAction(state, action)
 
       // Should fail immediately
       expect(log.success).toBe(false)

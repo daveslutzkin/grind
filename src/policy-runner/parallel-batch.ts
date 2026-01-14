@@ -30,20 +30,24 @@ function generateSeeds(count: number): string[] {
 }
 
 /**
+ * Check if we're running from TypeScript source (tests/dev) vs compiled JS (production).
+ *
+ * Worker threads require compiled JavaScript and can't run TypeScript directly.
+ * When running from source, we fall back to sequential execution to ensure
+ * tests always use the current source code (not potentially stale dist/).
+ */
+function isRunningFromSource(): boolean {
+  const currentFile = fileURLToPath(import.meta.url)
+  return currentFile.endsWith(".ts")
+}
+
+/**
  * Get the path to the compiled worker script.
+ * Only used when running from compiled code (production).
  */
 function getWorkerPath(): string {
   const currentFile = fileURLToPath(import.meta.url)
   const currentDir = path.dirname(currentFile)
-
-  // Check if we're in source or compiled directory
-  if (currentDir.includes("/src/")) {
-    // Running from source (e.g., in tests) - point to compiled dist
-    const projectRoot = currentDir.replace(/\/src\/.*$/, "")
-    return path.join(projectRoot, "dist", "policy-runner", "simulation-worker.js")
-  }
-
-  // Running from compiled code - worker is in same directory
   return path.join(currentDir, "simulation-worker.js")
 }
 
@@ -74,8 +78,10 @@ export async function runBatchParallel(config: ParallelBatchConfig): Promise<Bat
     }
   }
 
-  // If only 1 worker or 1 task, just run sequentially to avoid overhead
-  if (numWorkers <= 1 || tasks.length <= 1) {
+  // Fall back to sequential execution when:
+  // 1. Running from TypeScript source (workers can't run TS directly)
+  // 2. Only 1 worker or 1 task (overhead not worth it)
+  if (isRunningFromSource() || numWorkers <= 1 || tasks.length <= 1) {
     return runSequentially(tasks, config)
   }
 

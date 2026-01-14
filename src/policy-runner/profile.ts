@@ -2,6 +2,7 @@
  * Profiling script to measure actual performance bottlenecks.
  * Run with: npx tsx src/policy-runner/profile.ts
  */
+/* global performance */
 
 import { runSimulation } from "./runner.js"
 import { allPolicies } from "./policies/index.js"
@@ -22,8 +23,8 @@ function recordTiming(name: string, ms: number) {
 }
 
 // Monkey-patch console.time/timeEnd for measurement
-const originalTime = console.time.bind(console)
-const originalTimeEnd = console.timeEnd.bind(console)
+const _originalTime = console.time.bind(console)
+const _originalTimeEnd = console.timeEnd.bind(console)
 const timeStarts: Record<string, number> = {}
 
 console.time = (label?: string) => {
