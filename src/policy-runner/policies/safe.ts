@@ -28,13 +28,17 @@ function findNearestUnexploredArea(
   // Find areas that still have undiscovered content
   // An area is worth exploring if:
   // 1. It's not fully explored (has remaining discoverables)
-  // 2. It has no discovered mining nodes yet (we want to find nodes)
+  // 2. It has no mineable nodes (exhausted nodes don't count - we should explore for more)
   const candidates = obs.knownAreas.filter((area) => {
     // Skip fully explored areas - nothing left to discover
     if (area.isFullyExplored) return false
 
-    // Only explore if we haven't found mining nodes yet
-    if (area.discoveredNodes.length > 0) return false
+    // Only explore if we don't have mineable nodes here
+    // (if all discovered nodes are exhausted, we should explore for more)
+    const hasMineableNode = area.discoveredNodes.some(
+      (node) => node.isMineable && node.remainingCharges
+    )
+    if (hasMineableNode) return false
 
     if (preference === "below_frontier") {
       // Areas closer than the frontier (safer exploration)

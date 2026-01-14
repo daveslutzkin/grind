@@ -24,7 +24,7 @@ import type {
   SkillLevelSnapshot,
   SkillSnapshot,
 } from "./types.js"
-import { getObservation, getMaxDiscoveredDistance } from "./observation.js"
+import { getObservation, getMaxDiscoveredDistance, clearObservationCache } from "./observation.js"
 import { toEngineActions, type ConversionFailure } from "./action-converter.js"
 import {
   createStallDetector,
@@ -207,6 +207,7 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
   const recordActions = config.recordActions ?? false
 
   // Initialize
+  clearObservationCache() // Clear cache from any previous run
   const state = await initializeWorld(seed)
   const stallDetector = createStallDetector(stallWindowSize)
   const metrics = createMetricsCollector()
