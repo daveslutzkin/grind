@@ -1339,4 +1339,80 @@ describe("Phase 3: Gather Action Overhaul", () => {
       }
     })
   })
+
+  // ============================================================================
+  // Phase 5: Inventory Check
+  // ============================================================================
+
+  describe("Canonical Gathering: Pre-flight Inventory Check", () => {
+    it("should fail FOCUS mode if inventory is full", async () => {
+      world.player.skills.Mining.level = 5
+      const node = getFirstOreNode()
+
+      // Fill inventory to capacity
+      const capacity = world.player.inventoryCapacity ?? 10
+      world.player.inventory = []
+      for (let i = 0; i < capacity; i++) {
+        world.player.inventory.push({ itemId: `FILLER_${i}`, quantity: 1 })
+      }
+
+      const action: GatherAction = {
+        type: "Gather",
+        nodeId: node.nodeId,
+        mode: GatherMode.FOCUS,
+        focusMaterialId: "STONE",
+      }
+
+      const log = await executeAction(world, action)
+
+      expect(log.success).toBe(false)
+      expect(log.failureDetails?.type).toBe("INVENTORY_FULL")
+    })
+
+    it("should fail CAREFUL mode if inventory is full", async () => {
+      world.player.skills.Mining.level = 16 // STONE M16 = Careful
+      const node = getFirstOreNode()
+
+      // Fill inventory to capacity
+      const capacity = world.player.inventoryCapacity ?? 10
+      world.player.inventory = []
+      for (let i = 0; i < capacity; i++) {
+        world.player.inventory.push({ itemId: `FILLER_${i}`, quantity: 1 })
+      }
+
+      const action: GatherAction = {
+        type: "Gather",
+        nodeId: node.nodeId,
+        mode: GatherMode.CAREFUL_ALL,
+      }
+
+      const log = await executeAction(world, action)
+
+      expect(log.success).toBe(false)
+      expect(log.failureDetails?.type).toBe("INVENTORY_FULL")
+    })
+
+    it("should allow APPRAISE mode even if inventory is full", async () => {
+      world.player.skills.Mining.level = 3
+      const node = getFirstOreNode()
+
+      // Fill inventory to capacity
+      const capacity = world.player.inventoryCapacity ?? 10
+      world.player.inventory = []
+      for (let i = 0; i < capacity; i++) {
+        world.player.inventory.push({ itemId: `FILLER_${i}`, quantity: 1 })
+      }
+
+      const action: GatherAction = {
+        type: "Gather",
+        nodeId: node.nodeId,
+        mode: GatherMode.APPRAISE,
+      }
+
+      const log = await executeAction(world, action)
+
+      expect(log.success).toBe(true)
+      expect(log.extraction!.mode).toBe(GatherMode.APPRAISE)
+    })
+  })
 })

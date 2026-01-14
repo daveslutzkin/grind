@@ -429,6 +429,24 @@ function checkMultiMaterialGatherAction(
     }
   }
 
+  // Check inventory capacity before extracting (not for APPRAISE)
+  if (mode !== GatherMode.APPRAISE) {
+    const inventoryCapacity = state.player.inventoryCapacity ?? 10
+    if (state.player.inventory.length >= inventoryCapacity) {
+      return {
+        valid: false,
+        failureType: "INVENTORY_FULL",
+        failureReason: "no_space_for_materials",
+        failureContext: {
+          capacity: inventoryCapacity,
+          current: state.player.inventory.length,
+        },
+        timeCost: 0,
+        successProbability: 0,
+      }
+    }
+  }
+
   // Check if mode is unlocked (check mode first for better UX - more specific error)
   if (!isModeUnlocked(mode, skillLevel)) {
     const nextUnlock = getNextModeUnlock(skillLevel)

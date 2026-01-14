@@ -468,11 +468,10 @@ describe("Engine", () => {
 
       const log = await await executeAction(state, action)
 
-      // Should succeed but discard all gathered items (no room)
-      expect(log.success).toBe(true)
-      expect(log.extraction?.discardedItems).toBeDefined()
-      expect(log.extraction?.discardedItems?.length).toBeGreaterThan(0)
-      // Inventory should still be full with the original items
+      // In new mastery system, gathering fails upfront if inventory is full
+      expect(log.success).toBe(false)
+      expect(log.failureDetails?.type).toBe("INVENTORY_FULL")
+      // Inventory should still be full with the original items (nothing extracted)
       expect(state.player.inventory.length).toBe(10)
     })
 

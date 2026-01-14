@@ -524,6 +524,7 @@ export type FailureType =
   | "NOT_ENROLLED"
   | "MATERIAL_NOT_UNLOCKED"
   | "NO_CAREFUL_MATERIALS"
+  | "INVENTORY_FULL"
 
 // RNG roll log entry
 export interface RngRoll {
