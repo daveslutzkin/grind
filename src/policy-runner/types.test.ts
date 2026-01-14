@@ -150,6 +150,19 @@ describe("types", () => {
         { skill: "Mining", level: 3, tick: 250, cumulativeXp: 13, distance: 1, actionCount: 25 },
       ],
       maxDistanceReached: 2,
+      summary: {
+        areasDiscovered: 10,
+        areasFullyExplored: 3,
+        miningLocationsDiscovered: 4,
+        byDistance: [
+          {
+            distance: 1,
+            areasDiscovered: 5,
+            areasFullyExplored: 2,
+            miningLocationsDiscovered: 3,
+          },
+        ],
+      },
     }
 
     expect(result.terminationReason).toBe("target_reached")

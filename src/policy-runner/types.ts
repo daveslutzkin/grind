@@ -220,6 +220,21 @@ export interface SkillSnapshot {
 }
 
 /**
+ * High-level discovery summary for a run.
+ */
+export interface RunSummary {
+  areasDiscovered: number
+  areasFullyExplored: number
+  miningLocationsDiscovered: number
+  byDistance: Array<{
+    distance: number
+    areasDiscovered: number
+    areasFullyExplored: number
+    miningLocationsDiscovered: number
+  }>
+}
+
+/**
  * Result of a single simulation run.
  */
 export interface RunResult {
@@ -247,6 +262,9 @@ export interface RunResult {
 
   // Distance progression
   maxDistanceReached: number
+
+  // Discovery summary
+  summary: RunSummary
 }
 
 // ============================================================================
@@ -322,5 +340,5 @@ export interface MetricsCollector {
     finalSkills: SkillSnapshot[],
     totalTicks: number,
     stallSnapshot?: StallSnapshot
-  ): Omit<RunResult, "seed" | "policyId" | "actionLog">
+  ): Omit<RunResult, "seed" | "policyId" | "actionLog" | "summary">
 }

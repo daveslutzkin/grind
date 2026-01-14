@@ -4,7 +4,7 @@ This is a rules-first game engine.
 
 ## Development
 
-- **ALWAYS USE TDD**: write tests first, then implement to make them pass.
+- **Always use TDD**: write tests first, then implement to make them pass.
 - **Fixing bugs**: write a failing test first to reproduce the bug, then fix the bug and see the test pass.
 - **Quality checks**: Run `npm run check` (format, lint, test) after every change.
 - **Commit checkpoints**: Commit (but don't push) each time functionality is complete and all checks pass.

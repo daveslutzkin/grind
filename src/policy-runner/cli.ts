@@ -348,6 +348,29 @@ function printResult(result: RunResult, verbose: boolean, logActions: boolean): 
   console.log(`  Inventory: ${result.ticksSpent.inventoryManagement} ticks`)
   console.log(`  Waiting: ${result.ticksSpent.waiting} ticks`)
 
+  console.log()
+  console.log("Discovery Summary:")
+  console.log(`  Areas Discovered: ${result.summary.areasDiscovered}`)
+  console.log(`  Areas Fully Explored: ${result.summary.areasFullyExplored}`)
+  console.log(`  Mining Locations Discovered: ${result.summary.miningLocationsDiscovered}`)
+  const distanceRows = result.summary.byDistance.filter(
+    (row) =>
+      row.areasDiscovered > 0 || row.areasFullyExplored > 0 || row.miningLocationsDiscovered > 0
+  )
+  if (distanceRows.length > 0) {
+    console.log()
+    console.log("Discovery by Distance:")
+    console.log("  Dist  Areas  Fully  MiningLocs")
+    console.log("  " + "-".repeat(26))
+    for (const row of distanceRows) {
+      const dist = String(row.distance).padStart(4)
+      const areas = String(row.areasDiscovered).padStart(6)
+      const fully = String(row.areasFullyExplored).padStart(6)
+      const nodes = String(row.miningLocationsDiscovered).padStart(10)
+      console.log(`  ${dist} ${areas} ${fully} ${nodes}`)
+    }
+  }
+
   // Always show level progression with enhanced info (sorted by skill then level)
   if (result.levelUpTicks.length > 0) {
     const sortedLevelUps = sortLevelUps(result.levelUpTicks)

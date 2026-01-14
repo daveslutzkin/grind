@@ -79,7 +79,7 @@ export function createMetricsCollector(): MetricsCollector {
       finalSkills: SkillSnapshot[],
       totalTicks: number,
       stallSnapshot?: StallSnapshot
-    ): Omit<RunResult, "seed" | "policyId" | "actionLog"> {
+    ): Omit<RunResult, "seed" | "policyId" | "actionLog" | "summary"> {
       return {
         terminationReason,
         finalLevel,

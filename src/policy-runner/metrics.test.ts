@@ -128,6 +128,12 @@ describe("metrics", () => {
       ticksSpent: { mining: 0, traveling: 0, exploring: 0, inventoryManagement: 0, waiting: 0 },
       levelUpTicks: [],
       maxDistanceReached: maxDistance,
+      summary: {
+        areasDiscovered: 0,
+        areasFullyExplored: 0,
+        miningLocationsDiscovered: 0,
+        byDistance: [],
+      },
     })
 
     it("returns zeros for empty results", () => {
@@ -220,6 +226,12 @@ describe("metrics", () => {
           },
           levelUpTicks: [],
           maxDistanceReached: 1,
+          summary: {
+            areasDiscovered: 0,
+            areasFullyExplored: 0,
+            miningLocationsDiscovered: 0,
+            byDistance: [],
+          },
         },
         {
           seed: "s1",
@@ -238,6 +250,12 @@ describe("metrics", () => {
           },
           levelUpTicks: [],
           maxDistanceReached: 2,
+          summary: {
+            areasDiscovered: 0,
+            areasFullyExplored: 0,
+            miningLocationsDiscovered: 0,
+            byDistance: [],
+          },
         },
       ]
 

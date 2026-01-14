@@ -10,10 +10,12 @@
  */
 
 import type { WorldState, SkillID, SkillState } from "../types.js"
+import { ExplorationLocationType } from "../types.js"
 import { getTotalXP } from "../types.js"
 import { createWorld } from "../world.js"
 import { executeAction } from "../engine.js"
 import { consumeTime } from "../stateHelpers.js"
+import { buildDiscoverables } from "../exploration.js"
 
 import type {
   RunConfig,
@@ -23,6 +25,7 @@ import type {
   SkillXpGain,
   SkillLevelSnapshot,
   SkillSnapshot,
+  RunSummary,
 } from "./types.js"
 import { getObservation, getMaxDiscoveredDistance, clearObservationCache } from "./observation.js"
 import { toEngineActions, type ConversionFailure } from "./action-converter.js"
@@ -133,6 +136,80 @@ function getFinalSkillSnapshots(state: WorldState, skillsWithXp: Set<SkillID>): 
 }
 
 /**
+ * Build a discovery summary from the final world state.
+ */
+function computeRunSummary(state: WorldState): RunSummary {
+  const exploration = state.exploration
+  const knownAreaIds = exploration.playerState.knownAreaIds.filter((areaId) => areaId !== "TOWN")
+  const knownLocationIds = new Set(exploration.playerState.knownLocationIds)
+
+  let areasFullyExplored = 0
+  const distanceStats = new Map<
+    number,
+    { areasDiscovered: number; areasFullyExplored: number; miningLocationsDiscovered: number }
+  >()
+  for (const areaId of knownAreaIds) {
+    const area = exploration.areas.get(areaId)
+    if (!area) continue
+    const distance = area.distance
+    if (!distanceStats.has(distance)) {
+      distanceStats.set(distance, {
+        areasDiscovered: 0,
+        areasFullyExplored: 0,
+        miningLocationsDiscovered: 0,
+      })
+    }
+    const distanceSummary = distanceStats.get(distance)!
+    distanceSummary.areasDiscovered++
+
+    const { discoverables } = buildDiscoverables(state, area)
+    if (discoverables.length === 0) {
+      areasFullyExplored++
+      distanceSummary.areasFullyExplored++
+    }
+  }
+
+  let miningLocationsDiscovered = 0
+  for (const area of exploration.areas.values()) {
+    if (area.id === "TOWN") continue
+    const distance = area.distance
+    if (!distanceStats.has(distance)) {
+      distanceStats.set(distance, {
+        areasDiscovered: 0,
+        areasFullyExplored: 0,
+        miningLocationsDiscovered: 0,
+      })
+    }
+    const distanceSummary = distanceStats.get(distance)!
+
+    for (const location of area.locations) {
+      if (
+        knownLocationIds.has(location.id) &&
+        location.type === ExplorationLocationType.GATHERING_NODE &&
+        location.gatheringSkillType === "Mining"
+      ) {
+        miningLocationsDiscovered++
+        distanceSummary.miningLocationsDiscovered++
+      }
+    }
+  }
+
+  return {
+    areasDiscovered: knownAreaIds.length,
+    areasFullyExplored,
+    miningLocationsDiscovered,
+    byDistance: Array.from(distanceStats.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([distance, stats]) => ({
+        distance,
+        areasDiscovered: stats.areasDiscovered,
+        areasFullyExplored: stats.areasFullyExplored,
+        miningLocationsDiscovered: stats.miningLocationsDiscovered,
+      })),
+  }
+}
+
+/**
  * Result from executing a policy action.
  */
 interface ActionExecutionResult {
@@ -225,9 +302,12 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
   let actionCount = 0
 
   // Helper to build result with optional action log
-  const buildResult = (metricsResult: Omit<RunResult, "seed" | "policyId" | "actionLog">) => ({
+  const buildResult = (
+    metricsResult: Omit<RunResult, "seed" | "policyId" | "actionLog" | "summary">
+  ) => ({
     seed,
     policyId: policy.id,
+    summary: computeRunSummary(state),
     ...metricsResult,
     ...(recordActions ? { actionLog } : {}),
   })
