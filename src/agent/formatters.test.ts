@@ -207,65 +207,6 @@ describe("Formatters", () => {
         // After appraisal, should show quantities like "80/80 Copper Ore ✓"
         expect(formatted).toMatch(/\d+\/\d+ [A-Z][a-z]+( [A-Z][a-z]+)? ✓/)
       })
-
-      it("should show locked node when skill level is insufficient for location tier", async () => {
-        const state = createWorld("mat-vis-5")
-
-        // Find a D2 area (distance 2, requires L5) specifically with ORE_VEIN nodes
-        const d2Area = Array.from(state.exploration.areas.values()).find(
-          (a) =>
-            a.distance === 2 &&
-            state.world.nodes?.some((n) => n.areaId === a.id && n.nodeType === NodeType.ORE_VEIN)
-        )
-        if (!d2Area) throw new Error("No D2 area with ore nodes found")
-
-        // Enrol in Mining first (must be at guild)
-        setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-        await executeAction(state, { type: "Enrol" })
-
-        // Now move to D2 area (at hub, not at a specific location)
-        makeAreaKnown(state, d2Area.id)
-        state.exploration.playerState.currentAreaId = d2Area.id
-        state.exploration.playerState.currentLocationId = null // At hub/clearing
-        discoverAllLocations(state, d2Area.id)
-
-        const formatted = formatWorldState(state)
-
-        // Should show as locked with skill requirement, not list materials
-        expect(formatted).toContain("🔒 (Mining L5)")
-        // Should NOT show any material checkmarks since node is locked
-        expect(formatted).not.toMatch(/[A-Z_]+ ✓/)
-      })
-
-      it("should show materials normally when skill level meets location tier requirement", async () => {
-        const state = createWorld("mat-vis-6")
-
-        // Find a D2 area (distance 2, requires L5) specifically with ORE_VEIN nodes
-        const d2Area = Array.from(state.exploration.areas.values()).find(
-          (a) =>
-            a.distance === 2 &&
-            state.world.nodes?.some((n) => n.areaId === a.id && n.nodeType === NodeType.ORE_VEIN)
-        )
-        if (!d2Area) throw new Error("No D2 area with ore nodes found")
-
-        // Enrol in Mining and set to L5 (meets D2 requirement)
-        setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-        await executeAction(state, { type: "Enrol" })
-        state.player.skills.Mining = { level: 5, xp: 0 }
-
-        // Now move to D2 area (at hub, not at a specific location)
-        makeAreaKnown(state, d2Area.id)
-        state.exploration.playerState.currentAreaId = d2Area.id
-        state.exploration.playerState.currentLocationId = null // At hub/clearing
-        discoverAllLocations(state, d2Area.id)
-
-        const formatted = formatWorldState(state)
-
-        // Should NOT show as locked
-        expect(formatted).not.toContain("🔒")
-        // Should show materials with checkmarks (human-readable names now)
-        expect(formatted).toMatch(/\w+ ✓/)
-      })
     })
 
     describe("wilderness exploration status", () => {

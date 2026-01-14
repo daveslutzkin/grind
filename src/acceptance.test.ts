@@ -47,21 +47,6 @@ function getNearOreAreaId(state: WorldState): AreaID {
   throw new Error("No NEAR ore area found")
 }
 
-/** Get an area at distance 2+ that has ore nodes */
-function getMidOreAreaId(state: WorldState): AreaID {
-  // Sort areas by distance, prefer closer areas that are distance 2+
-  const areas = Array.from(state.exploration.areas.values())
-    .filter((a) => a.distance >= 2)
-    .sort((a, b) => a.distance - b.distance)
-  for (const area of areas) {
-    const hasOre = state.world.nodes?.some(
-      (n) => n.areaId === area.id && n.nodeType === NodeType.ORE_VEIN
-    )
-    if (hasOre) return area.id
-  }
-  throw new Error("No MID ore area found")
-}
-
 /** Make an area and its connection from TOWN known */
 function makeAreaKnown(state: WorldState, areaId: AreaID): void {
   if (!state.exploration.playerState.knownAreaIds.includes(areaId)) {
@@ -477,33 +462,6 @@ describe("Acceptance Tests: Gathering MVP", () => {
 
       // L3: APPRAISE should succeed
       world.player.skills.Mining.level = 3
-      const successLog = await executeAction(world, appraiseAction)
-      expect(successLog.success).toBe(true)
-    })
-
-    it("should unlock locations at specific levels", async () => {
-      const world = createWorld("location-unlock-test")
-      // Get a MID area (distance 2) that has ore
-      const midAreaId = getMidOreAreaId(world)
-      makeAreaKnown(world, midAreaId)
-      world.exploration.playerState.currentAreaId = midAreaId
-      discoverAllLocations(world, midAreaId)
-      const node = world.world.nodes!.find((n) => n.areaId === midAreaId)!
-      moveToNodeLocation(world, node)
-
-      // L4: MID should fail (requires L5) - use APPRAISE to avoid material level issues
-      world.player.skills.Mining.level = 4
-      const appraiseAction: GatherAction = {
-        type: "Gather",
-        nodeId: node.nodeId,
-        mode: GatherMode.APPRAISE,
-      }
-      const failLog = await executeAction(world, appraiseAction)
-      expect(failLog.success).toBe(false)
-      expect(failLog.failureDetails?.type).toBe("INSUFFICIENT_SKILL")
-
-      // L5: MID should succeed
-      world.player.skills.Mining.level = 5
       const successLog = await executeAction(world, appraiseAction)
       expect(successLog.success).toBe(true)
     })

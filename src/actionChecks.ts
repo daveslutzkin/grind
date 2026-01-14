@@ -247,37 +247,13 @@ export function getNextModeUnlock(skillLevel: number): { mode: GatherMode; level
 }
 
 /**
- * Get required skill level to access a location based on its distance band
- * Per spec:
- * - NEAR (distance 1): L1
- * - MID (distance 2): L5
- * - FAR (distance 3+): L9
+ * Get required skill level to access a location based on its distance band.
+ * Location access is no longer gated by skill level - materials are gated instead.
+ * Per mining-levels-1-200.md, material unlock levels control progression.
  */
-export function getLocationSkillRequirement(locationId: string): number {
-  // TOWN has no gating
-  if (locationId === "TOWN") {
-    return 1
-  }
-
-  // Parse procedural area IDs (format: area-d{distance}-i{index})
-  const match = locationId.match(/^area-d(\d+)-i\d+$/)
-  if (match) {
-    const distance = parseInt(match[1], 10)
-    if (distance === 1) return 1 // NEAR - no gating
-    if (distance === 2) return 5 // MID - requires L5
-    if (distance >= 3) return 9 // FAR - requires L9
-  }
-
-  // Fallback for legacy area IDs (kept for compatibility)
-  if (locationId.includes("OUTSKIRTS") || locationId.includes("COPSE")) {
-    return 1 // NEAR - no gating
-  } else if (locationId.includes("QUARRY") || locationId.includes("DEEP_FOREST")) {
-    return 5 // MID - requires L5
-  } else if (locationId.includes("SHAFT") || locationId.includes("GROVE")) {
-    return 9 // FAR - requires L9
-  }
-
-  return 1 // Default to no gating
+export function getLocationSkillRequirement(_locationId: string): number {
+  // No location-based gating - material levels control progression instead
+  return 1
 }
 
 /**

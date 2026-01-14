@@ -88,10 +88,20 @@ describe("runner", () => {
         expect(result.levelUpTicks.length).toBeGreaterThan(0)
       }
 
-      // Level-ups should always be in order (if any exist)
+      // Level-ups should be in order by tick, and within each skill, levels should increase
       for (let i = 1; i < result.levelUpTicks.length; i++) {
-        expect(result.levelUpTicks[i].level).toBeGreaterThan(result.levelUpTicks[i - 1].level)
         expect(result.levelUpTicks[i].tick).toBeGreaterThanOrEqual(result.levelUpTicks[i - 1].tick)
+      }
+      // Check that within each skill, levels strictly increase
+      const bySkill = new Map<string, number[]>()
+      for (const lu of result.levelUpTicks) {
+        if (!bySkill.has(lu.skill)) bySkill.set(lu.skill, [])
+        bySkill.get(lu.skill)!.push(lu.level)
+      }
+      for (const [, levels] of bySkill) {
+        for (let i = 1; i < levels.length; i++) {
+          expect(levels[i]).toBeGreaterThan(levels[i - 1])
+        }
       }
     })
 
