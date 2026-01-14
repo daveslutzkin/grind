@@ -8,6 +8,7 @@
 
 import { runSimulation } from "./runner.js"
 import { runBatch } from "./batch.js"
+import { runBatchParallel } from "./parallel-batch.js"
 import { safeMiner } from "./policies/safe.js"
 import { greedyMiner } from "./policies/greedy.js"
 import { balancedMiner } from "./policies/balanced.js"
@@ -39,6 +40,8 @@ function parseArgs(): {
   maxTicks: number
   stallWindowSize: number | undefined
   batch: boolean
+  parallel: boolean
+  maxWorkers: number | undefined
   verbose: boolean
   logActions: boolean
   help: boolean
@@ -53,6 +56,8 @@ function parseArgs(): {
   let maxTicks = 50000
   let stallWindowSize: number | undefined
   let batch = false
+  let parallel = false
+  let maxWorkers: number | undefined
   let verbose = false
   let logActions = false
   let help = false
@@ -78,6 +83,10 @@ function parseArgs(): {
       stallWindowSize = parseInt(args[++i], 10)
     } else if (arg === "--batch" || arg === "-b") {
       batch = true
+    } else if (arg === "--parallel" || arg === "-P") {
+      parallel = true
+    } else if (arg === "--max-workers" || arg === "-w") {
+      maxWorkers = parseInt(args[++i], 10)
     } else if (arg === "--verbose" || arg === "-v") {
       verbose = true
     } else if (arg === "--log-actions") {
@@ -94,6 +103,8 @@ function parseArgs(): {
     maxTicks,
     stallWindowSize,
     batch,
+    parallel,
+    maxWorkers,
     verbose,
     logActions,
     help,
@@ -119,6 +130,8 @@ OPTIONS:
   -t, --max-ticks <n>     Maximum ticks before timeout (default: 50000)
   --stall-window <n>      Ticks without progress before stall (default: 1000)
   -b, --batch             Run batch mode (multiple seeds)
+  -P, --parallel          Run batch in parallel using worker threads
+  -w, --max-workers <n>   Maximum worker threads for parallel mode (default: CPU count)
   -v, --verbose           Show detailed progress
   --log-actions           Output full action log (single run only)
   -h, --help              Show this help message
@@ -129,6 +142,12 @@ EXAMPLES:
 
   # Batch run with 50 random seeds
   npx tsx src/policy-runner/cli.ts --batch --seed-count 50 --policy greedy
+
+  # Parallel batch run (uses all CPU cores)
+  npx tsx src/policy-runner/cli.ts --batch --parallel --seed-count 50 --policy safe
+
+  # Parallel batch with limited workers
+  npx tsx src/policy-runner/cli.ts --batch --parallel --max-workers 4 --seed-count 50
 
   # Batch run comparing all policies
   npx tsx src/policy-runner/cli.ts --batch --seed-count 20 --policy all
@@ -459,26 +478,31 @@ async function runBatchMode(args: ReturnType<typeof parseArgs>): Promise<void> {
   const seedCount = args.seedCount ?? (args.seeds ? undefined : 100)
 
   console.log("=".repeat(60))
-  console.log("POLICY RUNNER - Batch Mode")
+  console.log(`POLICY RUNNER - Batch Mode${args.parallel ? " (Parallel)" : ""}`)
   console.log("=".repeat(60))
   console.log()
   console.log(`Policies: ${policies.map((p) => p.id).join(", ")}`)
   console.log(`Seeds: ${args.seeds ? args.seeds.length : seedCount}`)
   console.log(`Target Level: ${args.targetLevel}`)
   console.log(`Max Ticks: ${args.maxTicks}`)
+  if (args.parallel) {
+    console.log(`Parallel: yes (max workers: ${args.maxWorkers ?? "auto"})`)
+  }
   console.log()
 
   const startTime = Date.now()
 
   process.stdout.write("Running simulations")
 
-  const result = await runBatch({
+  const batchRunner = args.parallel ? runBatchParallel : runBatch
+  const result = await batchRunner({
     seeds: args.seeds,
     seedCount,
     policies,
     targetLevel: args.targetLevel,
     maxTicks: args.maxTicks,
     stallWindowSize: args.stallWindowSize,
+    maxWorkers: args.maxWorkers,
     onProgress: () => process.stdout.write("."),
   })
 

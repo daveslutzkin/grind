@@ -11,6 +11,8 @@
 // Core execution
 export { runSimulation } from "./runner.js"
 export { runBatch, runValidation } from "./batch.js"
+export { runBatchParallel } from "./parallel-batch.js"
+export type { ParallelBatchConfig } from "./parallel-batch.js"
 
 // Policies
 export {
