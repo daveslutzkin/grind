@@ -573,6 +573,7 @@ export function createWorld(seed: string): WorldState {
       allNodes.push(...result.nodes)
       // Populate the area's locations for discovery tracking
       area.locations = result.locations
+      area.generated = true
     }
   }
 

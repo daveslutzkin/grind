@@ -151,6 +151,7 @@ export function getObservation(state: WorldState): PolicyObservation {
     const area = exploration.areas.get(areaId)
     if (area && area.id !== "TOWN") {
       const knownArea = buildKnownArea(area, miningLevel, knownLocationIds, state.world.nodes)
+      const isCurrentArea = area.id === currentAreaId
 
       // Check if this area has mineable nodes
       const hasMineableNode = knownArea.discoveredNodes.some(
@@ -166,32 +167,33 @@ export function getObservation(state: WorldState): PolicyObservation {
           area.distance
         )
         knownAreas.push(knownArea)
-      } else {
-        // No mineable nodes - check if fully explored (use cache)
-        let isFullyExplored = fullyExploredCache.get(areaId)
-        if (isFullyExplored === undefined) {
-          // Not in cache - compute it
-          const { discoverables } = buildDiscoverables(state, area)
-          isFullyExplored = discoverables.length === 0
-          if (isFullyExplored) {
-            // Cache positive results (fully explored never changes back)
-            fullyExploredCache.set(areaId, true)
-          }
-        }
-
-        if (!isFullyExplored) {
-          // Still has content to discover - include it
-          knownArea.isFullyExplored = false
-          knownArea.travelTicksFromCurrent = estimateTravelTicks(
-            currentAreaId,
-            currentDistance,
-            area.id,
-            area.distance
-          )
-          knownAreas.push(knownArea)
-        }
-        // else: fully explored with no mineable nodes - skip it entirely
+        continue
       }
+
+      // No mineable nodes - check if fully explored (use cache)
+      let isFullyExplored = fullyExploredCache.get(areaId)
+      if (isFullyExplored === undefined) {
+        // Not in cache - compute it
+        const { discoverables } = buildDiscoverables(state, area)
+        isFullyExplored = discoverables.length === 0
+        if (isFullyExplored) {
+          // Cache positive results (fully explored never changes back)
+          fullyExploredCache.set(areaId, true)
+        }
+      }
+
+      // Include the area if it still has content OR it's the current area
+      if (!isFullyExplored || isCurrentArea) {
+        knownArea.isFullyExplored = isFullyExplored
+        knownArea.travelTicksFromCurrent = estimateTravelTicks(
+          currentAreaId,
+          currentDistance,
+          area.id,
+          area.distance
+        )
+        knownAreas.push(knownArea)
+      }
+      // else: fully explored with no mineable nodes - skip it entirely
     }
   }
 

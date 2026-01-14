@@ -259,7 +259,7 @@ export async function interactiveExplore(state: WorldState): Promise<ActionLog[]
     const currentArea = exploration.areas.get(exploration.playerState.currentAreaId)!
 
     // Ensure area is fully generated (must happen before buildDiscoverables and shadow rolling)
-    await ensureAreaFullyGenerated(state.rng, exploration, currentArea)
+    await ensureAreaFullyGenerated(state, currentArea)
 
     const { discoverables } = buildDiscoverables(state, currentArea)
 

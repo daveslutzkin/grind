@@ -9,6 +9,7 @@ import type {
   AreaID,
   RngState,
   ExplorationLocation,
+  Node,
   WorldState,
   SurveyAction,
   ExploreAction,
@@ -21,7 +22,7 @@ import type {
   ActionGenerator,
   FailureType,
 } from "./types.js"
-import { ExplorationLocationType } from "./types.js"
+import { ExplorationLocationType, NodeType } from "./types.js"
 import { rollFloat, roll, rollNormal } from "./rng.js"
 import { consumeTime } from "./stateHelpers.js"
 import { generateNodesForArea, getLocationDisplayName } from "./world.js"
@@ -332,13 +333,51 @@ export function createAreaPlaceholder(distance: number, indexInDistance: number)
  * just marks the area as generated - it does NOT re-generate locations,
  * as that would cause desync between nodes and locations.
  */
-export function ensureAreaGenerated(_rng: RngState, area: Area): Area {
+function buildGatheringLocationsFromNodes(areaId: AreaID, nodes: Node[]): ExplorationLocation[] {
+  const locations: ExplorationLocation[] = []
+  for (const node of nodes) {
+    const match = node.nodeId.match(/-node-(\d+)$/)
+    if (!match) continue
+    const locationIndex = match[1]
+    const gatheringSkillType = node.nodeType === NodeType.ORE_VEIN ? "Mining" : "Woodcutting"
+    locations.push({
+      id: `${areaId}-loc-${locationIndex}`,
+      areaId,
+      type: ExplorationLocationType.GATHERING_NODE,
+      gatheringSkillType,
+    })
+  }
+
+  locations.sort((a, b) => a.id.localeCompare(b.id))
+  return locations
+}
+
+export function ensureAreaGenerated(state: WorldState, area: Area): Area {
   if (area.generated) return area
 
-  // Locations were already populated by generateNodesForArea() in world.ts createWorld.
-  // Empty locations means the area is sparse (rolls failed) - that's intentional.
-  // DO NOT call generateAreaLocations here - it uses different RNG labels which
-  // would create locations without corresponding nodes (the root cause of bug #5).
+  // If locations already exist (even empty), content was decided at world creation.
+  // For placeholders beyond initial generation, create nodes + locations on discovery.
+  if (area.id !== "TOWN") {
+    const existingNodes = state.world.nodes.filter((node) => node.areaId === area.id)
+
+    if (existingNodes.length > 0) {
+      if (area.locations.length === 0) {
+        area.locations = buildGatheringLocationsFromNodes(area.id, existingNodes)
+      } else {
+        const existingLocationIds = new Set(area.locations.map((loc) => loc.id))
+        for (const loc of buildGatheringLocationsFromNodes(area.id, existingNodes)) {
+          if (!existingLocationIds.has(loc.id)) {
+            area.locations.push(loc)
+          }
+        }
+      }
+    } else if (area.locations.length === 0) {
+      const result = generateNodesForArea(area.id, area.distance, state.rng)
+      state.world.nodes.push(...result.nodes)
+      area.locations = result.locations
+    }
+  }
+
   area.generated = true
   return area
 }
@@ -352,11 +391,9 @@ export function ensureAreaGenerated(_rng: RngState, area: Area): Area {
  * 3. Generate connections from this area to same/adjacent distances
  * 4. Generate a human-readable name using LLM (if ANTHROPIC_API_KEY is configured)
  */
-export async function ensureAreaFullyGenerated(
-  rng: RngState,
-  exploration: NonNullable<WorldState["exploration"]>,
-  area: Area
-): Promise<void> {
+export async function ensureAreaFullyGenerated(state: WorldState, area: Area): Promise<void> {
+  const exploration = state.exploration!
+
   // Skip if already fully generated (has connections and name)
   const hasConnections = exploration.connections.some(
     (c) => c.fromAreaId === area.id || c.toAreaId === area.id
@@ -364,7 +401,7 @@ export async function ensureAreaFullyGenerated(
   if (area.generated && hasConnections && area.name) return
 
   // Generate area content
-  ensureAreaGenerated(rng, area)
+  ensureAreaGenerated(state, area)
 
   // Don't generate connections for TOWN (already done at init)
   if (area.id === "TOWN") return
@@ -386,7 +423,7 @@ export async function ensureAreaFullyGenerated(
   const existingFromThis = exploration.connections.filter((c) => c.fromAreaId === area.id)
   if (existingFromThis.length === 0) {
     const allAreas = Array.from(exploration.areas.values())
-    const newConnections = generateAreaConnections(rng, area, allAreas)
+    const newConnections = generateAreaConnections(state.rng, area, allAreas)
 
     // Filter out duplicates (connection may already exist in reverse direction)
     for (const conn of newConnections) {
@@ -610,7 +647,7 @@ export async function grantExplorationGuildBenefits(state: WorldState): Promise<
   const areaToDiscover = unknownD1Areas[0]
 
   // Ensure the area is fully generated (content + connections + name)
-  await ensureAreaFullyGenerated(state.rng, exploration, areaToDiscover)
+  await ensureAreaFullyGenerated(state, areaToDiscover)
 
   // Mark area and connection as known
   exploration.playerState.knownAreaIds.push(areaToDiscover.id)
@@ -944,7 +981,7 @@ export async function* executeSurvey(state: WorldState, _action: SurveyAction): 
 
       // Discover the area - ensure it's fully generated (content + connections + name)
       const targetArea = exploration.areas.get(targetId)!
-      await ensureAreaFullyGenerated(state.rng, exploration, targetArea)
+      await ensureAreaFullyGenerated(state, targetArea)
 
       // Mark area and connection as known
       exploration.playerState.knownAreaIds.push(targetId)
@@ -1146,7 +1183,7 @@ export async function* executeExplore(state: WorldState, _action: ExploreAction)
   const level = state.player.skills.Exploration.level
 
   // Ensure area is fully generated (content + connections + name)
-  await ensureAreaFullyGenerated(state.rng, exploration, currentArea)
+  await ensureAreaFullyGenerated(state, currentArea)
 
   // Build discoverables list using shared logic
   const { discoverables } = buildDiscoverables(state, currentArea)
@@ -1237,7 +1274,7 @@ export async function* executeExplore(state: WorldState, _action: ExploreAction)
           discoveredUnknownAreaId = targetAreaId
           const targetArea = exploration.areas.get(targetAreaId)
           if (targetArea) {
-            await ensureAreaFullyGenerated(state.rng, exploration, targetArea)
+            await ensureAreaFullyGenerated(state, targetArea)
           }
 
           // Show discovery feedback with "new area" annotation
@@ -1566,7 +1603,7 @@ export async function* executeExplorationTravel(
 
   // Ensure destination area is fully generated (content + connections + name)
   const destArea = exploration.areas.get(destinationAreaId)!
-  await ensureAreaFullyGenerated(state.rng, exploration, destArea)
+  await ensureAreaFullyGenerated(state, destArea)
 
   // TODO: Scavenge rolls for gathering drops (future implementation)
 
@@ -1667,7 +1704,7 @@ export async function* executeFarTravel(
 
   // Ensure destination area is fully generated (content + connections + name)
   const destArea = exploration.areas.get(destinationAreaId)!
-  await ensureAreaFullyGenerated(state.rng, exploration, destArea)
+  await ensureAreaFullyGenerated(state, destArea)
 
   // TODO: Scavenge rolls for gathering drops (future implementation)
 

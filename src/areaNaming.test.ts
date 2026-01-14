@@ -5,7 +5,7 @@ import {
   getNeighborNames,
   AnthropicMessagesClient,
 } from "./areaNaming.js"
-import type { Area, ExplorationLocation, AreaConnection } from "./types.js"
+import type { Area, ExplorationLocation, AreaConnection, WorldState } from "./types.js"
 import { ExplorationLocationType } from "./types.js"
 
 describe("Area Naming", () => {
@@ -638,7 +638,8 @@ describe("Area Naming", () => {
         }
 
         const area = areas.get("area-d1-i0")!
-        await ensureAreaFullyGenerated(rng, exploration, area)
+        const state = { rng, world: { nodes: [] }, exploration } as unknown as WorldState
+        await ensureAreaFullyGenerated(state, area)
 
         // With API key set, should get a name (either from LLM or fallback)
         expect(area.name).toBeDefined()
@@ -705,7 +706,8 @@ describe("Area Naming", () => {
         }
 
         const area = areas.get("area-d1-i0")!
-        await ensureAreaFullyGenerated(rng, exploration, area)
+        const state = { rng, world: { nodes: [] }, exploration } as unknown as WorldState
+        await ensureAreaFullyGenerated(state, area)
 
         // No API key = area stays unnamed (uses distance-based display fallback)
         expect(area.name).toBeUndefined()
@@ -769,7 +771,11 @@ describe("Area Naming", () => {
 
         // Generate name for the third area after loading
         const newArea = loadedAreas[2]
-        await ensureAreaFullyGenerated(deserialized.state.rng, loadedExploration, newArea)
+        const updatedState = {
+          ...deserialized.state,
+          exploration: loadedExploration,
+        }
+        await ensureAreaFullyGenerated(updatedState, newArea)
 
         // The new area should get a name
         expect(newArea.name).toBeDefined()
