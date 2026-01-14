@@ -177,5 +177,26 @@ describe("World Factory", () => {
       expect(world.exploration.playerState.knownAreaIds).toEqual(["TOWN"])
       expect(world.exploration.playerState.knownConnectionIds).toEqual([])
     })
+
+    it("should generate nodes with material quantities per spec (5-20 primary, secondaries 10-90% of primary)", () => {
+      // Per canonical-gathering.md:
+      // - Primary: 5-20 units (normal distribution)
+      // - Secondary: 10-90% of primary amount
+      const world = createWorld("test-seed")
+
+      world.world.nodes!.forEach((node: Node) => {
+        node.materials.forEach((mat) => {
+          // All materials should be in reasonable range (allowing some variance)
+          // Primary is 5-20, secondary is 10-90% of primary
+          // So secondary could be as low as 0.5 (10% of 5) rounded to 1
+          // And as high as 18 (90% of 20)
+          // With variance, let's allow 1-25 as a reasonable range
+          expect(mat.remainingUnits).toBeGreaterThanOrEqual(1)
+          expect(mat.remainingUnits).toBeLessThanOrEqual(25)
+          expect(mat.maxUnitsInitial).toBeGreaterThanOrEqual(1)
+          expect(mat.maxUnitsInitial).toBeLessThanOrEqual(25)
+        })
+      })
+    })
   })
 })

@@ -215,27 +215,30 @@ export interface MaterialDefinition {
 
 export const MATERIALS: Record<string, MaterialDefinition> = {
   // Mining materials - per mining-levels-1-200.md
-  STONE: { tier: 1, skill: "Mining", requiredLevel: 1, baseUnits: 100 },
-  COPPER_ORE: { tier: 2, skill: "Mining", requiredLevel: 20, baseUnits: 80 },
-  TIN_ORE: { tier: 3, skill: "Mining", requiredLevel: 40, baseUnits: 60 },
-  IRON_ORE: { tier: 4, skill: "Mining", requiredLevel: 60, baseUnits: 50 },
-  SILVER_ORE: { tier: 5, skill: "Mining", requiredLevel: 80, baseUnits: 40 },
-  GOLD_ORE: { tier: 6, skill: "Mining", requiredLevel: 100, baseUnits: 30 },
-  MITHRIL_ORE: { tier: 7, skill: "Mining", requiredLevel: 120, baseUnits: 25 },
-  OBSIDIUM_ORE: { tier: 8, skill: "Mining", requiredLevel: 140, baseUnits: 20 },
+  // Per canonical-gathering.md: Primary 5-20 units, Secondary 10-90% of primary
+  // Using baseUnits ~12 (middle of 5-20 range), variance 0.7-1.3 gives ~8-16 units
+  STONE: { tier: 1, skill: "Mining", requiredLevel: 1, baseUnits: 12 },
+  COPPER_ORE: { tier: 2, skill: "Mining", requiredLevel: 20, baseUnits: 12 },
+  TIN_ORE: { tier: 3, skill: "Mining", requiredLevel: 40, baseUnits: 12 },
+  IRON_ORE: { tier: 4, skill: "Mining", requiredLevel: 60, baseUnits: 12 },
+  SILVER_ORE: { tier: 5, skill: "Mining", requiredLevel: 80, baseUnits: 12 },
+  GOLD_ORE: { tier: 6, skill: "Mining", requiredLevel: 100, baseUnits: 12 },
+  MITHRIL_ORE: { tier: 7, skill: "Mining", requiredLevel: 120, baseUnits: 12 },
+  OBSIDIUM_ORE: { tier: 8, skill: "Mining", requiredLevel: 140, baseUnits: 12 },
 
   // Woodcutting materials - distance 1 (tier 1-2)
-  GREEN_WOOD: { tier: 1, skill: "Woodcutting", requiredLevel: 1, baseUnits: 100 },
-  SOFTWOOD: { tier: 1, skill: "Woodcutting", requiredLevel: 1, baseUnits: 80 },
-  HARDWOOD: { tier: 2, skill: "Woodcutting", requiredLevel: 2, baseUnits: 60 },
+  // Same baseUnits approach for consistency
+  GREEN_WOOD: { tier: 1, skill: "Woodcutting", requiredLevel: 1, baseUnits: 12 },
+  SOFTWOOD: { tier: 1, skill: "Woodcutting", requiredLevel: 1, baseUnits: 12 },
+  HARDWOOD: { tier: 2, skill: "Woodcutting", requiredLevel: 2, baseUnits: 12 },
 
   // Woodcutting materials - distance 2 (tier 3-4)
-  OAK_WOOD: { tier: 3, skill: "Woodcutting", requiredLevel: 5, baseUnits: 50 },
-  IRONWOOD: { tier: 4, skill: "Woodcutting", requiredLevel: 8, baseUnits: 30 },
+  OAK_WOOD: { tier: 3, skill: "Woodcutting", requiredLevel: 5, baseUnits: 12 },
+  IRONWOOD: { tier: 4, skill: "Woodcutting", requiredLevel: 8, baseUnits: 12 },
 
   // Woodcutting materials - distance 3+ (tier 5)
-  ANCIENT_WOOD: { tier: 5, skill: "Woodcutting", requiredLevel: 9, baseUnits: 40 },
-  SPIRITWOOD: { tier: 5, skill: "Woodcutting", requiredLevel: 10, baseUnits: 20 },
+  ANCIENT_WOOD: { tier: 5, skill: "Woodcutting", requiredLevel: 9, baseUnits: 12 },
+  SPIRITWOOD: { tier: 5, skill: "Woodcutting", requiredLevel: 10, baseUnits: 12 },
 }
 
 // ============================================================================

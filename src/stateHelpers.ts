@@ -7,6 +7,7 @@
 
 import type { WorldState, ItemID, ItemStack, ContractID, LevelUp, SkillID } from "./types.js"
 import { addXPToSkill } from "./types.js"
+import { getExplorationXPThreshold } from "./exploration.js"
 
 // ============================================================================
 // Time Management
@@ -164,12 +165,55 @@ export function grantContractRewards(state: WorldState, rewards: ItemStack[]): v
 /**
  * Grant XP to a skill and handle level-ups
  * Returns any level-ups that occurred
+ *
+ * Per canonical-gathering.md: Mining/Woodcutting use exploration XP thresholds
+ * Other skills use the standard N² thresholds
  */
 export function grantXP(state: WorldState, skill: SkillID, amount: number): LevelUp[] {
-  const result = addXPToSkill(state.player.skills[skill], amount)
-  state.player.skills[skill] = result.skill
-  // Fill in the skill ID for each level-up
-  return result.levelUps.map((lu) => ({ ...lu, skill }))
+  // Gathering skills use exploration XP thresholds per canonical-gathering.md
+  const useExplorationThresholds = skill === "Mining" || skill === "Woodcutting"
+
+  if (useExplorationThresholds) {
+    // Use exploration XP thresholds for gathering skills
+    const result = addXPToSkillWithThreshold(
+      state.player.skills[skill],
+      amount,
+      getExplorationXPThreshold
+    )
+    state.player.skills[skill] = result.skill
+    return result.levelUps.map((lu) => ({ ...lu, skill }))
+  } else {
+    // Use standard N² thresholds for other skills
+    const result = addXPToSkill(state.player.skills[skill], amount)
+    state.player.skills[skill] = result.skill
+    return result.levelUps.map((lu) => ({ ...lu, skill }))
+  }
+}
+
+/**
+ * Add XP to a skill using a custom threshold function
+ * Used for gathering skills which use exploration thresholds
+ */
+function addXPToSkillWithThreshold(
+  skill: { level: number; xp: number },
+  xpGain: number,
+  getThreshold: (level: number) => number
+): { skill: { level: number; xp: number }; levelUps: LevelUp[] } {
+  const levelUps: LevelUp[] = []
+  let { level, xp } = skill
+  xp += xpGain
+
+  // Check for level-ups (can be multiple)
+  let threshold = getThreshold(level)
+  while (xp >= threshold) {
+    const fromLevel = level
+    xp -= threshold
+    level++
+    levelUps.push({ skill: "" as SkillID, fromLevel, toLevel: level })
+    threshold = getThreshold(level)
+  }
+
+  return { skill: { level, xp }, levelUps }
 }
 
 // ============================================================================

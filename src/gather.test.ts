@@ -568,6 +568,57 @@ describe("Phase 3: Gather Action Overhaul", () => {
     })
   })
 
+  describe("Mining XP thresholds (per canonical-gathering.md)", () => {
+    it("should use exploration XP thresholds for mining (L1→L2 = 25 XP, not 4)", async () => {
+      // Per canonical-gathering.md: "XP thresholds: Same as Exploration skill"
+      // Exploration L1→L2 threshold is 25 XP (from EXPLORATION_XP_THRESHOLDS)
+      // Mining should NOT use the N² formula (which would be 4 XP for L1→L2)
+      world.player.skills.Mining = { level: 1, xp: 0 }
+      const node = getFirstOreNode()
+      const focusMat = node.materials.find((m) => m.requiredLevel <= 1)!
+
+      // Mine 10 times (10 XP) - should NOT level up if using exploration thresholds (25)
+      // Would level up twice if using N² thresholds (only need 4 XP for L1→L2, 9 for L2→L3)
+      for (let i = 0; i < 10; i++) {
+        if (focusMat.remainingUnits <= 0) break
+        const action: GatherAction = {
+          type: "Gather",
+          nodeId: node.nodeId,
+          mode: GatherMode.FOCUS,
+          focusMaterialId: focusMat.materialId,
+        }
+        await executeAction(world, action)
+      }
+
+      // With exploration thresholds (25 XP needed), should still be level 1
+      // With N² thresholds (only 4 XP needed), would have leveled up to at least level 2
+      expect(world.player.skills.Mining.level).toBe(1)
+      // XP should be <= 10 (what we mined, minus any level-ups)
+      expect(world.player.skills.Mining.xp).toBeLessThanOrEqual(10)
+    })
+
+    it("should level up mining at 25 XP (exploration threshold), not 4 XP (N² threshold)", async () => {
+      // Start at 24 XP - one more extraction should push us to level 2
+      world.player.skills.Mining = { level: 1, xp: 24 }
+      const node = getFirstOreNode()
+      const focusMat = node.materials.find((m) => m.requiredLevel <= 1)!
+
+      const action: GatherAction = {
+        type: "Gather",
+        nodeId: node.nodeId,
+        mode: GatherMode.FOCUS,
+        focusMaterialId: focusMat.materialId,
+      }
+
+      const log = await executeAction(world, action)
+
+      expect(log.success).toBe(true)
+      expect(log.levelUps).toBeDefined()
+      expect(log.levelUps!.some((lu) => lu.skill === "Mining" && lu.toLevel === 2)).toBe(true)
+      expect(world.player.skills.Mining.level).toBe(2)
+    })
+  })
+
   // ============================================================================
   // Phase 4: Skill Unlock Tests
   // ============================================================================
