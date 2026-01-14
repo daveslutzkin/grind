@@ -424,6 +424,43 @@ export function generateFailureHint(details: FailureDetails, state: WorldState):
       }
     }
 
+    // Enrollment Errors
+    case "NOT_ENROLLED": {
+      const skill = (context?.skill as string) ?? "skill"
+      const guildName =
+        skill === "Mining"
+          ? "Miners Guild"
+          : skill === "Woodcutting"
+            ? "Foresters Guild"
+            : `${skill} Guild`
+      return {
+        message: `Not enrolled in ${guildName}`,
+        reason: `Must be a guild member to use ${skill} abilities`,
+        hint: `Visit the ${guildName} Hall and use the 'Enrol' action to join.`,
+      }
+    }
+
+    case "MATERIAL_NOT_UNLOCKED": {
+      const materialId = (context?.materialId as string) ?? "material"
+      const skill = (context?.skill as string) ?? "skill"
+      const currentLevel = (context?.currentLevel as number) ?? 0
+      return {
+        message: `Cannot gather ${materialId}`,
+        reason: `Material not unlocked at ${skill} level ${currentLevel}`,
+        hint: `Continue training ${skill} to unlock ${materialId}. You need to reach the mastery level where this material unlocks.`,
+      }
+    }
+
+    case "NO_CAREFUL_MATERIALS": {
+      const skill = (context?.skill as string) ?? "skill"
+      const currentLevel = (context?.currentLevel as number) ?? 0
+      return {
+        message: `Cannot use CAREFUL_ALL mode`,
+        reason: `No materials have Careful mastery unlocked at ${skill} level ${currentLevel}`,
+        hint: `Continue training ${skill} to unlock Careful mastery for at least one material.`,
+      }
+    }
+
     // Guild/Contract Errors (Package 6)
     case "CONTRACT_NOT_FOUND": {
       const contractId = (context?.contractId as string) ?? "contract"
@@ -692,6 +729,12 @@ export function getGenericFailureMessage(failureType: string): string {
       return "Already at hub!"
     case "NOT_AT_NODE_LOCATION":
       return "Not at resource node!"
+    case "NOT_ENROLLED":
+      return "Not enrolled in guild!"
+    case "MATERIAL_NOT_UNLOCKED":
+      return "Material not unlocked!"
+    case "NO_CAREFUL_MATERIALS":
+      return "No careful materials!"
     case "WRONG_GUILD_TYPE":
       return "Wrong guild type!"
     case "GUILD_LEVEL_TOO_LOW":

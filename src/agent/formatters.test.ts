@@ -633,7 +633,7 @@ describe("Formatters", () => {
       if (!node) throw new Error("No node found for test")
       moveToNodeLocation(state, node.nodeId, areaId)
 
-      // Try to gather without enrolling in Mining - should fail with INSUFFICIENT_SKILL
+      // Try to gather without enrolling in Mining - should fail with NOT_ENROLLED
       const log = await executeAction(state, {
         type: "Gather",
         nodeId: node.nodeId,
@@ -643,9 +643,9 @@ describe("Formatters", () => {
 
       const formatted = formatActionLog(log)
 
-      expect(formatted).toContain("✗ Insufficient skill!")
+      expect(formatted).toContain("✗ Not enrolled in guild!")
       expect(formatted).not.toContain("Gather:")
-      expect(formatted).not.toContain("INSUFFICIENT_SKILL")
+      expect(formatted).not.toContain("NOT_ENROLLED")
     })
 
     it("should show 'Missing required items!' error message", async () => {

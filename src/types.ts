@@ -520,6 +520,10 @@ export type FailureType =
   | "NOT_AT_NODE_LOCATION"
   | "WRONG_GUILD_TYPE"
   | "GUILD_LEVEL_TOO_LOW"
+  // Canonical gathering failure types
+  | "NOT_ENROLLED"
+  | "MATERIAL_NOT_UNLOCKED"
+  | "NO_CAREFUL_MATERIALS"
 
 // RNG roll log entry
 export interface RngRoll {

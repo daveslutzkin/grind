@@ -919,7 +919,7 @@ describe("Engine", () => {
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureDetails?.type).toBe("INSUFFICIENT_SKILL")
+      expect(log.failureDetails?.type).toBe("NOT_ENROLLED")
       expect(log.timeConsumed).toBe(0)
     })
 
@@ -945,7 +945,7 @@ describe("Engine", () => {
       const log = await await executeAction(state, action)
 
       expect(log.success).toBe(false)
-      expect(log.failureDetails?.type).toBe("INSUFFICIENT_SKILL")
+      expect(log.failureDetails?.type).toBe("NOT_ENROLLED")
     })
 
     it.skip("should fail Fight when Combat is level 0 (combat not yet implemented)", async () => {

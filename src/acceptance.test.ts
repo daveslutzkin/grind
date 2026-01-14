@@ -253,9 +253,9 @@ describe("Acceptance Tests: Gathering MVP", () => {
       discoverAllLocations(world, oreAreaId)
       const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
       moveToNodeLocation(world, node)
-      // Set level high enough to mine materials (also need L4+ for CAREFUL_ALL mode)
+      // Set level high enough to mine materials (need L16 for STONE M16 Careful unlock for CAREFUL_ALL mode)
       const minRequiredLevel = Math.min(...node.materials.map((m) => m.requiredLevel))
-      world.player.skills.Mining.level = Math.max(minRequiredLevel, 4) // L4+ for CAREFUL_ALL
+      world.player.skills.Mining.level = Math.max(minRequiredLevel, 16) // L16 for STONE Careful unlock
 
       const action: GatherAction = {
         type: "Gather",

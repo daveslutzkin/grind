@@ -189,18 +189,18 @@ describe("runner", () => {
     })
 
     it("terminates with node_depleted when no mineable materials remain", async () => {
-      // Create a policy that mines a single node repeatedly until depleted
-      // With the new mining levels, STONE (level 1) runs out and COPPER_ORE requires level 20
-      // This should trigger node_depleted termination when the node has no mineable materials
+      // With mastery-based progression, STONE provides XP through L19.
+      // Target level 25 requires materials beyond STONE (COPPER_ORE unlocks at L20).
+      // When STONE is depleted and the player is below L20, should hit node_depleted.
       const result = await runSimulation({
-        seed: "seed-1", // Same seed as the failing CLI run
+        seed: "seed-1",
         policy: safeMiner,
-        targetLevel: 6, // High target that requires materials beyond STONE
-        maxTicks: 50000,
-        stallWindowSize: 10000, // High to ensure we hit node_depleted first
+        targetLevel: 25, // Requires COPPER_ORE (L20 unlock) which won't be available
+        maxTicks: 100000,
+        stallWindowSize: 50000, // High to ensure we hit node_depleted first
       })
 
-      // Should terminate due to node depletion (no mineable materials at player's level)
+      // Should terminate due to node depletion (STONE exhausted, COPPER_ORE not unlocked)
       expect(result.terminationReason).toBe("node_depleted")
     })
   })
