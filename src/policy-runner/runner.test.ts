@@ -187,6 +187,5 @@ describe("runner", () => {
         expect(result.actionLog![i].tick).toBeGreaterThanOrEqual(result.actionLog![i - 1].tick)
       }
     })
-
   })
 })

@@ -843,7 +843,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
 
       world.exploration.playerState.currentAreaId = nearTreeAreaId
       discoverAllLocations(world, nearTreeAreaId)
-      world.player.skills.Woodcutting.level = 4
+      world.player.skills.Woodcutting.level = 16
 
       const node = world.world.nodes!.find(
         (n) => n.areaId === nearTreeAreaId && n.nodeType === NodeType.TREE_STAND

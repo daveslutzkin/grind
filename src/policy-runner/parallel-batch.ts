@@ -82,6 +82,27 @@ export async function runBatchParallel(config: ParallelBatchConfig): Promise<Bat
   // 1. Running from TypeScript source (workers can't run TS directly)
   // 2. Only 1 worker or 1 task (overhead not worth it)
   if (isRunningFromSource() || numWorkers <= 1 || tasks.length <= 1) {
+    const reasons: string[] = []
+    if (isRunningFromSource()) {
+      reasons.push("running from TypeScript source; worker threads require compiled JavaScript")
+    }
+    if (numWorkers <= 1) {
+      reasons.push("worker count is 1 or less")
+    }
+    if (tasks.length <= 1) {
+      reasons.push("only one task to run")
+    }
+
+    const baseMessage = `Parallel execution disabled; falling back to sequential (${reasons.join(
+      ", "
+    )}).`
+    const instruction = isRunningFromSource()
+      ? "To run in parallel, build and run the compiled JS output (for example, build and run from dist/)."
+      : "To run in parallel, increase the workload (more seeds/policies) or allow more workers."
+
+    if (!process.env.JEST_WORKER_ID) {
+      console.warn(`${baseMessage} ${instruction}`)
+    }
     return runSequentially(tasks, config)
   }
 

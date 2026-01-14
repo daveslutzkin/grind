@@ -251,6 +251,17 @@ interface NodePoolConfig {
   probability: number // Probability of this location type existing in an area
 }
 
+const MINING_TIER_MATERIALS: string[] = [
+  "STONE",
+  "COPPER_ORE",
+  "TIN_ORE",
+  "IRON_ORE",
+  "SILVER_ORE",
+  "GOLD_ORE",
+  "MITHRIL_ORE",
+  "OBSIDIUM_ORE",
+]
+
 /** Get node pools available at a given distance */
 function getNodePoolsForDistance(distance: number): NodePoolConfig[] {
   if (distance === 0) return [] // TOWN has no gathering nodes
@@ -308,10 +319,15 @@ function getNodePoolsForDistance(distance: number): NodePoolConfig[] {
 // Node Generation
 // ============================================================================
 
-function generateMaterialReserve(materialId: string, rng: RngState): MaterialReserve {
+function generateMaterialReserve(
+  materialId: string,
+  rng: RngState,
+  unitsOverride?: number
+): MaterialReserve {
   const def = MATERIALS[materialId]
-  const variance = rollFloat(rng, 0.7, 1.3, `material_units_${materialId}`)
-  const units = Math.round(def.baseUnits * variance)
+  const units =
+    unitsOverride ??
+    Math.round(def.baseUnits * rollFloat(rng, 0.7, 1.3, `material_units_${materialId}`))
 
   return {
     materialId,
@@ -323,18 +339,116 @@ function generateMaterialReserve(materialId: string, rng: RngState): MaterialRes
   }
 }
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value))
+}
+
+function rollClampedNormal(
+  rng: RngState,
+  mean: number,
+  stdDev: number,
+  min: number,
+  max: number,
+  label: string
+): number {
+  const value = rollNormal(rng, mean, stdDev, label)
+  return clamp(value, min, max)
+}
+
+function getMiningTierForDistance(distance: number): number {
+  const tier = Math.ceil(distance / 8)
+  return clamp(tier, 1, MINING_TIER_MATERIALS.length)
+}
+
+function rollMiningPrimaryTier(distance: number, rng: RngState, nodeId: string): number {
+  const expectedTier = getMiningTierForDistance(distance)
+  const roll = rollFloat(rng, 0, 1, `ore_tier_shift_${nodeId}`)
+
+  if (expectedTier === 1) {
+    return roll < 0.05 ? 2 : 1
+  }
+
+  if (expectedTier === MINING_TIER_MATERIALS.length) {
+    return roll < 0.05 ? MINING_TIER_MATERIALS.length - 1 : MINING_TIER_MATERIALS.length
+  }
+
+  if (roll < 0.025) return expectedTier - 1
+  if (roll < 0.05) return expectedTier + 1
+  return expectedTier
+}
+
+function getMiningMaterialsForTier(primaryTier: number): {
+  primaryId: string
+  secondaryIds: string[]
+} {
+  if (primaryTier === 1) {
+    return {
+      primaryId: MINING_TIER_MATERIALS[0],
+      secondaryIds: [MINING_TIER_MATERIALS[1], MINING_TIER_MATERIALS[2]],
+    }
+  }
+
+  if (primaryTier === MINING_TIER_MATERIALS.length) {
+    const lastIndex = MINING_TIER_MATERIALS.length - 1
+    return {
+      primaryId: MINING_TIER_MATERIALS[lastIndex],
+      secondaryIds: [MINING_TIER_MATERIALS[lastIndex - 2], MINING_TIER_MATERIALS[lastIndex - 1]],
+    }
+  }
+
+  return {
+    primaryId: MINING_TIER_MATERIALS[primaryTier - 1],
+    secondaryIds: [MINING_TIER_MATERIALS[primaryTier - 2], MINING_TIER_MATERIALS[primaryTier]],
+  }
+}
+
+function generateMiningMaterials(
+  distance: number,
+  nodeId: string,
+  rng: RngState
+): MaterialReserve[] {
+  const primaryTier = rollMiningPrimaryTier(distance, rng, nodeId)
+  const { primaryId, secondaryIds } = getMiningMaterialsForTier(primaryTier)
+
+  const primaryUnits = Math.round(
+    rollClampedNormal(rng, 12.5, 3, 5, 20, `ore_primary_units_${nodeId}`)
+  )
+  const primary = generateMaterialReserve(primaryId, rng, primaryUnits)
+
+  const secondaries = secondaryIds.map((secondaryId, index) => {
+    const ratio = rollClampedNormal(
+      rng,
+      0.5,
+      0.2,
+      0.1,
+      0.9,
+      `ore_secondary_ratio_${nodeId}_${index}`
+    )
+    const units = Math.max(1, Math.round(primaryUnits * ratio))
+    return generateMaterialReserve(secondaryId, rng, units)
+  })
+
+  return [primary, ...secondaries]
+}
+
 function generateNode(
   nodeId: string,
   areaId: AreaID,
+  distance: number,
   poolConfig: NodePoolConfig,
   rng: RngState
 ): Node {
-  const numMaterials = 2 + Math.floor(rollFloat(rng, 0, 2.99, `num_materials_${nodeId}`))
-  const shuffled = [...poolConfig.materialsPool].sort(() =>
-    rollFloat(rng, -1, 1, `shuffle_${nodeId}`)
-  )
-  const selectedMaterials = shuffled.slice(0, numMaterials)
-  const materials = selectedMaterials.map((matId) => generateMaterialReserve(matId, rng))
+  const materials =
+    poolConfig.nodeType === NodeType.ORE_VEIN
+      ? generateMiningMaterials(distance, nodeId, rng)
+      : (() => {
+          const numMaterials = 2 + Math.floor(rollFloat(rng, 0, 2.99, `num_materials_${nodeId}`))
+          const shuffled = [...poolConfig.materialsPool].sort(() =>
+            rollFloat(rng, -1, 1, `shuffle_${nodeId}`)
+          )
+          const selectedMaterials = shuffled.slice(0, numMaterials)
+          return selectedMaterials.map((matId) => generateMaterialReserve(matId, rng))
+        })()
 
   return {
     nodeId,
@@ -381,7 +495,7 @@ export function generateNodesForArea(
     if (roll < pool.probability) {
       // Success! Generate one node of this type
       const nodeId = `${areaId}-node-${nodeIndex}`
-      nodes.push(generateNode(nodeId, areaId, pool, rng))
+      nodes.push(generateNode(nodeId, areaId, distance, pool, rng))
       nodeIndex++
 
       // Also create the corresponding ExplorationLocation
