@@ -68,7 +68,7 @@ Tests exist but weren't updated:"
         errors+="
 
 Per CLAUDE.md: 'Test-driven development: Write tests first, then implement'
-Please add or update tests before committing.
+Please consider adding or updating tests before committing.
 "
     fi
 fi
