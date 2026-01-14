@@ -500,20 +500,19 @@ async function runBatchMode(args: ReturnType<typeof parseArgs>): Promise<void> {
     console.log(`Policy: ${policyId}`)
     console.log(`  Runs: ${agg.runCount}`)
 
-    // Show error counts by type
-    const errorEntries = Object.entries(agg.errorCounts)
-    if (errorEntries.length === 0) {
-      console.log(`  Errors: none`)
-    } else {
-      const errorParts = errorEntries.map(([type, count]) => `${type} ${count}`)
-      console.log(`  Errors: ${errorParts.join(", ")}`)
-    }
-
     console.log(
       `  Ticks to Target (p10/p50/p90): ${agg.ticksToTarget.p10} / ${agg.ticksToTarget.p50} / ${agg.ticksToTarget.p90}`
     )
     console.log(`  Avg XP/Tick: ${agg.avgXpPerTick.toFixed(3)}`)
     console.log(`  Avg Max Distance: ${agg.avgMaxDistance.toFixed(1)}`)
+
+    // Show error counts by type
+    const errorEntries = Object.entries(agg.errorCounts)
+    if (errorEntries.length > 0) {
+      const totalCount = errorEntries.reduce((sum, [_, c]) => sum + c, 0)
+      const errorParts = errorEntries.map(([type, count]) => `${type} ${count}`)
+      console.log(`  Error Rate: ${(totalCount * 100) / result.results.length}% (${errorParts.join(", ")})`)
+    }
 
     // Show failed seeds for debugging (group by error type)
     for (const [errorType, _count] of errorEntries) {
