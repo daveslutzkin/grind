@@ -1004,7 +1004,7 @@ describe("Phase 3: Gather Action Overhaul", () => {
       world.player.skills.Mining.level = 1
       const node = getFirstOreNode()
       const stoneMat = node.materials.find((m) => m.materialId === "STONE" && m.requiredLevel === 1)
-      if (!stoneMat) return // Skip if no STONE
+      expect(stoneMat).toBeDefined()
 
       const action: GatherAction = {
         type: "Gather",
@@ -1015,17 +1015,15 @@ describe("Phase 3: Gather Action Overhaul", () => {
 
       const log = await executeAction(world, action)
 
-      if (log.success) {
-        // Check base time (expected), actual time has variance applied
-        expect(log.extraction!.variance!.expected).toBe(20)
-      }
+      expect(log.success).toBe(true)
+      expect(log.extraction!.variance!.expected).toBe(20)
     })
 
     it("should use 15 ticks base for STONE at L2 (Speed I)", async () => {
       world.player.skills.Mining.level = 2
       const node = getFirstOreNode()
       const stoneMat = node.materials.find((m) => m.materialId === "STONE" && m.requiredLevel <= 2)
-      if (!stoneMat) return // Skip if no STONE
+      expect(stoneMat).toBeDefined()
 
       const action: GatherAction = {
         type: "Gather",
@@ -1036,17 +1034,15 @@ describe("Phase 3: Gather Action Overhaul", () => {
 
       const log = await executeAction(world, action)
 
-      if (log.success) {
-        // Check base time (expected), actual time has variance applied
-        expect(log.extraction!.variance!.expected).toBe(15)
-      }
+      expect(log.success).toBe(true)
+      expect(log.extraction!.variance!.expected).toBe(15)
     })
 
     it("should use 10 ticks base for STONE at L9 (Speed II)", async () => {
       world.player.skills.Mining.level = 9
       const node = getFirstOreNode()
       const stoneMat = node.materials.find((m) => m.materialId === "STONE")
-      if (!stoneMat) return // Skip if no STONE
+      expect(stoneMat).toBeDefined()
 
       const action: GatherAction = {
         type: "Gather",
@@ -1057,17 +1053,15 @@ describe("Phase 3: Gather Action Overhaul", () => {
 
       const log = await executeAction(world, action)
 
-      if (log.success) {
-        // Check base time (expected), actual time has variance applied
-        expect(log.extraction!.variance!.expected).toBe(10)
-      }
+      expect(log.success).toBe(true)
+      expect(log.extraction!.variance!.expected).toBe(10)
     })
 
     it("should use 5 ticks base for STONE at L17 (Speed III)", async () => {
       world.player.skills.Mining.level = 17
       const node = getFirstOreNode()
       const stoneMat = node.materials.find((m) => m.materialId === "STONE")
-      if (!stoneMat) return // Skip if no STONE
+      expect(stoneMat).toBeDefined()
 
       const action: GatherAction = {
         type: "Gather",
@@ -1078,10 +1072,8 @@ describe("Phase 3: Gather Action Overhaul", () => {
 
       const log = await executeAction(world, action)
 
-      if (log.success) {
-        // Check base time (expected), actual time has variance applied
-        expect(log.extraction!.variance!.expected).toBe(5)
-      }
+      expect(log.success).toBe(true)
+      expect(log.extraction!.variance!.expected).toBe(5)
     })
   })
 
@@ -1403,12 +1395,10 @@ describe("Phase 3: Gather Action Overhaul", () => {
 
       const log = await executeAction(world, action)
 
-      if (log.success) {
-        // Extraction log should include variance info with luckDelta
-        expect(log.extraction!.variance).toBeDefined()
-        expect(log.extraction!.variance!.expected).toBe(20) // Base time at L1
-        expect(typeof log.extraction!.variance!.luckDelta).toBe("number")
-      }
+      expect(log.success).toBe(true)
+      expect(log.extraction!.variance).toBeDefined()
+      expect(log.extraction!.variance!.expected).toBe(20) // Base time at L1
+      expect(typeof log.extraction!.variance!.luckDelta).toBe("number")
     })
 
     it("should track cumulative luck in player state", async () => {
@@ -1417,9 +1407,10 @@ describe("Phase 3: Gather Action Overhaul", () => {
 
       // Ensure node has enough materials for multiple extractions
       const stoneMat = node.materials.find((m) => m.materialId === "STONE")
-      if (stoneMat) stoneMat.remainingUnits = 100
+      expect(stoneMat).toBeDefined()
+      stoneMat!.remainingUnits = 100
 
-      const initialLuck = world.player.gatheringLuckDelta ?? 0
+      const initialLuck = world.player.gatheringLuckDelta
 
       // Perform multiple extractions
       let totalExpectedLuckChange = 0
@@ -1433,14 +1424,38 @@ describe("Phase 3: Gather Action Overhaul", () => {
 
         const log = await executeAction(world, action)
 
-        if (log.success && log.extraction?.variance) {
-          totalExpectedLuckChange += log.extraction.variance.luckDelta ?? 0
-        }
+        expect(log.success).toBe(true)
+        expect(log.extraction?.variance).toBeDefined()
+        totalExpectedLuckChange += log.extraction!.variance!.luckDelta!
       }
 
       // Player's cumulative luck should reflect all extractions
-      const finalLuck = world.player.gatheringLuckDelta ?? 0
+      const finalLuck = world.player.gatheringLuckDelta
       expect(finalLuck - initialLuck).toBeCloseTo(totalExpectedLuckChange, 5)
+    })
+
+    it("should apply time variance to CAREFUL mode extraction", async () => {
+      world.player.skills.Mining.level = 16 // STONE M16 = Careful
+      const node = getFirstOreNode()
+
+      const action: GatherAction = {
+        type: "Gather",
+        nodeId: node.nodeId,
+        mode: GatherMode.CAREFUL_ALL,
+      }
+
+      const log = await executeAction(world, action)
+
+      expect(log.success).toBe(true)
+      expect(log.extraction).toBeDefined()
+      expect(log.extraction!.variance).toBeDefined()
+      // CAREFUL base time = 2x slowest material speed = 2 * 10 = 20 at L16 (Speed_II)
+      expect(log.extraction!.variance!.expected).toBe(20)
+      expect(typeof log.extraction!.variance!.luckDelta).toBe("number")
+      // luckDelta = expected - actual
+      expect(log.extraction!.variance!.luckDelta).toBe(
+        log.extraction!.variance!.expected - log.extraction!.variance!.actual
+      )
     })
   })
 
