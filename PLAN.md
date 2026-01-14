@@ -615,11 +615,20 @@ Following TDD (from CLAUDE.md):
 
 ## Implementation Order
 
-1. Phase 1: Mastery Data Model (foundation)
-2. Phase 2: Validation Changes (gates)
-3. Phase 3: Extraction Logic (core mechanics)
-4. Phase 4: Time Variance and Luck (polish)
-5. Phase 5: Inventory Check (edge case)
-6. Phase 6: Cleanup and Polish (UX)
+1. Phase 1: Mastery Data Model (foundation) ✅
+2. Phase 2: Validation Changes (gates) ✅
+3. Phase 3: Extraction Logic (core mechanics) ✅
+4. Phase 4: Time Variance and Luck (polish) - **DEFERRED**
+5. Phase 5: Inventory Check (edge case) ✅
+6. Phase 6: Cleanup and Polish (UX) ✅
 
 Each phase should be a separate commit after tests pass.
+
+---
+
+## Implementation Complete
+
+All phases except Phase 4 (Time Variance) have been implemented. Phase 4 was deferred because:
+- The core mastery system works well with deterministic timing
+- Adding variance significantly complicates testing
+- Can be added in a future iteration based on player feedback

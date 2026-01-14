@@ -763,7 +763,9 @@ export function formatActionLog(log: ActionLog, state?: WorldState): string {
       const mats = visibleMats
         .map((m) => {
           const req = m.requiredLevel > 0 ? ` [${m.requiresSkill} L${m.requiredLevel}]` : ""
-          return `${m.remaining}/${m.max} ${m.materialId}${req}`
+          // Show quantities only if canSeeQuantity is true (M6 Appraise mastery)
+          const qty = m.canSeeQuantity ? `${m.remaining}/${m.max}` : "???/???"
+          return `${qty} ${m.materialId}${req}`
         })
         .join(", ")
       lines.push(`  ${a.nodeId}: ${mats}`)

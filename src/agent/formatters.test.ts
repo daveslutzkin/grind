@@ -175,17 +175,17 @@ describe("Formatters", () => {
         }
       })
 
-      it("should show quantities after APPRAISE", async () => {
+      it("should show quantities after APPRAISE with mastery", async () => {
         const state = createWorld("mat-vis-4")
         const areaId = getOreAreaId(state)
         makeAreaKnown(state, areaId)
         state.exploration.playerState.currentAreaId = areaId
         discoverAllLocations(state, areaId)
 
-        // Enrol in Mining and level up to L3 for APPRAISE
+        // Enrol in Mining and level up to L6 for APPRAISE mastery on STONE
         setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
         await executeAction(state, { type: "Enrol" })
-        state.player.skills.Mining = { level: 3, xp: 0 } // L3 unlocks APPRAISE
+        state.player.skills.Mining = { level: 6, xp: 0 } // L6 = STONE M6 (Appraise)
         state.exploration.playerState.currentAreaId = areaId
 
         // Find a node and appraise it
@@ -204,8 +204,40 @@ describe("Formatters", () => {
 
         const formatted = formatWorldState(state)
 
-        // After appraisal, should show quantities like "80/80 Copper Ore ✓"
+        // After appraisal with L6, STONE should show quantities like "80/80 Stone ✓"
         expect(formatted).toMatch(/\d+\/\d+ [A-Z][a-z]+( [A-Z][a-z]+)? ✓/)
+      })
+
+      it("should show ???/??? for materials without Appraise mastery", async () => {
+        const state = createWorld("mat-vis-no-mastery")
+        const areaId = getOreAreaId(state)
+        makeAreaKnown(state, areaId)
+        state.exploration.playerState.currentAreaId = areaId
+        discoverAllLocations(state, areaId)
+
+        // Mining L3 can use APPRAISE mode but doesn't have M6 Appraise for any material
+        state.player.skills.Mining = { level: 3, xp: 0 }
+        state.exploration.playerState.currentAreaId = areaId
+
+        // Find a node and appraise it
+        const node = state.world.nodes?.find((n) => n.areaId === areaId && !n.depleted)
+        if (!node) throw new Error("No node found for test")
+
+        // Move to the node location before APPRAISE
+        moveToNodeLocation(state, node.nodeId, areaId)
+
+        // Perform APPRAISE action
+        const log = await executeAction(state, {
+          type: "Gather",
+          nodeId: node.nodeId,
+          mode: "APPRAISE" as GatherMode,
+        })
+
+        // Format the action log with state to test formatter
+        const formatted = formatActionLog(log, state)
+
+        // Should show ???/??? for materials without Appraise mastery
+        expect(formatted).toContain("???/???")
       })
     })
 
