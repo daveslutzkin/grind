@@ -94,6 +94,7 @@ describe("types", () => {
       distance: 1,
       travelTicksFromCurrent: 10,
       discoveredNodes: [],
+      isFullyExplored: false,
     }
 
     expect(area.areaId).toBe("test-area")

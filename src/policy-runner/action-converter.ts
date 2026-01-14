@@ -11,8 +11,10 @@ import type {
   Action,
   StoreAction,
   FarTravelAction,
+  ExplorationTravelAction,
   MineAction,
   ExploreAction,
+  TravelToLocationAction,
   Node,
   MaterialID,
 } from "../types.js"
@@ -41,17 +43,54 @@ function selectBestFocusMaterial(node: Node, miningLevel: number): MaterialID | 
 }
 
 /**
- * Convert a Mine policy action to an engine Mine action.
+ * Get the location ID for a node based on its nodeId.
+ * Node ID format: "{areaId}-node-{index}" -> Location ID: "{areaId}-loc-{index}"
+ */
+function getNodeLocationId(nodeId: string): string | null {
+  const match = nodeId.match(/^(.+)-node-(\d+)$/)
+  if (!match) return null
+  const [, areaId, index] = match
+  return `${areaId}-loc-${index}`
+}
+
+/**
+ * Convert a Mine policy action to engine actions.
+ * May return multiple actions if navigation is needed:
+ * 1. FarTravel to area (if not in correct area)
+ * 2. TravelToLocation (if not at correct location within area)
+ * 3. Mine action
  */
 function convertMineAction(
   action: Extract<PolicyAction, { type: "Mine" }>,
   state: WorldState
-): MineAction {
+): Action[] {
   const node = findNode(state, action.nodeId)
   if (!node) {
     throw new Error(`Node not found: ${action.nodeId}`)
   }
 
+  const actions: Action[] = []
+  const currentAreaId = state.exploration.playerState.currentAreaId
+  const currentLocationId = state.exploration.playerState.currentLocationId
+  const targetLocationId = getNodeLocationId(action.nodeId)
+
+  // Step 1: Navigate to the correct area if needed
+  if (currentAreaId !== node.areaId) {
+    actions.push({
+      type: "FarTravel",
+      destinationAreaId: node.areaId,
+    } as FarTravelAction)
+  }
+
+  // Step 2: Navigate to the correct location within the area if needed
+  if (targetLocationId && currentLocationId !== targetLocationId) {
+    actions.push({
+      type: "TravelToLocation",
+      locationId: targetLocationId,
+    } as TravelToLocationAction)
+  }
+
+  // Step 3: Create the mine action
   const mode = action.mode ?? GatherMode.FOCUS
   const miningLevel = state.player.skills.Mining.level
 
@@ -63,11 +102,13 @@ function convertMineAction(
     throw new Error(`No mineable material found in node: ${action.nodeId}`)
   }
 
-  return {
+  actions.push({
     type: "Mine",
     mode,
     focusMaterialId,
-  }
+  } as MineAction)
+
+  return actions
 }
 
 /**
@@ -94,15 +135,26 @@ function convertExploreAction(
 }
 
 /**
- * Convert a Travel policy action to an engine FarTravel action.
+ * Convert a Travel policy action to an engine travel action.
+ * Uses FarTravel for known areas, ExplorationTravel for unknown (frontier) areas.
  */
 function convertTravelAction(
   action: Extract<PolicyAction, { type: "Travel" }>,
-  _state: WorldState
-): FarTravelAction {
-  return {
-    type: "FarTravel",
-    destinationAreaId: action.toAreaId,
+  state: WorldState
+): FarTravelAction | ExplorationTravelAction {
+  const isKnownArea = state.exploration.playerState.knownAreaIds.includes(action.toAreaId)
+
+  if (isKnownArea) {
+    return {
+      type: "FarTravel",
+      destinationAreaId: action.toAreaId,
+    }
+  } else {
+    // Unknown area - use ExplorationTravel for single-hop to frontier
+    return {
+      type: "ExplorationTravel",
+      destinationAreaId: action.toAreaId,
+    }
   }
 }
 
@@ -162,7 +214,7 @@ export function toEngineActions(action: PolicyAction, state: WorldState): Conver
   switch (action.type) {
     case "Mine":
       return {
-        actions: [convertMineAction(action, state)],
+        actions: convertMineAction(action, state),
         isWait: false,
       }
 

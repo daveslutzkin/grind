@@ -17,6 +17,7 @@ function createObservation(overrides: Partial<PolicyObservation> = {}): PolicyOb
     currentAreaId: "TOWN",
     knownAreas: [],
     knownMineableMaterials: [],
+    frontierAreas: [],
     currentArea: null,
     isInTown: true,
     canDeposit: false,
@@ -50,6 +51,7 @@ function createArea(
     distance,
     travelTicksFromCurrent: travelTicks,
     discoveredNodes: nodes,
+    isFullyExplored: false,
   }
 }
 

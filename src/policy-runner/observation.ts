@@ -8,8 +8,8 @@
 
 import type { WorldState, Node, Area, AreaID } from "../types.js"
 import { getTotalXP } from "../types.js"
-import type { PolicyObservation, KnownArea, KnownNode } from "./types.js"
-import { findPath } from "../exploration.js"
+import type { PolicyObservation, KnownArea, KnownNode, FrontierArea } from "./types.js"
+import { findPath, buildDiscoverables, isConnectionKnown } from "../exploration.js"
 
 /**
  * Build a KnownNode from a game Node, filtered by what the player can see.
@@ -96,11 +96,16 @@ function buildKnownArea(
     }
   }
 
+  // Check if area is fully explored (no more discoverables)
+  const { discoverables } = buildDiscoverables(state, area)
+  const isFullyExplored = discoverables.length === 0
+
   return {
     areaId: area.id,
     distance: area.distance,
     travelTicksFromCurrent: calculateTravelTicks(state, currentAreaId, area.id),
     discoveredNodes,
+    isFullyExplored,
   }
 }
 
@@ -159,6 +164,59 @@ export function getObservation(state: WorldState): PolicyObservation {
   // Calculate return time to town
   const returnTimeToTown = isInTown ? 0 : calculateTravelTicks(state, currentAreaId, "TOWN")
 
+  // Build frontier areas - unknown areas reachable via known connections
+  const knownAreaIds = new Set(exploration.playerState.knownAreaIds)
+  const knownConnectionIds = new Set(exploration.playerState.knownConnectionIds)
+  const frontierAreas: FrontierArea[] = []
+
+  // Find all connections that lead to unknown areas
+  for (const conn of exploration.connections) {
+    // Check if this connection is known
+    if (!isConnectionKnown(knownConnectionIds, conn.fromAreaId, conn.toAreaId)) {
+      continue
+    }
+
+    // Check if one end is known and the other is unknown
+    const fromKnown = knownAreaIds.has(conn.fromAreaId)
+    const toKnown = knownAreaIds.has(conn.toAreaId)
+
+    let unknownAreaId: AreaID | null = null
+    let knownAreaId: AreaID | null = null
+
+    if (fromKnown && !toKnown) {
+      unknownAreaId = conn.toAreaId
+      knownAreaId = conn.fromAreaId
+    } else if (!fromKnown && toKnown) {
+      unknownAreaId = conn.fromAreaId
+      knownAreaId = conn.toAreaId
+    }
+
+    if (unknownAreaId && knownAreaId) {
+      // Check if we already have this frontier area
+      if (frontierAreas.some((f) => f.areaId === unknownAreaId)) {
+        continue
+      }
+
+      const unknownArea = exploration.areas.get(unknownAreaId)
+      if (unknownArea) {
+        // Calculate travel time: first get to the known area, then one hop to unknown
+        const travelToKnown = calculateTravelTicks(state, currentAreaId, knownAreaId)
+        const oneHopTime = 10 * conn.travelTimeMultiplier // BASE_TRAVEL_TIME = 10
+        const totalTravelTime = travelToKnown + oneHopTime
+
+        frontierAreas.push({
+          areaId: unknownAreaId,
+          distance: unknownArea.distance,
+          travelTicksFromCurrent: Math.round(totalTravelTime),
+          reachableFrom: knownAreaId,
+        })
+      }
+    }
+  }
+
+  // Sort frontier areas by travel time
+  frontierAreas.sort((a, b) => a.travelTicksFromCurrent - b.travelTicksFromCurrent)
+
   return {
     miningLevel,
     miningXpInLevel: miningSkill.xp,
@@ -169,6 +227,7 @@ export function getObservation(state: WorldState): PolicyObservation {
     currentAreaId,
     knownAreas,
     knownMineableMaterials: [...knownMineableMaterials],
+    frontierAreas,
     currentArea,
     isInTown,
     canDeposit,

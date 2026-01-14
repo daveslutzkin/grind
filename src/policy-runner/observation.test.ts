@@ -112,6 +112,7 @@ describe("observation", () => {
         currentAreaId: "TOWN",
         knownAreas: [],
         knownMineableMaterials: [],
+        frontierAreas: [],
         currentArea: null,
         isInTown: true,
         canDeposit: false,
@@ -146,6 +147,7 @@ describe("observation", () => {
                 locationId: "area-d1-i0-loc-0",
               },
             ],
+            isFullyExplored: false,
           },
           {
             areaId: "area-d1-i1",
@@ -162,9 +164,11 @@ describe("observation", () => {
                 locationId: "area-d1-i1-loc-0",
               },
             ],
+            isFullyExplored: false,
           },
         ],
         knownMineableMaterials: ["COPPER_ORE", "STONE"],
+        frontierAreas: [],
         currentArea: null,
         isInTown: true,
         canDeposit: false,
@@ -183,6 +187,7 @@ describe("observation", () => {
         distance: 1,
         travelTicksFromCurrent: 10,
         discoveredNodes: [],
+        isFullyExplored: false,
       }
 
       expect(findBestNodeInArea(area)).toBeNull()
@@ -213,6 +218,7 @@ describe("observation", () => {
             locationId: "loc-2",
           },
         ],
+        isFullyExplored: false,
       }
 
       const result = findBestNodeInArea(area)
@@ -244,6 +250,7 @@ describe("observation", () => {
             locationId: "loc-2",
           },
         ],
+        isFullyExplored: false,
       }
 
       const result = findBestNodeInArea(area)

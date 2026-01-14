@@ -8,7 +8,7 @@ import { toEngineAction, toEngineActions } from "./action-converter.js"
 
 describe("action-converter", () => {
   describe("toEngineActions", () => {
-    it("converts Mine action with default mode", () => {
+    it("converts Mine action with default mode (player at node location)", () => {
       expect.assertions(3)
       const state = createWorld("test-seed")
 
@@ -26,6 +26,11 @@ describe("action-converter", () => {
         throw new Error("Test setup failed: no mineable node found")
       }
 
+      // Set player at the node's location
+      state.exploration.playerState.currentAreaId = node.areaId
+      const nodeIndex = node.nodeId.match(/-node-(\d+)$/)?.[1]
+      state.exploration.playerState.currentLocationId = `${node.areaId}-loc-${nodeIndex}`
+
       const result = toEngineActions({ type: "Mine", nodeId: node.nodeId }, state)
 
       expect(result.isWait).toBe(false)
@@ -33,7 +38,7 @@ describe("action-converter", () => {
       expect(result.actions[0].type).toBe("Mine")
     })
 
-    it("converts Mine action with explicit mode", () => {
+    it("converts Mine action with explicit mode (player at node location)", () => {
       expect.assertions(3)
       const state = createWorld("test-seed")
       state.player.skills.Mining.level = 5
@@ -48,6 +53,11 @@ describe("action-converter", () => {
         throw new Error("Test setup failed: no mineable node found")
       }
 
+      // Set player at the node's location
+      state.exploration.playerState.currentAreaId = node.areaId
+      const nodeIndex = node.nodeId.match(/-node-(\d+)$/)?.[1]
+      state.exploration.playerState.currentLocationId = `${node.areaId}-loc-${nodeIndex}`
+
       const result = toEngineActions(
         { type: "Mine", nodeId: node.nodeId, mode: GatherMode.CAREFUL_ALL },
         state
@@ -59,14 +69,55 @@ describe("action-converter", () => {
       expect(mineAction.mode).toBe(GatherMode.CAREFUL_ALL)
     })
 
-    it("converts Travel action to FarTravel", () => {
+    it("converts Mine action with navigation when player not at location", () => {
       const state = createWorld("test-seed")
+      state.player.skills.Mining.level = 5
+
+      // Find a node that has mineable materials
+      const node = state.world.nodes?.find((n) =>
+        n.materials.some(
+          (m) => m.requiresSkill === "Mining" && m.requiredLevel <= 5 && m.remainingUnits > 0
+        )
+      )
+      if (!node) {
+        throw new Error("Test setup failed: no mineable node found")
+      }
+
+      // Player is in TOWN (not at node)
+      state.exploration.playerState.currentAreaId = "TOWN"
+      state.exploration.playerState.currentLocationId = null
+
+      const result = toEngineActions({ type: "Mine", nodeId: node.nodeId }, state)
+
+      expect(result.isWait).toBe(false)
+      // Should have: FarTravel + TravelToLocation + Mine
+      expect(result.actions.length).toBe(3)
+      expect(result.actions[0].type).toBe("FarTravel")
+      expect(result.actions[1].type).toBe("TravelToLocation")
+      expect(result.actions[2].type).toBe("Mine")
+    })
+
+    it("converts Travel action to FarTravel for known areas", () => {
+      const state = createWorld("test-seed")
+      // Make area known
+      state.exploration.playerState.knownAreaIds.push("area-d1-i0")
 
       const result = toEngineActions({ type: "Travel", toAreaId: "area-d1-i0" }, state)
 
       expect(result.isWait).toBe(false)
       expect(result.actions.length).toBe(1)
       expect(result.actions[0].type).toBe("FarTravel")
+    })
+
+    it("converts Travel action to ExplorationTravel for unknown (frontier) areas", () => {
+      const state = createWorld("test-seed")
+      // area-d1-i0 is not in knownAreaIds (unknown/frontier)
+
+      const result = toEngineActions({ type: "Travel", toAreaId: "area-d1-i0" }, state)
+
+      expect(result.isWait).toBe(false)
+      expect(result.actions.length).toBe(1)
+      expect(result.actions[0].type).toBe("ExplorationTravel")
     })
 
     it("converts ReturnToTown action", () => {

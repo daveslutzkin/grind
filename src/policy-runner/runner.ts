@@ -15,7 +15,7 @@ import { createWorld } from "../world.js"
 import { executeAction } from "../engine.js"
 import { consumeTime } from "../stateHelpers.js"
 
-import type { RunConfig, RunResult, PolicyAction } from "./types.js"
+import type { RunConfig, RunResult, PolicyAction, ActionRecord } from "./types.js"
 import { getObservation, getMaxDiscoveredDistance } from "./observation.js"
 import { toEngineActions } from "./action-converter.js"
 import {
@@ -108,6 +108,7 @@ async function executePolicyAction(
 export async function runSimulation(config: RunConfig): Promise<RunResult> {
   const { seed, policy, targetLevel, maxTicks } = config
   const stallWindowSize = config.stallWindowSize ?? DEFAULT_STALL_WINDOW_SIZE
+  const recordActions = config.recordActions ?? false
 
   // Initialize
   const state = await initializeWorld(seed)
@@ -116,6 +117,17 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
 
   // Track last action for stall snapshot
   let lastPolicyAction: PolicyAction = { type: "Wait" }
+
+  // Action log (only populated if recordActions is true)
+  const actionLog: ActionRecord[] = []
+
+  // Helper to build result with optional action log
+  const buildResult = (metricsResult: Omit<RunResult, "seed" | "policyId" | "actionLog">) => ({
+    seed,
+    policyId: policy.id,
+    ...metricsResult,
+    ...(recordActions ? { actionLog } : {}),
+  })
 
   // Main loop
   while (true) {
@@ -129,11 +141,7 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
         getTotalXP(state.player.skills.Mining),
         state.time.currentTick
       )
-      return {
-        seed,
-        policyId: policy.id,
-        ...metricsResult,
-      }
+      return buildResult(metricsResult)
     }
 
     if (state.time.currentTick >= maxTicks) {
@@ -143,11 +151,7 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
         getTotalXP(state.player.skills.Mining),
         state.time.currentTick
       )
-      return {
-        seed,
-        policyId: policy.id,
-        ...metricsResult,
-      }
+      return buildResult(metricsResult)
     }
 
     if (stallDetector.isStalled()) {
@@ -159,11 +163,7 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
         state.time.currentTick,
         stallSnapshot
       )
-      return {
-        seed,
-        policyId: policy.id,
-        ...metricsResult,
-      }
+      return buildResult(metricsResult)
     }
 
     // Get observation and make decision
@@ -174,6 +174,9 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
     // Track max distance
     metrics.recordMaxDistance(getMaxDiscoveredDistance(observation))
 
+    // Record tick before execution for action log
+    const tickBefore = state.time.currentTick
+
     // Record previous level for level-up detection
     const prevLevel = state.player.skills.Mining.level
 
@@ -182,6 +185,17 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
       state,
       policyAction
     )
+
+    // Record action if logging enabled
+    if (recordActions) {
+      actionLog.push({
+        tick: tickBefore,
+        policyAction,
+        ticksConsumed,
+        success: ticksConsumed > 0 || policyAction.type === "Wait",
+        xpGained,
+      })
+    }
 
     // Record metrics
     metrics.recordAction(policyAction.type, ticksConsumed)

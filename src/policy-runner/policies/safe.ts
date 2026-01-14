@@ -25,19 +25,24 @@ function findNearestUnexploredArea(
   const maxKnownDistance =
     obs.knownAreas.length > 0 ? Math.max(...obs.knownAreas.map((a) => a.distance)) : 0
 
-  // Find areas that might have undiscovered content
-  // We consider areas "unexplored" if they have no discovered nodes
+  // Find areas that still have undiscovered content
+  // An area is worth exploring if:
+  // 1. It's not fully explored (has remaining discoverables)
+  // 2. It has no discovered mining nodes yet (we want to find nodes)
   const candidates = obs.knownAreas.filter((area) => {
-    if (area.discoveredNodes.length === 0) {
-      if (preference === "below_frontier") {
-        // Areas closer than the frontier (safer exploration)
-        return area.distance < maxKnownDistance
-      } else {
-        // Areas at the frontier (pushing to higher distances)
-        return area.distance === maxKnownDistance
-      }
+    // Skip fully explored areas - nothing left to discover
+    if (area.isFullyExplored) return false
+
+    // Only explore if we haven't found mining nodes yet
+    if (area.discoveredNodes.length > 0) return false
+
+    if (preference === "below_frontier") {
+      // Areas closer than the frontier (safer exploration)
+      return area.distance < maxKnownDistance
+    } else {
+      // Areas at the frontier (pushing to higher distances)
+      return area.distance === maxKnownDistance
     }
-    return false
   })
 
   if (candidates.length === 0) return null
@@ -94,7 +99,17 @@ export const safeMiner: Policy = {
       return { type: "Travel", toAreaId: anyMineable.areaId }
     }
 
-    // 7. Nothing to do - wait
+    // 7. Travel to nearest frontier area (unknown area with known connection)
+    if (obs.frontierAreas.length > 0) {
+      // Sort by distance first (prefer closer distances), then by travel time
+      const sortedFrontier = [...obs.frontierAreas].sort((a, b) => {
+        if (a.distance !== b.distance) return a.distance - b.distance
+        return a.travelTicksFromCurrent - b.travelTicksFromCurrent
+      })
+      return { type: "Travel", toAreaId: sortedFrontier[0].areaId }
+    }
+
+    // 8. Nothing to do - wait
     return { type: "Wait" }
   },
 }

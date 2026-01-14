@@ -19,6 +19,7 @@ function createObservation(overrides: Partial<PolicyObservation> = {}): PolicyOb
     currentAreaId: "TOWN",
     knownAreas: [],
     knownMineableMaterials: [],
+    frontierAreas: [],
     currentArea: null,
     isInTown: true,
     canDeposit: false,
@@ -49,6 +50,7 @@ function createMineableArea(
         locationId: `${areaId}-loc-0`,
       },
     ],
+    isFullyExplored: false,
   }
 }
 

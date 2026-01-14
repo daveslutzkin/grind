@@ -11,7 +11,7 @@ import { runBatch } from "./batch.js"
 import { safeMiner } from "./policies/safe.js"
 import { greedyMiner } from "./policies/greedy.js"
 import { balancedMiner } from "./policies/balanced.js"
-import type { Policy, RunResult } from "./types.js"
+import type { Policy, PolicyAction, RunResult } from "./types.js"
 
 const POLICIES: Record<string, Policy> = {
   safe: safeMiner,
@@ -32,6 +32,7 @@ function parseArgs(): {
   stallWindowSize: number | undefined
   batch: boolean
   verbose: boolean
+  logActions: boolean
   help: boolean
 } {
   const args = process.argv.slice(2)
@@ -45,6 +46,7 @@ function parseArgs(): {
   let stallWindowSize: number | undefined
   let batch = false
   let verbose = false
+  let logActions = false
   let help = false
 
   for (let i = 0; i < args.length; i++) {
@@ -70,6 +72,8 @@ function parseArgs(): {
       batch = true
     } else if (arg === "--verbose" || arg === "-v") {
       verbose = true
+    } else if (arg === "--log-actions") {
+      logActions = true
     }
   }
 
@@ -83,6 +87,7 @@ function parseArgs(): {
     stallWindowSize,
     batch,
     verbose,
+    logActions,
     help,
   }
 }
@@ -107,6 +112,7 @@ OPTIONS:
   --stall-window <n>      Ticks without progress before stall (default: 1000)
   -b, --batch             Run batch mode (multiple seeds)
   -v, --verbose           Show detailed progress
+  --log-actions           Output full action log (single run only)
   -h, --help              Show this help message
 
 EXAMPLES:
@@ -133,16 +139,36 @@ POLICIES:
 /**
  * Format duration in human-readable form
  */
-function formatDuration(ms: number): string {
+export function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`
   if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
   return `${(ms / 60000).toFixed(1)}m`
 }
 
 /**
+ * Format a policy action for display
+ */
+export function formatPolicyAction(action: PolicyAction): string {
+  switch (action.type) {
+    case "Mine":
+      return `Mine(${action.nodeId}${action.mode ? `, ${action.mode}` : ""})`
+    case "Explore":
+      return `Explore(${action.areaId})`
+    case "Travel":
+      return `Travel(${action.toAreaId})`
+    case "ReturnToTown":
+      return "ReturnToTown"
+    case "DepositInventory":
+      return "DepositInventory"
+    case "Wait":
+      return "Wait"
+  }
+}
+
+/**
  * Print single run result
  */
-function printResult(result: RunResult, verbose: boolean): void {
+function printResult(result: RunResult, verbose: boolean, logActions: boolean): void {
   console.log()
   console.log("=".repeat(60))
   console.log("RUN RESULT")
@@ -186,6 +212,22 @@ function printResult(result: RunResult, verbose: boolean): void {
     console.log(`  Known Nodes: ${result.stallSnapshot.knownNodeCount}`)
     console.log(`  Last Action: ${result.stallSnapshot.lastAction.type}`)
   }
+
+  if (logActions && result.actionLog) {
+    console.log()
+    console.log("=".repeat(60))
+    console.log("ACTION LOG")
+    console.log("=".repeat(60))
+    console.log()
+    console.log("Tick\tTicks\tXP\tAction")
+    console.log("-".repeat(60))
+    for (const record of result.actionLog) {
+      const status = record.success ? "" : " [FAILED]"
+      console.log(
+        `${record.tick}\t${record.ticksConsumed}\t${record.xpGained}\t${formatPolicyAction(record.policyAction)}${status}`
+      )
+    }
+  }
 }
 
 /**
@@ -217,11 +259,12 @@ async function runSingle(args: ReturnType<typeof parseArgs>): Promise<void> {
     targetLevel: args.targetLevel,
     maxTicks: args.maxTicks,
     stallWindowSize: args.stallWindowSize,
+    recordActions: args.logActions,
   })
 
   const elapsed = Date.now() - startTime
 
-  printResult(result, args.verbose)
+  printResult(result, args.verbose, args.logActions)
   console.log()
   console.log(`Completed in ${formatDuration(elapsed)}`)
 }
@@ -330,8 +373,11 @@ async function main(): Promise<void> {
   }
 }
 
-// Run
-main().catch((error) => {
-  console.error("Fatal error:", error)
-  process.exit(1)
-})
+// Run only when executed directly (not when imported for testing)
+const isMainModule = import.meta.url === `file://${process.argv[1]}`
+if (isMainModule) {
+  main().catch((error) => {
+    console.error("Fatal error:", error)
+    process.exit(1)
+  })
+}

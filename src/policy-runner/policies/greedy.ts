@@ -34,9 +34,10 @@ function getMaxUnlockedDistance(miningLevel: number): number {
  * Find an area to explore at the target distance.
  */
 function findUnexploredAtDistance(obs: PolicyObservation, targetDistance: number): string | null {
-  // Find areas at the target distance that might have undiscovered content
+  // Find areas at the target distance that still have undiscovered content
   const candidates = obs.knownAreas.filter(
-    (area) => area.distance === targetDistance && area.discoveredNodes.length === 0
+    (area) =>
+      area.distance === targetDistance && !area.isFullyExplored && area.discoveredNodes.length === 0
   )
 
   if (candidates.length === 0) return null

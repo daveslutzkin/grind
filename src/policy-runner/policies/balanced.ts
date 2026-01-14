@@ -38,8 +38,10 @@ function computeXpPerTick(node: KnownNode, travelTicks: number): number {
  * Find the nearest area to explore (any distance).
  */
 function findNearestExploreTarget(obs: PolicyObservation): string | null {
-  // Find areas with no discovered nodes
-  const unexploredAreas = obs.knownAreas.filter((area) => area.discoveredNodes.length === 0)
+  // Find areas with no discovered nodes that aren't fully explored
+  const unexploredAreas = obs.knownAreas.filter(
+    (area) => !area.isFullyExplored && area.discoveredNodes.length === 0
+  )
 
   if (unexploredAreas.length === 0) return null
 

@@ -17,6 +17,7 @@ function createObservation(overrides: Partial<PolicyObservation> = {}): PolicyOb
     currentAreaId: "TOWN",
     knownAreas: [],
     knownMineableMaterials: [],
+    frontierAreas: [],
     currentArea: null,
     isInTown: true,
     canDeposit: false,
@@ -42,6 +43,7 @@ function createMineableArea(areaId: string, distance: number, travelTicks: numbe
         locationId: `${areaId}-loc-0`,
       },
     ],
+    isFullyExplored: false,
   }
 }
 
@@ -127,6 +129,7 @@ describe("safeMiner", () => {
           distance: 1,
           travelTicksFromCurrent: 10,
           discoveredNodes: [], // No nodes discovered
+          isFullyExplored: false,
         },
       ],
     })

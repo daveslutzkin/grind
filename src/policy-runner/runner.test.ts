@@ -106,5 +106,74 @@ describe("runner", () => {
       // Max distance should be at least 0
       expect(result.maxDistanceReached).toBeGreaterThanOrEqual(0)
     })
+
+    it("records action log when recordActions is true", async () => {
+      const result = await runSimulation({
+        seed: "test-seed-7",
+        policy: safeMiner,
+        targetLevel: 2,
+        maxTicks: 5000,
+        recordActions: true,
+      })
+
+      // Action log should be present
+      expect(result.actionLog).toBeDefined()
+      expect(Array.isArray(result.actionLog)).toBe(true)
+      expect(result.actionLog!.length).toBeGreaterThan(0)
+
+      // Each record should have required fields
+      for (const record of result.actionLog!) {
+        expect(typeof record.tick).toBe("number")
+        expect(record.tick).toBeGreaterThanOrEqual(0)
+        expect(record.policyAction).toBeDefined()
+        expect(record.policyAction.type).toBeDefined()
+        expect(typeof record.ticksConsumed).toBe("number")
+        expect(typeof record.success).toBe("boolean")
+        expect(typeof record.xpGained).toBe("number")
+      }
+    })
+
+    it("does not include action log when recordActions is false", async () => {
+      const result = await runSimulation({
+        seed: "test-seed-8",
+        policy: safeMiner,
+        targetLevel: 2,
+        maxTicks: 5000,
+        recordActions: false,
+      })
+
+      // Action log should not be present
+      expect(result.actionLog).toBeUndefined()
+    })
+
+    it("does not include action log by default", async () => {
+      const result = await runSimulation({
+        seed: "test-seed-9",
+        policy: safeMiner,
+        targetLevel: 2,
+        maxTicks: 5000,
+      })
+
+      // Action log should not be present by default
+      expect(result.actionLog).toBeUndefined()
+    })
+
+    it("action log records ticks in order", async () => {
+      const result = await runSimulation({
+        seed: "test-seed-10",
+        policy: safeMiner,
+        targetLevel: 2,
+        maxTicks: 5000,
+        recordActions: true,
+      })
+
+      expect(result.actionLog).toBeDefined()
+      expect(result.actionLog!.length).toBeGreaterThan(1)
+
+      // Ticks should be in non-decreasing order
+      for (let i = 1; i < result.actionLog!.length; i++) {
+        expect(result.actionLog![i].tick).toBeGreaterThanOrEqual(result.actionLog![i - 1].tick)
+      }
+    })
   })
 })

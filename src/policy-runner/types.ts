@@ -35,6 +35,18 @@ export interface KnownArea {
   distance: number
   travelTicksFromCurrent: number // Pre-computed
   discoveredNodes: KnownNode[]
+  isFullyExplored: boolean // True if no more discoverables remain in this area
+}
+
+/**
+ * An area reachable via a known connection but not yet discovered.
+ * The player knows a path exists but hasn't visited yet.
+ */
+export interface FrontierArea {
+  areaId: AreaID
+  distance: number
+  travelTicksFromCurrent: number
+  reachableFrom: AreaID // The known area this is connected from
 }
 
 /**
@@ -55,6 +67,9 @@ export interface PolicyObservation {
   // Known world (only discovered information)
   knownAreas: KnownArea[]
   knownMineableMaterials: string[] // Materials player can mine (by level gate)
+
+  // Frontier - unknown areas reachable via known connections
+  frontierAreas: FrontierArea[]
 
   // Current location details
   currentArea: KnownArea | null // null if in town
@@ -134,6 +149,7 @@ export interface RunConfig {
   targetLevel: number
   maxTicks: number
   stallWindowSize?: number // Default 1000
+  recordActions?: boolean // If true, include action log in result
 }
 
 /**
@@ -162,6 +178,17 @@ export interface LevelUpRecord {
 export type TerminationReason = "target_reached" | "max_ticks" | "stall"
 
 /**
+ * Record of a single action taken during simulation.
+ */
+export interface ActionRecord {
+  tick: number
+  policyAction: PolicyAction
+  ticksConsumed: number
+  success: boolean
+  xpGained: number
+}
+
+/**
  * Result of a single simulation run.
  */
 export interface RunResult {
@@ -179,6 +206,9 @@ export interface RunResult {
 
   // Progression timeline
   levelUpTicks: LevelUpRecord[]
+
+  // Action log (optional, enabled via config)
+  actionLog?: ActionRecord[]
 
   // Stall info (if applicable)
   stallSnapshot?: StallSnapshot
