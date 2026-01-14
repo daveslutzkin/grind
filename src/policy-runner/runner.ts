@@ -330,9 +330,9 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
     // Record metrics
     metrics.recordAction(policyAction.type, ticksConsumed)
 
-    // Calculate total XP gained for stall detection (only mining XP for backwards compat)
-    const miningXpGained = xpGained.find((g) => g.skill === "Mining")?.amount ?? 0
-    stallDetector.recordTick(miningXpGained, nodesDiscovered)
+    // Calculate total XP gained for stall detection (any skill XP counts as progress)
+    const totalXpGained = xpGained.reduce((sum, gain) => sum + gain.amount, 0)
+    stallDetector.recordTick(totalXpGained, nodesDiscovered)
 
     // Record level-ups for each skill
     for (const levelUp of levelUps) {
