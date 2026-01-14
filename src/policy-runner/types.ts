@@ -262,6 +262,7 @@ export interface BatchConfig {
   targetLevel: number
   maxTicks: number
   stallWindowSize?: number
+  onProgress?: () => void // Called after each simulation completes
 }
 
 /**

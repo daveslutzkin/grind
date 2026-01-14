@@ -446,7 +446,7 @@ async function runBatchMode(args: ReturnType<typeof parseArgs>): Promise<void> {
 
   const startTime = Date.now()
 
-  console.log("Running simulations...")
+  process.stdout.write("Running simulations")
 
   const result = await runBatch({
     seeds: args.seeds,
@@ -455,6 +455,7 @@ async function runBatchMode(args: ReturnType<typeof parseArgs>): Promise<void> {
     targetLevel: args.targetLevel,
     maxTicks: args.maxTicks,
     stallWindowSize: args.stallWindowSize,
+    onProgress: () => process.stdout.write("."),
   })
 
   const elapsed = Date.now() - startTime

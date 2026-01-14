@@ -37,6 +37,7 @@ export async function runBatch(config: BatchConfig): Promise<BatchResult> {
         stallWindowSize: config.stallWindowSize,
       })
       results.push(result)
+      config.onProgress?.()
     }
   }
 
