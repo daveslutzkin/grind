@@ -1,0 +1,16 @@
+================================================================================
+AGENT KNOWLEDGE
+================================================================================
+
+## WORLD
+
+- Starting the game - I'm in a town with 6 different guilds available, plus a warehouse service. No other areas are known yet.
+- The Miners Guild has contracts available - I can see one that trades copper bars for copper ore and reputation. There are two actions available: enrol (to learn skills) and leave (to exit).
+- After leaving the Miners Guild, I'm back in the Town Square. The guild visit was temporary - I only stayed long enough to enrol in the skill.
+- The Explorers Guild has the same action structure as the Miners Guild - enrol or leave options available.
+- Enrolling in Exploration also cost 3 ticks, same as Mining. Now I have two skills: Mining L1 [FOCUS] (APPRAISE@L3) and Exploration L1. After enrolling, only the leave action is available, consistent with the Miners Guild.
+- The Exploration skill unlocked visibility of connections to other areas! "Greenwood Edge (unexplored)" appeared as a connection 43 ticks away from Town after I gained Exploration L1.
+
+## MECHANICS
+
+- Enrolling in Mining cost 3 ticks and gave me Mining L1 with FOCUS mode available. APPRAISE mode unlocks at L3. After enrolling, only the "leave" action is available at the guild.

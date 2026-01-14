@@ -511,7 +511,9 @@ async function runBatchMode(args: ReturnType<typeof parseArgs>): Promise<void> {
     if (errorEntries.length > 0) {
       const totalCount = errorEntries.reduce((sum, [_, c]) => sum + c, 0)
       const errorParts = errorEntries.map(([type, count]) => `${type} ${count}`)
-      console.log(`  Error Rate: ${(totalCount * 100) / result.results.length}% (${errorParts.join(", ")})`)
+      console.log(
+        `  Error Rate: ${(totalCount * 100) / result.results.length}% (${errorParts.join(", ")})`
+      )
     }
 
     // Show failed seeds for debugging (group by error type)

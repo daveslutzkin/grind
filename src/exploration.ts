@@ -118,17 +118,24 @@ export function findConnection(
 
 /**
  * Get the number of areas at a given distance from town.
- * Uses Fibonacci sequence: distance 1 = 5, distance 2 = 8, etc.
+ * Uses Fibonacci sequence up to distance 10, then 10% growth per distance.
  * Town (distance 0) has exactly 1 area.
  */
 export function getAreaCountForDistance(distance: number): number {
   if (distance === 0) return 1 // Town is special
 
-  // Fibonacci sequence starting at Fib(5) = 5 for distance 1
-  // Distance 1: Fib(5) = 5
-  // Distance 2: Fib(6) = 8
-  // Distance N: Fib(N + 4)
-  return fibonacci(distance + 4)
+  if (distance <= 10) {
+    // Fibonacci sequence starting at Fib(5) = 5 for distance 1
+    // Distance 1: Fib(5) = 5
+    // Distance 2: Fib(6) = 8
+    // Distance N: Fib(N + 4)
+    return fibonacci(distance + 4)
+  }
+
+  // After distance 10, grow by 10% per distance to avoid explosion
+  // Distance 10 = 377 areas (Fib(14))
+  const base = fibonacci(14) // 377
+  return Math.round(base * Math.pow(1.1, distance - 10))
 }
 
 /**

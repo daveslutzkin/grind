@@ -1,0 +1,5102 @@
+{
+  "version": 1,
+  "savedAt": "2026-01-13T02:11:42.164Z",
+  "seed": "session-1768269923092",
+  "state": {
+    "time": {
+      "currentTick": 1219
+    },
+    "player": {
+      "inventory": [
+        {
+          "itemId": "GREEN_WOOD",
+          "quantity": 1
+        },
+        {
+          "itemId": "GREEN_WOOD",
+          "quantity": 1
+        },
+        {
+          "itemId": "GREEN_WOOD",
+          "quantity": 1
+        },
+        {
+          "itemId": "GREEN_WOOD",
+          "quantity": 1
+        },
+        {
+          "itemId": "SOFTWOOD",
+          "quantity": 1
+        },
+        {
+          "itemId": "SOFTWOOD",
+          "quantity": 1
+        },
+        {
+          "itemId": "SOFTWOOD",
+          "quantity": 1
+        },
+        {
+          "itemId": "SOFTWOOD",
+          "quantity": 1
+        },
+        {
+          "itemId": "SOFTWOOD",
+          "quantity": 1
+        },
+        {
+          "itemId": "HARDWOOD",
+          "quantity": 1
+        }
+      ],
+      "inventoryCapacity": 10,
+      "storage": [],
+      "skills": {
+        "Mining": {
+          "level": 1,
+          "xp": 0
+        },
+        "Woodcutting": {
+          "level": 3,
+          "xp": 7
+        },
+        "Combat": {
+          "level": 0,
+          "xp": 0
+        },
+        "Smithing": {
+          "level": 0,
+          "xp": 0
+        },
+        "Woodcrafting": {
+          "level": 0,
+          "xp": 0
+        },
+        "Exploration": {
+          "level": 2,
+          "xp": 3
+        }
+      },
+      "guildReputation": 0,
+      "activeContracts": [],
+      "equippedWeapon": null,
+      "contractKillProgress": {},
+      "appraisedNodeIds": []
+    },
+    "world": {
+      "nodes": [
+        {
+          "nodeId": "area-d1-i2-node-0",
+          "nodeType": "TREE_STAND",
+          "areaId": "area-d1-i2",
+          "materials": [
+            {
+              "materialId": "HARDWOOD",
+              "remainingUnits": 62,
+              "maxUnitsInitial": 68,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 2,
+              "tier": 2
+            },
+            {
+              "materialId": "GREEN_WOOD",
+              "remainingUnits": 94,
+              "maxUnitsInitial": 100,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 1,
+              "tier": 1
+            },
+            {
+              "materialId": "SOFTWOOD",
+              "remainingUnits": 56,
+              "maxUnitsInitial": 63,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 1,
+              "tier": 1
+            }
+          ],
+          "depleted": false
+        },
+        {
+          "nodeId": "area-d1-i3-node-0",
+          "nodeType": "ORE_VEIN",
+          "areaId": "area-d1-i3",
+          "materials": [
+            {
+              "materialId": "STONE",
+              "remainingUnits": 97,
+              "maxUnitsInitial": 97,
+              "requiresSkill": "Mining",
+              "requiredLevel": 1,
+              "tier": 1
+            },
+            {
+              "materialId": "TIN_ORE",
+              "remainingUnits": 45,
+              "maxUnitsInitial": 45,
+              "requiresSkill": "Mining",
+              "requiredLevel": 2,
+              "tier": 2
+            },
+            {
+              "materialId": "COPPER_ORE",
+              "remainingUnits": 67,
+              "maxUnitsInitial": 67,
+              "requiresSkill": "Mining",
+              "requiredLevel": 1,
+              "tier": 1
+            }
+          ],
+          "depleted": false
+        },
+        {
+          "nodeId": "area-d2-i2-node-0",
+          "nodeType": "TREE_STAND",
+          "areaId": "area-d2-i2",
+          "materials": [
+            {
+              "materialId": "IRONWOOD",
+              "remainingUnits": 29,
+              "maxUnitsInitial": 29,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 8,
+              "tier": 4
+            },
+            {
+              "materialId": "GREEN_WOOD",
+              "remainingUnits": 72,
+              "maxUnitsInitial": 72,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 1,
+              "tier": 1
+            },
+            {
+              "materialId": "HARDWOOD",
+              "remainingUnits": 50,
+              "maxUnitsInitial": 50,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 2,
+              "tier": 2
+            },
+            {
+              "materialId": "OAK_WOOD",
+              "remainingUnits": 44,
+              "maxUnitsInitial": 44,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 5,
+              "tier": 3
+            }
+          ],
+          "depleted": false
+        },
+        {
+          "nodeId": "area-d2-i6-node-0",
+          "nodeType": "ORE_VEIN",
+          "areaId": "area-d2-i6",
+          "materials": [
+            {
+              "materialId": "TIN_ORE",
+              "remainingUnits": 52,
+              "maxUnitsInitial": 52,
+              "requiresSkill": "Mining",
+              "requiredLevel": 2,
+              "tier": 2
+            },
+            {
+              "materialId": "COPPER_ORE",
+              "remainingUnits": 97,
+              "maxUnitsInitial": 97,
+              "requiresSkill": "Mining",
+              "requiredLevel": 1,
+              "tier": 1
+            },
+            {
+              "materialId": "STONE",
+              "remainingUnits": 118,
+              "maxUnitsInitial": 118,
+              "requiresSkill": "Mining",
+              "requiredLevel": 1,
+              "tier": 1
+            },
+            {
+              "materialId": "SILVER_ORE",
+              "remainingUnits": 33,
+              "maxUnitsInitial": 33,
+              "requiresSkill": "Mining",
+              "requiredLevel": 8,
+              "tier": 4
+            }
+          ],
+          "depleted": false
+        },
+        {
+          "nodeId": "area-d3-i0-node-0",
+          "nodeType": "TREE_STAND",
+          "areaId": "area-d3-i0",
+          "materials": [
+            {
+              "materialId": "SPIRITWOOD",
+              "remainingUnits": 25,
+              "maxUnitsInitial": 25,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 10,
+              "tier": 5
+            },
+            {
+              "materialId": "ANCIENT_WOOD",
+              "remainingUnits": 45,
+              "maxUnitsInitial": 45,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 9,
+              "tier": 5
+            },
+            {
+              "materialId": "IRONWOOD",
+              "remainingUnits": 23,
+              "maxUnitsInitial": 23,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 8,
+              "tier": 4
+            }
+          ],
+          "depleted": false
+        },
+        {
+          "nodeId": "area-d3-i7-node-0",
+          "nodeType": "TREE_STAND",
+          "areaId": "area-d3-i7",
+          "materials": [
+            {
+              "materialId": "OAK_WOOD",
+              "remainingUnits": 37,
+              "maxUnitsInitial": 37,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 5,
+              "tier": 3
+            },
+            {
+              "materialId": "SPIRITWOOD",
+              "remainingUnits": 16,
+              "maxUnitsInitial": 16,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 10,
+              "tier": 5
+            },
+            {
+              "materialId": "IRONWOOD",
+              "remainingUnits": 33,
+              "maxUnitsInitial": 33,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 8,
+              "tier": 4
+            },
+            {
+              "materialId": "ANCIENT_WOOD",
+              "remainingUnits": 33,
+              "maxUnitsInitial": 33,
+              "requiresSkill": "Woodcutting",
+              "requiredLevel": 9,
+              "tier": 5
+            }
+          ],
+          "depleted": false
+        },
+        {
+          "nodeId": "area-d3-i9-node-0",
+          "nodeType": "ORE_VEIN",
+          "areaId": "area-d3-i9",
+          "materials": [
+            {
+              "materialId": "MITHRIL_ORE",
+              "remainingUnits": 24,
+              "maxUnitsInitial": 24,
+              "requiresSkill": "Mining",
+              "requiredLevel": 10,
+              "tier": 5
+            },
+            {
+              "materialId": "IRON_ORE",
+              "remainingUnits": 43,
+              "maxUnitsInitial": 43,
+              "requiresSkill": "Mining",
+              "requiredLevel": 5,
+              "tier": 3
+            },
+            {
+              "materialId": "SILVER_ORE",
+              "remainingUnits": 22,
+              "maxUnitsInitial": 22,
+              "requiresSkill": "Mining",
+              "requiredLevel": 8,
+              "tier": 4
+            },
+            {
+              "materialId": "DEEP_ORE",
+              "remainingUnits": 32,
+              "maxUnitsInitial": 32,
+              "requiresSkill": "Mining",
+              "requiredLevel": 9,
+              "tier": 5
+            }
+          ],
+          "depleted": false
+        },
+        {
+          "nodeId": "area-d3-i11-node-0",
+          "nodeType": "ORE_VEIN",
+          "areaId": "area-d3-i11",
+          "materials": [
+            {
+              "materialId": "IRON_ORE",
+              "remainingUnits": 42,
+              "maxUnitsInitial": 42,
+              "requiresSkill": "Mining",
+              "requiredLevel": 5,
+              "tier": 3
+            },
+            {
+              "materialId": "DEEP_ORE",
+              "remainingUnits": 45,
+              "maxUnitsInitial": 45,
+              "requiresSkill": "Mining",
+              "requiredLevel": 9,
+              "tier": 5
+            },
+            {
+              "materialId": "MITHRIL_ORE",
+              "remainingUnits": 19,
+              "maxUnitsInitial": 19,
+              "requiresSkill": "Mining",
+              "requiredLevel": 10,
+              "tier": 5
+            },
+            {
+              "materialId": "SILVER_ORE",
+              "remainingUnits": 27,
+              "maxUnitsInitial": 27,
+              "requiresSkill": "Mining",
+              "requiredLevel": 8,
+              "tier": 4
+            }
+          ],
+          "depleted": false
+        }
+      ],
+      "recipes": [
+        {
+          "id": "iron-bar",
+          "inputs": [
+            {
+              "itemId": "IRON_ORE",
+              "quantity": 2
+            }
+          ],
+          "output": {
+            "itemId": "IRON_BAR",
+            "quantity": 1
+          },
+          "craftTime": 3,
+          "guildType": "Smithing",
+          "requiredSkillLevel": 1
+        },
+        {
+          "id": "copper-bar",
+          "inputs": [
+            {
+              "itemId": "COPPER_ORE",
+              "quantity": 2
+            }
+          ],
+          "output": {
+            "itemId": "COPPER_BAR",
+            "quantity": 1
+          },
+          "craftTime": 2,
+          "guildType": "Smithing",
+          "requiredSkillLevel": 1
+        }
+      ],
+      "contracts": [
+        {
+          "id": "miners-guild-1",
+          "level": 1,
+          "acceptLocationId": "TOWN_MINERS_GUILD",
+          "guildType": "Mining",
+          "requirements": [
+            {
+              "itemId": "COPPER_BAR",
+              "quantity": 2
+            }
+          ],
+          "rewards": [
+            {
+              "itemId": "COPPER_ORE",
+              "quantity": 5
+            }
+          ],
+          "reputationReward": 10,
+          "xpReward": {
+            "skill": "Mining",
+            "amount": 2
+          }
+        }
+      ],
+      "storageAreaId": "TOWN"
+    },
+    "exploration": {
+      "areas": {
+        "TOWN": {
+          "id": "TOWN",
+          "name": "Town",
+          "distance": 0,
+          "generated": true,
+          "locations": [
+            {
+              "id": "TOWN_MINERS_GUILD",
+              "areaId": "TOWN",
+              "type": "GUILD_HALL",
+              "guildType": "Mining",
+              "guildLevel": 100
+            },
+            {
+              "id": "TOWN_FORESTERS_GUILD",
+              "areaId": "TOWN",
+              "type": "GUILD_HALL",
+              "guildType": "Woodcutting",
+              "guildLevel": 100
+            },
+            {
+              "id": "TOWN_COMBAT_GUILD",
+              "areaId": "TOWN",
+              "type": "GUILD_HALL",
+              "guildType": "Combat",
+              "guildLevel": 100
+            },
+            {
+              "id": "TOWN_SMITHING_GUILD",
+              "areaId": "TOWN",
+              "type": "GUILD_HALL",
+              "guildType": "Smithing",
+              "guildLevel": 100
+            },
+            {
+              "id": "TOWN_WOODCRAFTERS_GUILD",
+              "areaId": "TOWN",
+              "type": "GUILD_HALL",
+              "guildType": "Woodcrafting",
+              "guildLevel": 100
+            },
+            {
+              "id": "TOWN_EXPLORERS_GUILD",
+              "areaId": "TOWN",
+              "type": "GUILD_HALL",
+              "guildType": "Exploration",
+              "guildLevel": 100
+            },
+            {
+              "id": "TOWN_WAREHOUSE",
+              "areaId": "TOWN",
+              "type": "WAREHOUSE"
+            }
+          ],
+          "indexInDistance": 0
+        },
+        "area-d1-i0": {
+          "id": "area-d1-i0",
+          "distance": 1,
+          "generated": true,
+          "locations": [],
+          "indexInDistance": 0,
+          "name": "Greenward Fields"
+        },
+        "area-d1-i1": {
+          "id": "area-d1-i1",
+          "distance": 1,
+          "generated": true,
+          "locations": [
+            {
+              "id": "area-d1-i1-loc-0",
+              "areaId": "area-d1-i1",
+              "type": "MOB_CAMP",
+              "creatureType": "creature",
+              "difficulty": 1
+            }
+          ],
+          "indexInDistance": 1,
+          "name": "Whispering Heath"
+        },
+        "area-d1-i2": {
+          "id": "area-d1-i2",
+          "distance": 1,
+          "generated": true,
+          "locations": [
+            {
+              "id": "area-d1-i2-loc-0",
+              "areaId": "area-d1-i2",
+              "type": "GATHERING_NODE",
+              "gatheringSkillType": "Woodcutting"
+            }
+          ],
+          "indexInDistance": 2,
+          "name": "Greenshade Wood"
+        },
+        "area-d1-i3": {
+          "id": "area-d1-i3",
+          "distance": 1,
+          "generated": true,
+          "locations": [
+            {
+              "id": "area-d1-i3-loc-0",
+              "areaId": "area-d1-i3",
+              "type": "GATHERING_NODE",
+              "gatheringSkillType": "Mining"
+            },
+            {
+              "id": "area-d1-i3-loc-1",
+              "areaId": "area-d1-i3",
+              "type": "MOB_CAMP",
+              "creatureType": "creature",
+              "difficulty": 1
+            }
+          ],
+          "indexInDistance": 3,
+          "name": "Silvermist Slopes"
+        },
+        "area-d1-i4": {
+          "id": "area-d1-i4",
+          "distance": 1,
+          "generated": true,
+          "locations": [],
+          "indexInDistance": 4,
+          "name": "Borderlands Green"
+        },
+        "area-d2-i0": {
+          "id": "area-d2-i0",
+          "distance": 2,
+          "generated": false,
+          "locations": [],
+          "indexInDistance": 0
+        },
+        "area-d2-i1": {
+          "id": "area-d2-i1",
+          "distance": 2,
+          "generated": true,
+          "locations": [
+            {
+              "id": "area-d2-i1-loc-0",
+              "areaId": "area-d2-i1",
+              "type": "MOB_CAMP",
+              "creatureType": "creature",
+              "difficulty": 2
+            }
+          ],
+          "indexInDistance": 1,
+          "name": "Brackencrest"
+        },
+        "area-d2-i2": {
+          "id": "area-d2-i2",
+          "distance": 2,
+          "generated": true,
+          "locations": [
+            {
+              "id": "area-d2-i2-loc-0",
+              "areaId": "area-d2-i2",
+              "type": "GATHERING_NODE",
+              "gatheringSkillType": "Woodcutting"
+            }
+          ],
+          "indexInDistance": 2,
+          "name": "Wolfbark Copse"
+        },
+        "area-d2-i3": {
+          "id": "area-d2-i3",
+          "distance": 2,
+          "generated": false,
+          "locations": [],
+          "indexInDistance": 3
+        },
+        "area-d2-i4": {
+          "id": "area-d2-i4",
+          "distance": 2,
+          "generated": false,
+          "locations": [],
+          "indexInDistance": 4
+        },
+        "area-d2-i5": {
+          "id": "area-d2-i5",
+          "distance": 2,
+          "generated": true,
+          "locations": [
+            {
+              "id": "area-d2-i5-loc-0",
+              "areaId": "area-d2-i5",
+              "type": "MOB_CAMP",
+              "creatureType": "creature",
+              "difficulty": 1
+            }
+          ],
+          "indexInDistance": 5,
+          "name": "Greyclaw Ridge"
+        },
+        "area-d2-i6": {
+          "id": "area-d2-i6",
+          "distance": 2,
+          "generated": true,
+          "locations": [
+            {
+              "id": "area-d2-i6-loc-0",
+              "areaId": "area-d2-i6",
+              "type": "GATHERING_NODE",
+              "gatheringSkillType": "Mining"
+            }
+          ],
+          "indexInDistance": 6,
+          "name": "Stonebreach Ridge"
+        },
+        "area-d2-i7": {
+          "id": "area-d2-i7",
+          "distance": 2,
+          "generated": true,
+          "locations": [],
+          "indexInDistance": 7,
+          "name": "Fading Margins"
+        },
+        "area-d3-i0": {
+          "id": "area-d3-i0",
+          "distance": 3,
+          "generated": false,
+          "locations": [
+            {
+              "id": "area-d3-i0-loc-0",
+              "areaId": "area-d3-i0",
+              "type": "GATHERING_NODE",
+              "gatheringSkillType": "Woodcutting"
+            }
+          ],
+          "indexInDistance": 0
+        },
+        "area-d3-i1": {
+          "id": "area-d3-i1",
+          "distance": 3,
+          "generated": false,
+          "locations": [],
+          "indexInDistance": 1
+        },
+        "area-d3-i2": {
+          "id": "area-d3-i2",
+          "distance": 3,
+          "generated": false,
+          "locations": [],
+          "indexInDistance": 2
+        },
+        "area-d3-i3": {
+          "id": "area-d3-i3",
+          "distance": 3,
+          "generated": false,
+          "locations": [
+            {
+              "id": "area-d3-i3-loc-0",
+              "areaId": "area-d3-i3",
+              "type": "MOB_CAMP",
+              "creatureType": "creature",
+              "difficulty": 4
+            }
+          ],
+          "indexInDistance": 3
+        },
+        "area-d3-i4": {
+          "id": "area-d3-i4",
+          "distance": 3,
+          "generated": false,
+          "locations": [],
+          "indexInDistance": 4
+        },
+        "area-d3-i5": {
+          "id": "area-d3-i5",
+          "distance": 3,
+          "generated": false,
+          "locations": [
+            {
+              "id": "area-d3-i5-loc-0",
+              "areaId": "area-d3-i5",
+              "type": "MOB_CAMP",
+              "creatureType": "creature",
+              "difficulty": 4
+            }
+          ],
+          "indexInDistance": 5
+        },
+        "area-d3-i6": {
+          "id": "area-d3-i6",
+          "distance": 3,
+          "generated": false,
+          "locations": [],
+          "indexInDistance": 6
+        },
+        "area-d3-i7": {
+          "id": "area-d3-i7",
+          "distance": 3,
+          "generated": false,
+          "locations": [
+            {
+              "id": "area-d3-i7-loc-0",
+              "areaId": "area-d3-i7",
+              "type": "GATHERING_NODE",
+              "gatheringSkillType": "Woodcutting"
+            },
+            {
+              "id": "area-d3-i7-loc-1",
+              "areaId": "area-d3-i7",
+              "type": "MOB_CAMP",
+              "creatureType": "creature",
+              "difficulty": 3
+            }
+          ],
+          "indexInDistance": 7
+        },
+        "area-d3-i8": {
+          "id": "area-d3-i8",
+          "distance": 3,
+          "generated": false,
+          "locations": [],
+          "indexInDistance": 8
+        },
+        "area-d3-i9": {
+          "id": "area-d3-i9",
+          "distance": 3,
+          "generated": false,
+          "locations": [
+            {
+              "id": "area-d3-i9-loc-0",
+              "areaId": "area-d3-i9",
+              "type": "GATHERING_NODE",
+              "gatheringSkillType": "Mining"
+            }
+          ],
+          "indexInDistance": 9
+        },
+        "area-d3-i10": {
+          "id": "area-d3-i10",
+          "distance": 3,
+          "generated": false,
+          "locations": [],
+          "indexInDistance": 10
+        },
+        "area-d3-i11": {
+          "id": "area-d3-i11",
+          "distance": 3,
+          "generated": false,
+          "locations": [
+            {
+              "id": "area-d3-i11-loc-0",
+              "areaId": "area-d3-i11",
+              "type": "GATHERING_NODE",
+              "gatheringSkillType": "Mining"
+            }
+          ],
+          "indexInDistance": 11
+        },
+        "area-d3-i12": {
+          "id": "area-d3-i12",
+          "distance": 3,
+          "generated": false,
+          "locations": [],
+          "indexInDistance": 12
+        }
+      },
+      "connections": [
+        {
+          "fromAreaId": "TOWN",
+          "toAreaId": "area-d1-i0",
+          "travelTimeMultiplier": 2.4
+        },
+        {
+          "fromAreaId": "TOWN",
+          "toAreaId": "area-d1-i1",
+          "travelTimeMultiplier": 4.4
+        },
+        {
+          "fromAreaId": "TOWN",
+          "toAreaId": "area-d1-i2",
+          "travelTimeMultiplier": 1.3
+        },
+        {
+          "fromAreaId": "TOWN",
+          "toAreaId": "area-d1-i3",
+          "travelTimeMultiplier": 3.6
+        },
+        {
+          "fromAreaId": "TOWN",
+          "toAreaId": "area-d1-i4",
+          "travelTimeMultiplier": 3.4
+        },
+        {
+          "fromAreaId": "area-d1-i0",
+          "toAreaId": "area-d1-i4",
+          "travelTimeMultiplier": 1.7
+        },
+        {
+          "fromAreaId": "area-d1-i0",
+          "toAreaId": "area-d2-i1",
+          "travelTimeMultiplier": 4.4
+        },
+        {
+          "fromAreaId": "area-d1-i4",
+          "toAreaId": "area-d1-i1",
+          "travelTimeMultiplier": 3.6
+        },
+        {
+          "fromAreaId": "area-d1-i4",
+          "toAreaId": "area-d2-i5",
+          "travelTimeMultiplier": 4.1
+        },
+        {
+          "fromAreaId": "area-d1-i4",
+          "toAreaId": "area-d2-i6",
+          "travelTimeMultiplier": 0.9
+        },
+        {
+          "fromAreaId": "area-d2-i1",
+          "toAreaId": "area-d1-i1",
+          "travelTimeMultiplier": 2.8
+        },
+        {
+          "fromAreaId": "area-d2-i1",
+          "toAreaId": "area-d1-i3",
+          "travelTimeMultiplier": 3.4
+        },
+        {
+          "fromAreaId": "area-d2-i1",
+          "toAreaId": "area-d2-i0",
+          "travelTimeMultiplier": 4.1
+        },
+        {
+          "fromAreaId": "area-d2-i1",
+          "toAreaId": "area-d2-i7",
+          "travelTimeMultiplier": 2.1
+        },
+        {
+          "fromAreaId": "area-d2-i1",
+          "toAreaId": "area-d3-i11",
+          "travelTimeMultiplier": 3.7
+        },
+        {
+          "fromAreaId": "area-d2-i5",
+          "toAreaId": "area-d1-i3",
+          "travelTimeMultiplier": 2.9
+        },
+        {
+          "fromAreaId": "area-d2-i5",
+          "toAreaId": "area-d2-i1",
+          "travelTimeMultiplier": 1.6
+        },
+        {
+          "fromAreaId": "area-d2-i5",
+          "toAreaId": "area-d2-i0",
+          "travelTimeMultiplier": 4
+        },
+        {
+          "fromAreaId": "area-d2-i5",
+          "toAreaId": "area-d3-i12",
+          "travelTimeMultiplier": 1.1
+        },
+        {
+          "fromAreaId": "area-d2-i5",
+          "toAreaId": "area-d3-i11",
+          "travelTimeMultiplier": 1.5
+        },
+        {
+          "fromAreaId": "area-d2-i5",
+          "toAreaId": "area-d3-i7",
+          "travelTimeMultiplier": 3.1
+        },
+        {
+          "fromAreaId": "area-d1-i1",
+          "toAreaId": "area-d2-i7",
+          "travelTimeMultiplier": 4.4
+        },
+        {
+          "fromAreaId": "area-d1-i1",
+          "toAreaId": "area-d2-i2",
+          "travelTimeMultiplier": 4.5
+        },
+        {
+          "fromAreaId": "area-d2-i6",
+          "toAreaId": "area-d1-i1",
+          "travelTimeMultiplier": 3.1
+        },
+        {
+          "fromAreaId": "area-d2-i6",
+          "toAreaId": "area-d3-i0",
+          "travelTimeMultiplier": 2.4
+        },
+        {
+          "fromAreaId": "area-d2-i6",
+          "toAreaId": "area-d3-i9",
+          "travelTimeMultiplier": 2
+        },
+        {
+          "fromAreaId": "area-d2-i7",
+          "toAreaId": "area-d1-i3",
+          "travelTimeMultiplier": 2.4
+        },
+        {
+          "fromAreaId": "area-d2-i7",
+          "toAreaId": "area-d2-i3",
+          "travelTimeMultiplier": 2.2
+        },
+        {
+          "fromAreaId": "area-d2-i7",
+          "toAreaId": "area-d3-i3",
+          "travelTimeMultiplier": 0.6
+        },
+        {
+          "fromAreaId": "area-d2-i7",
+          "toAreaId": "area-d3-i4",
+          "travelTimeMultiplier": 0.8
+        },
+        {
+          "fromAreaId": "area-d2-i2",
+          "toAreaId": "area-d1-i2",
+          "travelTimeMultiplier": 1.2
+        },
+        {
+          "fromAreaId": "area-d2-i2",
+          "toAreaId": "area-d1-i3",
+          "travelTimeMultiplier": 0.9
+        },
+        {
+          "fromAreaId": "area-d2-i2",
+          "toAreaId": "area-d1-i0",
+          "travelTimeMultiplier": 2.2
+        },
+        {
+          "fromAreaId": "area-d2-i2",
+          "toAreaId": "area-d2-i5",
+          "travelTimeMultiplier": 2.8
+        },
+        {
+          "fromAreaId": "area-d2-i2",
+          "toAreaId": "area-d2-i6",
+          "travelTimeMultiplier": 0.9
+        },
+        {
+          "fromAreaId": "area-d2-i2",
+          "toAreaId": "area-d3-i9",
+          "travelTimeMultiplier": 1
+        },
+        {
+          "fromAreaId": "area-d1-i2",
+          "toAreaId": "area-d1-i4",
+          "travelTimeMultiplier": 3.9
+        },
+        {
+          "fromAreaId": "area-d1-i2",
+          "toAreaId": "area-d2-i6",
+          "travelTimeMultiplier": 2.6
+        },
+        {
+          "fromAreaId": "area-d1-i3",
+          "toAreaId": "area-d1-i0",
+          "travelTimeMultiplier": 4.3
+        },
+        {
+          "fromAreaId": "area-d1-i3",
+          "toAreaId": "area-d1-i1",
+          "travelTimeMultiplier": 4.1
+        }
+      ],
+      "playerState": {
+        "currentAreaId": "area-d1-i2",
+        "currentLocationId": "area-d1-i2-loc-0",
+        "knownAreaIds": [
+          "TOWN",
+          "area-d1-i0",
+          "area-d1-i4",
+          "area-d1-i1",
+          "area-d2-i6",
+          "area-d2-i1",
+          "area-d2-i7",
+          "area-d2-i2",
+          "area-d1-i2",
+          "area-d1-i3"
+        ],
+        "knownLocationIds": [
+          "TOWN_MINERS_GUILD",
+          "TOWN_FORESTERS_GUILD",
+          "TOWN_COMBAT_GUILD",
+          "TOWN_SMITHING_GUILD",
+          "TOWN_WOODCRAFTERS_GUILD",
+          "TOWN_EXPLORERS_GUILD",
+          "TOWN_WAREHOUSE",
+          "area-d1-i1-loc-0",
+          "area-d1-i2-loc-0"
+        ],
+        "knownConnectionIds": [
+          "TOWN->area-d1-i0",
+          "area-d1-i0->area-d1-i4",
+          "area-d1-i0->area-d2-i1",
+          "area-d1-i4->area-d2-i5",
+          "TOWN->area-d1-i4",
+          "area-d1-i4->area-d1-i1",
+          "area-d1-i4->area-d2-i6",
+          "area-d2-i6->area-d1-i1",
+          "TOWN->area-d1-i1",
+          "area-d2-i1->area-d1-i1",
+          "area-d1-i1->area-d2-i7",
+          "area-d1-i1->area-d2-i2",
+          "area-d2-i6->area-d1-i1",
+          "area-d2-i1->area-d1-i1",
+          "area-d1-i1->area-d2-i7",
+          "area-d1-i1->area-d2-i2",
+          "TOWN->area-d1-i2",
+          "TOWN->area-d1-i3",
+          "area-d1-i2->area-d1-i4",
+          "area-d1-i2->area-d2-i6",
+          "area-d2-i2->area-d1-i2"
+        ],
+        "visitedLocationIds": [
+          "TOWN_MINERS_GUILD",
+          "TOWN_FORESTERS_GUILD",
+          "TOWN_COMBAT_GUILD",
+          "TOWN_SMITHING_GUILD",
+          "TOWN_WOODCRAFTERS_GUILD",
+          "TOWN_EXPLORERS_GUILD",
+          "TOWN_WAREHOUSE",
+          "area-d1-i2-loc-0"
+        ],
+        "totalLuckDelta": -374,
+        "currentStreak": 1
+      }
+    },
+    "rng": {
+      "seed": "session-1768269923092",
+      "counter": 975
+    }
+  },
+  "stats": {
+    "logs": [
+      {
+        "tickBefore": 0,
+        "actionType": "TravelToLocation",
+        "parameters": {
+          "locationId": "TOWN_MINERS_GUILD"
+        },
+        "success": true,
+        "timeConsumed": 0,
+        "rngRolls": [],
+        "stateDeltaSummary": "Traveled to Miners Guild"
+      },
+      {
+        "tickBefore": 0,
+        "actionType": "Enrol",
+        "parameters": {
+          "skill": "Mining"
+        },
+        "success": true,
+        "timeConsumed": 3,
+        "rngRolls": [],
+        "stateDeltaSummary": "Enrolled in Mining guild"
+      },
+      {
+        "tickBefore": 3,
+        "actionType": "Leave",
+        "parameters": {},
+        "success": true,
+        "timeConsumed": 0,
+        "rngRolls": [],
+        "stateDeltaSummary": "Left Miners Guild for Town Square"
+      },
+      {
+        "tickBefore": 3,
+        "actionType": "TravelToLocation",
+        "parameters": {
+          "locationId": "TOWN_FORESTERS_GUILD"
+        },
+        "success": true,
+        "timeConsumed": 0,
+        "rngRolls": [],
+        "stateDeltaSummary": "Traveled to Foresters Guild"
+      },
+      {
+        "tickBefore": 3,
+        "actionType": "Enrol",
+        "parameters": {
+          "skill": "Woodcutting"
+        },
+        "success": true,
+        "timeConsumed": 3,
+        "rngRolls": [],
+        "stateDeltaSummary": "Enrolled in Woodcutting guild"
+      },
+      {
+        "tickBefore": 6,
+        "actionType": "Leave",
+        "parameters": {},
+        "success": true,
+        "timeConsumed": 0,
+        "rngRolls": [],
+        "stateDeltaSummary": "Left Foresters Guild for Town Square"
+      },
+      {
+        "tickBefore": 6,
+        "actionType": "TravelToLocation",
+        "parameters": {
+          "locationId": "TOWN_EXPLORERS_GUILD"
+        },
+        "success": true,
+        "timeConsumed": 0,
+        "rngRolls": [],
+        "stateDeltaSummary": "Traveled to Explorers Guild"
+      },
+      {
+        "tickBefore": 6,
+        "actionType": "Enrol",
+        "parameters": {
+          "skill": "Exploration"
+        },
+        "success": true,
+        "timeConsumed": 3,
+        "rngRolls": [],
+        "stateDeltaSummary": "Enrolled in Exploration guild, discovered Greenward Fields",
+        "explorationLog": {
+          "discoveredAreaId": "area-d1-i0",
+          "discoveredConnectionId": "TOWN->area-d1-i0"
+        }
+      },
+      {
+        "tickBefore": 9,
+        "actionType": "ExplorationTravel",
+        "parameters": {
+          "destinationAreaId": "area-d1-i0"
+        },
+        "success": true,
+        "timeConsumed": 24,
+        "rngRolls": [],
+        "stateDeltaSummary": "Traveled to Greenward Fields"
+      },
+      {
+        "tickBefore": 33,
+        "actionType": "Explore",
+        "parameters": {},
+        "success": true,
+        "timeConsumed": 24,
+        "skillGained": {
+          "skill": "Exploration",
+          "amount": 1
+        },
+        "rngRolls": [
+          {
+            "label": "explore_roll_2",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 193
+          },
+          {
+            "label": "explore_roll_4",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 194
+          },
+          {
+            "label": "explore_roll_6",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 195
+          },
+          {
+            "label": "explore_roll_8",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 196
+          },
+          {
+            "label": "explore_roll_10",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 197
+          },
+          {
+            "label": "explore_roll_12",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 198
+          },
+          {
+            "label": "explore_roll_14",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 199
+          },
+          {
+            "label": "explore_roll_16",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 200
+          },
+          {
+            "label": "explore_roll_18",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 201
+          },
+          {
+            "label": "explore_roll_20",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 202
+          },
+          {
+            "label": "explore_roll_22",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 203
+          },
+          {
+            "label": "explore_roll_24",
+            "probability": 0.025,
+            "result": true,
+            "rngCounter": 220
+          }
+        ],
+        "stateDeltaSummary": "Discovered connection to Borderlands Green",
+        "explorationLog": {
+          "discoveredConnectionId": "area-d1-i0->area-d1-i4",
+          "connectionToUnknownArea": true,
+          "areaFullyExplored": true,
+          "luckInfo": {
+            "actualTicks": 24,
+            "expectedTicks": 80,
+            "luckDelta": 56,
+            "totalLuckDelta": 56,
+            "currentStreak": 1
+          }
+        }
+      },
+      {
+        "tickBefore": 57,
+        "actionType": "Explore",
+        "parameters": {},
+        "success": true,
+        "timeConsumed": 510,
+        "skillGained": {
+          "skill": "Exploration",
+          "amount": 1
+        },
+        "rngRolls": [
+          {
+            "label": "explore_roll_2",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 221
+          },
+          {
+            "label": "explore_roll_4",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 222
+          },
+          {
+            "label": "explore_roll_6",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 223
+          },
+          {
+            "label": "explore_roll_8",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 224
+          },
+          {
+            "label": "explore_roll_10",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 225
+          },
+          {
+            "label": "explore_roll_12",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 226
+          },
+          {
+            "label": "explore_roll_14",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 227
+          },
+          {
+            "label": "explore_roll_16",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 228
+          },
+          {
+            "label": "explore_roll_18",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 229
+          },
+          {
+            "label": "explore_roll_20",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 230
+          },
+          {
+            "label": "explore_roll_22",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 231
+          },
+          {
+            "label": "explore_roll_24",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 232
+          },
+          {
+            "label": "explore_roll_26",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 233
+          },
+          {
+            "label": "explore_roll_28",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 234
+          },
+          {
+            "label": "explore_roll_30",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 235
+          },
+          {
+            "label": "explore_roll_32",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 236
+          },
+          {
+            "label": "explore_roll_34",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 237
+          },
+          {
+            "label": "explore_roll_36",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 238
+          },
+          {
+            "label": "explore_roll_38",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 239
+          },
+          {
+            "label": "explore_roll_40",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 240
+          },
+          {
+            "label": "explore_roll_42",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 241
+          },
+          {
+            "label": "explore_roll_44",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 242
+          },
+          {
+            "label": "explore_roll_46",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 243
+          },
+          {
+            "label": "explore_roll_48",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 244
+          },
+          {
+            "label": "explore_roll_50",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 245
+          },
+          {
+            "label": "explore_roll_52",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 246
+          },
+          {
+            "label": "explore_roll_54",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 247
+          },
+          {
+            "label": "explore_roll_56",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 248
+          },
+          {
+            "label": "explore_roll_58",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 249
+          },
+          {
+            "label": "explore_roll_60",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 250
+          },
+          {
+            "label": "explore_roll_62",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 251
+          },
+          {
+            "label": "explore_roll_64",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 252
+          },
+          {
+            "label": "explore_roll_66",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 253
+          },
+          {
+            "label": "explore_roll_68",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 254
+          },
+          {
+            "label": "explore_roll_70",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 255
+          },
+          {
+            "label": "explore_roll_72",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 256
+          },
+          {
+            "label": "explore_roll_74",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 257
+          },
+          {
+            "label": "explore_roll_76",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 258
+          },
+          {
+            "label": "explore_roll_78",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 259
+          },
+          {
+            "label": "explore_roll_80",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 260
+          },
+          {
+            "label": "explore_roll_82",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 261
+          },
+          {
+            "label": "explore_roll_84",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 262
+          },
+          {
+            "label": "explore_roll_86",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 263
+          },
+          {
+            "label": "explore_roll_88",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 264
+          },
+          {
+            "label": "explore_roll_90",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 265
+          },
+          {
+            "label": "explore_roll_92",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 266
+          },
+          {
+            "label": "explore_roll_94",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 267
+          },
+          {
+            "label": "explore_roll_96",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 268
+          },
+          {
+            "label": "explore_roll_98",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 269
+          },
+          {
+            "label": "explore_roll_100",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 270
+          },
+          {
+            "label": "explore_roll_102",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 271
+          },
+          {
+            "label": "explore_roll_104",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 272
+          },
+          {
+            "label": "explore_roll_106",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 273
+          },
+          {
+            "label": "explore_roll_108",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 274
+          },
+          {
+            "label": "explore_roll_110",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 275
+          },
+          {
+            "label": "explore_roll_112",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 276
+          },
+          {
+            "label": "explore_roll_114",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 277
+          },
+          {
+            "label": "explore_roll_116",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 278
+          },
+          {
+            "label": "explore_roll_118",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 279
+          },
+          {
+            "label": "explore_roll_120",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 280
+          },
+          {
+            "label": "explore_roll_122",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 281
+          },
+          {
+            "label": "explore_roll_124",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 282
+          },
+          {
+            "label": "explore_roll_126",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 283
+          },
+          {
+            "label": "explore_roll_128",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 284
+          },
+          {
+            "label": "explore_roll_130",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 285
+          },
+          {
+            "label": "explore_roll_132",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 286
+          },
+          {
+            "label": "explore_roll_134",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 287
+          },
+          {
+            "label": "explore_roll_136",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 288
+          },
+          {
+            "label": "explore_roll_138",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 289
+          },
+          {
+            "label": "explore_roll_140",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 290
+          },
+          {
+            "label": "explore_roll_142",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 291
+          },
+          {
+            "label": "explore_roll_144",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 292
+          },
+          {
+            "label": "explore_roll_146",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 293
+          },
+          {
+            "label": "explore_roll_148",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 294
+          },
+          {
+            "label": "explore_roll_150",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 295
+          },
+          {
+            "label": "explore_roll_152",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 296
+          },
+          {
+            "label": "explore_roll_154",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 297
+          },
+          {
+            "label": "explore_roll_156",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 298
+          },
+          {
+            "label": "explore_roll_158",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 299
+          },
+          {
+            "label": "explore_roll_160",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 300
+          },
+          {
+            "label": "explore_roll_162",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 301
+          },
+          {
+            "label": "explore_roll_164",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 302
+          },
+          {
+            "label": "explore_roll_166",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 303
+          },
+          {
+            "label": "explore_roll_168",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 304
+          },
+          {
+            "label": "explore_roll_170",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 305
+          },
+          {
+            "label": "explore_roll_172",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 306
+          },
+          {
+            "label": "explore_roll_174",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 307
+          },
+          {
+            "label": "explore_roll_176",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 308
+          },
+          {
+            "label": "explore_roll_178",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 309
+          },
+          {
+            "label": "explore_roll_180",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 310
+          },
+          {
+            "label": "explore_roll_182",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 311
+          },
+          {
+            "label": "explore_roll_184",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 312
+          },
+          {
+            "label": "explore_roll_186",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 313
+          },
+          {
+            "label": "explore_roll_188",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 314
+          },
+          {
+            "label": "explore_roll_190",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 315
+          },
+          {
+            "label": "explore_roll_192",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 316
+          },
+          {
+            "label": "explore_roll_194",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 317
+          },
+          {
+            "label": "explore_roll_196",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 318
+          },
+          {
+            "label": "explore_roll_198",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 319
+          },
+          {
+            "label": "explore_roll_200",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 320
+          },
+          {
+            "label": "explore_roll_202",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 321
+          },
+          {
+            "label": "explore_roll_204",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 322
+          },
+          {
+            "label": "explore_roll_206",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 323
+          },
+          {
+            "label": "explore_roll_208",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 324
+          },
+          {
+            "label": "explore_roll_210",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 325
+          },
+          {
+            "label": "explore_roll_212",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 326
+          },
+          {
+            "label": "explore_roll_214",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 327
+          },
+          {
+            "label": "explore_roll_216",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 328
+          },
+          {
+            "label": "explore_roll_218",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 329
+          },
+          {
+            "label": "explore_roll_220",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 330
+          },
+          {
+            "label": "explore_roll_222",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 331
+          },
+          {
+            "label": "explore_roll_224",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 332
+          },
+          {
+            "label": "explore_roll_226",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 333
+          },
+          {
+            "label": "explore_roll_228",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 334
+          },
+          {
+            "label": "explore_roll_230",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 335
+          },
+          {
+            "label": "explore_roll_232",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 336
+          },
+          {
+            "label": "explore_roll_234",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 337
+          },
+          {
+            "label": "explore_roll_236",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 338
+          },
+          {
+            "label": "explore_roll_238",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 339
+          },
+          {
+            "label": "explore_roll_240",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 340
+          },
+          {
+            "label": "explore_roll_242",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 341
+          },
+          {
+            "label": "explore_roll_244",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 342
+          },
+          {
+            "label": "explore_roll_246",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 343
+          },
+          {
+            "label": "explore_roll_248",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 344
+          },
+          {
+            "label": "explore_roll_250",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 345
+          },
+          {
+            "label": "explore_roll_252",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 346
+          },
+          {
+            "label": "explore_roll_254",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 347
+          },
+          {
+            "label": "explore_roll_256",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 348
+          },
+          {
+            "label": "explore_roll_258",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 349
+          },
+          {
+            "label": "explore_roll_260",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 350
+          },
+          {
+            "label": "explore_roll_262",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 351
+          },
+          {
+            "label": "explore_roll_264",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 352
+          },
+          {
+            "label": "explore_roll_266",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 353
+          },
+          {
+            "label": "explore_roll_268",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 354
+          },
+          {
+            "label": "explore_roll_270",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 355
+          },
+          {
+            "label": "explore_roll_272",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 356
+          },
+          {
+            "label": "explore_roll_274",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 357
+          },
+          {
+            "label": "explore_roll_276",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 358
+          },
+          {
+            "label": "explore_roll_278",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 359
+          },
+          {
+            "label": "explore_roll_280",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 360
+          },
+          {
+            "label": "explore_roll_282",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 361
+          },
+          {
+            "label": "explore_roll_284",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 362
+          },
+          {
+            "label": "explore_roll_286",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 363
+          },
+          {
+            "label": "explore_roll_288",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 364
+          },
+          {
+            "label": "explore_roll_290",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 365
+          },
+          {
+            "label": "explore_roll_292",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 366
+          },
+          {
+            "label": "explore_roll_294",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 367
+          },
+          {
+            "label": "explore_roll_296",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 368
+          },
+          {
+            "label": "explore_roll_298",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 369
+          },
+          {
+            "label": "explore_roll_300",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 370
+          },
+          {
+            "label": "explore_roll_302",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 371
+          },
+          {
+            "label": "explore_roll_304",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 372
+          },
+          {
+            "label": "explore_roll_306",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 373
+          },
+          {
+            "label": "explore_roll_308",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 374
+          },
+          {
+            "label": "explore_roll_310",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 375
+          },
+          {
+            "label": "explore_roll_312",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 376
+          },
+          {
+            "label": "explore_roll_314",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 377
+          },
+          {
+            "label": "explore_roll_316",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 378
+          },
+          {
+            "label": "explore_roll_318",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 379
+          },
+          {
+            "label": "explore_roll_320",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 380
+          },
+          {
+            "label": "explore_roll_322",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 381
+          },
+          {
+            "label": "explore_roll_324",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 382
+          },
+          {
+            "label": "explore_roll_326",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 383
+          },
+          {
+            "label": "explore_roll_328",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 384
+          },
+          {
+            "label": "explore_roll_330",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 385
+          },
+          {
+            "label": "explore_roll_332",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 386
+          },
+          {
+            "label": "explore_roll_334",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 387
+          },
+          {
+            "label": "explore_roll_336",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 388
+          },
+          {
+            "label": "explore_roll_338",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 389
+          },
+          {
+            "label": "explore_roll_340",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 390
+          },
+          {
+            "label": "explore_roll_342",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 391
+          },
+          {
+            "label": "explore_roll_344",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 392
+          },
+          {
+            "label": "explore_roll_346",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 393
+          },
+          {
+            "label": "explore_roll_348",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 394
+          },
+          {
+            "label": "explore_roll_350",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 395
+          },
+          {
+            "label": "explore_roll_352",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 396
+          },
+          {
+            "label": "explore_roll_354",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 397
+          },
+          {
+            "label": "explore_roll_356",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 398
+          },
+          {
+            "label": "explore_roll_358",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 399
+          },
+          {
+            "label": "explore_roll_360",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 400
+          },
+          {
+            "label": "explore_roll_362",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 401
+          },
+          {
+            "label": "explore_roll_364",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 402
+          },
+          {
+            "label": "explore_roll_366",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 403
+          },
+          {
+            "label": "explore_roll_368",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 404
+          },
+          {
+            "label": "explore_roll_370",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 405
+          },
+          {
+            "label": "explore_roll_372",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 406
+          },
+          {
+            "label": "explore_roll_374",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 407
+          },
+          {
+            "label": "explore_roll_376",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 408
+          },
+          {
+            "label": "explore_roll_378",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 409
+          },
+          {
+            "label": "explore_roll_380",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 410
+          },
+          {
+            "label": "explore_roll_382",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 411
+          },
+          {
+            "label": "explore_roll_384",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 412
+          },
+          {
+            "label": "explore_roll_386",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 413
+          },
+          {
+            "label": "explore_roll_388",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 414
+          },
+          {
+            "label": "explore_roll_390",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 415
+          },
+          {
+            "label": "explore_roll_392",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 416
+          },
+          {
+            "label": "explore_roll_394",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 417
+          },
+          {
+            "label": "explore_roll_396",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 418
+          },
+          {
+            "label": "explore_roll_398",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 419
+          },
+          {
+            "label": "explore_roll_400",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 420
+          },
+          {
+            "label": "explore_roll_402",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 421
+          },
+          {
+            "label": "explore_roll_404",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 422
+          },
+          {
+            "label": "explore_roll_406",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 423
+          },
+          {
+            "label": "explore_roll_408",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 424
+          },
+          {
+            "label": "explore_roll_410",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 425
+          },
+          {
+            "label": "explore_roll_412",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 426
+          },
+          {
+            "label": "explore_roll_414",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 427
+          },
+          {
+            "label": "explore_roll_416",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 428
+          },
+          {
+            "label": "explore_roll_418",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 429
+          },
+          {
+            "label": "explore_roll_420",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 430
+          },
+          {
+            "label": "explore_roll_422",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 431
+          },
+          {
+            "label": "explore_roll_424",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 432
+          },
+          {
+            "label": "explore_roll_426",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 433
+          },
+          {
+            "label": "explore_roll_428",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 434
+          },
+          {
+            "label": "explore_roll_430",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 435
+          },
+          {
+            "label": "explore_roll_432",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 436
+          },
+          {
+            "label": "explore_roll_434",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 437
+          },
+          {
+            "label": "explore_roll_436",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 438
+          },
+          {
+            "label": "explore_roll_438",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 439
+          },
+          {
+            "label": "explore_roll_440",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 440
+          },
+          {
+            "label": "explore_roll_442",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 441
+          },
+          {
+            "label": "explore_roll_444",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 442
+          },
+          {
+            "label": "explore_roll_446",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 443
+          },
+          {
+            "label": "explore_roll_448",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 444
+          },
+          {
+            "label": "explore_roll_450",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 445
+          },
+          {
+            "label": "explore_roll_452",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 446
+          },
+          {
+            "label": "explore_roll_454",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 447
+          },
+          {
+            "label": "explore_roll_456",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 448
+          },
+          {
+            "label": "explore_roll_458",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 449
+          },
+          {
+            "label": "explore_roll_460",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 450
+          },
+          {
+            "label": "explore_roll_462",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 451
+          },
+          {
+            "label": "explore_roll_464",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 452
+          },
+          {
+            "label": "explore_roll_466",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 453
+          },
+          {
+            "label": "explore_roll_468",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 454
+          },
+          {
+            "label": "explore_roll_470",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 455
+          },
+          {
+            "label": "explore_roll_472",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 456
+          },
+          {
+            "label": "explore_roll_474",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 457
+          },
+          {
+            "label": "explore_roll_476",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 458
+          },
+          {
+            "label": "explore_roll_478",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 459
+          },
+          {
+            "label": "explore_roll_480",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 460
+          },
+          {
+            "label": "explore_roll_482",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 461
+          },
+          {
+            "label": "explore_roll_484",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 462
+          },
+          {
+            "label": "explore_roll_486",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 463
+          },
+          {
+            "label": "explore_roll_488",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 464
+          },
+          {
+            "label": "explore_roll_490",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 465
+          },
+          {
+            "label": "explore_roll_492",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 466
+          },
+          {
+            "label": "explore_roll_494",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 467
+          },
+          {
+            "label": "explore_roll_496",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 468
+          },
+          {
+            "label": "explore_roll_498",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 469
+          },
+          {
+            "label": "explore_roll_500",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 470
+          },
+          {
+            "label": "explore_roll_502",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 471
+          },
+          {
+            "label": "explore_roll_504",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 472
+          },
+          {
+            "label": "explore_roll_506",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 473
+          },
+          {
+            "label": "explore_roll_508",
+            "probability": 0.025,
+            "result": false,
+            "rngCounter": 474
+          },
+          {
+            "label": "explore_roll_510",
+            "probability": 0.025,
+            "result": true,
+            "rngCounter": 506
+          }
+        ],
+        "stateDeltaSummary": "Discovered connection to Brackencrest",
+        "explorationLog": {
+          "discoveredConnectionId": "area-d1-i0->area-d2-i1",
+          "connectionToUnknownArea": true,
+          "areaFullyExplored": true,
+          "luckInfo": {
+            "actualTicks": 510,
+            "expectedTicks": 80,
+            "luckDelta": -430,
+            "totalLuckDelta": -374,
+            "currentStreak": -1
+          }
+        }
+      },
+      {
+        "tickBefore": 567,
+        "actionType": "ExplorationTravel",
+        "parameters": {
+          "destinationAreaId": "area-d1-i4"
+        },
+        "success": true,
+        "timeConsumed": 17,
+        "rngRolls": [],
+        "stateDeltaSummary": "Traveled to Borderlands Green (discovered)"
+      },
+      {
+        "tickBefore": 584,
+        "actionType": "Explore",
+        "parameters": {},
+        "success": true,
+        "timeConsumed": 2,
+        "skillGained": {
+          "skill": "Exploration",
+          "amount": 1
+        },
+        "rngRolls": [
+          {
+            "label": "explore_roll_2",
+            "probability": 0.1,
+            "result": true,
+            "rngCounter": 539
+          }
+        ],
+        "stateDeltaSummary": "Discovered connection to Greyclaw Ridge",
+        "explorationLog": {
+          "discoveredConnectionId": "area-d1-i4->area-d2-i5",
+          "connectionToUnknownArea": true,
+          "areaFullyExplored": false,
+          "luckInfo": {
+            "actualTicks": 2,
+            "expectedTicks": 80,
+            "luckDelta": 78,
+            "totalLuckDelta": -296,
+            "currentStreak": 1
+          }
+        }
+      },
+      {
+        "tickBefore": 586,
+        "actionType": "Explore",
+        "parameters": {},
+        "success": true,
+        "timeConsumed": 14,
+        "skillGained": {
+          "skill": "Exploration",
+          "amount": 1
+        },
+        "rngRolls": [
+          {
+            "label": "explore_roll_2",
+            "probability": 0.1,
+            "result": false,
+            "rngCounter": 540
+          },
+          {
+            "label": "explore_roll_4",
+            "probability": 0.1,
+            "result": false,
+            "rngCounter": 541
+          },
+          {
+            "label": "explore_roll_6",
+            "probability": 0.1,
+            "result": false,
+            "rngCounter": 542
+          },
+          {
+            "label": "explore_roll_8",
+            "probability": 0.1,
+            "result": false,
+            "rngCounter": 543
+          },
+          {
+            "label": "explore_roll_10",
+            "probability": 0.1,
+            "result": false,
+            "rngCounter": 544
+          },
+          {
+            "label": "explore_roll_12",
+            "probability": 0.1,
+            "result": false,
+            "rngCounter": 545
+          },
+          {
+            "label": "explore_roll_14",
+            "probability": 0.1,
+            "result": true,
+            "rngCounter": 547
+          }
+        ],
+        "stateDeltaSummary": "Discovered connection to Town",
+        "explorationLog": {
+          "discoveredConnectionId": "TOWN->area-d1-i4",
+          "connectionToUnknownArea": false,
+          "areaFullyExplored": true,
+          "luckInfo": {
+            "actualTicks": 14,
+            "expectedTicks": 20,
+            "luckDelta": 6,
+            "totalLuckDelta": -290,
+            "currentStreak": 2
+          }
+        }
+      },
+      {
+        "tickBefore": 600,
+        "actionType": "Explore",
+        "parameters": {},
+        "success": true,
+        "timeConsumed": 58,
+        "skillGained": {
+          "skill": "Exploration",
+          "amount": 1
+        },
+        "rngRolls": [
+          {
+            "label": "explore_roll_2",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 548
+          },
+          {
+            "label": "explore_roll_4",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 549
+          },
+          {
+            "label": "explore_roll_6",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 550
+          },
+          {
+            "label": "explore_roll_8",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 551
+          },
+          {
+            "label": "explore_roll_10",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 552
+          },
+          {
+            "label": "explore_roll_12",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 553
+          },
+          {
+            "label": "explore_roll_14",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 554
+          },
+          {
+            "label": "explore_roll_16",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 555
+          },
+          {
+            "label": "explore_roll_18",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 556
+          },
+          {
+            "label": "explore_roll_20",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 557
+          },
+          {
+            "label": "explore_roll_22",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 558
+          },
+          {
+            "label": "explore_roll_24",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 559
+          },
+          {
+            "label": "explore_roll_26",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 560
+          },
+          {
+            "label": "explore_roll_28",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 561
+          },
+          {
+            "label": "explore_roll_30",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 562
+          },
+          {
+            "label": "explore_roll_32",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 563
+          },
+          {
+            "label": "explore_roll_34",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 564
+          },
+          {
+            "label": "explore_roll_36",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 565
+          },
+          {
+            "label": "explore_roll_38",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 566
+          },
+          {
+            "label": "explore_roll_40",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 567
+          },
+          {
+            "label": "explore_roll_42",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 568
+          },
+          {
+            "label": "explore_roll_44",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 569
+          },
+          {
+            "label": "explore_roll_46",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 570
+          },
+          {
+            "label": "explore_roll_48",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 571
+          },
+          {
+            "label": "explore_roll_50",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 572
+          },
+          {
+            "label": "explore_roll_52",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 573
+          },
+          {
+            "label": "explore_roll_54",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 574
+          },
+          {
+            "label": "explore_roll_56",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 575
+          },
+          {
+            "label": "explore_roll_58",
+            "probability": 0.037500000000000006,
+            "result": true,
+            "rngCounter": 593
+          }
+        ],
+        "stateDeltaSummary": "Discovered connection to Whispering Heath",
+        "explorationLog": {
+          "discoveredConnectionId": "area-d1-i4->area-d1-i1",
+          "connectionToUnknownArea": true,
+          "areaFullyExplored": true,
+          "luckInfo": {
+            "actualTicks": 58,
+            "expectedTicks": 53,
+            "luckDelta": -5,
+            "totalLuckDelta": -295,
+            "currentStreak": -1
+          }
+        }
+      },
+      {
+        "tickBefore": 658,
+        "actionType": "Explore",
+        "parameters": {},
+        "success": true,
+        "timeConsumed": 10,
+        "skillGained": {
+          "skill": "Exploration",
+          "amount": 1
+        },
+        "rngRolls": [
+          {
+            "label": "explore_roll_2",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 594
+          },
+          {
+            "label": "explore_roll_4",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 595
+          },
+          {
+            "label": "explore_roll_6",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 596
+          },
+          {
+            "label": "explore_roll_8",
+            "probability": 0.037500000000000006,
+            "result": false,
+            "rngCounter": 597
+          },
+          {
+            "label": "explore_roll_10",
+            "probability": 0.037500000000000006,
+            "result": true,
+            "rngCounter": 627
+          }
+        ],
+        "stateDeltaSummary": "Discovered connection to Stonebreach Ridge",
+        "explorationLog": {
+          "discoveredConnectionId": "area-d1-i4->area-d2-i6",
+          "connectionToUnknownArea": true,
+          "areaFullyExplored": true,
+          "luckInfo": {
+            "actualTicks": 10,
+            "expectedTicks": 53,
+            "luckDelta": 43,
+            "totalLuckDelta": -252,
+            "currentStreak": 1
+          }
+        }
+      },
+      {
+        "tickBefore": 668,
+        "actionType": "ExplorationTravel",
+        "parameters": {
+          "destinationAreaId": "area-d1-i1"
+        },
+        "success": true,
+        "timeConsumed": 36,
+        "rngRolls": [],
+        "stateDeltaSummary": "Traveled to Whispering Heath (discovered)"
+      },
+      {
+        "tickBefore": 704,
+        "actionType": "Explore",
+        "parameters": {},
+        "success": true,
+        "timeConsumed": 18,
+        "skillGained": {
+          "skill": "Exploration",
+          "amount": 1
+        },
+        "rngRolls": [
+          {
+            "label": "explore_roll_2",
+            "probability": 0.14,
+            "result": false,
+            "rngCounter": 628
+          },
+          {
+            "label": "explore_roll_4",
+            "probability": 0.14,
+            "result": false,
+            "rngCounter": 629
+          },
+          {
+            "label": "explore_roll_6",
+            "probability": 0.14,
+            "result": false,
+            "rngCounter": 630
+          },
+          {
+            "label": "explore_roll_8",
+            "probability": 0.14,
+            "result": false,
+            "rngCounter": 631
+          },
+          {
+            "label": "explore_roll_10",
+            "probability": 0.14,
+            "result": false,
+            "rngCounter": 632
+          },
+          {
+            "label": "explore_roll_12",
+            "probability": 0.14,
+            "result": false,
+            "rngCounter": 633
+          },
+          {
+            "label": "explore_roll_14",
+            "probability": 0.14,
+            "result": false,
+            "rngCounter": 634
+          },
+          {
+            "label": "explore_roll_16",
+            "probability": 0.14,
+            "result": false,
+            "rngCounter": 635
+          },
+          {
+            "label": "explore_roll_18",
+            "probability": 0.14,
+            "result": true,
+            "rngCounter": 637
+          }
+        ],
+        "stateDeltaSummary": "Discovered connection to Stonebreach Ridge",
+        "explorationLog": {
+          "discoveredConnectionId": "area-d2-i6->area-d1-i1",
+          "connectionToUnknownArea": true,
+          "areaFullyExplored": false,
+          "luckInfo": {
+            "actualTicks": 18,
+            "expectedTicks": 57,
+            "luckDelta": 39,
+            "totalLuckDelta": -213,
+            "currentStreak": 2
+          }
+        }
+      },
+      {
+        "tickBefore": 722,
+        "actionType": "Explore",
+        "parameters": {},
+        "success": true,
+        "timeConsumed": 2,
+        "skillGained": {
+          "skill": "Exploration",
+          "amount": 1
+        },
+        "rngRolls": [
+          {
+            "label": "explore_roll_2",
+            "probability": 0.14,
+            "result": true,
+            "rngCounter": 639
+          }
+        ],
+        "stateDeltaSummary": "Discovered connection to Town",
+        "explorationLog": {
+          "discoveredConnectionId": "TOWN->area-d1-i1",
+          "connectionToUnknownArea": false,
+          "areaFullyExplored": false,
+          "luckInfo": {
+            "actualTicks": 2,
+            "expectedTicks": 14,
+            "luckDelta": 12,
+            "totalLuckDelta": -201,
+            "currentStreak": 3
+          }
+        }
+      },
+      {
+        "tickBefore": 724,
+        "actionType": "Explore",
+        "parameters": {},
+        "success": true,
+        "timeConsumed": 6,
+        "skillGained": {
+          "skill": "Exploration",
+          "amount": 1
+        },
+        "rngRolls": [
+          {
+            "label": "explore_roll_2",
+            "probability": 0.09500000000000001,
+            "result": false,
+            "rngCounter": 640
+          },
+          {
+            "label": "explore_roll_4",
+            "probability": 0.09500000000000001,
+            "result": false,
+            "rngCounter": 641
+          },
+          {
+            "label": "explore_roll_6",
+            "probability": 0.09500000000000001,
+            "result": true,
+            "rngCounter": 643
+          }
+        ],
+        "stateDeltaSummary": "Discovered enemy camp",
+        "explorationLog": {
+          "discoveredLocationId": "area-d1-i1-loc-0",
+          "connectionToUnknownArea": false,
+          "areaFullyExplored": true,
+          "luckInfo": {
+            "actualTicks": 6,
+            "expectedTicks": 21,
+            "luckDelta": 15,
+            "totalLuckDelta": -186,
+            "currentStreak": 4
+          }
+        }
+      },
+      {
+        "tickBefore": 730,
+        "actionType": "Explore",
+        "parameters": {},
+        "success": true,
+        "timeConsumed": 22,
+        "skillGained": {
+          "skill": "Exploration",
+          "amount": 1
+        },
+        "rngRolls": [
+          {
+            "label": "explore_roll_2",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 644
+          },
+          {
+            "label": "explore_roll_4",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 645
+          },
+          {
+            "label": "explore_roll_6",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 646
+          },
+          {
+            "label": "explore_roll_8",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 647
+          },
+          {
+            "label": "explore_roll_10",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 648
+          },
+          {
+            "label": "explore_roll_12",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 649
+          },
+          {
+            "label": "explore_roll_14",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 650
+          },
+          {
+            "label": "explore_roll_16",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 651
+          },
+          {
+            "label": "explore_roll_18",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 652
+          },
+          {
+            "label": "explore_roll_20",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 653
+          },
+          {
+            "label": "explore_roll_22",
+            "probability": 0.04750000000000001,
+            "result": true,
+            "rngCounter": 655
+          }
+        ],
+        "stateDeltaSummary": "Discovered connection to Brackencrest",
+        "explorationLog": {
+          "discoveredConnectionId": "area-d2-i1->area-d1-i1",
+          "connectionToUnknownArea": true,
+          "areaFullyExplored": true,
+          "luckInfo": {
+            "actualTicks": 22,
+            "expectedTicks": 42,
+            "luckDelta": 20,
+            "totalLuckDelta": -166,
+            "currentStreak": 5
+          }
+        }
+      },
+      {
+        "tickBefore": 752,
+        "actionType": "Explore",
+        "parameters": {},
+        "success": true,
+        "timeConsumed": 22,
+        "skillGained": {
+          "skill": "Exploration",
+          "amount": 1
+        },
+        "rngRolls": [
+          {
+            "label": "explore_roll_2",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 656
+          },
+          {
+            "label": "explore_roll_4",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 657
+          },
+          {
+            "label": "explore_roll_6",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 658
+          },
+          {
+            "label": "explore_roll_8",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 659
+          },
+          {
+            "label": "explore_roll_10",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 660
+          },
+          {
+            "label": "explore_roll_12",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 661
+          },
+          {
+            "label": "explore_roll_14",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 662
+          },
+          {
+            "label": "explore_roll_16",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 663
+          },
+          {
+            "label": "explore_roll_18",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 664
+          },
+          {
+            "label": "explore_roll_20",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 665
+          },
+          {
+            "label": "explore_roll_22",
+            "probability": 0.04750000000000001,
+            "result": true,
+            "rngCounter": 698
+          }
+        ],
+        "stateDeltaSummary": "Discovered connection to Fading Margins",
+        "explorationLog": {
+          "discoveredConnectionId": "area-d1-i1->area-d2-i7",
+          "connectionToUnknownArea": true,
+          "areaFullyExplored": true,
+          "luckInfo": {
+            "actualTicks": 22,
+            "expectedTicks": 42,
+            "luckDelta": 20,
+            "totalLuckDelta": -146,
+            "currentStreak": 6
+          }
+        }
+      },
+      {
+        "tickBefore": 774,
+        "actionType": "Explore",
+        "parameters": {},
+        "success": true,
+        "timeConsumed": 32,
+        "skillGained": {
+          "skill": "Exploration",
+          "amount": 1
+        },
+        "rngRolls": [
+          {
+            "label": "explore_roll_2",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 699
+          },
+          {
+            "label": "explore_roll_4",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 700
+          },
+          {
+            "label": "explore_roll_6",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 701
+          },
+          {
+            "label": "explore_roll_8",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 702
+          },
+          {
+            "label": "explore_roll_10",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 703
+          },
+          {
+            "label": "explore_roll_12",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 704
+          },
+          {
+            "label": "explore_roll_14",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 705
+          },
+          {
+            "label": "explore_roll_16",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 706
+          },
+          {
+            "label": "explore_roll_18",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 707
+          },
+          {
+            "label": "explore_roll_20",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 708
+          },
+          {
+            "label": "explore_roll_22",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 709
+          },
+          {
+            "label": "explore_roll_24",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 710
+          },
+          {
+            "label": "explore_roll_26",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 711
+          },
+          {
+            "label": "explore_roll_28",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 712
+          },
+          {
+            "label": "explore_roll_30",
+            "probability": 0.04750000000000001,
+            "result": false,
+            "rngCounter": 713
+          },
+          {
+            "label": "explore_roll_32",
+            "probability": 0.04750000000000001,
+            "result": true,
+            "rngCounter": 746
+          }
+        ],
+        "stateDeltaSummary": "Discovered connection to Wolfbark Copse",
+        "explorationLog": {
+          "discoveredConnectionId": "area-d1-i1->area-d2-i2",
+          "connectionToUnknownArea": true,
+          "areaFullyExplored": true,
+          "luckInfo": {
+            "actualTicks": 32,
+            "expectedTicks": 42,
+            "luckDelta": 10,
+            "totalLuckDelta": -136,
+            "currentStreak": 7
+          }
+        }
+      },
+      {
+        "tickBefore": 806,
+        "actionType": "Survey",
+        "parameters": {},
+        "success": true,
+        "timeConsumed": 10,
+        "skillGained": {
+          "skill": "Exploration",
+          "amount": 2
+        },
+        "rngRolls": [
+          {
+            "label": "survey_roll_2",
+            "probability": 0.19000000000000003,
+            "result": false,
+            "rngCounter": 746
+          },
+          {
+            "label": "survey_roll_4",
+            "probability": 0.19000000000000003,
+            "result": true,
+            "rngCounter": 747
+          },
+          {
+            "label": "survey_roll_6",
+            "probability": 0.19000000000000003,
+            "result": false,
+            "rngCounter": 749
+          },
+          {
+            "label": "survey_roll_8",
+            "probability": 0.19000000000000003,
+            "result": false,
+            "rngCounter": 750
+          },
+          {
+            "label": "survey_roll_10",
+            "probability": 0.19000000000000003,
+            "result": true,
+            "rngCounter": 751
+          }
+        ],
+        "stateDeltaSummary": "Discovered Stonebreach Ridge",
+        "explorationLog": {
+          "discoveredAreaId": "area-d2-i6",
+          "discoveredConnectionId": "area-d2-i6->area-d1-i1",
+          "luckInfo": {
+            "actualTicks": 10,
+            "expectedTicks": 11,
+            "luckDelta": 1,
+            "totalLuckDelta": -135,
+            "currentStreak": 8
+          }
+        }
+      },
+      {
+        "tickBefore": 816,
+        "actionType": "Survey",
+        "parameters": {},
+        "success": true,
+        "timeConsumed": 70,
+        "skillGained": {
+          "skill": "Exploration",
+          "amount": 2
+        },
+        "rngRolls": [
+          {
+            "label": "survey_roll_2",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 753
+          },
+          {
+            "label": "survey_roll_4",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 754
+          },
+          {
+            "label": "survey_roll_6",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 755
+          },
+          {
+            "label": "survey_roll_8",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 756
+          },
+          {
+            "label": "survey_roll_10",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 757
+          },
+          {
+            "label": "survey_roll_12",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 758
+          },
+          {
+            "label": "survey_roll_14",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 759
+          },
+          {
+            "label": "survey_roll_16",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 760
+          },
+          {
+            "label": "survey_roll_18",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 761
+          },
+          {
+            "label": "survey_roll_20",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 762
+          },
+          {
+            "label": "survey_roll_22",
+            "probability": 0.24000000000000002,
+            "result": true,
+            "rngCounter": 763
+          },
+          {
+            "label": "survey_roll_24",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 765
+          },
+          {
+            "label": "survey_roll_26",
+            "probability": 0.24000000000000002,
+            "result": true,
+            "rngCounter": 766
+          },
+          {
+            "label": "survey_roll_28",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 768
+          },
+          {
+            "label": "survey_roll_30",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 769
+          },
+          {
+            "label": "survey_roll_32",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 770
+          },
+          {
+            "label": "survey_roll_34",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 771
+          },
+          {
+            "label": "survey_roll_36",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 772
+          },
+          {
+            "label": "survey_roll_38",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 773
+          },
+          {
+            "label": "survey_roll_40",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 774
+          },
+          {
+            "label": "survey_roll_42",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 775
+          },
+          {
+            "label": "survey_roll_44",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 776
+          },
+          {
+            "label": "survey_roll_46",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 777
+          },
+          {
+            "label": "survey_roll_48",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 778
+          },
+          {
+            "label": "survey_roll_50",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 779
+          },
+          {
+            "label": "survey_roll_52",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 780
+          },
+          {
+            "label": "survey_roll_54",
+            "probability": 0.24000000000000002,
+            "result": true,
+            "rngCounter": 781
+          },
+          {
+            "label": "survey_roll_56",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 783
+          },
+          {
+            "label": "survey_roll_58",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 784
+          },
+          {
+            "label": "survey_roll_60",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 785
+          },
+          {
+            "label": "survey_roll_62",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 786
+          },
+          {
+            "label": "survey_roll_64",
+            "probability": 0.24000000000000002,
+            "result": true,
+            "rngCounter": 787
+          },
+          {
+            "label": "survey_roll_66",
+            "probability": 0.24000000000000002,
+            "result": false,
+            "rngCounter": 789
+          },
+          {
+            "label": "survey_roll_68",
+            "probability": 0.24000000000000002,
+            "result": true,
+            "rngCounter": 790
+          },
+          {
+            "label": "survey_roll_70",
+            "probability": 0.24000000000000002,
+            "result": true,
+            "rngCounter": 792
+          }
+        ],
+        "stateDeltaSummary": "Discovered Brackencrest",
+        "explorationLog": {
+          "discoveredAreaId": "area-d2-i1",
+          "discoveredConnectionId": "area-d2-i1->area-d1-i1",
+          "luckInfo": {
+            "actualTicks": 70,
+            "expectedTicks": 8,
+            "luckDelta": -62,
+            "totalLuckDelta": -197,
+            "currentStreak": -1
+          }
+        }
+      },
+      {
+        "tickBefore": 886,
+        "actionType": "Survey",
+        "parameters": {},
+        "success": true,
+        "timeConsumed": 40,
+        "skillGained": {
+          "skill": "Exploration",
+          "amount": 2
+        },
+        "rngRolls": [
+          {
+            "label": "survey_roll_2",
+            "probability": 0.29000000000000004,
+            "result": false,
+            "rngCounter": 794
+          },
+          {
+            "label": "survey_roll_4",
+            "probability": 0.29000000000000004,
+            "result": false,
+            "rngCounter": 795
+          },
+          {
+            "label": "survey_roll_6",
+            "probability": 0.29000000000000004,
+            "result": false,
+            "rngCounter": 796
+          },
+          {
+            "label": "survey_roll_8",
+            "probability": 0.29000000000000004,
+            "result": true,
+            "rngCounter": 797
+          },
+          {
+            "label": "survey_roll_10",
+            "probability": 0.29000000000000004,
+            "result": false,
+            "rngCounter": 799
+          },
+          {
+            "label": "survey_roll_12",
+            "probability": 0.29000000000000004,
+            "result": false,
+            "rngCounter": 800
+          },
+          {
+            "label": "survey_roll_14",
+            "probability": 0.29000000000000004,
+            "result": false,
+            "rngCounter": 801
+          },
+          {
+            "label": "survey_roll_16",
+            "probability": 0.29000000000000004,
+            "result": true,
+            "rngCounter": 802
+          },
+          {
+            "label": "survey_roll_18",
+            "probability": 0.29000000000000004,
+            "result": false,
+            "rngCounter": 804
+          },
+          {
+            "label": "survey_roll_20",
+            "probability": 0.29000000000000004,
+            "result": false,
+            "rngCounter": 805
+          },
+          {
+            "label": "survey_roll_22",
+            "probability": 0.29000000000000004,
+            "result": false,
+            "rngCounter": 806
+          },
+          {
+            "label": "survey_roll_24",
+            "probability": 0.29000000000000004,
+            "result": false,
+            "rngCounter": 807
+          },
+          {
+            "label": "survey_roll_26",
+            "probability": 0.29000000000000004,
+            "result": false,
+            "rngCounter": 808
+          },
+          {
+            "label": "survey_roll_28",
+            "probability": 0.29000000000000004,
+            "result": false,
+            "rngCounter": 809
+          },
+          {
+            "label": "survey_roll_30",
+            "probability": 0.29000000000000004,
+            "result": false,
+            "rngCounter": 810
+          },
+          {
+            "label": "survey_roll_32",
+            "probability": 0.29000000000000004,
+            "result": false,
+            "rngCounter": 811
+          },
+          {
+            "label": "survey_roll_34",
+            "probability": 0.29000000000000004,
+            "result": false,
+            "rngCounter": 812
+          },
+          {
+            "label": "survey_roll_36",
+            "probability": 0.29000000000000004,
+            "result": false,
+            "rngCounter": 813
+          },
+          {
+            "label": "survey_roll_38",
+            "probability": 0.29000000000000004,
+            "result": true,
+            "rngCounter": 814
+          },
+          {
+            "label": "survey_roll_40",
+            "probability": 0.29000000000000004,
+            "result": true,
+            "rngCounter": 816
+          }
+        ],
+        "stateDeltaSummary": "Discovered Fading Margins",
+        "explorationLog": {
+          "discoveredAreaId": "area-d2-i7",
+          "discoveredConnectionId": "area-d1-i1->area-d2-i7",
+          "luckInfo": {
+            "actualTicks": 40,
+            "expectedTicks": 7,
+            "luckDelta": -33,
+            "totalLuckDelta": -230,
+            "currentStreak": -2
+          }
+        }
+      },
+      {
+        "tickBefore": 926,
+        "actionType": "Survey",
+        "parameters": {},
+        "success": true,
+        "timeConsumed": 148,
+        "skillGained": {
+          "skill": "Exploration",
+          "amount": 2
+        },
+        "rngRolls": [
+          {
+            "label": "survey_roll_2",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 818
+          },
+          {
+            "label": "survey_roll_4",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 819
+          },
+          {
+            "label": "survey_roll_6",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 820
+          },
+          {
+            "label": "survey_roll_8",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 821
+          },
+          {
+            "label": "survey_roll_10",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 822
+          },
+          {
+            "label": "survey_roll_12",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 823
+          },
+          {
+            "label": "survey_roll_14",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 824
+          },
+          {
+            "label": "survey_roll_16",
+            "probability": 0.33999999999999997,
+            "result": true,
+            "rngCounter": 825
+          },
+          {
+            "label": "survey_roll_18",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 827
+          },
+          {
+            "label": "survey_roll_20",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 828
+          },
+          {
+            "label": "survey_roll_22",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 829
+          },
+          {
+            "label": "survey_roll_24",
+            "probability": 0.33999999999999997,
+            "result": true,
+            "rngCounter": 830
+          },
+          {
+            "label": "survey_roll_26",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 832
+          },
+          {
+            "label": "survey_roll_28",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 833
+          },
+          {
+            "label": "survey_roll_30",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 834
+          },
+          {
+            "label": "survey_roll_32",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 835
+          },
+          {
+            "label": "survey_roll_34",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 836
+          },
+          {
+            "label": "survey_roll_36",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 837
+          },
+          {
+            "label": "survey_roll_38",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 838
+          },
+          {
+            "label": "survey_roll_40",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 839
+          },
+          {
+            "label": "survey_roll_42",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 840
+          },
+          {
+            "label": "survey_roll_44",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 841
+          },
+          {
+            "label": "survey_roll_46",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 842
+          },
+          {
+            "label": "survey_roll_48",
+            "probability": 0.33999999999999997,
+            "result": true,
+            "rngCounter": 843
+          },
+          {
+            "label": "survey_roll_50",
+            "probability": 0.33999999999999997,
+            "result": true,
+            "rngCounter": 845
+          },
+          {
+            "label": "survey_roll_52",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 847
+          },
+          {
+            "label": "survey_roll_54",
+            "probability": 0.33999999999999997,
+            "result": true,
+            "rngCounter": 848
+          },
+          {
+            "label": "survey_roll_56",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 850
+          },
+          {
+            "label": "survey_roll_58",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 851
+          },
+          {
+            "label": "survey_roll_60",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 852
+          },
+          {
+            "label": "survey_roll_62",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 853
+          },
+          {
+            "label": "survey_roll_64",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 854
+          },
+          {
+            "label": "survey_roll_66",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 855
+          },
+          {
+            "label": "survey_roll_68",
+            "probability": 0.33999999999999997,
+            "result": true,
+            "rngCounter": 856
+          },
+          {
+            "label": "survey_roll_70",
+            "probability": 0.33999999999999997,
+            "result": true,
+            "rngCounter": 858
+          },
+          {
+            "label": "survey_roll_72",
+            "probability": 0.33999999999999997,
+            "result": true,
+            "rngCounter": 860
+          },
+          {
+            "label": "survey_roll_74",
+            "probability": 0.33999999999999997,
+            "result": true,
+            "rngCounter": 862
+          },
+          {
+            "label": "survey_roll_76",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 864
+          },
+          {
+            "label": "survey_roll_78",
+            "probability": 0.33999999999999997,
+            "result": true,
+            "rngCounter": 865
+          },
+          {
+            "label": "survey_roll_80",
+            "probability": 0.33999999999999997,
+            "result": true,
+            "rngCounter": 867
+          },
+          {
+            "label": "survey_roll_82",
+            "probability": 0.33999999999999997,
+            "result": true,
+            "rngCounter": 869
+          },
+          {
+            "label": "survey_roll_84",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 871
+          },
+          {
+            "label": "survey_roll_86",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 872
+          },
+          {
+            "label": "survey_roll_88",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 873
+          },
+          {
+            "label": "survey_roll_90",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 874
+          },
+          {
+            "label": "survey_roll_92",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 875
+          },
+          {
+            "label": "survey_roll_94",
+            "probability": 0.33999999999999997,
+            "result": true,
+            "rngCounter": 876
+          },
+          {
+            "label": "survey_roll_96",
+            "probability": 0.33999999999999997,
+            "result": true,
+            "rngCounter": 878
+          },
+          {
+            "label": "survey_roll_98",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 880
+          },
+          {
+            "label": "survey_roll_100",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 881
+          },
+          {
+            "label": "survey_roll_102",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 882
+          },
+          {
+            "label": "survey_roll_104",
+            "probability": 0.33999999999999997,
+            "result": true,
+            "rngCounter": 883
+          },
+          {
+            "label": "survey_roll_106",
+            "probability": 0.33999999999999997,
+            "result": true,
+            "rngCounter": 885
+          },
+          {
+            "label": "survey_roll_108",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 887
+          },
+          {
+            "label": "survey_roll_110",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 888
+          },
+          {
+            "label": "survey_roll_112",
+            "probability": 0.33999999999999997,
+            "result": true,
+            "rngCounter": 889
+          },
+          {
+            "label": "survey_roll_114",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 891
+          },
+          {
+            "label": "survey_roll_116",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 892
+          },
+          {
+            "label": "survey_roll_118",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 893
+          },
+          {
+            "label": "survey_roll_120",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 894
+          },
+          {
+            "label": "survey_roll_122",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 895
+          },
+          {
+            "label": "survey_roll_124",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 896
+          },
+          {
+            "label": "survey_roll_126",
+            "probability": 0.33999999999999997,
+            "result": true,
+            "rngCounter": 897
+          },
+          {
+            "label": "survey_roll_128",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 899
+          },
+          {
+            "label": "survey_roll_130",
+            "probability": 0.33999999999999997,
+            "result": true,
+            "rngCounter": 900
+          },
+          {
+            "label": "survey_roll_132",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 902
+          },
+          {
+            "label": "survey_roll_134",
+            "probability": 0.33999999999999997,
+            "result": true,
+            "rngCounter": 903
+          },
+          {
+            "label": "survey_roll_136",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 905
+          },
+          {
+            "label": "survey_roll_138",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 906
+          },
+          {
+            "label": "survey_roll_140",
+            "probability": 0.33999999999999997,
+            "result": true,
+            "rngCounter": 907
+          },
+          {
+            "label": "survey_roll_142",
+            "probability": 0.33999999999999997,
+            "result": true,
+            "rngCounter": 909
+          },
+          {
+            "label": "survey_roll_144",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 911
+          },
+          {
+            "label": "survey_roll_146",
+            "probability": 0.33999999999999997,
+            "result": false,
+            "rngCounter": 912
+          },
+          {
+            "label": "survey_roll_148",
+            "probability": 0.33999999999999997,
+            "result": true,
+            "rngCounter": 913
+          }
+        ],
+        "stateDeltaSummary": "Discovered Wolfbark Copse",
+        "explorationLog": {
+          "discoveredAreaId": "area-d2-i2",
+          "discoveredConnectionId": "area-d1-i1->area-d2-i2",
+          "luckInfo": {
+            "actualTicks": 148,
+            "expectedTicks": 6,
+            "luckDelta": -142,
+            "totalLuckDelta": -372,
+            "currentStreak": -3
+          }
+        }
+      },
+      {
+        "tickBefore": 1074,
+        "actionType": "ExplorationTravel",
+        "parameters": {
+          "destinationAreaId": "TOWN"
+        },
+        "success": true,
+        "timeConsumed": 44,
+        "rngRolls": [],
+        "stateDeltaSummary": "Traveled to Town"
+      },
+      {
+        "tickBefore": 1118,
+        "actionType": "Survey",
+        "parameters": {},
+        "success": true,
+        "timeConsumed": 4,
+        "skillGained": {
+          "skill": "Exploration",
+          "amount": 2
+        },
+        "rngRolls": [
+          {
+            "label": "survey_roll_2",
+            "probability": 0.25,
+            "result": false,
+            "rngCounter": 915
+          },
+          {
+            "label": "survey_roll_4",
+            "probability": 0.25,
+            "result": true,
+            "rngCounter": 916
+          }
+        ],
+        "stateDeltaSummary": "Discovered Greenshade Wood",
+        "explorationLog": {
+          "discoveredAreaId": "area-d1-i2",
+          "discoveredConnectionId": "TOWN->area-d1-i2",
+          "luckInfo": {
+            "actualTicks": 4,
+            "expectedTicks": 8,
+            "luckDelta": 4,
+            "totalLuckDelta": -368,
+            "currentStreak": 1
+          }
+        }
+      },
+      {
+        "tickBefore": 1122,
+        "actionType": "Survey",
+        "parameters": {},
+        "success": true,
+        "timeConsumed": 10,
+        "skillGained": {
+          "skill": "Exploration",
+          "amount": 2
+        },
+        "rngRolls": [
+          {
+            "label": "survey_roll_2",
+            "probability": 0.30000000000000004,
+            "result": false,
+            "rngCounter": 932
+          },
+          {
+            "label": "survey_roll_4",
+            "probability": 0.30000000000000004,
+            "result": false,
+            "rngCounter": 933
+          },
+          {
+            "label": "survey_roll_6",
+            "probability": 0.30000000000000004,
+            "result": false,
+            "rngCounter": 934
+          },
+          {
+            "label": "survey_roll_8",
+            "probability": 0.30000000000000004,
+            "result": false,
+            "rngCounter": 935
+          },
+          {
+            "label": "survey_roll_10",
+            "probability": 0.30000000000000004,
+            "result": true,
+            "rngCounter": 936
+          }
+        ],
+        "stateDeltaSummary": "Discovered Silvermist Slopes",
+        "explorationLog": {
+          "discoveredAreaId": "area-d1-i3",
+          "discoveredConnectionId": "TOWN->area-d1-i3",
+          "luckInfo": {
+            "actualTicks": 10,
+            "expectedTicks": 7,
+            "luckDelta": -3,
+            "totalLuckDelta": -371,
+            "currentStreak": -1
+          }
+        }
+      },
+      {
+        "tickBefore": 1132,
+        "actionType": "ExplorationTravel",
+        "parameters": {
+          "destinationAreaId": "area-d1-i2"
+        },
+        "success": true,
+        "timeConsumed": 13,
+        "rngRolls": [],
+        "stateDeltaSummary": "Traveled to Greenshade Wood"
+      },
+      {
+        "tickBefore": 1145,
+        "actionType": "Explore",
+        "parameters": {},
+        "success": true,
+        "timeConsumed": 10,
+        "skillGained": {
+          "skill": "Exploration",
+          "amount": 1
+        },
+        "levelUps": [
+          {
+            "skill": "Exploration",
+            "fromLevel": 1,
+            "toLevel": 2
+          }
+        ],
+        "rngRolls": [
+          {
+            "label": "explore_roll_2",
+            "probability": 0.26,
+            "result": false,
+            "rngCounter": 953
+          },
+          {
+            "label": "explore_roll_4",
+            "probability": 0.26,
+            "result": false,
+            "rngCounter": 954
+          },
+          {
+            "label": "explore_roll_6",
+            "probability": 0.26,
+            "result": false,
+            "rngCounter": 955
+          },
+          {
+            "label": "explore_roll_8",
+            "probability": 0.26,
+            "result": false,
+            "rngCounter": 956
+          },
+          {
+            "label": "explore_roll_10",
+            "probability": 0.26,
+            "result": true,
+            "rngCounter": 958
+          }
+        ],
+        "stateDeltaSummary": "Discovered connection to Borderlands Green",
+        "explorationLog": {
+          "discoveredConnectionId": "area-d1-i2->area-d1-i4",
+          "connectionToUnknownArea": false,
+          "areaFullyExplored": false,
+          "luckInfo": {
+            "actualTicks": 10,
+            "expectedTicks": 8,
+            "luckDelta": -2,
+            "totalLuckDelta": -373,
+            "currentStreak": -2
+          }
+        }
+      },
+      {
+        "tickBefore": 1155,
+        "actionType": "Explore",
+        "parameters": {},
+        "success": true,
+        "timeConsumed": 8,
+        "skillGained": {
+          "skill": "Exploration",
+          "amount": 1
+        },
+        "rngRolls": [
+          {
+            "label": "explore_roll_2",
+            "probability": 0.32,
+            "result": false,
+            "rngCounter": 959
+          },
+          {
+            "label": "explore_roll_4",
+            "probability": 0.32,
+            "result": false,
+            "rngCounter": 960
+          },
+          {
+            "label": "explore_roll_6",
+            "probability": 0.32,
+            "result": false,
+            "rngCounter": 961
+          },
+          {
+            "label": "explore_roll_8",
+            "probability": 0.32,
+            "result": true,
+            "rngCounter": 963
+          }
+        ],
+        "stateDeltaSummary": "Discovered connection to Stonebreach Ridge",
+        "explorationLog": {
+          "discoveredConnectionId": "area-d1-i2->area-d2-i6",
+          "connectionToUnknownArea": false,
+          "areaFullyExplored": false,
+          "luckInfo": {
+            "actualTicks": 8,
+            "expectedTicks": 6,
+            "luckDelta": -2,
+            "totalLuckDelta": -375,
+            "currentStreak": -3
+          }
+        }
+      },
+      {
+        "tickBefore": 1163,
+        "actionType": "Explore",
+        "parameters": {},
+        "success": true,
+        "timeConsumed": 4,
+        "skillGained": {
+          "skill": "Exploration",
+          "amount": 1
+        },
+        "rngRolls": [
+          {
+            "label": "explore_roll_2",
+            "probability": 0.37,
+            "result": false,
+            "rngCounter": 964
+          },
+          {
+            "label": "explore_roll_4",
+            "probability": 0.37,
+            "result": true,
+            "rngCounter": 966
+          }
+        ],
+        "stateDeltaSummary": "Discovered connection to Wolfbark Copse",
+        "explorationLog": {
+          "discoveredConnectionId": "area-d2-i2->area-d1-i2",
+          "connectionToUnknownArea": false,
+          "areaFullyExplored": false,
+          "luckInfo": {
+            "actualTicks": 4,
+            "expectedTicks": 5,
+            "luckDelta": 1,
+            "totalLuckDelta": -374,
+            "currentStreak": 1
+          }
+        }
+      },
+      {
+        "tickBefore": 1167,
+        "actionType": "Explore",
+        "parameters": {},
+        "success": true,
+        "timeConsumed": 10,
+        "skillGained": {
+          "skill": "Exploration",
+          "amount": 1
+        },
+        "rngRolls": [
+          {
+            "label": "explore_roll_2",
+            "probability": 0.21000000000000002,
+            "result": false,
+            "rngCounter": 967
+          },
+          {
+            "label": "explore_roll_4",
+            "probability": 0.21000000000000002,
+            "result": false,
+            "rngCounter": 968
+          },
+          {
+            "label": "explore_roll_6",
+            "probability": 0.21000000000000002,
+            "result": false,
+            "rngCounter": 969
+          },
+          {
+            "label": "explore_roll_8",
+            "probability": 0.21000000000000002,
+            "result": false,
+            "rngCounter": 970
+          },
+          {
+            "label": "explore_roll_10",
+            "probability": 0.21000000000000002,
+            "result": true,
+            "rngCounter": 972
+          }
+        ],
+        "stateDeltaSummary": "Discovered tree stand",
+        "explorationLog": {
+          "discoveredLocationId": "area-d1-i2-loc-0",
+          "connectionToUnknownArea": false,
+          "areaFullyExplored": true,
+          "luckInfo": {
+            "actualTicks": 10,
+            "expectedTicks": 10,
+            "luckDelta": 0,
+            "totalLuckDelta": -374,
+            "currentStreak": 1
+          }
+        }
+      },
+      {
+        "tickBefore": 1177,
+        "actionType": "ExplorationTravel",
+        "parameters": {
+          "destinationAreaId": "TOWN"
+        },
+        "success": true,
+        "timeConsumed": 13,
+        "rngRolls": [],
+        "stateDeltaSummary": "Traveled to Town"
+      },
+      {
+        "tickBefore": 1190,
+        "actionType": "ExplorationTravel",
+        "parameters": {
+          "destinationAreaId": "area-d1-i2"
+        },
+        "success": true,
+        "timeConsumed": 13,
+        "rngRolls": [],
+        "stateDeltaSummary": "Traveled to Greenshade Wood"
+      },
+      {
+        "tickBefore": 1203,
+        "actionType": "TravelToLocation",
+        "parameters": {
+          "locationId": "area-d1-i2-loc-0"
+        },
+        "success": true,
+        "timeConsumed": 1,
+        "rngRolls": [],
+        "stateDeltaSummary": "Traveled to Tree stand"
+      },
+      {
+        "tickBefore": 1204,
+        "actionType": "Gather",
+        "parameters": {
+          "nodeId": "area-d1-i2-node-0",
+          "mode": "FOCUS",
+          "focusMaterialId": "GREEN_WOOD"
+        },
+        "success": true,
+        "timeConsumed": 5,
+        "skillGained": {
+          "skill": "Woodcutting",
+          "amount": 5
+        },
+        "levelUps": [
+          {
+            "skill": "Woodcutting",
+            "fromLevel": 1,
+            "toLevel": 2
+          }
+        ],
+        "rngRolls": [],
+        "extraction": {
+          "mode": "FOCUS",
+          "focusMaterial": "GREEN_WOOD",
+          "extracted": [
+            {
+              "itemId": "GREEN_WOOD",
+              "quantity": 4
+            }
+          ],
+          "focusWaste": 0.6,
+          "collateralDamage": {
+            "HARDWOOD": 1,
+            "SOFTWOOD": 1
+          },
+          "variance": {
+            "expected": 4,
+            "actual": 4,
+            "range": [
+              4,
+              4
+            ]
+          }
+        },
+        "xpSource": "node_extraction",
+        "stateDeltaSummary": "Focused extraction of 4 GREEN_WOOD"
+      },
+      {
+        "tickBefore": 1209,
+        "actionType": "Gather",
+        "parameters": {
+          "nodeId": "area-d1-i2-node-0",
+          "mode": "FOCUS",
+          "focusMaterialId": "SOFTWOOD"
+        },
+        "success": true,
+        "timeConsumed": 5,
+        "skillGained": {
+          "skill": "Woodcutting",
+          "amount": 5
+        },
+        "rngRolls": [],
+        "extraction": {
+          "mode": "FOCUS",
+          "focusMaterial": "SOFTWOOD",
+          "extracted": [
+            {
+              "itemId": "SOFTWOOD",
+              "quantity": 5
+            }
+          ],
+          "focusWaste": 0.5333,
+          "collateralDamage": {
+            "HARDWOOD": 1,
+            "GREEN_WOOD": 1
+          },
+          "variance": {
+            "expected": 4.667,
+            "actual": 5,
+            "range": [
+              4,
+              5
+            ]
+          }
+        },
+        "xpSource": "node_extraction",
+        "stateDeltaSummary": "Focused extraction of 5 SOFTWOOD"
+      },
+      {
+        "tickBefore": 1214,
+        "actionType": "Gather",
+        "parameters": {
+          "nodeId": "area-d1-i2-node-0",
+          "mode": "FOCUS",
+          "focusMaterialId": "HARDWOOD"
+        },
+        "success": true,
+        "timeConsumed": 5,
+        "skillGained": {
+          "skill": "Woodcutting",
+          "amount": 10
+        },
+        "levelUps": [
+          {
+            "skill": "Woodcutting",
+            "fromLevel": 2,
+            "toLevel": 3
+          }
+        ],
+        "rngRolls": [],
+        "extraction": {
+          "mode": "FOCUS",
+          "focusMaterial": "HARDWOOD",
+          "extracted": [
+            {
+              "itemId": "HARDWOOD",
+              "quantity": 4
+            }
+          ],
+          "discardedItems": [
+            {
+              "itemId": "HARDWOOD",
+              "quantity": 3
+            }
+          ],
+          "focusWaste": 0.6,
+          "collateralDamage": {
+            "GREEN_WOOD": 1,
+            "SOFTWOOD": 1
+          },
+          "variance": {
+            "expected": 4,
+            "actual": 4,
+            "range": [
+              4,
+              4
+            ]
+          }
+        },
+        "xpSource": "node_extraction",
+        "stateDeltaSummary": "Focused extraction of 4 HARDWOOD"
+      }
+    ],
+    "startingSkills": {
+      "Mining": {
+        "level": 0,
+        "xp": 0
+      },
+      "Woodcutting": {
+        "level": 0,
+        "xp": 0
+      },
+      "Combat": {
+        "level": 0,
+        "xp": 0
+      },
+      "Smithing": {
+        "level": 0,
+        "xp": 0
+      },
+      "Woodcrafting": {
+        "level": 0,
+        "xp": 0
+      },
+      "Exploration": {
+        "level": 0,
+        "xp": 0
+      }
+    },
+    "sessionStartLogIndex": 0
+  }
+}
