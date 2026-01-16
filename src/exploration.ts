@@ -27,6 +27,7 @@ import { rollFloat, roll, rollNormal } from "./rng.js"
 import { consumeTime } from "./stateHelpers.js"
 import { generateNodesForArea, getLocationDisplayName } from "./world.js"
 import { generateAreaName, getNeighborNames } from "./areaNaming.js"
+import { nodeIdToLocationId } from "./contracts.js"
 
 // ============================================================================
 // Constants
@@ -78,8 +79,9 @@ export const UNKNOWN_CONNECTION_DISCOVERY_MULTIPLIER = UNKNOWN_CONNECTION_MULTIP
 // ============================================================================
 
 /**
- * Create a canonical connection ID from two area IDs.
- * Always orders fromAreaId -> toAreaId in alphabetical order for consistency.
+ * Create a connection ID from two area IDs.
+ * Note: This does NOT canonicalize the order - use isConnectionKnown() to check
+ * for connections regardless of direction.
  */
 export function createConnectionId(areaId1: AreaID, areaId2: AreaID): string {
   return `${areaId1}->${areaId2}`
@@ -828,13 +830,8 @@ export function processPendingNodeDiscoveries(state: WorldState): void {
 
   for (const pending of toProcess) {
     // Convert node ID to location ID
-    // Node ID format: {areaId}-node-{index}
-    // Location ID format: {areaId}-{nodeType}-loc-{index}
-    const nodeMatch = pending.nodeLocationId.match(/^(.+)-node-(\d+)$/)
-    if (!nodeMatch) continue
-
-    const [, , index] = nodeMatch
-    const locationId = `${pending.areaId}-ORE_VEIN-loc-${index}`
+    const locationId = nodeIdToLocationId(pending.nodeLocationId)
+    if (!locationId) continue
 
     // Add to known locations if not already known
     if (!state.exploration.playerState.knownLocationIds.includes(locationId)) {

@@ -389,6 +389,38 @@ describe("Persistence", () => {
       expect(loaded.state.player.gold).toBe(123.45)
     })
 
+    it("should preserve pendingNodeDiscoveries", () => {
+      const state = createWorld(TEST_SEED)
+      // Add pending node discoveries
+      state.player.pendingNodeDiscoveries = [
+        { areaId: "area-d1-i0", nodeLocationId: "area-d1-i0-node-0" },
+        { areaId: "area-d2-i1", nodeLocationId: "area-d2-i1-node-1" },
+      ]
+
+      const session: Session = {
+        state,
+        stats: {
+          logs: [],
+          startingSkills: { ...state.player.skills },
+          sessionStartLogIndex: 0,
+        },
+      }
+
+      writeSave(TEST_SEED, session)
+      const loaded = deserializeSession(loadSave(TEST_SEED))
+
+      expect(loaded.state.player.pendingNodeDiscoveries).toBeDefined()
+      expect(loaded.state.player.pendingNodeDiscoveries).toHaveLength(2)
+      expect(loaded.state.player.pendingNodeDiscoveries).toContainEqual({
+        areaId: "area-d1-i0",
+        nodeLocationId: "area-d1-i0-node-0",
+      })
+      expect(loaded.state.player.pendingNodeDiscoveries).toContainEqual({
+        areaId: "area-d2-i1",
+        nodeLocationId: "area-d2-i1-node-1",
+      })
+    })
+
     it("should preserve exploration connections", () => {
       const state = createWorld(TEST_SEED)
 

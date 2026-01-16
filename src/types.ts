@@ -689,4 +689,4 @@ export function getTotalXP(skill: SkillState): number {
 /**
  * Save file version - increment when save format changes
  */
-export const SAVE_VERSION = 1
+export const SAVE_VERSION = 2

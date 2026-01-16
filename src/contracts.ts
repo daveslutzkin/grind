@@ -19,6 +19,28 @@ import { TOWN_LOCATIONS } from "./world.js"
 import { createConnectionId, findConnection } from "./exploration.js"
 
 // ============================================================================
+// Node ID Helpers
+// ============================================================================
+
+/**
+ * Convert a node ID to its corresponding location ID.
+ *
+ * Node ID format: {areaId}-node-{index}
+ * Location ID format: {areaId}-ORE_VEIN-loc-{index}
+ *
+ * Note: This assumes all mining contract nodes are ORE_VEIN type, which is
+ * currently true for the mining node generation system.
+ *
+ * @returns The location ID, or null if the node ID format is invalid
+ */
+export function nodeIdToLocationId(nodeId: string): string | null {
+  const match = nodeId.match(/^(.+)-node-(\d+)$/)
+  if (!match) return null
+  const [, areaId, index] = match
+  return `${areaId}-ORE_VEIN-loc-${index}`
+}
+
+// ============================================================================
 // Material Tier Definitions
 // ============================================================================
 
@@ -185,13 +207,8 @@ export function shouldIncludeMap(
     if (!hasMaterial) continue
 
     // Check if the node's location is known
-    // Location ID format: {areaId}-{nodeType}-loc-{index}
-    // Node ID format: {areaId}-node-{index}
-    const nodeMatch = node.nodeId.match(/^(.+)-node-(\d+)$/)
-    if (!nodeMatch) continue
-
-    const [, areaId, index] = nodeMatch
-    const locationId = `${areaId}-ORE_VEIN-loc-${index}`
+    const locationId = nodeIdToLocationId(node.nodeId)
+    if (!locationId) continue
 
     if (knownLocationIds.has(locationId)) {
       // Player knows a node with this material
@@ -229,14 +246,14 @@ export function findNodeForMap(requiredMaterial: string, state: WorldState): Con
     if (!hasMaterial) continue
 
     // Get the location ID for this node
-    const nodeMatch = node.nodeId.match(/^(.+)-node-(\d+)$/)
-    if (!nodeMatch) continue
-
-    const [, areaId, index] = nodeMatch
-    const locationId = `${areaId}-ORE_VEIN-loc-${index}`
+    const locationId = nodeIdToLocationId(node.nodeId)
+    if (!locationId) continue
 
     // Skip if already discovered
     if (knownLocationIds.has(locationId)) continue
+
+    // Extract area ID from node ID (format: {areaId}-node-{index})
+    const areaId = node.nodeId.replace(/-node-\d+$/, "")
 
     // Get area distance
     const area = state.exploration.areas.get(areaId)
