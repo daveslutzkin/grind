@@ -13,10 +13,16 @@ import type {
   WorldState,
   ContractMap,
   AreaID,
+  AreaConnection,
 } from "./types.js"
 import { rollFloat } from "./rng.js"
 import { TOWN_LOCATIONS } from "./world.js"
-import { createConnectionId, findConnection } from "./exploration.js"
+import {
+  createConnectionId,
+  ensureAreaGenerated,
+  createAreaPlaceholder,
+  getAreaCountForDistance,
+} from "./exploration.js"
 
 // ============================================================================
 // Node ID Helpers
@@ -182,6 +188,225 @@ export function rollBounty(rng: RngState): number {
 // ============================================================================
 
 /**
+ * Get the tier index (1-8) for a material ID
+ */
+function getMaterialTierIndex(materialId: string): number {
+  const index = TIER_ORDER.indexOf(materialId)
+  return index === -1 ? 1 : index + 1
+}
+
+/**
+ * Get the distance range where a material tier primarily spawns.
+ * Based on world.ts: getMiningTierForDistance(distance) = ceil(distance / 8)
+ *
+ * Tier 1 (STONE): distance 1-8
+ * Tier 2 (COPPER): distance 9-16
+ * etc.
+ */
+function getDistanceRangeForTier(tierIndex: number): { min: number; max: number } {
+  const min = (tierIndex - 1) * 8 + 1
+  const max = tierIndex * 8
+  return { min, max }
+}
+
+/**
+ * Ensure a "corridor" of areas exists from TOWN to a target distance.
+ * Rather than generating ALL areas at each distance (which could be 500+ areas),
+ * this generates just enough areas to create a path.
+ *
+ * Returns the IDs of areas in the corridor that were generated/ensured.
+ */
+function ensureCorridorToDistance(state: WorldState, targetDistance: number): AreaID[] {
+  const exploration = state.exploration
+  const corridorAreas: AreaID[] = []
+
+  // For each distance, ensure at least one area exists and is generated
+  for (let distance = 1; distance <= targetDistance; distance++) {
+    // Check if we already have a generated area at this distance
+    let areaAtDistance: AreaID | null = null
+
+    for (const [areaId, area] of exploration.areas) {
+      if (area.distance === distance && area.generated) {
+        areaAtDistance = areaId
+        break
+      }
+    }
+
+    // If no generated area exists, create and generate one
+    if (!areaAtDistance) {
+      // Pick index 0 for simplicity - deterministic choice
+      const areaId = `area-d${distance}-i0`
+      if (!exploration.areas.has(areaId)) {
+        const placeholder = createAreaPlaceholder(distance, 0)
+        exploration.areas.set(placeholder.id, placeholder)
+      }
+
+      const area = exploration.areas.get(areaId)!
+      ensureAreaGenerated(state, area)
+      areaAtDistance = areaId
+    }
+
+    corridorAreas.push(areaAtDistance)
+  }
+
+  // Now ensure connections exist along the corridor
+  // TOWN -> d1 -> d2 -> ... -> targetDistance
+  let prevAreaId: AreaID = "TOWN"
+
+  for (const areaId of corridorAreas) {
+    // Check if connection already exists
+    const connectionExists = exploration.connections.some(
+      (c) =>
+        (c.fromAreaId === prevAreaId && c.toAreaId === areaId) ||
+        (c.fromAreaId === areaId && c.toAreaId === prevAreaId)
+    )
+
+    if (!connectionExists) {
+      exploration.connections.push({
+        fromAreaId: prevAreaId,
+        toAreaId: areaId,
+        travelTimeMultiplier: 1.0,
+      })
+    }
+
+    prevAreaId = areaId
+  }
+
+  return corridorAreas
+}
+
+/**
+ * Ensure enough areas exist at target distance to find a node with the required material.
+ * Generates areas one at a time until we find a suitable node, up to a limit.
+ */
+function ensureAreasWithMaterial(
+  state: WorldState,
+  targetDistance: number,
+  requiredMaterial: string,
+  maxAreasToTry: number = 10
+): void {
+  const exploration = state.exploration
+
+  // First, ensure the corridor exists
+  ensureCorridorToDistance(state, targetDistance)
+
+  // Now generate additional areas at target distance until we find the material
+  // (or hit the limit)
+  const existingAreasAtDistance = Array.from(exploration.areas.values()).filter(
+    (a) => a.distance === targetDistance && a.generated
+  )
+
+  // Check if we already have a node with this material
+  const hasNodeWithMaterial = () => {
+    return state.world.nodes.some((node) => {
+      const area = exploration.areas.get(node.areaId)
+      if (!area || area.distance !== targetDistance) return false
+      return node.materials.some((m) => m.materialId === requiredMaterial)
+    })
+  }
+
+  if (hasNodeWithMaterial()) return
+
+  // Try generating more areas at this distance
+  const maxIndex = getAreaCountForDistance(targetDistance)
+  let triedCount = existingAreasAtDistance.length
+
+  for (let i = 0; i < maxIndex && triedCount < maxAreasToTry; i++) {
+    const areaId = `area-d${targetDistance}-i${i}`
+
+    // Skip if already generated
+    if (exploration.areas.has(areaId) && exploration.areas.get(areaId)!.generated) {
+      continue
+    }
+
+    // Create placeholder if needed
+    if (!exploration.areas.has(areaId)) {
+      const placeholder = createAreaPlaceholder(targetDistance, i)
+      exploration.areas.set(placeholder.id, placeholder)
+    }
+
+    // Generate the area
+    const area = exploration.areas.get(areaId)!
+    ensureAreaGenerated(state, area)
+
+    // Connect it to an existing area at distance-1
+    const prevDistAreas = Array.from(exploration.areas.values()).filter(
+      (a) => a.distance === targetDistance - 1 && a.generated
+    )
+    if (prevDistAreas.length > 0) {
+      const connectionExists = exploration.connections.some(
+        (c) =>
+          (c.fromAreaId === prevDistAreas[0].id && c.toAreaId === areaId) ||
+          (c.fromAreaId === areaId && c.toAreaId === prevDistAreas[0].id)
+      )
+      if (!connectionExists) {
+        exploration.connections.push({
+          fromAreaId: prevDistAreas[0].id,
+          toAreaId: areaId,
+          travelTimeMultiplier: 1.0,
+        })
+      }
+    }
+
+    triedCount++
+
+    // Check if we found the material
+    if (hasNodeWithMaterial()) return
+  }
+}
+
+/**
+ * Find a path between two areas using ALL connections (not just known ones).
+ * Returns the path of areas and connections, or null if no path exists.
+ */
+function findPathUsingAllConnections(
+  state: WorldState,
+  fromAreaId: AreaID,
+  toAreaId: AreaID
+): { areaIds: AreaID[]; connectionIds: string[] } | null {
+  const exploration = state.exploration
+
+  // BFS for shortest path
+  const queue: { areaId: AreaID; path: AreaID[]; connections: AreaConnection[] }[] = [
+    { areaId: fromAreaId, path: [fromAreaId], connections: [] },
+  ]
+  const visited = new Set<AreaID>([fromAreaId])
+
+  while (queue.length > 0) {
+    const current = queue.shift()!
+
+    if (current.areaId === toAreaId) {
+      // Build connection IDs from the path
+      const connectionIds = current.connections.map((conn) =>
+        createConnectionId(conn.fromAreaId, conn.toAreaId)
+      )
+      return { areaIds: current.path, connectionIds }
+    }
+
+    // Find all connections from current area (not filtered by knowledge)
+    for (const conn of exploration.connections) {
+      let nextAreaId: AreaID | null = null
+      if (conn.fromAreaId === current.areaId && !visited.has(conn.toAreaId)) {
+        nextAreaId = conn.toAreaId
+      } else if (conn.toAreaId === current.areaId && !visited.has(conn.fromAreaId)) {
+        nextAreaId = conn.fromAreaId
+      }
+
+      if (nextAreaId) {
+        visited.add(nextAreaId)
+        queue.push({
+          areaId: nextAreaId,
+          path: [...current.path, nextAreaId],
+          connections: [...current.connections, conn],
+        })
+      }
+    }
+  }
+
+  return null
+}
+
+/**
  * Determine if a map should be included with a contract
  *
  * Per design doc section 2.2:
@@ -221,18 +446,14 @@ export function shouldIncludeMap(
 }
 
 /**
- * Find a suitable undiscovered node for a contract map
- *
- * Per design doc section 2.2:
- * - Search undiscovered nodes in world
- * - Must contain the required material
- * - Must be reachable (connection path exists, even if not yet discovered)
- * - Prefer closer nodes (lower distance)
+ * Find undiscovered nodes containing the required material.
+ * Returns candidates sorted by distance (closest first).
  */
-export function findNodeForMap(requiredMaterial: string, state: WorldState): ContractMap | null {
+function findCandidateNodes(
+  requiredMaterial: string,
+  state: WorldState
+): Array<{ nodeId: string; areaId: AreaID; locationId: string; distance: number }> {
   const knownLocationIds = new Set(state.exploration.playerState.knownLocationIds)
-
-  // Collect candidate nodes with their area distances
   const candidates: Array<{
     nodeId: string
     areaId: AreaID
@@ -267,44 +488,64 @@ export function findNodeForMap(requiredMaterial: string, state: WorldState): Con
     })
   }
 
+  // Sort by distance (prefer closer nodes)
+  candidates.sort((a, b) => a.distance - b.distance)
+  return candidates
+}
+
+/**
+ * Find a suitable undiscovered node for a contract map.
+ *
+ * This function will generate areas on-demand if needed, enabling maps to guide
+ * players to nodes even in areas they haven't explored yet. This allows players
+ * to level Mining without needing to level Exploration.
+ *
+ * Rather than generating ALL areas at a distance (which could be 500+), this
+ * generates a targeted "corridor" of areas plus a few extras at the target distance.
+ *
+ * Per design doc section 2.2:
+ * - Search undiscovered nodes in world
+ * - Must contain the required material
+ * - Must be reachable (connection path exists)
+ * - Prefer closer nodes (lower distance)
+ */
+export function findNodeForMap(requiredMaterial: string, state: WorldState): ContractMap | null {
+  // First, try to find candidates in already-generated areas
+  let candidates = findCandidateNodes(requiredMaterial, state)
+
+  // If no candidates found, generate areas at appropriate distances
+  if (candidates.length === 0) {
+    const tierIndex = getMaterialTierIndex(requiredMaterial)
+    const { min: minDistance } = getDistanceRangeForTier(tierIndex)
+
+    // Generate a corridor to the minimum distance for this tier,
+    // plus some extra areas at that distance to find the material
+    ensureAreasWithMaterial(state, minDistance, requiredMaterial)
+
+    // Try again after generation
+    candidates = findCandidateNodes(requiredMaterial, state)
+  }
+
   if (candidates.length === 0) {
     return null
   }
 
-  // Sort by distance (prefer closer nodes)
-  candidates.sort((a, b) => a.distance - b.distance)
+  // Try each candidate (closest first) until we find one with a valid path
+  for (const candidate of candidates) {
+    const pathResult = findPathUsingAllConnections(state, "TOWN", candidate.areaId)
 
-  // Select the closest candidate
-  const selected = candidates[0]
-
-  // Find the connection to this area from TOWN or a known area
-  // For simplicity, we'll create a connection from TOWN if one exists
-  let connectionId: string | null = null
-
-  // Try to find a connection from TOWN to the target area
-  const conn = findConnection(state.exploration.connections, "TOWN", selected.areaId)
-  if (conn) {
-    connectionId = createConnectionId(conn.fromAreaId, conn.toAreaId)
-  } else {
-    // Try to find any connection that reaches this area
-    for (const conn of state.exploration.connections) {
-      if (conn.toAreaId === selected.areaId || conn.fromAreaId === selected.areaId) {
-        connectionId = createConnectionId(conn.fromAreaId, conn.toAreaId)
-        break
+    if (pathResult) {
+      return {
+        targetAreaId: candidate.areaId,
+        targetNodeId: candidate.nodeId,
+        connectionIds: pathResult.connectionIds,
+        areaIds: pathResult.areaIds,
       }
     }
   }
 
-  if (!connectionId) {
-    // No connection found - this shouldn't happen in a properly generated world
-    return null
-  }
-
-  return {
-    targetAreaId: selected.areaId,
-    targetNodeId: selected.nodeId,
-    connectionId,
-  }
+  // No reachable candidates found
+  return null
 }
 
 // Contract ID counter for unique IDs

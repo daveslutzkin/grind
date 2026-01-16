@@ -558,14 +558,21 @@ describe("Contract Generation", () => {
         expect(result!.targetNodeId).toBe(testNodeId)
       })
 
-      it("should return null if no suitable node exists", async () => {
+      it("should generate distant areas to find high-tier materials", async () => {
         const { findNodeForMap } = await import("./contracts.js")
-        const state = createWorld("no-suitable-node-test")
+        const state = createWorld("generate-distant-areas-test")
         state.player.skills.Mining = { level: 10, xp: 0 }
 
-        // No nodes with OBSIDIUM_ORE exist in a fresh world
+        // OBSIDIUM_ORE is tier 8, requiring distance 57+
+        // findNodeForMap should generate areas to find it
         const result = findNodeForMap("OBSIDIUM_ORE", state)
-        expect(result).toBeNull()
+        expect(result).not.toBeNull()
+        expect(result!.targetAreaId).toBeDefined()
+        expect(result!.targetNodeId).toBeDefined()
+        // Should have a multi-hop path from TOWN
+        expect(result!.areaIds.length).toBeGreaterThan(1)
+        expect(result!.areaIds[0]).toBe("TOWN")
+        expect(result!.connectionIds.length).toBeGreaterThan(0)
       })
 
       it("should not return already discovered nodes", async () => {
@@ -740,11 +747,10 @@ describe("Contract Generation", () => {
         // The map's area and connection should now be known
         expect(state.exploration.playerState.knownAreaIds).toContain(map.targetAreaId)
 
-        // The connection should be known
-        const hasConnection = state.exploration.playerState.knownConnectionIds.some(
-          (connId) => connId.includes(map.targetAreaId) || connId === map.connectionId
-        )
-        expect(hasConnection).toBe(true)
+        // All connections in the path should be known
+        for (const connectionId of map.connectionIds) {
+          expect(state.exploration.playerState.knownConnectionIds).toContain(connectionId)
+        }
 
         // Pending node discovery should be registered
         expect(state.player.pendingNodeDiscoveries).toBeDefined()

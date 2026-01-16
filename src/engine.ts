@@ -262,14 +262,18 @@ async function* executeAcceptContract(
   if (contract?.includedMap) {
     const map = contract.includedMap
 
-    // Reveal the area (add to knownAreaIds)
-    if (!state.exploration.playerState.knownAreaIds.includes(map.targetAreaId)) {
-      state.exploration.playerState.knownAreaIds.push(map.targetAreaId)
+    // Reveal all areas in the path (add to knownAreaIds)
+    for (const areaId of map.areaIds) {
+      if (!state.exploration.playerState.knownAreaIds.includes(areaId)) {
+        state.exploration.playerState.knownAreaIds.push(areaId)
+      }
     }
 
-    // Reveal the connection (add to knownConnectionIds)
-    if (!state.exploration.playerState.knownConnectionIds.includes(map.connectionId)) {
-      state.exploration.playerState.knownConnectionIds.push(map.connectionId)
+    // Reveal all connections in the path (add to knownConnectionIds)
+    for (const connectionId of map.connectionIds) {
+      if (!state.exploration.playerState.knownConnectionIds.includes(connectionId)) {
+        state.exploration.playerState.knownConnectionIds.push(connectionId)
+      }
     }
 
     // Store pending node discovery for later (when player arrives at area)

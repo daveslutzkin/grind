@@ -186,13 +186,17 @@ export interface KillRequirement {
 export type ContractSlot = "at-level" | "aspirational"
 
 /**
- * A map bundled with a contract that reveals an area and node
+ * A map bundled with a contract that reveals a path to a node
  * Part of Phase 2: Maps with Contracts
+ *
+ * Maps can reveal multi-hop paths from TOWN to distant areas, enabling
+ * players to level Mining without leveling Exploration.
  */
 export interface ContractMap {
   targetAreaId: AreaID // The area containing the target node
   targetNodeId: NodeID // The specific node to be discovered on arrival
-  connectionId: string // The connection to reveal (format: "areaId1->areaId2")
+  connectionIds: string[] // All connections to reveal (format: "areaId1->areaId2")
+  areaIds: AreaID[] // All areas in the path (from TOWN to target, inclusive)
 }
 
 export interface Contract {
