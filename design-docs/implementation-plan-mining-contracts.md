@@ -8,7 +8,15 @@ This replaces the current hardcoded contract system with a dynamic, level-approp
 
 ---
 
-## Phase 1: Core Contract System
+## Progress
+
+- **Phase 1: Core Contract System** - ✅ COMPLETE
+- **Phase 2: Maps with Contracts** - ✅ COMPLETE
+- **Phase 3: Map Shops** - NOT STARTED
+
+---
+
+## Phase 1: Core Contract System ✅ COMPLETE
 
 ### 1.1 Add Money System
 
@@ -133,25 +141,26 @@ function getMaterialTierForLevel(level: number): MaterialTier
 
 ---
 
-## Phase 2: Maps with Contracts
+## Phase 2: Maps with Contracts ✅ COMPLETE
 
 ### 2.1 Map Data Structure
 
 **What a mining map reveals:**
-- Connection from town (or known area) to target area
-- The target area itself
+- Full multi-hop path from TOWN to the target area
+- All intermediate areas and connections along the path
 - The specific node location (discovered on arrival)
 
-**Changes to `src/types.ts`:**
+**Actual implementation in `src/types.ts`:**
 
 ```typescript
 interface ContractMap {
-  targetAreaId: AreaID
-  targetNodeId: NodeID
-  connectionId: string  // Connection to reveal
+  targetAreaId: AreaID       // The area containing the target node
+  targetNodeId: NodeID       // The specific node to be discovered on arrival
+  connectionIds: string[]    // All connections to reveal (multi-hop path)
+  areaIds: AreaID[]          // All areas in the path (TOWN to target)
 }
 
-// Add to Contract interface:
+// Contract interface includes:
 interface Contract {
   // ... existing fields
   includedMap?: ContractMap  // Optional map bundled with contract
@@ -166,27 +175,30 @@ interface Contract {
 - **Early game (L1-19):** Always include a map
 - **Later (L20+):** Include map only if player doesn't know any nodes containing the required material
 
-**Finding a suitable node for the map:**
+**Finding a suitable node for the map (actual implementation):**
 - Search undiscovered nodes in world
-- Must contain the required material
-- Must be reachable (connection path exists, even if not yet discovered)
+- If none exist, generate areas on-demand using "corridor" approach:
+  - Generate minimal path of areas from TOWN to target distance
+  - Generate additional areas at target distance until material is found
+  - This enables "mining without exploration" - maps guide to any tier
+- Find multi-hop path using BFS on all connections (not just known ones)
 - Prefer closer nodes (lower distance)
 
-**Changes to `src/contracts.ts`:**
-
-```typescript
-function shouldIncludeMap(playerLevel: number, requiredMaterial: string, state: WorldState): boolean
-
-function findNodeForMap(requiredMaterial: string, state: WorldState): ContractMap | null
-```
+**Key functions in `src/contracts.ts`:**
+- `shouldIncludeMap()` - determines if map should be included
+- `findNodeForMap()` - finds node, generates areas on-demand if needed
+- `ensureCorridorToDistance()` - generates minimal area path
+- `ensureAreasWithMaterial()` - generates areas until material is found
+- `findPathUsingAllConnections()` - BFS for full path
+- `nodeIdToLocationId()` - helper for ID conversion
 
 ---
 
 ### 2.3 Map Redemption
 
 **On contract accept (if map included):**
-1. Reveal the connection (add to `knownConnectionIds`)
-2. Reveal the area (add to `knownAreaIds`)
+1. Reveal ALL areas in the path (add to `knownAreaIds`)
+2. Reveal ALL connections in the path (add to `knownConnectionIds`)
 3. Store the node ID for later discovery
 
 **On arrival at target area:**
@@ -194,12 +206,16 @@ function findNodeForMap(requiredMaterial: string, state: WorldState): ContractMa
 2. Player can now travel to the node and mine
 
 **Changes to `src/engine.ts`:**
-- `executeAcceptContract()`: If contract has map, reveal connection + area
-- `executeFarTravel()` or arrival logic: Check for pending node discoveries, reveal node
+- `executeAcceptContract()`: If contract has map, reveal full path (all areas and connections)
+- Travel logic: Check for pending node discoveries via `processPendingNodeDiscoveries()`
 
 **Changes to `src/types.ts`:**
-- Add `pendingNodeDiscoveries: { areaId: AreaID, nodeLocationId: string }[]` to player state
-  - Or track on the active contract itself
+- Added `pendingNodeDiscoveries?: { areaId: AreaID, nodeLocationId: string }[]` to player state
+- Initialized to `[]` in `createWorld()`
+
+**Changes to `src/exploration.ts`:**
+- Added `processPendingNodeDiscoveries()` function
+- Uses `nodeIdToLocationId()` helper from contracts.ts
 
 ---
 
@@ -309,22 +325,23 @@ interface BuyMapAction {
 
 ## Implementation Order
 
-### Phase 1 (Core)
-1. Add `player.gold` field and serialization
-2. Delete hardcoded contract
-3. Create `src/contracts.ts` with generation logic
-4. Implement contract slots and regeneration triggers
-5. Wire up gold rewards on contract completion
-6. Add tests
+### Phase 1 (Core) ✅ COMPLETE
+1. ✅ Add `player.gold` field and serialization
+2. ✅ Delete hardcoded contract
+3. ✅ Create `src/contracts.ts` with generation logic
+4. ✅ Implement contract slots and regeneration triggers
+5. ✅ Wire up gold rewards on contract completion
+6. ✅ Add tests
 
-### Phase 2 (Maps)
-1. Add map data structures
-2. Implement map inclusion logic in contract generation
-3. Implement map revelation on contract accept
-4. Implement node discovery on area arrival
-5. Add tests
+### Phase 2 (Maps) ✅ COMPLETE
+1. ✅ Add map data structures (multi-hop paths)
+2. ✅ Implement map inclusion logic in contract generation
+3. ✅ Implement map revelation on contract accept (full path)
+4. ✅ Implement node discovery on area arrival
+5. ✅ Implement on-demand area generation for distant materials
+6. ✅ Add tests
 
-### Phase 3 (Shops)
+### Phase 3 (Shops) - NOT STARTED
 1. Add BuyMap action type
 2. Implement Mining Guild shop
 3. Implement Explorers Guild shop
@@ -336,7 +353,18 @@ interface BuyMapAction {
 ## Open Questions / Future Work
 
 - **Aspirational slot regeneration timing:** Exact probability/frequency TBD
-- **Shop "no nodes available" edge case:** Deferred for now
+- **Shop "no nodes available" edge case:** Now handled - maps generate areas on-demand, so there's always a node to find
 - **Higher tier resale values:** Silver through Obsidium values are estimates (~2.5x scaling), may need tuning
 - **Exact map prices:** Will depend on final contract reward tuning
 - **Reputation usage:** Contracts award reputation, but what reputation unlocks is future work
+
+## Implementation Notes
+
+### SAVE_VERSION
+- Bumped to 2 when adding `pendingNodeDiscoveries` to player state
+- Old saves will load (field is optional) but version should track format changes
+
+### Performance Considerations
+- `findNodeForMap()` uses "corridor" generation (10-60 areas) instead of full distance generation (500+ areas)
+- Areas are generated lazily along a single path, with extras only at target distance
+- BFS pathfinding uses all connections, not just known ones
