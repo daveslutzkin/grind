@@ -55,6 +55,8 @@ import {
   findNodeForMap,
   getNodeMapPrice,
   getAreaMapPrice,
+  ensureCorridorToDistance,
+  findPathUsingAllConnections,
 } from "./contracts.js"
 import {
   consumeTime,
@@ -1345,12 +1347,6 @@ async function* executeBuyMap(state: WorldState, action: BuyMapAction): ActionGe
     const price = getAreaMapPrice(action.targetDistance!)
     state.player.gold -= price
 
-    // Generate areas at target distance if needed and reveal one
-    // For simplicity, we use ensureCorridorToDistance from contracts.ts pattern
-    // But we need to import or duplicate that logic
-    // For now, let's create a simpler implementation:
-    // Find or generate an undiscovered area at the target distance
-
     const targetDistance = action.targetDistance!
     const exploration = state.exploration
 
@@ -1366,70 +1362,56 @@ async function* executeBuyMap(state: WorldState, action: BuyMapAction): ActionGe
       }
     }
 
-    // If no undiscovered area exists, we need to generate one
-    // This is a simplified version - in practice we'd use corridor generation
+    // If no undiscovered area exists, use the corridor endpoint
+    // (ensureCorridorToDistance will create it if needed)
+    const corridorEndpoint = `area-d${targetDistance}-i0`
     if (!targetAreaId) {
-      // Create a placeholder area at target distance
-      const areaId = `area-d${targetDistance}-i0`
-      if (!exploration.areas.has(areaId)) {
-        // Import createAreaPlaceholder and ensureAreaGenerated
-        const { createAreaPlaceholder, ensureAreaGenerated } = await import("./exploration.js")
-        const placeholder = createAreaPlaceholder(targetDistance, 0)
-        exploration.areas.set(placeholder.id, placeholder)
-        const area = exploration.areas.get(areaId)!
-        ensureAreaGenerated(state, area)
-      }
-      targetAreaId = areaId
+      targetAreaId = corridorEndpoint
     }
 
-    // Build path from TOWN to target area
-    // For simplicity, create direct corridor connections
-    const areaIds: string[] = ["TOWN"]
-    const connectionIds: string[] = []
+    // Ensure corridor exists from TOWN to target distance
+    ensureCorridorToDistance(state, targetDistance)
 
-    let prevAreaId = "TOWN"
-    for (let d = 1; d <= targetDistance; d++) {
-      const areaId = `area-d${d}-i0`
-
-      // Ensure area exists
-      if (!exploration.areas.has(areaId)) {
-        const { createAreaPlaceholder, ensureAreaGenerated } = await import("./exploration.js")
-        const placeholder = createAreaPlaceholder(d, 0)
-        exploration.areas.set(placeholder.id, placeholder)
-        const area = exploration.areas.get(areaId)!
-        ensureAreaGenerated(state, area)
-      }
-
-      // Ensure connection exists
+    // If target area differs from corridor endpoint, connect them
+    if (targetAreaId !== corridorEndpoint) {
       const connectionExists = exploration.connections.some(
         (c) =>
-          (c.fromAreaId === prevAreaId && c.toAreaId === areaId) ||
-          (c.fromAreaId === areaId && c.toAreaId === prevAreaId)
+          (c.fromAreaId === corridorEndpoint && c.toAreaId === targetAreaId) ||
+          (c.fromAreaId === targetAreaId && c.toAreaId === corridorEndpoint)
       )
       if (!connectionExists) {
         exploration.connections.push({
-          fromAreaId: prevAreaId,
-          toAreaId: areaId,
+          fromAreaId: corridorEndpoint,
+          toAreaId: targetAreaId,
           travelTimeMultiplier: 1.0,
         })
       }
+    }
 
-      areaIds.push(areaId)
-      // Use the createConnectionId helper
-      const { createConnectionId } = await import("./exploration.js")
-      connectionIds.push(createConnectionId(prevAreaId, areaId))
-      prevAreaId = areaId
+    // Use BFS to find the full path including the connection to target
+    const pathResult = findPathUsingAllConnections(state, "TOWN", targetAreaId)
+
+    if (!pathResult) {
+      // This shouldn't happen since we just ensured the corridor and connection
+      yield {
+        done: true,
+        log: createFailureLog(state, action, "NO_MAPS_AVAILABLE", 0, "path_not_found", {
+          targetDistance,
+          targetAreaId,
+        }),
+      }
+      return
     }
 
     // Reveal all areas in the path
-    for (const areaId of areaIds) {
+    for (const areaId of pathResult.areaIds) {
       if (!exploration.playerState.knownAreaIds.includes(areaId)) {
         exploration.playerState.knownAreaIds.push(areaId)
       }
     }
 
     // Reveal all connections in the path
-    for (const connectionId of connectionIds) {
+    for (const connectionId of pathResult.connectionIds) {
       if (!exploration.playerState.knownConnectionIds.includes(connectionId)) {
         exploration.playerState.knownConnectionIds.push(connectionId)
       }
@@ -1449,7 +1431,7 @@ async function* executeBuyMap(state: WorldState, action: BuyMapAction): ActionGe
         levelUps: mergeLevelUps([], contractsCompleted),
         contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
         rngRolls: [],
-        stateDeltaSummary: `Purchased area map for ${price} gold, revealing path to distance ${targetDistance}`,
+        stateDeltaSummary: `Purchased area map for ${price} gold, revealing path to ${targetAreaId}`,
       },
     }
   }

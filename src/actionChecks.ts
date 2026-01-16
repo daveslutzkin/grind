@@ -30,7 +30,7 @@ import {
 } from "./types.js"
 import { getGuildLocationForSkill, getSkillForGuildLocation } from "./world.js"
 import { hasMasteryUnlock, getSpeedForMaterial, getMaterialMastery } from "./masteryData.js"
-import { MATERIAL_TIERS, getNodeMapPrice, getAreaMapPrice, findNodeForMap } from "./contracts.js"
+import { MATERIAL_TIERS, getNodeMapPrice, getAreaMapPrice } from "./contracts.js"
 
 /**
  * Result of checking action preconditions
@@ -1153,20 +1153,10 @@ export function checkBuyMapAction(state: WorldState, action: BuyMapAction): Acti
       }
     }
 
-    // Check if a map can be generated (node exists)
-    const map = findNodeForMap(action.materialTier, state)
-    if (!map) {
-      return {
-        valid: false,
-        failureType: "NO_MAPS_AVAILABLE",
-        failureReason: "no_undiscovered_nodes",
-        failureContext: {
-          materialTier: action.materialTier,
-        },
-        timeCost: 0,
-        successProbability: 0,
-      }
-    }
+    // Note: We don't check findNodeForMap here because:
+    // 1. It has side effects (generates areas on-demand)
+    // 2. Maps can always be generated (on-demand area generation ensures a node exists)
+    // The defensive check in executeBuyMap handles the edge case
 
     // Valid node map purchase
     return { valid: true, timeCost: 0, successProbability: 1 }

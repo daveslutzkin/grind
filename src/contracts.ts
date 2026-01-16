@@ -119,6 +119,7 @@ export const NODE_MAP_PRICES: Record<string, number> = {
 export function getAreaMapPrice(distance: number): number {
   // Map distance to tier index (1-8 = tier 1, 9-16 = tier 2, etc.)
   const tierIndex = Math.ceil(distance / 8)
+  // Cap at highest tier (Obsidium) for distances > 64
   const tierId = TIER_ORDER[Math.min(tierIndex - 1, TIER_ORDER.length - 1)]
   const nodeMapPrice = NODE_MAP_PRICES[tierId]
   // 60% of node map price
@@ -259,7 +260,7 @@ function getDistanceRangeForTier(tierIndex: number): { min: number; max: number 
  *
  * Returns the IDs of areas in the corridor that were generated/ensured.
  */
-function ensureCorridorToDistance(state: WorldState, targetDistance: number): AreaID[] {
+export function ensureCorridorToDistance(state: WorldState, targetDistance: number): AreaID[] {
   const exploration = state.exploration
   const corridorAreas: AreaID[] = []
 
@@ -402,7 +403,7 @@ function ensureAreasWithMaterial(
  * Find a path between two areas using ALL connections (not just known ones).
  * Returns the path of areas and connections, or null if no path exists.
  */
-function findPathUsingAllConnections(
+export function findPathUsingAllConnections(
   state: WorldState,
   fromAreaId: AreaID,
   toAreaId: AreaID

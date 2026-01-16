@@ -547,9 +547,9 @@ function addMapShopActions(
       const buyMapCheck = checkAction(state, buyMapAction)
 
       if (buyMapCheck.valid) {
-        // Show one "buy <tier> map" action since there could be multiple tiers
+        // Show one generic action since there could be multiple affordable tiers
         actions.push({
-          displayName: "buy <tier> map",
+          displayName: "buy node map",
           timeCost: 0,
           isVariable: false,
           successProbability: 1,
@@ -578,7 +578,7 @@ function addMapShopActions(
 
     if (buyMapCheck.valid) {
       actions.push({
-        displayName: "buy area map <distance>",
+        displayName: "buy area map",
         timeCost: 0,
         isVariable: false,
         successProbability: 1,
