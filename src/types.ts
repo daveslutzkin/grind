@@ -304,6 +304,7 @@ export type ActionType =
   | "FarTravel" // Multi-hop travel to any known reachable area
   | "TravelToLocation"
   | "Leave"
+  | "BuyMap" // Phase 3: Purchase maps from guild shops
 
 export interface MoveAction {
   type: "Move"
@@ -424,6 +425,19 @@ export interface LeaveAction {
   // No parameters - leaves current location to go to null (town square / clearing)
 }
 
+/**
+ * Buy a map from a guild shop (Phase 3: Map Shops)
+ *
+ * Node maps (Mining Guild): Reveal a path to an undiscovered node with specific material
+ * Area maps (Exploration Guild): Reveal an area and its connections at a specific distance
+ */
+export interface BuyMapAction {
+  type: "BuyMap"
+  mapType: "node" | "area"
+  materialTier?: string // For node maps - which material tier to find (e.g., "STONE", "COPPER_ORE")
+  targetDistance?: number // For area maps - distance tier to reveal
+}
+
 export type Action =
   | MoveAction
   | AcceptContractAction
@@ -442,6 +456,7 @@ export type Action =
   | FarTravelAction
   | TravelToLocationAction
   | LeaveAction
+  | BuyMapAction
 
 // ============================================================================
 // Action Tick Types (for generator-based execution)
@@ -547,6 +562,11 @@ export type FailureType =
   | "NOT_ENROLLED"
   | "MATERIAL_NOT_UNLOCKED"
   | "NO_CAREFUL_MATERIALS"
+  // Map shop failure types (Phase 3)
+  | "INSUFFICIENT_GOLD"
+  | "TIER_NOT_UNLOCKED"
+  | "NO_MAPS_AVAILABLE"
+  | "INVALID_MAP_TYPE"
 
 // RNG roll log entry
 export interface RngRoll {

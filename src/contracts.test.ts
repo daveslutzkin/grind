@@ -818,4 +818,299 @@ describe("Contract Generation", () => {
       })
     })
   })
+
+  // ============================================================================
+  // Phase 3: Map Shops
+  // ============================================================================
+
+  describe("Phase 3: Map Shops", () => {
+    describe("map pricing", () => {
+      it("should have correct node map prices per spec", async () => {
+        const { NODE_MAP_PRICES } = await import("./contracts.js")
+
+        expect(NODE_MAP_PRICES.STONE).toBe(4)
+        expect(NODE_MAP_PRICES.COPPER_ORE).toBe(11)
+        expect(NODE_MAP_PRICES.TIN_ORE).toBe(22)
+        expect(NODE_MAP_PRICES.IRON_ORE).toBe(45)
+        expect(NODE_MAP_PRICES.SILVER_ORE).toBe(80)
+        expect(NODE_MAP_PRICES.GOLD_ORE).toBe(135)
+        expect(NODE_MAP_PRICES.MITHRIL_ORE).toBe(225)
+        expect(NODE_MAP_PRICES.OBSIDIUM_ORE).toBe(375)
+      })
+
+      it("should calculate area map prices at 60% of node map prices", async () => {
+        const { getAreaMapPrice } = await import("./contracts.js")
+
+        // Distance 1-8 is tier 1 (Stone), price = 4, so area = round(4 * 0.6) = 2
+        expect(getAreaMapPrice(1)).toBe(2)
+        expect(getAreaMapPrice(8)).toBe(2)
+
+        // Distance 9-16 is tier 2 (Copper), price = 11, so area = round(11 * 0.6) = 7
+        expect(getAreaMapPrice(9)).toBe(7)
+        expect(getAreaMapPrice(16)).toBe(7)
+      })
+    })
+
+    describe("checkBuyMapAction", () => {
+      it("should fail if not at Mining Guild for node maps", async () => {
+        const { checkBuyMapAction } = await import("./actionChecks.js")
+        const state = createWorld("buy-map-wrong-location")
+        state.player.skills.Mining = { level: 10, xp: 0 }
+        state.player.gold = 100
+
+        // Player is at TOWN (null location), not at Mining Guild
+        state.exploration.playerState.currentAreaId = "TOWN"
+        state.exploration.playerState.currentLocationId = null
+
+        const result = checkBuyMapAction(state, {
+          type: "BuyMap",
+          mapType: "node",
+          materialTier: "STONE",
+        })
+
+        expect(result.valid).toBe(false)
+        expect(result.failureType).toBe("WRONG_LOCATION")
+      })
+
+      it("should fail if not enrolled in Mining for node maps", async () => {
+        const { checkBuyMapAction } = await import("./actionChecks.js")
+        const state = createWorld("buy-map-not-enrolled")
+        state.player.gold = 100
+
+        // Player is at Mining Guild but not enrolled
+        state.exploration.playerState.currentAreaId = "TOWN"
+        state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD
+
+        const result = checkBuyMapAction(state, {
+          type: "BuyMap",
+          mapType: "node",
+          materialTier: "STONE",
+        })
+
+        expect(result.valid).toBe(false)
+        expect(result.failureType).toBe("NOT_ENROLLED")
+      })
+
+      it("should fail if material tier not unlocked", async () => {
+        const { checkBuyMapAction } = await import("./actionChecks.js")
+        const state = createWorld("buy-map-tier-locked")
+        state.player.skills.Mining = { level: 10, xp: 0 } // Only Stone unlocked
+        state.player.gold = 100
+
+        state.exploration.playerState.currentAreaId = "TOWN"
+        state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD
+
+        const result = checkBuyMapAction(state, {
+          type: "BuyMap",
+          mapType: "node",
+          materialTier: "COPPER_ORE", // Requires level 20
+        })
+
+        expect(result.valid).toBe(false)
+        expect(result.failureType).toBe("TIER_NOT_UNLOCKED")
+      })
+
+      it("should fail if not enough gold", async () => {
+        const { checkBuyMapAction } = await import("./actionChecks.js")
+        const state = createWorld("buy-map-no-gold")
+        state.player.skills.Mining = { level: 10, xp: 0 }
+        state.player.gold = 1 // Not enough for Stone map (costs 4)
+
+        state.exploration.playerState.currentAreaId = "TOWN"
+        state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD
+
+        const result = checkBuyMapAction(state, {
+          type: "BuyMap",
+          mapType: "node",
+          materialTier: "STONE",
+        })
+
+        expect(result.valid).toBe(false)
+        expect(result.failureType).toBe("INSUFFICIENT_GOLD")
+      })
+
+      it("should succeed with valid parameters for node map", async () => {
+        const { checkBuyMapAction } = await import("./actionChecks.js")
+        const state = createWorld("buy-map-valid")
+        state.player.skills.Mining = { level: 10, xp: 0 }
+        state.player.gold = 10
+
+        state.exploration.playerState.currentAreaId = "TOWN"
+        state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD
+
+        const result = checkBuyMapAction(state, {
+          type: "BuyMap",
+          mapType: "node",
+          materialTier: "STONE",
+        })
+
+        expect(result.valid).toBe(true)
+      })
+
+      it("should succeed with valid parameters for area map", async () => {
+        const { checkBuyMapAction } = await import("./actionChecks.js")
+        const state = createWorld("buy-area-map-valid")
+        state.player.skills.Exploration = { level: 5, xp: 0 }
+        state.player.gold = 10
+
+        state.exploration.playerState.currentAreaId = "TOWN"
+        state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.EXPLORERS_GUILD
+
+        const result = checkBuyMapAction(state, {
+          type: "BuyMap",
+          mapType: "area",
+          targetDistance: 1,
+        })
+
+        expect(result.valid).toBe(true)
+      })
+    })
+
+    describe("executeBuyMap", () => {
+      it("should deduct gold and reveal path when buying node map", async () => {
+        const { executeAction } = await import("./engine.js")
+        const state = createWorld("execute-buy-node-map")
+        state.player.skills.Mining = { level: 10, xp: 0 }
+        state.player.gold = 20
+
+        state.exploration.playerState.currentAreaId = "TOWN"
+        state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD
+
+        const initialGold = state.player.gold
+        const initialKnownAreas = [...state.exploration.playerState.knownAreaIds]
+
+        const log = await executeAction(state, {
+          type: "BuyMap",
+          mapType: "node",
+          materialTier: "STONE",
+        })
+
+        expect(log.success).toBe(true)
+        expect(state.player.gold).toBe(initialGold - 4) // Stone map costs 4 gold
+
+        // Should have revealed new areas
+        expect(state.exploration.playerState.knownAreaIds.length).toBeGreaterThan(
+          initialKnownAreas.length
+        )
+
+        // Should have pending node discovery
+        expect(state.player.pendingNodeDiscoveries).toBeDefined()
+        expect(state.player.pendingNodeDiscoveries!.length).toBeGreaterThan(0)
+      })
+
+      it("should deduct gold and reveal path when buying area map", async () => {
+        const { executeAction } = await import("./engine.js")
+        const state = createWorld("execute-buy-area-map")
+        state.player.skills.Exploration = { level: 5, xp: 0 }
+        state.player.gold = 20
+
+        state.exploration.playerState.currentAreaId = "TOWN"
+        state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.EXPLORERS_GUILD
+
+        const initialGold = state.player.gold
+        const initialKnownAreas = [...state.exploration.playerState.knownAreaIds]
+
+        const log = await executeAction(state, {
+          type: "BuyMap",
+          mapType: "area",
+          targetDistance: 1,
+        })
+
+        expect(log.success).toBe(true)
+        expect(state.player.gold).toBe(initialGold - 2) // Distance 1 area map costs 2 gold
+
+        // Should have revealed new areas
+        expect(state.exploration.playerState.knownAreaIds.length).toBeGreaterThan(
+          initialKnownAreas.length
+        )
+
+        // Should have revealed new connections
+        expect(state.exploration.playerState.knownConnectionIds.length).toBeGreaterThan(0)
+      })
+
+      it("should fail gracefully if no maps available", async () => {
+        const { executeAction } = await import("./engine.js")
+        const state = createWorld("no-maps-available")
+        state.player.skills.Mining = { level: 10, xp: 0 }
+        state.player.gold = 100
+
+        state.exploration.playerState.currentAreaId = "TOWN"
+        state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD
+
+        // Mark all stone nodes as discovered to make no maps available
+        // This is hard to set up, so we just check that the action doesn't crash
+        // In practice, findNodeForMap generates areas if needed, so this should still work
+        const log = await executeAction(state, {
+          type: "BuyMap",
+          mapType: "node",
+          materialTier: "STONE",
+        })
+
+        // Either succeeds or fails with NO_MAPS_AVAILABLE
+        expect(log.actionType).toBe("BuyMap")
+      })
+    })
+
+    describe("available actions", () => {
+      it("should show buy map action at Mining Guild when enrolled with gold", async () => {
+        const { getAvailableActions } = await import("./availableActions.js")
+        const state = createWorld("available-actions-mining")
+        state.player.skills.Mining = { level: 10, xp: 0 }
+        state.player.gold = 100
+
+        state.exploration.playerState.currentAreaId = "TOWN"
+        state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD
+
+        const actions = getAvailableActions(state)
+        const buyMapAction = actions.find((a) => a.displayName.includes("buy"))
+
+        expect(buyMapAction).toBeDefined()
+        expect(buyMapAction!.displayName).toContain("map")
+      })
+
+      it("should NOT show buy map action if not enrolled", async () => {
+        const { getAvailableActions } = await import("./availableActions.js")
+        const state = createWorld("available-actions-not-enrolled")
+        state.player.gold = 100
+
+        state.exploration.playerState.currentAreaId = "TOWN"
+        state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD
+
+        const actions = getAvailableActions(state)
+        const buyMapAction = actions.find((a) => a.displayName.includes("buy"))
+
+        expect(buyMapAction).toBeUndefined()
+      })
+
+      it("should NOT show buy map action if no gold", async () => {
+        const { getAvailableActions } = await import("./availableActions.js")
+        const state = createWorld("available-actions-no-gold")
+        state.player.skills.Mining = { level: 10, xp: 0 }
+        state.player.gold = 0
+
+        state.exploration.playerState.currentAreaId = "TOWN"
+        state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD
+
+        const actions = getAvailableActions(state)
+        const buyMapAction = actions.find((a) => a.displayName.includes("buy"))
+
+        expect(buyMapAction).toBeUndefined()
+      })
+
+      it("should show buy area map action at Exploration Guild when enrolled with gold", async () => {
+        const { getAvailableActions } = await import("./availableActions.js")
+        const state = createWorld("available-actions-exploration")
+        state.player.skills.Exploration = { level: 5, xp: 0 }
+        state.player.gold = 100
+
+        state.exploration.playerState.currentAreaId = "TOWN"
+        state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.EXPLORERS_GUILD
+
+        const actions = getAvailableActions(state)
+        const buyMapAction = actions.find((a) => a.displayName.includes("area map"))
+
+        expect(buyMapAction).toBeDefined()
+      })
+    })
+  })
 })

@@ -6,7 +6,15 @@
  * to ensure consistency.
  */
 
-import type { WorldState, GatherMode, SkillID, Action, GatherAction, CraftAction } from "./types.js"
+import type {
+  WorldState,
+  GatherMode,
+  SkillID,
+  Action,
+  GatherAction,
+  CraftAction,
+  BuyMapAction,
+} from "./types.js"
 import {
   getCurrentAreaId,
   getCurrentLocationId,
@@ -28,6 +36,7 @@ import {
   isConnectionKnown,
 } from "./exploration.js"
 import { getSkillForGuildLocation } from "./world.js"
+import { TIER_ORDER, MATERIAL_TIERS, NODE_MAP_PRICES, getAreaMapPrice } from "./contracts.js"
 
 /**
  * Represents an available action with cost information
@@ -90,6 +99,9 @@ export function getAvailableActions(state: WorldState): AvailableAction[] {
 
       // Accept contracts available at this location
       addContractActions(state, actions, currentLocationId!)
+
+      // Map shop actions (Phase 3)
+      addMapShopActions(state, actions, currentLocation.guildType as SkillID)
     }
   }
 
@@ -497,5 +509,80 @@ function addTurnInCombatTokenAction(state: WorldState, actions: AvailableAction[
       isVariable: false,
       successProbability: 1,
     })
+  }
+}
+
+/**
+ * Add map shop actions at guild halls (Phase 3: Map Shops)
+ *
+ * Mining Guild: Node maps for unlocked material tiers
+ * Exploration Guild: Area maps by distance
+ */
+function addMapShopActions(
+  state: WorldState,
+  actions: AvailableAction[],
+  guildType: SkillID
+): void {
+  if (guildType === "Mining") {
+    // Mining Guild sells node maps
+    const miningLevel = state.player.skills.Mining?.level ?? 0
+    if (miningLevel < 1) return // Must be enrolled
+
+    // Check if player has any gold
+    if (state.player.gold <= 0) return
+
+    // Check if any unlocked tier has a valid map
+    for (const tierId of TIER_ORDER) {
+      const tier = MATERIAL_TIERS[tierId]
+      if (miningLevel < tier.unlockLevel) continue
+
+      const price = NODE_MAP_PRICES[tierId]
+      if (state.player.gold < price) continue
+
+      const buyMapAction: BuyMapAction = {
+        type: "BuyMap",
+        mapType: "node",
+        materialTier: tierId,
+      }
+      const buyMapCheck = checkAction(state, buyMapAction)
+
+      if (buyMapCheck.valid) {
+        // Show one "buy <tier> map" action since there could be multiple tiers
+        actions.push({
+          displayName: "buy <tier> map",
+          timeCost: 0,
+          isVariable: false,
+          successProbability: 1,
+        })
+        return // Only add one buy map action
+      }
+    }
+  } else if (guildType === "Exploration") {
+    // Exploration Guild sells area maps
+    const explorationLevel = state.player.skills.Exploration?.level ?? 0
+    if (explorationLevel < 1) return // Must be enrolled
+
+    // Check if player has any gold
+    if (state.player.gold <= 0) return
+
+    // Check if player can afford at least distance 1 map
+    const minPrice = getAreaMapPrice(1)
+    if (state.player.gold < minPrice) return
+
+    const buyMapAction: BuyMapAction = {
+      type: "BuyMap",
+      mapType: "area",
+      targetDistance: 1,
+    }
+    const buyMapCheck = checkAction(state, buyMapAction)
+
+    if (buyMapCheck.valid) {
+      actions.push({
+        displayName: "buy area map <distance>",
+        timeCost: 0,
+        isVariable: false,
+        successProbability: 1,
+      })
+    }
   }
 }

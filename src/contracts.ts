@@ -89,6 +89,49 @@ const TIER_ORDER = [
   "OBSIDIUM_ORE",
 ]
 
+// Export for use in other modules
+export { TIER_ORDER }
+
+// ============================================================================
+// Phase 3: Map Shop Pricing
+// ============================================================================
+
+/**
+ * Map prices by material tier (Mining Guild node maps)
+ * Per design doc: ~3 contracts worth of gold for early tiers, relatively cheaper for higher
+ */
+export const NODE_MAP_PRICES: Record<string, number> = {
+  STONE: 4,
+  COPPER_ORE: 11,
+  TIN_ORE: 22,
+  IRON_ORE: 45,
+  SILVER_ORE: 80,
+  GOLD_ORE: 135,
+  MITHRIL_ORE: 225,
+  OBSIDIUM_ORE: 375,
+}
+
+/**
+ * Area map prices by distance tier (Exploration Guild)
+ * 60% of equivalent Mining Guild map price (50-70% range per spec)
+ * Distance tier roughly maps to material tier: distance 1-8 = tier 1, 9-16 = tier 2, etc.
+ */
+export function getAreaMapPrice(distance: number): number {
+  // Map distance to tier index (1-8 = tier 1, 9-16 = tier 2, etc.)
+  const tierIndex = Math.ceil(distance / 8)
+  const tierId = TIER_ORDER[Math.min(tierIndex - 1, TIER_ORDER.length - 1)]
+  const nodeMapPrice = NODE_MAP_PRICES[tierId]
+  // 60% of node map price
+  return Math.round(nodeMapPrice * 0.6)
+}
+
+/**
+ * Get the price for a node map of a specific material tier
+ */
+export function getNodeMapPrice(materialTier: string): number | null {
+  return NODE_MAP_PRICES[materialTier] ?? null
+}
+
 // ============================================================================
 // Contract Generation Parameters
 // ============================================================================
@@ -538,6 +581,42 @@ export function findNodeForMap(requiredMaterial: string, state: WorldState): Con
       return {
         targetAreaId: candidate.areaId,
         targetNodeId: candidate.nodeId,
+        connectionIds: pathResult.connectionIds,
+        areaIds: pathResult.areaIds,
+      }
+    }
+  }
+
+  // If candidates exist but are unreachable, create a corridor to the closest one
+  // This can happen when areas exist but have no connections yet
+  if (candidates.length > 0) {
+    const closestCandidate = candidates[0] // Already sorted by distance
+    const targetDistance = closestCandidate.distance
+
+    // Ensure corridor exists to this distance
+    ensureCorridorToDistance(state, targetDistance)
+
+    // Also connect the candidate's area to the corridor if needed
+    const corridorAreaAtDistance = `area-d${targetDistance}-i0`
+    const connectionExists = state.exploration.connections.some(
+      (c) =>
+        (c.fromAreaId === corridorAreaAtDistance && c.toAreaId === closestCandidate.areaId) ||
+        (c.fromAreaId === closestCandidate.areaId && c.toAreaId === corridorAreaAtDistance)
+    )
+    if (!connectionExists && closestCandidate.areaId !== corridorAreaAtDistance) {
+      state.exploration.connections.push({
+        fromAreaId: corridorAreaAtDistance,
+        toAreaId: closestCandidate.areaId,
+        travelTimeMultiplier: 1.0,
+      })
+    }
+
+    // Try again to find path
+    const pathResult = findPathUsingAllConnections(state, "TOWN", closestCandidate.areaId)
+    if (pathResult) {
+      return {
+        targetAreaId: closestCandidate.areaId,
+        targetNodeId: closestCandidate.nodeId,
         connectionIds: pathResult.connectionIds,
         areaIds: pathResult.areaIds,
       }

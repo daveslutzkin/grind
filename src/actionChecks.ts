@@ -14,6 +14,7 @@ import type {
   TurnInCombatTokenAction,
   TravelToLocationAction,
   LeaveAction,
+  BuyMapAction,
   FailureType,
   ItemStack,
   Node,
@@ -29,6 +30,7 @@ import {
 } from "./types.js"
 import { getGuildLocationForSkill, getSkillForGuildLocation } from "./world.js"
 import { hasMasteryUnlock, getSpeedForMaterial, getMaterialMastery } from "./masteryData.js"
+import { MATERIAL_TIERS, getNodeMapPrice, getAreaMapPrice, findNodeForMap } from "./contracts.js"
 
 /**
  * Result of checking action preconditions
@@ -1027,6 +1029,229 @@ export function checkLeaveAction(state: WorldState, _action: LeaveAction): Actio
 }
 
 /**
+ * Check BuyMap action preconditions (Phase 3: Map Shops)
+ *
+ * Node maps (Mining Guild):
+ * - Must be at Mining Guild
+ * - Must be enrolled in Mining
+ * - Material tier must be unlocked (player level >= tier unlock level)
+ * - Must have enough gold
+ *
+ * Area maps (Exploration Guild):
+ * - Must be at Exploration Guild
+ * - Must be enrolled in Exploration
+ * - Must have enough gold
+ */
+export function checkBuyMapAction(state: WorldState, action: BuyMapAction): ActionCheckResult {
+  const currentLocationId = getCurrentLocationId(state)
+
+  if (action.mapType === "node") {
+    // Node maps are sold at Mining Guild
+    const miningGuildLocation = getGuildLocationForSkill("Mining")
+    if (currentLocationId !== miningGuildLocation) {
+      return {
+        valid: false,
+        failureType: "WRONG_LOCATION",
+        failureReason: "must_be_at_mining_guild",
+        failureContext: {
+          requiredLocationId: miningGuildLocation,
+          currentLocationId,
+        },
+        timeCost: 0,
+        successProbability: 0,
+      }
+    }
+
+    // Must be enrolled in Mining
+    const miningLevel = state.player.skills.Mining?.level ?? 0
+    if (miningLevel < 1) {
+      return {
+        valid: false,
+        failureType: "NOT_ENROLLED",
+        failureReason: "must_enrol_in_guild",
+        failureContext: {
+          skill: "Mining",
+          requiredGuild: "Mining Guild",
+        },
+        timeCost: 0,
+        successProbability: 0,
+      }
+    }
+
+    // Material tier must be specified
+    if (!action.materialTier) {
+      return {
+        valid: false,
+        failureType: "INVALID_MAP_TYPE",
+        failureReason: "missing_material_tier",
+        failureContext: {
+          mapType: action.mapType,
+        },
+        timeCost: 0,
+        successProbability: 0,
+      }
+    }
+
+    // Material tier must exist
+    const tier = MATERIAL_TIERS[action.materialTier]
+    if (!tier) {
+      return {
+        valid: false,
+        failureType: "INVALID_MAP_TYPE",
+        failureReason: "unknown_material_tier",
+        failureContext: {
+          materialTier: action.materialTier,
+        },
+        timeCost: 0,
+        successProbability: 0,
+      }
+    }
+
+    // Material tier must be unlocked (player level >= unlock level)
+    if (miningLevel < tier.unlockLevel) {
+      return {
+        valid: false,
+        failureType: "TIER_NOT_UNLOCKED",
+        failureReason: "level_too_low",
+        failureContext: {
+          materialTier: action.materialTier,
+          requiredLevel: tier.unlockLevel,
+          currentLevel: miningLevel,
+        },
+        timeCost: 0,
+        successProbability: 0,
+      }
+    }
+
+    // Get price and check gold
+    const price = getNodeMapPrice(action.materialTier)
+    if (price === null) {
+      return {
+        valid: false,
+        failureType: "INVALID_MAP_TYPE",
+        failureReason: "no_price_for_tier",
+        failureContext: {
+          materialTier: action.materialTier,
+        },
+        timeCost: 0,
+        successProbability: 0,
+      }
+    }
+
+    if (state.player.gold < price) {
+      return {
+        valid: false,
+        failureType: "INSUFFICIENT_GOLD",
+        failureReason: "not_enough_gold",
+        failureContext: {
+          required: price,
+          current: state.player.gold,
+          materialTier: action.materialTier,
+        },
+        timeCost: 0,
+        successProbability: 0,
+      }
+    }
+
+    // Check if a map can be generated (node exists)
+    const map = findNodeForMap(action.materialTier, state)
+    if (!map) {
+      return {
+        valid: false,
+        failureType: "NO_MAPS_AVAILABLE",
+        failureReason: "no_undiscovered_nodes",
+        failureContext: {
+          materialTier: action.materialTier,
+        },
+        timeCost: 0,
+        successProbability: 0,
+      }
+    }
+
+    // Valid node map purchase
+    return { valid: true, timeCost: 0, successProbability: 1 }
+  } else if (action.mapType === "area") {
+    // Area maps are sold at Exploration Guild
+    const explorationGuildLocation = getGuildLocationForSkill("Exploration")
+    if (currentLocationId !== explorationGuildLocation) {
+      return {
+        valid: false,
+        failureType: "WRONG_LOCATION",
+        failureReason: "must_be_at_exploration_guild",
+        failureContext: {
+          requiredLocationId: explorationGuildLocation,
+          currentLocationId,
+        },
+        timeCost: 0,
+        successProbability: 0,
+      }
+    }
+
+    // Must be enrolled in Exploration
+    const explorationLevel = state.player.skills.Exploration?.level ?? 0
+    if (explorationLevel < 1) {
+      return {
+        valid: false,
+        failureType: "NOT_ENROLLED",
+        failureReason: "must_enrol_in_guild",
+        failureContext: {
+          skill: "Exploration",
+          requiredGuild: "Exploration Guild",
+        },
+        timeCost: 0,
+        successProbability: 0,
+      }
+    }
+
+    // Target distance must be specified
+    if (!action.targetDistance || action.targetDistance < 1) {
+      return {
+        valid: false,
+        failureType: "INVALID_MAP_TYPE",
+        failureReason: "missing_or_invalid_target_distance",
+        failureContext: {
+          targetDistance: action.targetDistance,
+        },
+        timeCost: 0,
+        successProbability: 0,
+      }
+    }
+
+    // Get price and check gold
+    const price = getAreaMapPrice(action.targetDistance)
+    if (state.player.gold < price) {
+      return {
+        valid: false,
+        failureType: "INSUFFICIENT_GOLD",
+        failureReason: "not_enough_gold",
+        failureContext: {
+          required: price,
+          current: state.player.gold,
+          targetDistance: action.targetDistance,
+        },
+        timeCost: 0,
+        successProbability: 0,
+      }
+    }
+
+    // Valid area map purchase
+    return { valid: true, timeCost: 0, successProbability: 1 }
+  }
+
+  // Unknown map type
+  return {
+    valid: false,
+    failureType: "INVALID_MAP_TYPE",
+    failureReason: "unknown_map_type",
+    failureContext: {
+      mapType: action.mapType,
+    },
+    timeCost: 0,
+    successProbability: 0,
+  }
+}
+
+/**
  * Check any action's preconditions
  */
 export function checkAction(state: WorldState, action: Action): ActionCheckResult {
@@ -1055,6 +1280,8 @@ export function checkAction(state: WorldState, action: Action): ActionCheckResul
       return checkTravelToLocationAction(state, action)
     case "Leave":
       return checkLeaveAction(state, action)
+    case "BuyMap":
+      return checkBuyMapAction(state, action)
     // Movement and exploration actions have their own validation in exploration.ts/engine.ts
     case "Move":
     case "Survey":

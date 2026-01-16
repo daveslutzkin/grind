@@ -12,7 +12,7 @@ This replaces the current hardcoded contract system with a dynamic, level-approp
 
 - **Phase 1: Core Contract System** - ✅ COMPLETE
 - **Phase 2: Maps with Contracts** - ✅ COMPLETE
-- **Phase 3: Map Shops** - NOT STARTED
+- **Phase 3: Map Shops** - ✅ COMPLETE
 
 ---
 
@@ -219,7 +219,7 @@ interface Contract {
 
 ---
 
-## Phase 3: Map Shops
+## Phase 3: Map Shops ✅ COMPLETE
 
 ### 3.1 Mining Guild Shop
 
@@ -341,22 +341,24 @@ interface BuyMapAction {
 5. ✅ Implement on-demand area generation for distant materials
 6. ✅ Add tests
 
-### Phase 3 (Shops) - NOT STARTED
-1. Add BuyMap action type
-2. Implement Mining Guild shop
-3. Implement Explorers Guild shop
-4. Add pricing logic
-5. Add tests
+### Phase 3 (Shops) ✅ COMPLETE
+1. ✅ Add BuyMap action type
+2. ✅ Implement Mining Guild shop
+3. ✅ Implement Explorers Guild shop
+4. ✅ Add pricing logic
+5. ✅ Add tests
 
 ---
 
 ## Open Questions / Future Work
 
 - **Aspirational slot regeneration timing:** Exact probability/frequency TBD
-- **Shop "no nodes available" edge case:** Now handled - maps generate areas on-demand, so there's always a node to find
 - **Higher tier resale values:** Silver through Obsidium values are estimates (~2.5x scaling), may need tuning
-- **Exact map prices:** Will depend on final contract reward tuning
 - **Reputation usage:** Contracts award reputation, but what reputation unlocks is future work
+
+### Resolved
+- ✅ **Shop "no nodes available" edge case:** Maps generate areas on-demand, so there's always a node to find
+- ✅ **Exact map prices:** Implemented as: Stone=4, Copper=11, Tin=22, Iron=45, Silver=80, Gold=135, Mithril=225, Obsidium=375
 
 ## Implementation Notes
 
