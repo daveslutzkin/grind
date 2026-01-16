@@ -185,6 +185,16 @@ export interface KillRequirement {
 
 export type ContractSlot = "at-level" | "aspirational"
 
+/**
+ * A map bundled with a contract that reveals an area and node
+ * Part of Phase 2: Maps with Contracts
+ */
+export interface ContractMap {
+  targetAreaId: AreaID // The area containing the target node
+  targetNodeId: NodeID // The specific node to be discovered on arrival
+  connectionId: string // The connection to reveal (format: "areaId1->areaId2")
+}
+
 export interface Contract {
   id: ContractID
   level: number // Contract level - determines which guild halls can offer it
@@ -197,6 +207,7 @@ export interface Contract {
   xpReward?: { skill: SkillID; amount: number }
   goldReward?: number // Gold reward for completing the contract
   slot?: ContractSlot // Which slot this contract fills (at-level or aspirational)
+  includedMap?: ContractMap // Optional map bundled with the contract (Phase 2)
 }
 
 export interface RngState {
@@ -221,6 +232,8 @@ export interface WorldState {
     contractKillProgress: Record<ContractID, Record<string, number>>
     appraisedNodeIds: NodeID[] // Nodes that have been appraised (show full details)
     gatheringLuckDelta: number // Cumulative ticks saved/lost from gathering variance
+    // Phase 2: Maps - pending node discoveries to be revealed on area arrival
+    pendingNodeDiscoveries?: { areaId: AreaID; nodeLocationId: string }[]
   }
 
   world: {

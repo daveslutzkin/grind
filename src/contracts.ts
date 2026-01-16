@@ -5,9 +5,18 @@
  * hardcoded contract system. Contracts reward money instead of raw materials.
  */
 
-import type { Contract, RngState, ContractID, ContractSlot, WorldState } from "./types.js"
+import type {
+  Contract,
+  RngState,
+  ContractID,
+  ContractSlot,
+  WorldState,
+  ContractMap,
+  AreaID,
+} from "./types.js"
 import { rollFloat } from "./rng.js"
 import { TOWN_LOCATIONS } from "./world.js"
+import { createConnectionId, findConnection } from "./exploration.js"
 
 // ============================================================================
 // Material Tier Definitions
@@ -59,6 +68,7 @@ const TIER_ORDER = [
 export interface ContractGenerationParams {
   playerMiningLevel: number
   rng: RngState
+  state?: WorldState // Optional state for Phase 2 map generation
 }
 
 // ============================================================================
@@ -145,6 +155,141 @@ export function rollBounty(rng: RngState): number {
   }
 }
 
+// ============================================================================
+// Phase 2: Map Inclusion Logic
+// ============================================================================
+
+/**
+ * Determine if a map should be included with a contract
+ *
+ * Per design doc section 2.2:
+ * - Early game (L1-19): Always include a map
+ * - Later (L20+): Include map only if player doesn't know any nodes containing the required material
+ */
+export function shouldIncludeMap(
+  playerLevel: number,
+  requiredMaterial: string,
+  state: WorldState
+): boolean {
+  // Early game: always include a map
+  if (playerLevel < 20) {
+    return true
+  }
+
+  // L20+: Include map only if player doesn't know any nodes with the material
+  const knownLocationIds = new Set(state.exploration.playerState.knownLocationIds)
+
+  // Check if player knows any nodes containing this material
+  for (const node of state.world.nodes) {
+    const hasMaterial = node.materials.some((m) => m.materialId === requiredMaterial)
+    if (!hasMaterial) continue
+
+    // Check if the node's location is known
+    // Location ID format: {areaId}-{nodeType}-loc-{index}
+    // Node ID format: {areaId}-node-{index}
+    const nodeMatch = node.nodeId.match(/^(.+)-node-(\d+)$/)
+    if (!nodeMatch) continue
+
+    const [, areaId, index] = nodeMatch
+    const locationId = `${areaId}-ORE_VEIN-loc-${index}`
+
+    if (knownLocationIds.has(locationId)) {
+      // Player knows a node with this material
+      return false
+    }
+  }
+
+  // Player doesn't know any nodes with this material
+  return true
+}
+
+/**
+ * Find a suitable undiscovered node for a contract map
+ *
+ * Per design doc section 2.2:
+ * - Search undiscovered nodes in world
+ * - Must contain the required material
+ * - Must be reachable (connection path exists, even if not yet discovered)
+ * - Prefer closer nodes (lower distance)
+ */
+export function findNodeForMap(requiredMaterial: string, state: WorldState): ContractMap | null {
+  const knownLocationIds = new Set(state.exploration.playerState.knownLocationIds)
+
+  // Collect candidate nodes with their area distances
+  const candidates: Array<{
+    nodeId: string
+    areaId: AreaID
+    locationId: string
+    distance: number
+  }> = []
+
+  for (const node of state.world.nodes) {
+    // Check if node contains the required material
+    const hasMaterial = node.materials.some((m) => m.materialId === requiredMaterial)
+    if (!hasMaterial) continue
+
+    // Get the location ID for this node
+    const nodeMatch = node.nodeId.match(/^(.+)-node-(\d+)$/)
+    if (!nodeMatch) continue
+
+    const [, areaId, index] = nodeMatch
+    const locationId = `${areaId}-ORE_VEIN-loc-${index}`
+
+    // Skip if already discovered
+    if (knownLocationIds.has(locationId)) continue
+
+    // Get area distance
+    const area = state.exploration.areas.get(areaId)
+    if (!area) continue
+
+    candidates.push({
+      nodeId: node.nodeId,
+      areaId,
+      locationId,
+      distance: area.distance,
+    })
+  }
+
+  if (candidates.length === 0) {
+    return null
+  }
+
+  // Sort by distance (prefer closer nodes)
+  candidates.sort((a, b) => a.distance - b.distance)
+
+  // Select the closest candidate
+  const selected = candidates[0]
+
+  // Find the connection to this area from TOWN or a known area
+  // For simplicity, we'll create a connection from TOWN if one exists
+  let connectionId: string | null = null
+
+  // Try to find a connection from TOWN to the target area
+  const conn = findConnection(state.exploration.connections, "TOWN", selected.areaId)
+  if (conn) {
+    connectionId = createConnectionId(conn.fromAreaId, conn.toAreaId)
+  } else {
+    // Try to find any connection that reaches this area
+    for (const conn of state.exploration.connections) {
+      if (conn.toAreaId === selected.areaId || conn.fromAreaId === selected.areaId) {
+        connectionId = createConnectionId(conn.fromAreaId, conn.toAreaId)
+        break
+      }
+    }
+  }
+
+  if (!connectionId) {
+    // No connection found - this shouldn't happen in a properly generated world
+    return null
+  }
+
+  return {
+    targetAreaId: selected.areaId,
+    targetNodeId: selected.nodeId,
+    connectionId,
+  }
+}
+
 // Contract ID counter for unique IDs
 let contractIdCounter = 0
 
@@ -179,7 +324,7 @@ export function generateMiningContract(
   slot: ContractSlot,
   params: ContractGenerationParams
 ): MiningContract | null {
-  const { playerMiningLevel, rng } = params
+  const { playerMiningLevel, rng, state } = params
 
   // Determine which material tier to use
   const currentTierId = getMaterialTierForLevel(playerMiningLevel)
@@ -221,6 +366,14 @@ export function generateMiningContract(
     slot,
   }
 
+  // Phase 2: Include map if appropriate
+  if (state && shouldIncludeMap(playerMiningLevel, tier.materialId, state)) {
+    const map = findNodeForMap(tier.materialId, state)
+    if (map) {
+      contract.includedMap = map
+    }
+  }
+
   return contract
 }
 
@@ -257,6 +410,7 @@ export function refreshMiningContracts(state: WorldState, slot?: ContractSlot): 
   const params: ContractGenerationParams = {
     playerMiningLevel,
     rng: state.rng,
+    state, // Include state for Phase 2 map generation
   }
 
   if (slot) {

@@ -255,8 +255,34 @@ async function* executeAcceptContract(
   // Accept contract
   state.player.activeContracts.push(contractId)
 
-  // If this is a mining contract, refresh the slot with a new contract
+  // Get contract for map redemption and slot refresh
   const contract = state.world.contracts.find((c) => c.id === contractId)
+
+  // Phase 2: Redeem included map if present
+  if (contract?.includedMap) {
+    const map = contract.includedMap
+
+    // Reveal the area (add to knownAreaIds)
+    if (!state.exploration.playerState.knownAreaIds.includes(map.targetAreaId)) {
+      state.exploration.playerState.knownAreaIds.push(map.targetAreaId)
+    }
+
+    // Reveal the connection (add to knownConnectionIds)
+    if (!state.exploration.playerState.knownConnectionIds.includes(map.connectionId)) {
+      state.exploration.playerState.knownConnectionIds.push(map.connectionId)
+    }
+
+    // Store pending node discovery for later (when player arrives at area)
+    if (!state.player.pendingNodeDiscoveries) {
+      state.player.pendingNodeDiscoveries = []
+    }
+    state.player.pendingNodeDiscoveries.push({
+      areaId: map.targetAreaId,
+      nodeLocationId: map.targetNodeId,
+    })
+  }
+
+  // If this is a mining contract, refresh the slot with a new contract
   if (contract?.guildType === "Mining" && contract.slot) {
     refreshMiningContracts(state, contract.slot)
   }

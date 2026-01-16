@@ -809,6 +809,47 @@ export function getKnowledgeParams(
 }
 
 // ============================================================================
+// Phase 2: Pending Node Discovery Processing
+// ============================================================================
+
+/**
+ * Process pending node discoveries for the current area.
+ * When a player arrives at an area with a pending discovery (from a map),
+ * the node location is automatically discovered.
+ */
+export function processPendingNodeDiscoveries(state: WorldState): void {
+  const pendingDiscoveries = state.player.pendingNodeDiscoveries
+  if (!pendingDiscoveries || pendingDiscoveries.length === 0) return
+
+  const currentAreaId = state.exploration.playerState.currentAreaId
+
+  // Find all pending discoveries for this area
+  const toProcess = pendingDiscoveries.filter((p) => p.areaId === currentAreaId)
+
+  for (const pending of toProcess) {
+    // Convert node ID to location ID
+    // Node ID format: {areaId}-node-{index}
+    // Location ID format: {areaId}-{nodeType}-loc-{index}
+    const nodeMatch = pending.nodeLocationId.match(/^(.+)-node-(\d+)$/)
+    if (!nodeMatch) continue
+
+    const [, , index] = nodeMatch
+    const locationId = `${pending.areaId}-ORE_VEIN-loc-${index}`
+
+    // Add to known locations if not already known
+    if (!state.exploration.playerState.knownLocationIds.includes(locationId)) {
+      state.exploration.playerState.knownLocationIds.push(locationId)
+    }
+
+    // Remove from pending discoveries
+    const pendingIndex = pendingDiscoveries.indexOf(pending)
+    if (pendingIndex !== -1) {
+      pendingDiscoveries.splice(pendingIndex, 1)
+    }
+  }
+}
+
+// ============================================================================
 // Survey Action
 // ============================================================================
 
@@ -1605,6 +1646,9 @@ export async function* executeExplorationTravel(
   const destArea = exploration.areas.get(destinationAreaId)!
   await ensureAreaFullyGenerated(state, destArea)
 
+  // Phase 2: Process pending node discoveries from maps
+  processPendingNodeDiscoveries(state)
+
   // TODO: Scavenge rolls for gathering drops (future implementation)
 
   const areaDisplayName = getAreaDisplayName(destinationAreaId, destArea)
@@ -1705,6 +1749,9 @@ export async function* executeFarTravel(
   // Ensure destination area is fully generated (content + connections + name)
   const destArea = exploration.areas.get(destinationAreaId)!
   await ensureAreaFullyGenerated(state, destArea)
+
+  // Phase 2: Process pending node discoveries from maps
+  processPendingNodeDiscoveries(state)
 
   // TODO: Scavenge rolls for gathering drops (future implementation)
 

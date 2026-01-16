@@ -13,6 +13,7 @@ import {
   initializeMiningContracts,
 } from "./contracts.js"
 import { createRng } from "./rng.js"
+import { NodeType, ExplorationLocationType } from "./types.js"
 
 describe("Contract Generation", () => {
   describe("MATERIAL_TIERS constant", () => {
@@ -442,6 +443,373 @@ describe("Contract Generation", () => {
       expect(completions).toHaveLength(1)
       expect(completions[0].goldEarned).toBe(contract!.goldReward)
       expect(state.player.gold).toBe(contract!.goldReward)
+    })
+  })
+
+  // ============================================================================
+  // Phase 2: Maps with Contracts
+  // ============================================================================
+
+  describe("Phase 2: Maps with Contracts", () => {
+    describe("shouldIncludeMap", () => {
+      it("should always include a map for early game players (L1-19)", async () => {
+        const { shouldIncludeMap } = await import("./contracts.js")
+        const state = createWorld("early-game-map-test")
+        state.player.skills.Mining = { level: 5, xp: 0 }
+
+        // Early game should always include map regardless of known nodes
+        expect(shouldIncludeMap(5, "STONE", state)).toBe(true)
+        expect(shouldIncludeMap(1, "STONE", state)).toBe(true)
+        expect(shouldIncludeMap(19, "STONE", state)).toBe(true)
+      })
+
+      it("should include a map for L20+ players if they do not know any nodes with the material", async () => {
+        const { shouldIncludeMap } = await import("./contracts.js")
+        const state = createWorld("no-known-nodes-test")
+        state.player.skills.Mining = { level: 25, xp: 0 }
+
+        // Player doesn't know any copper ore nodes, so map should be included
+        expect(shouldIncludeMap(25, "COPPER_ORE", state)).toBe(true)
+      })
+
+      it("should NOT include a map for L20+ players if they know a node with the material", async () => {
+        const { shouldIncludeMap } = await import("./contracts.js")
+        const state = createWorld("known-nodes-test")
+        state.player.skills.Mining = { level: 25, xp: 0 }
+
+        // Create a node with COPPER_ORE
+        const testAreaId = "area-d1-i0"
+        const testNodeId = `${testAreaId}-node-0`
+        const testLocationId = `${testAreaId}-ORE_VEIN-loc-0`
+        state.world.nodes.push({
+          nodeId: testNodeId,
+          nodeType: NodeType.ORE_VEIN,
+          areaId: testAreaId,
+          materials: [
+            {
+              materialId: "COPPER_ORE",
+              remainingUnits: 10,
+              maxUnitsInitial: 10,
+              requiresSkill: "Mining",
+              requiredLevel: 20,
+              tier: 2,
+            },
+          ],
+          depleted: false,
+        })
+
+        // Mark the location as known
+        state.exploration.playerState.knownLocationIds.push(testLocationId)
+
+        // Player knows a copper node, so map should NOT be included
+        expect(shouldIncludeMap(25, "COPPER_ORE", state)).toBe(false)
+      })
+    })
+
+    describe("findNodeForMap", () => {
+      it("should find an undiscovered node containing the required material", async () => {
+        const { findNodeForMap } = await import("./contracts.js")
+        const state = createWorld("find-node-test")
+        state.player.skills.Mining = { level: 10, xp: 0 }
+
+        // Create a discoverable node with STONE
+        const testAreaId = "area-d1-i0"
+        const testNodeId = `${testAreaId}-node-0`
+        const testLocationId = `${testAreaId}-ORE_VEIN-loc-0`
+        state.world.nodes.push({
+          nodeId: testNodeId,
+          nodeType: NodeType.ORE_VEIN,
+          areaId: testAreaId,
+          materials: [
+            {
+              materialId: "STONE",
+              remainingUnits: 10,
+              maxUnitsInitial: 10,
+              requiresSkill: "Mining",
+              requiredLevel: 1,
+              tier: 1,
+            },
+          ],
+          depleted: false,
+        })
+
+        // Make sure the area exists in exploration
+        if (!state.exploration.areas.has(testAreaId)) {
+          state.exploration.areas.set(testAreaId, {
+            id: testAreaId,
+            distance: 1,
+            generated: true,
+            locations: [
+              {
+                id: testLocationId,
+                areaId: testAreaId,
+                type: ExplorationLocationType.GATHERING_NODE,
+                gatheringSkillType: "Mining",
+              },
+            ],
+            indexInDistance: 0,
+          })
+        }
+
+        const result = findNodeForMap("STONE", state)
+
+        expect(result).not.toBeNull()
+        expect(result!.targetAreaId).toBe(testAreaId)
+        expect(result!.targetNodeId).toBe(testNodeId)
+      })
+
+      it("should return null if no suitable node exists", async () => {
+        const { findNodeForMap } = await import("./contracts.js")
+        const state = createWorld("no-suitable-node-test")
+        state.player.skills.Mining = { level: 10, xp: 0 }
+
+        // No nodes with OBSIDIUM_ORE exist in a fresh world
+        const result = findNodeForMap("OBSIDIUM_ORE", state)
+        expect(result).toBeNull()
+      })
+
+      it("should not return already discovered nodes", async () => {
+        const { findNodeForMap } = await import("./contracts.js")
+        const state = createWorld("already-discovered-test")
+        state.player.skills.Mining = { level: 10, xp: 0 }
+
+        // Create a discoverable node with STONE
+        const testAreaId = "area-d1-i0"
+        const testNodeId = `${testAreaId}-node-0`
+        const testLocationId = `${testAreaId}-ORE_VEIN-loc-0`
+        state.world.nodes.push({
+          nodeId: testNodeId,
+          nodeType: NodeType.ORE_VEIN,
+          areaId: testAreaId,
+          materials: [
+            {
+              materialId: "STONE",
+              remainingUnits: 10,
+              maxUnitsInitial: 10,
+              requiresSkill: "Mining",
+              requiredLevel: 1,
+              tier: 1,
+            },
+          ],
+          depleted: false,
+        })
+
+        // Make sure the area exists in exploration
+        if (!state.exploration.areas.has(testAreaId)) {
+          state.exploration.areas.set(testAreaId, {
+            id: testAreaId,
+            distance: 1,
+            generated: true,
+            locations: [
+              {
+                id: testLocationId,
+                areaId: testAreaId,
+                type: ExplorationLocationType.GATHERING_NODE,
+                gatheringSkillType: "Mining",
+              },
+            ],
+            indexInDistance: 0,
+          })
+        }
+
+        // Mark the location as already discovered
+        state.exploration.playerState.knownLocationIds.push(testLocationId)
+
+        const result = findNodeForMap("STONE", state)
+        // Should not return the already-discovered node
+        // It may return a different node or null if none available
+        if (result !== null) {
+          expect(result.targetNodeId).not.toBe(testNodeId)
+        }
+      })
+    })
+
+    describe("contract with map generation", () => {
+      it("should include a map for early game contracts", async () => {
+        const { generateMiningContract, resetContractIdCounter, findNodeForMap, shouldIncludeMap } =
+          await import("./contracts.js")
+        resetContractIdCounter()
+
+        const state = createWorld("contract-map-generation")
+        state.player.skills.Mining = { level: 5, xp: 0 }
+
+        // Set up a stone node in an area that can be reached
+        const testAreaId = "area-d1-i0"
+
+        // Ensure the area exists in exploration
+        if (!state.exploration.areas.has(testAreaId)) {
+          state.exploration.areas.set(testAreaId, {
+            id: testAreaId,
+            distance: 1,
+            generated: true,
+            locations: [
+              {
+                id: `${testAreaId}-ORE_VEIN-loc-0`,
+                areaId: testAreaId,
+                type: ExplorationLocationType.GATHERING_NODE,
+                gatheringSkillType: "Mining",
+              },
+            ],
+            indexInDistance: 0,
+          })
+        }
+
+        // Ensure a connection exists from TOWN to this area
+        const hasConnection = state.exploration.connections.some(
+          (c) =>
+            (c.fromAreaId === "TOWN" && c.toAreaId === testAreaId) ||
+            (c.fromAreaId === testAreaId && c.toAreaId === "TOWN")
+        )
+        if (!hasConnection) {
+          state.exploration.connections.push({
+            fromAreaId: "TOWN",
+            toAreaId: testAreaId,
+            travelTimeMultiplier: 1.0,
+          })
+        }
+
+        // Create the node with STONE
+        state.world.nodes.push({
+          nodeId: `${testAreaId}-node-0`,
+          nodeType: NodeType.ORE_VEIN,
+          areaId: testAreaId,
+          materials: [
+            {
+              materialId: "STONE",
+              remainingUnits: 10,
+              maxUnitsInitial: 10,
+              requiresSkill: "Mining",
+              requiredLevel: 1,
+              tier: 1,
+            },
+          ],
+          depleted: false,
+        })
+
+        // Debug: Check if shouldIncludeMap returns true
+        const shouldInclude = shouldIncludeMap(5, "STONE", state)
+        expect(shouldInclude).toBe(true)
+
+        // Debug: Check if findNodeForMap finds the node
+        const map = findNodeForMap("STONE", state)
+        expect(map).not.toBeNull()
+        expect(map!.targetAreaId).toBe(testAreaId)
+
+        const contract = generateMiningContract("at-level", {
+          playerMiningLevel: 5,
+          rng: state.rng,
+          state,
+        })
+
+        expect(contract).not.toBeNull()
+        expect(contract!.includedMap).toBeDefined()
+      })
+    })
+
+    describe("map redemption on contract accept", () => {
+      it("should reveal connection and area when accepting contract with map", async () => {
+        const { executeAction } = await import("./engine.js")
+        const { refreshMiningContracts } = await import("./contracts.js")
+
+        const state = createWorld("map-redemption-test")
+        state.player.skills.Mining = { level: 5, xp: 0 }
+
+        // Generate mining contracts with maps
+        refreshMiningContracts(state)
+
+        // Find the at-level contract
+        const contract = state.world.contracts.find(
+          (c) => c.guildType === "Mining" && c.slot === "at-level"
+        )
+        expect(contract).toBeDefined()
+        expect(contract!.includedMap).toBeDefined()
+
+        const map = contract!.includedMap!
+        const contractId = contract!.id
+
+        // Go to miners guild and accept the contract
+        state.exploration.playerState.currentAreaId = "TOWN"
+        state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD
+
+        const acceptLog = await executeAction(state, {
+          type: "AcceptContract",
+          contractId,
+        })
+        expect(acceptLog.success).toBe(true)
+
+        // The map's area and connection should now be known
+        expect(state.exploration.playerState.knownAreaIds).toContain(map.targetAreaId)
+
+        // The connection should be known
+        const hasConnection = state.exploration.playerState.knownConnectionIds.some(
+          (connId) => connId.includes(map.targetAreaId) || connId === map.connectionId
+        )
+        expect(hasConnection).toBe(true)
+
+        // Pending node discovery should be registered
+        expect(state.player.pendingNodeDiscoveries).toBeDefined()
+        expect(state.player.pendingNodeDiscoveries!.length).toBeGreaterThan(0)
+        expect(
+          state.player.pendingNodeDiscoveries!.some(
+            (p) => p.areaId === map.targetAreaId && p.nodeLocationId === map.targetNodeId
+          )
+        ).toBe(true)
+      })
+    })
+
+    describe("node discovery on area arrival", () => {
+      it("should auto-discover node when arriving at area with pending discovery", async () => {
+        const { executeAction } = await import("./engine.js")
+        const { refreshMiningContracts } = await import("./contracts.js")
+
+        const state = createWorld("node-auto-discovery-test")
+        state.player.skills.Mining = { level: 5, xp: 0 }
+        state.player.skills.Exploration = { level: 1, xp: 0 } // Need exploration for travel
+
+        // Generate mining contracts with maps
+        refreshMiningContracts(state)
+
+        // Find the at-level contract with a map
+        const contract = state.world.contracts.find(
+          (c) => c.guildType === "Mining" && c.slot === "at-level" && c.includedMap
+        )
+        expect(contract).toBeDefined()
+
+        const map = contract!.includedMap!
+        const contractId = contract!.id
+
+        // Accept the contract to redeem the map
+        state.exploration.playerState.currentAreaId = "TOWN"
+        state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD
+
+        await executeAction(state, {
+          type: "AcceptContract",
+          contractId,
+        })
+
+        // The connection should now be known
+        expect(state.exploration.playerState.knownAreaIds).toContain(map.targetAreaId)
+
+        // Travel to the target area (using FarTravel since connection is now known)
+        await executeAction(state, {
+          type: "FarTravel",
+          destinationAreaId: map.targetAreaId,
+        })
+
+        // Verify we arrived
+        expect(state.exploration.playerState.currentAreaId).toBe(map.targetAreaId)
+
+        // The node location should now be discovered
+        const nodeLocationId = map.targetNodeId.replace("-node-", "-ORE_VEIN-loc-")
+        expect(state.exploration.playerState.knownLocationIds).toContain(nodeLocationId)
+
+        // The pending discovery should be consumed
+        expect(
+          state.player.pendingNodeDiscoveries!.some(
+            (p) => p.areaId === map.targetAreaId && p.nodeLocationId === map.targetNodeId
+          )
+        ).toBe(false)
+      })
     })
   })
 })
