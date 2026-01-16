@@ -183,6 +183,7 @@ export function checkAcceptContractAction(
     }
   }
 
+  // Check if same contract is already active
   if (state.player.activeContracts.includes(action.contractId)) {
     return {
       valid: false,
@@ -190,6 +191,21 @@ export function checkAcceptContractAction(
       failureReason: "already_active",
       failureContext: {
         contractId: action.contractId,
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
+  }
+
+  // Player can only have one active contract at a time (spec section 1.4)
+  if (state.player.activeContracts.length > 0) {
+    return {
+      valid: false,
+      failureType: "ALREADY_HAS_CONTRACT",
+      failureReason: "one_contract_limit",
+      failureContext: {
+        currentContractId: state.player.activeContracts[0],
+        attemptedContractId: action.contractId,
       },
       timeCost: 0,
       successProbability: 0,

@@ -220,6 +220,11 @@ export function formatWorldState(state: WorldState): string {
     })
   lines.push(`Skills: ${enrolledSkills.length > 0 ? enrolledSkills.join(", ") : "none"}`)
 
+  // Show player gold if non-zero
+  if (state.player.gold > 0) {
+    lines.push(`Gold: ${state.player.gold}`)
+  }
+
   // Show cumulative gathering luck if non-zero
   if (state.player.gatheringLuckDelta !== 0) {
     const luck = state.player.gatheringLuckDelta
@@ -266,8 +271,11 @@ export function formatWorldState(state: WorldState): string {
     const contractStr = contracts
       .map((c) => {
         const reqs = c.requirements.map((r) => `${r.quantity} ${r.itemId}`).join("+")
-        const rewards = c.rewards.map((r) => `${r.quantity} ${r.itemId}`).join("+")
-        return `${c.id} (${reqs} → ${rewards}, +${c.reputationReward} rep)`
+        // Show goldReward for mining contracts, item rewards for others
+        const rewardStr = c.goldReward
+          ? `${c.goldReward.toFixed(1)} gold`
+          : c.rewards.map((r) => `${r.quantity} ${r.itemId}`).join("+")
+        return `${c.id} (${reqs} → ${rewardStr}, +${c.reputationReward} rep)`
       })
       .join("; ")
     lines.push(`Contracts: ${contractStr}`)
@@ -841,8 +849,14 @@ export function formatActionLog(log: ActionLog, state?: WorldState): string {
   // Contracts completed
   if (log.contractsCompleted && log.contractsCompleted.length > 0) {
     for (const cc of log.contractsCompleted) {
-      const rewards = cc.rewardsGranted.map((r) => `${r.quantity} ${r.itemId}`).join(", ")
-      lines.push(`  CONTRACT DONE: ${cc.contractId} → ${rewards}, +${cc.reputationGained} rep`)
+      // Show goldEarned for mining contracts, item rewards for others
+      let rewardStr: string
+      if (cc.goldEarned) {
+        rewardStr = `${cc.goldEarned.toFixed(1)} gold`
+      } else {
+        rewardStr = cc.rewardsGranted.map((r) => `${r.quantity} ${r.itemId}`).join(", ")
+      }
+      lines.push(`  CONTRACT DONE: ${cc.contractId} → ${rewardStr}, +${cc.reputationGained} rep`)
     }
   }
 

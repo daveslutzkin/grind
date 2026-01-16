@@ -135,7 +135,6 @@ describe("Contract Generation", () => {
 
       const contract = generateMiningContract("at-level", {
         playerMiningLevel: 10,
-        existingContracts: [],
         rng: state.rng,
       })
 
@@ -155,7 +154,6 @@ describe("Contract Generation", () => {
 
       const contract = generateMiningContract("aspirational", {
         playerMiningLevel: 10,
-        existingContracts: [],
         rng: state.rng,
       })
 
@@ -170,7 +168,6 @@ describe("Contract Generation", () => {
 
       const contract = generateMiningContract("aspirational", {
         playerMiningLevel: 140, // Max tier (Obsidium)
-        existingContracts: [],
         rng: state.rng,
       })
 
@@ -183,7 +180,6 @@ describe("Contract Generation", () => {
 
       const contract = generateMiningContract("at-level", {
         playerMiningLevel: 1,
-        existingContracts: [],
         rng: state.rng,
       })
 
@@ -203,7 +199,6 @@ describe("Contract Generation", () => {
 
       const contract = generateMiningContract("at-level", {
         playerMiningLevel: 10,
-        existingContracts: [],
         rng: state.rng,
       })
 
@@ -215,7 +210,6 @@ describe("Contract Generation", () => {
 
       const contract = generateMiningContract("at-level", {
         playerMiningLevel: 10,
-        existingContracts: [],
         rng: state.rng,
       })
 
@@ -228,13 +222,11 @@ describe("Contract Generation", () => {
 
       const contract1 = generateMiningContract("at-level", {
         playerMiningLevel: 10,
-        existingContracts: [],
         rng: rng1,
       })
 
       const contract2 = generateMiningContract("at-level", {
         playerMiningLevel: 10,
-        existingContracts: [],
         rng: rng2,
       })
 
@@ -354,6 +346,49 @@ describe("Contract Generation", () => {
 
       const miningContracts = state.world.contracts.filter((c) => c.guildType === "Mining")
       expect(miningContracts.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe("contract regeneration", () => {
+    it("should regenerate the completed slot when contract is completed", async () => {
+      const { executeAction } = await import("./engine.js")
+      const { checkAndCompleteContracts } = await import("./stateHelpers.js")
+
+      const state = createWorld("regeneration-test")
+      state.player.skills.Mining = { level: 10, xp: 0 }
+
+      // Generate mining contracts
+      refreshMiningContracts(state)
+
+      // Find the at-level contract
+      const atLevelContract = state.world.contracts.find(
+        (c) => c.guildType === "Mining" && c.slot === "at-level"
+      )
+      expect(atLevelContract).toBeDefined()
+      const originalContractId = atLevelContract!.id
+
+      // Accept the contract
+      state.exploration.playerState.currentAreaId = "TOWN"
+      state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD
+
+      await executeAction(state, {
+        type: "AcceptContract",
+        contractId: originalContractId,
+      })
+
+      // Give player the required items
+      const requiredItem = atLevelContract!.requirements[0]
+      state.player.inventory.push({ itemId: requiredItem.itemId, quantity: requiredItem.quantity })
+
+      // Complete the contract
+      checkAndCompleteContracts(state)
+
+      // The slot should have been regenerated with a new contract
+      const newAtLevelContract = state.world.contracts.find(
+        (c) => c.guildType === "Mining" && c.slot === "at-level"
+      )
+      expect(newAtLevelContract).toBeDefined()
+      expect(newAtLevelContract!.id).not.toBe(originalContractId)
     })
   })
 

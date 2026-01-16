@@ -2,9 +2,64 @@
  * Tests for action validation checks
  */
 
-import { getLocationSkillRequirement } from "./actionChecks.js"
+import { getLocationSkillRequirement, checkAcceptContractAction } from "./actionChecks.js"
+import { createWorld, TOWN_LOCATIONS } from "./world.js"
+import { refreshMiningContracts } from "./contracts.js"
 
 describe("actionChecks", () => {
+  describe("checkAcceptContractAction", () => {
+    it("should reject accepting a second contract when one is already active", () => {
+      const state = createWorld("one-contract-test")
+      state.player.skills.Mining = { level: 10, xp: 0 }
+
+      // Generate mining contracts
+      refreshMiningContracts(state)
+
+      // Position player at miners guild
+      state.exploration.playerState.currentAreaId = "TOWN"
+      state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD
+
+      // Find both contracts
+      const miningContracts = state.world.contracts.filter((c) => c.guildType === "Mining")
+      expect(miningContracts.length).toBeGreaterThanOrEqual(2)
+
+      const contract1 = miningContracts[0]
+      const contract2 = miningContracts[1]
+
+      // Accept first contract
+      state.player.activeContracts.push(contract1.id)
+
+      // Try to accept second contract - should fail
+      const result = checkAcceptContractAction(state, {
+        type: "AcceptContract",
+        contractId: contract2.id,
+      })
+
+      expect(result.valid).toBe(false)
+      expect(result.failureType).toBe("ALREADY_HAS_CONTRACT")
+    })
+
+    it("should allow accepting a contract when none are active", () => {
+      const state = createWorld("no-contract-test")
+      state.player.skills.Mining = { level: 10, xp: 0 }
+
+      refreshMiningContracts(state)
+
+      state.exploration.playerState.currentAreaId = "TOWN"
+      state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD
+
+      const contract = state.world.contracts.find((c) => c.guildType === "Mining")
+      expect(contract).toBeDefined()
+
+      const result = checkAcceptContractAction(state, {
+        type: "AcceptContract",
+        contractId: contract!.id,
+      })
+
+      expect(result.valid).toBe(true)
+    })
+  })
+
   describe("getLocationSkillRequirement", () => {
     it("should return 1 for TOWN (no gating)", () => {
       expect(getLocationSkillRequirement("TOWN")).toBe(1)

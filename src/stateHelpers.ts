@@ -8,6 +8,7 @@
 import type { WorldState, ItemID, ItemStack, ContractID, LevelUp, SkillID } from "./types.js"
 import { addXPToSkill } from "./types.js"
 import { getExplorationXPThreshold } from "./exploration.js"
+import { refreshMiningContracts } from "./contracts.js"
 
 // ============================================================================
 // Time Management
@@ -313,6 +314,11 @@ export function checkAndCompleteContracts(state: WorldState): ContractCompletion
         xpGained: contract.xpReward,
         levelUps: contractLevelUps.length > 0 ? contractLevelUps : undefined,
       })
+
+      // Regenerate the completed contract's slot immediately (spec section 1.5)
+      if (contract.slot && contract.guildType === "Mining") {
+        refreshMiningContracts(state, contract.slot)
+      }
     }
   }
 

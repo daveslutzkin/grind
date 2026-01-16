@@ -2,6 +2,7 @@ import { describe, it, expect } from "@jest/globals"
 import { formatWorldState, formatActionLog, formatTickFeedback } from "./formatters.js"
 import { createWorld, TOWN_LOCATIONS } from "../world.js"
 import { executeAction } from "../engine.js"
+import { refreshMiningContracts } from "../contracts.js"
 import type { GatherMode, WorldState, AreaID } from "../types.js"
 import { NodeType, ExplorationLocationType } from "../types.js"
 
@@ -71,6 +72,40 @@ describe("Formatters", () => {
 
       expect(formatted).toContain("Location: Town Square in TOWN")
       expect(formatted).toContain("Inventory:")
+    })
+
+    it("should show player gold when non-zero", () => {
+      const state = createWorld("gold-display-test")
+      state.player.gold = 12.5
+      const formatted = formatWorldState(state)
+
+      expect(formatted).toContain("Gold: 12.5")
+    })
+
+    it("should not show gold when zero", () => {
+      const state = createWorld("gold-zero-test")
+      state.player.gold = 0
+      const formatted = formatWorldState(state)
+
+      expect(formatted).not.toContain("Gold:")
+    })
+
+    it("should show gold reward for mining contracts", () => {
+      const state = createWorld("contract-display-test")
+      state.player.skills.Mining = { level: 10, xp: 0 }
+
+      // Refresh contracts
+      refreshMiningContracts(state)
+
+      // Position player at miners guild
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
+
+      const formatted = formatWorldState(state)
+
+      // Should show gold reward instead of empty rewards
+      expect(formatted).toContain("Contracts:")
+      expect(formatted).toMatch(/\d+(\.\d+)? gold/)
+      expect(formatted).not.toContain(" → ,") // Should not have empty arrow
     })
 
     it("should include player skills", () => {
@@ -531,6 +566,44 @@ describe("Formatters", () => {
   })
 
   describe("formatActionLog", () => {
+    it("should show gold earned in contract completion for mining contracts", () => {
+      const state = createWorld("gold-completion-test")
+      state.player.skills.Mining = { level: 10, xp: 0 }
+      refreshMiningContracts(state)
+
+      // Find the at-level contract
+      const contract = state.world.contracts.find(
+        (c) => c.guildType === "Mining" && c.slot === "at-level"
+      )
+      expect(contract).toBeDefined()
+      const goldReward = contract!.goldReward ?? 0
+
+      // Create a mock action log with contract completion
+      const mockLog = {
+        tickBefore: 0,
+        success: true,
+        actionType: "Gather" as const,
+        parameters: {},
+        timeConsumed: 10,
+        stateDeltaSummary: "Mining contract completed",
+        contractsCompleted: [
+          {
+            contractId: contract!.id,
+            itemsConsumed: [{ itemId: "STONE", quantity: 5 }],
+            rewardsGranted: [],
+            reputationGained: 5,
+            goldEarned: goldReward,
+          },
+        ],
+        rngRolls: [],
+      }
+
+      const formatted = formatActionLog(mockLog)
+
+      expect(formatted).toContain("CONTRACT DONE")
+      expect(formatted).toMatch(/\d+(\.\d+)? gold/)
+    })
+
     it("should format successful action log", async () => {
       const state = createWorld("ore-test")
       // Enrol in Mining first (must be at guild)

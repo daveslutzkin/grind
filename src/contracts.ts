@@ -58,7 +58,6 @@ const TIER_ORDER = [
 
 export interface ContractGenerationParams {
   playerMiningLevel: number
-  existingContracts: Contract[]
   rng: RngState
 }
 
@@ -257,7 +256,6 @@ export function refreshMiningContracts(state: WorldState, slot?: ContractSlot): 
 
   const params: ContractGenerationParams = {
     playerMiningLevel,
-    existingContracts: state.world.contracts,
     rng: state.rng,
   }
 
