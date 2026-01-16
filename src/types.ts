@@ -183,6 +183,8 @@ export interface KillRequirement {
   count: number
 }
 
+export type ContractSlot = "at-level" | "aspirational"
+
 export interface Contract {
   id: ContractID
   level: number // Contract level - determines which guild halls can offer it
@@ -193,6 +195,8 @@ export interface Contract {
   rewards: ItemStack[]
   reputationReward: number
   xpReward?: { skill: SkillID; amount: number }
+  goldReward?: number // Gold reward for completing the contract
+  slot?: ContractSlot // Which slot this contract fills (at-level or aspirational)
 }
 
 export interface RngState {
@@ -210,6 +214,7 @@ export interface WorldState {
     inventoryCapacity: number
     storage: ItemStack[]
     skills: Record<SkillID, SkillState>
+    gold: number // Player's currency for contract rewards and purchases
     guildReputation: number
     activeContracts: ContractID[]
     equippedWeapon: WeaponID | null
@@ -540,6 +545,7 @@ export interface ContractCompletion {
   itemsConsumed: ItemStack[]
   rewardsGranted: ItemStack[]
   reputationGained: number
+  goldEarned?: number // Gold reward from mining contracts
   xpGained?: { skill: SkillID; amount: number }
   levelUps?: LevelUp[]
 }

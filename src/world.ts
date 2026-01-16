@@ -599,6 +599,7 @@ export function createWorld(seed: string): WorldState {
         Woodcrafting: { level: 0, xp: 0 },
         Exploration: { level: 0, xp: 0 },
       },
+      gold: 0,
       guildReputation: 0,
       activeContracts: [],
       equippedWeapon: null,
@@ -627,18 +628,7 @@ export function createWorld(seed: string): WorldState {
           requiredSkillLevel: 1,
         },
       ],
-      contracts: [
-        {
-          id: "miners-guild-1",
-          level: 1,
-          acceptLocationId: TOWN_LOCATIONS.MINERS_GUILD,
-          guildType: "Mining",
-          requirements: [{ itemId: "COPPER_BAR", quantity: 2 }],
-          rewards: [{ itemId: "COPPER_ORE", quantity: 5 }],
-          reputationReward: 10,
-          xpReward: { skill: "Mining", amount: 2 },
-        },
-      ],
+      contracts: [], // Contracts are now generated dynamically
       storageAreaId: "TOWN",
     },
 

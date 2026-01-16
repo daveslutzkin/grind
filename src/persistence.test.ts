@@ -368,6 +368,7 @@ describe("Persistence", () => {
       state.player.skills.Mining.level = 10
       state.player.skills.Mining.xp = 50
       state.player.guildReputation = 100
+      state.player.gold = 123.45
 
       const session: Session = {
         state,
@@ -385,6 +386,7 @@ describe("Persistence", () => {
       expect(loaded.state.player.skills.Mining.level).toBe(10)
       expect(loaded.state.player.skills.Mining.xp).toBe(50)
       expect(loaded.state.player.guildReputation).toBe(100)
+      expect(loaded.state.player.gold).toBe(123.45)
     })
 
     it("should preserve exploration connections", () => {

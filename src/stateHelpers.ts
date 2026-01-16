@@ -225,6 +225,7 @@ export interface ContractCompletionResult {
   itemsConsumed: ItemStack[]
   rewardsGranted: ItemStack[]
   reputationGained: number
+  goldEarned?: number
   xpGained?: { skill: SkillID; amount: number }
   levelUps?: LevelUp[]
 }
@@ -283,6 +284,13 @@ export function checkAndCompleteContracts(state: WorldState): ContractCompletion
       // Award reputation
       state.player.guildReputation += contract.reputationReward
 
+      // Award gold if contract has goldReward
+      let goldEarned: number | undefined
+      if (contract.goldReward) {
+        state.player.gold += contract.goldReward
+        goldEarned = contract.goldReward
+      }
+
       // Award XP if contract has xpReward and capture level-ups
       let contractLevelUps: LevelUp[] = []
       if (contract.xpReward) {
@@ -301,6 +309,7 @@ export function checkAndCompleteContracts(state: WorldState): ContractCompletion
         itemsConsumed,
         rewardsGranted,
         reputationGained: contract.reputationReward,
+        goldEarned,
         xpGained: contract.xpReward,
         levelUps: contractLevelUps.length > 0 ? contractLevelUps : undefined,
       })

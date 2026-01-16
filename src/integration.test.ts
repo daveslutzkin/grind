@@ -56,9 +56,24 @@ function discoverAllLocations(state: WorldState, areaId: AreaID): void {
   }
 }
 
+/** Add a test mining contract to the world */
+function addTestMiningContract(state: WorldState): void {
+  state.world.contracts.push({
+    id: "test-mining-contract",
+    level: 1,
+    acceptLocationId: TOWN_LOCATIONS.MINERS_GUILD,
+    guildType: "Mining",
+    requirements: [{ itemId: "COPPER_BAR", quantity: 2 }],
+    rewards: [{ itemId: "COPPER_ORE", quantity: 5 }],
+    reputationReward: 10,
+    xpReward: { skill: "Mining", amount: 2 },
+  })
+}
+
 describe("Integration: Full Session Flow", () => {
   it("should run a complete session with various actions", async () => {
     const state = createWorld("integration-test-seed")
+    addTestMiningContract(state)
     // Set skills to level 1 to allow actions
     state.player.skills.Mining = { level: 1, xp: 0 }
     state.player.skills.Smithing = { level: 1, xp: 0 }
@@ -66,9 +81,11 @@ describe("Integration: Full Session Flow", () => {
 
     // Accept a contract at Miners Guild
     setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-    logs.push(await executeAction(state, { type: "AcceptContract", contractId: "miners-guild-1" }))
+    logs.push(
+      await executeAction(state, { type: "AcceptContract", contractId: "test-mining-contract" })
+    )
     expect(logs[logs.length - 1].success).toBe(true)
-    expect(state.player.activeContracts).toContain("miners-guild-1")
+    expect(state.player.activeContracts).toContain("test-mining-contract")
 
     // Return to Town Square before traveling
     state.exploration.playerState.currentLocationId = null
@@ -190,23 +207,24 @@ describe("Integration: Full Session Flow", () => {
 
   it("should demonstrate contract completion consumes items and cannot be exploited", async () => {
     const state = createWorld("contract-exploit-test")
+    addTestMiningContract(state)
     setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD) // Must be at miners guild to accept
 
     // Give player 2 COPPER_BAR directly (simulating they crafted them)
     state.player.inventory.push({ itemId: "COPPER_BAR", quantity: 2 })
 
-    // Accept the miners-guild-1 contract (requires 2 COPPER_BAR, rewards 5 COPPER_ORE, 10 rep)
+    // Accept the test-mining-contract (requires 2 COPPER_BAR, rewards 5 COPPER_ORE, 10 rep)
     // Since requirements are already met, contract completes immediately
     const acceptLog = await executeAction(state, {
       type: "AcceptContract",
-      contractId: "miners-guild-1",
+      contractId: "test-mining-contract",
     })
     expect(acceptLog.success).toBe(true)
 
     // Contract completes immediately since requirements were met
     expect(acceptLog.contractsCompleted).toBeDefined()
     expect(acceptLog.contractsCompleted).toHaveLength(1)
-    expect(acceptLog.contractsCompleted![0].contractId).toBe("miners-guild-1")
+    expect(acceptLog.contractsCompleted![0].contractId).toBe("test-mining-contract")
 
     // Verify log shows what was consumed and granted
     expect(acceptLog.contractsCompleted![0].itemsConsumed).toEqual([
@@ -229,13 +247,13 @@ describe("Integration: Full Session Flow", () => {
     expect(state.player.guildReputation).toBe(10)
 
     // - Contract removed from active (it completed)
-    expect(state.player.activeContracts).not.toContain("miners-guild-1")
+    expect(state.player.activeContracts).not.toContain("test-mining-contract")
 
     // EXPLOIT TEST: Try to accept the same contract again
     // This should succeed (contract can be re-accepted after completion)
     const acceptLog2 = await executeAction(state, {
       type: "AcceptContract",
-      contractId: "miners-guild-1",
+      contractId: "test-mining-contract",
     })
     expect(acceptLog2.success).toBe(true)
 
@@ -243,7 +261,7 @@ describe("Integration: Full Session Flow", () => {
     expect(acceptLog2.contractsCompleted).toBeUndefined()
 
     // Contract is now active, waiting for items
-    expect(state.player.activeContracts).toContain("miners-guild-1")
+    expect(state.player.activeContracts).toContain("test-mining-contract")
 
     // Reputation should still be 10 (no double reward without items)
     expect(state.player.guildReputation).toBe(10)

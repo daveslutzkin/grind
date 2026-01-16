@@ -106,6 +106,20 @@ function moveToNodeLocation(state: WorldState, nodeId: string, areaId: string): 
   }
 }
 
+/** Add a test mining contract to the world */
+function addTestMiningContract(state: WorldState): void {
+  state.world.contracts.push({
+    id: "test-mining-contract",
+    level: 1,
+    acceptLocationId: TOWN_LOCATIONS.MINERS_GUILD,
+    guildType: "Mining",
+    requirements: [{ itemId: "COPPER_BAR", quantity: 2 }],
+    rewards: [{ itemId: "COPPER_ORE", quantity: 5 }],
+    reputationReward: 10,
+    xpReward: { skill: "Mining", amount: 2 },
+  })
+}
+
 describe("Engine", () => {
   describe("Move action", () => {
     it("should move player to destination", async () => {
@@ -200,19 +214,27 @@ describe("Engine", () => {
   describe("AcceptContract action", () => {
     it("should add contract to active contracts", async () => {
       const state = createWorld("ore-test")
+      addTestMiningContract(state)
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD) // Must be at miners guild
-      const action: AcceptContractAction = { type: "AcceptContract", contractId: "miners-guild-1" }
+      const action: AcceptContractAction = {
+        type: "AcceptContract",
+        contractId: "test-mining-contract",
+      }
 
       const log = await executeAction(state, action)
 
       expect(log.success).toBe(true)
-      expect(state.player.activeContracts).toContain("miners-guild-1")
+      expect(state.player.activeContracts).toContain("test-mining-contract")
     })
 
     it("should consume 0 ticks", async () => {
       const state = createWorld("ore-test")
+      addTestMiningContract(state)
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-      const action: AcceptContractAction = { type: "AcceptContract", contractId: "miners-guild-1" }
+      const action: AcceptContractAction = {
+        type: "AcceptContract",
+        contractId: "test-mining-contract",
+      }
 
       const log = await executeAction(state, action)
 
@@ -221,8 +243,12 @@ describe("Engine", () => {
 
     it("should not grant XP", async () => {
       const state = createWorld("ore-test")
+      addTestMiningContract(state)
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-      const action: AcceptContractAction = { type: "AcceptContract", contractId: "miners-guild-1" }
+      const action: AcceptContractAction = {
+        type: "AcceptContract",
+        contractId: "test-mining-contract",
+      }
 
       const log = await executeAction(state, action)
 
@@ -231,11 +257,15 @@ describe("Engine", () => {
 
     it("should fail if not at guild location", async () => {
       const state = createWorld("ore-test")
+      addTestMiningContract(state)
       const areaId = getDistance1AreaId(state)
       makeAreaKnown(state, areaId)
       state.exploration.playerState.currentAreaId = areaId
       state.exploration.playerState.currentLocationId = null // At clearing
-      const action: AcceptContractAction = { type: "AcceptContract", contractId: "miners-guild-1" }
+      const action: AcceptContractAction = {
+        type: "AcceptContract",
+        contractId: "test-mining-contract",
+      }
 
       const log = await executeAction(state, action)
 
@@ -255,9 +285,13 @@ describe("Engine", () => {
 
     it("should fail if already has contract", async () => {
       const state = createWorld("ore-test")
+      addTestMiningContract(state)
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-      state.player.activeContracts.push("miners-guild-1")
-      const action: AcceptContractAction = { type: "AcceptContract", contractId: "miners-guild-1" }
+      state.player.activeContracts.push("test-mining-contract")
+      const action: AcceptContractAction = {
+        type: "AcceptContract",
+        contractId: "test-mining-contract",
+      }
 
       const log = await executeAction(state, action)
 

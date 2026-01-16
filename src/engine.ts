@@ -48,6 +48,7 @@ import {
   getNodeSkill,
 } from "./actionChecks.js"
 import { getCollateralRate, getBonusYieldChance, hasMasteryUnlock } from "./masteryData.js"
+import { refreshMiningContracts } from "./contracts.js"
 import {
   consumeTime,
   addToInventory,
@@ -253,6 +254,12 @@ async function* executeAcceptContract(
 
   // Accept contract
   state.player.activeContracts.push(contractId)
+
+  // If this is a mining contract, refresh the slot with a new contract
+  const contract = state.world.contracts.find((c) => c.id === contractId)
+  if (contract?.guildType === "Mining" && contract.slot) {
+    refreshMiningContracts(state, contract.slot)
+  }
 
   // Check for contract completion (after every successful action)
   const contractsCompleted = checkAndCompleteContracts(state)
@@ -1047,6 +1054,11 @@ async function* executeGuildEnrolment(
   if (skill === "Combat") {
     addToInventory(state, "CRUDE_WEAPON", 1)
     state.player.equippedWeapon = "CRUDE_WEAPON"
+  }
+
+  // Mining enrolment generates initial mining contracts
+  if (skill === "Mining") {
+    refreshMiningContracts(state)
   }
 
   // Exploration enrolment grants one distance 1 area and connection

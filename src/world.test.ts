@@ -91,6 +91,12 @@ describe("World Factory", () => {
       expect(world.player.skills.Exploration.level).toBe(0)
     })
 
+    it("should initialize gold to 0", () => {
+      const world = createWorld("test-seed")
+
+      expect(world.player.gold).toBe(0)
+    })
+
     it("should have 27 areas in exploration system (Fibonacci counts)", () => {
       const world = createWorld("test-seed")
 

@@ -672,13 +672,13 @@ describe("generateFailureHint", () => {
         type: "CONTRACT_NOT_FOUND",
         reason: "not_found",
         context: {
-          contractId: "miners-guild-1",
+          contractId: "test-contract",
         },
       }
 
       const result = generateFailureHint(details, state)
 
-      expect(result.message).toContain("miners-guild-1")
+      expect(result.message).toContain("test-contract")
       expect(result.reason).toBe("Contract does not exist")
       expect(result.hint).toContain("guild halls")
     })
@@ -889,7 +889,7 @@ describe("generateFailureHint", () => {
         context: {
           requiredLocationId: "TOWN_MINERS_GUILD",
           currentLocationId: null,
-          contractId: "miners-guild-1",
+          contractId: "test-contract",
         },
       }
 
@@ -1499,6 +1499,18 @@ describe("generateFailureHint", () => {
 
       const { executeAction } = await import("../src/engine.js")
 
+      // Add a test contract to the world
+      state.world.contracts.push({
+        id: "test-mining-contract",
+        level: 1,
+        acceptLocationId: "TOWN_MINERS_GUILD",
+        guildType: "Mining",
+        requirements: [{ itemId: "COPPER_BAR", quantity: 2 }],
+        rewards: [{ itemId: "COPPER_ORE", quantity: 5 }],
+        reputationReward: 10,
+        xpReward: { skill: "Mining", amount: 2 },
+      })
+
       // Go to Miners Guild first
       const goAction: import("../src/types.js").TravelToLocationAction = {
         type: "TravelToLocation",
@@ -1509,12 +1521,12 @@ describe("generateFailureHint", () => {
       expect(log0.success).toBe(true)
 
       // Set up: Add a contract to activeContracts
-      state.player.activeContracts.push("miners-guild-1")
+      state.player.activeContracts.push("test-mining-contract")
 
       // Try to accept the same contract again
       const action: import("../src/types.js").AcceptContractAction = {
         type: "AcceptContract",
-        contractId: "miners-guild-1",
+        contractId: "test-mining-contract",
       }
 
       const log = await executeAction(state, action)
@@ -1526,7 +1538,7 @@ describe("generateFailureHint", () => {
       expect(log.failureDetails?.type).toBe("ALREADY_HAS_CONTRACT")
       expect(log.failureDetails?.reason).toBe("already_active")
       expect(log.failureDetails?.context).toMatchObject({
-        contractId: "miners-guild-1",
+        contractId: "test-mining-contract",
       })
     })
 

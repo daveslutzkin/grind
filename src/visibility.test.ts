@@ -27,6 +27,7 @@ function createTestState(overrides: Partial<WorldState> = {}): WorldState {
         Woodcrafting: { level: 0, xp: 0 },
         Exploration: { level: 0, xp: 0 },
       },
+      gold: 0,
       guildReputation: 0,
       activeContracts: [],
       equippedWeapon: null,
