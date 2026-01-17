@@ -82,6 +82,15 @@ describe("Formatters", () => {
       expect(formatted).toContain("Gold: 12.5")
     })
 
+    it("should round gold to 1 decimal place", () => {
+      const state = createWorld("gold-rounding-test")
+      state.player.gold = 1.39051475
+      const formatted = formatWorldState(state)
+
+      expect(formatted).toContain("Gold: 1.4")
+      expect(formatted).not.toContain("Gold: 1.39")
+    })
+
     it("should not show gold when zero", () => {
       const state = createWorld("gold-zero-test")
       state.player.gold = 0

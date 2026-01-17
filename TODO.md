@@ -2,11 +2,12 @@
 
 ## Summary
 
-Four changes to improve the mining user experience:
+Five changes to improve the mining user experience:
 1. Remove "focus" as a keyword since it's the default mode
 2. Allow `mine` with no params when there's only one visible resource
 3. Always show the Time line in extraction results
 4. Show collateral damage info for undiscovered materials
+5. Include gathering time variance in the game summary RNG stats
 
 ---
 
@@ -114,12 +115,42 @@ Four changes to improve the mining user experience:
 
 ---
 
+## 5. Include Gathering Time Variance in Game Summary RNG Stats
+
+**Current behavior:**
+- Game summary says "N/A (no RNG actions)" even after 10 mining extractions
+- `buildRngStreams()` in src/runner.ts:622 only looks at `log.rngRolls`
+- Mining time variance is stored in `log.extraction.variance.luckDelta`, not in `rngRolls`
+
+**New behavior:**
+- Game summary should include gathering time variance as an RNG stream
+- Mining/chopping extractions should contribute to the luck calculation
+
+### Files to change:
+
+**src/runner.ts:622-659** - `buildRngStreams()` function
+- Add logic to extract gathering time variance from `log.extraction?.variance`
+- Create an RNG stream for gathering that tracks:
+  - Expected time (from variance.expected)
+  - Actual time (from variance.actual)
+  - Convert time variance to a comparable metric for luck calculation
+
+**Challenge:** The current RNG stream model uses trials/probability/successes (binomial distribution), but gathering time uses a normal distribution with variance. Need to either:
+1. Track time variance separately and include it in the luck summary
+2. Convert time variance to a z-score and include in Stouffer's method
+3. Add a separate "Gathering Luck" section to the summary
+
+The simplest approach: extend `buildRngStreams()` to also return time-based luck data, and extend `computeLuckString()` to incorporate it.
+
+---
+
 ## Implementation Order
 
 1. **Time line fix** (simplest, isolated change)
 2. **Collateral damage message** (isolated to formatter)
 3. **Remove "focus" keyword** (multiple files, tests need updating)
 4. **Bare `mine` command** (may require refactoring)
+5. **Gathering in RNG summary** (requires extending luck calculation model)
 
 ---
 

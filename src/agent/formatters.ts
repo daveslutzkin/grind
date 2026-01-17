@@ -220,9 +220,9 @@ export function formatWorldState(state: WorldState): string {
     })
   lines.push(`Skills: ${enrolledSkills.length > 0 ? enrolledSkills.join(", ") : "none"}`)
 
-  // Show player gold if non-zero
+  // Show player gold if non-zero (rounded to 1 decimal place)
   if (state.player.gold > 0) {
-    lines.push(`Gold: ${state.player.gold}`)
+    lines.push(`Gold: ${state.player.gold.toFixed(1)}`)
   }
 
   // Show cumulative gathering luck if non-zero

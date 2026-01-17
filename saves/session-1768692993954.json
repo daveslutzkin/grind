@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "savedAt": "2026-01-17T23:48:51.129Z",
+  "savedAt": "2026-01-17T23:56:34.320Z",
   "seed": "session-1768692993954",
   "state": {
     "time": {
@@ -8,26 +8,6 @@
     },
     "player": {
       "inventory": [
-        {
-          "itemId": "STONE",
-          "quantity": 1
-        },
-        {
-          "itemId": "STONE",
-          "quantity": 1
-        },
-        {
-          "itemId": "STONE",
-          "quantity": 1
-        },
-        {
-          "itemId": "STONE",
-          "quantity": 1
-        },
-        {
-          "itemId": "STONE",
-          "quantity": 1
-        },
         {
           "itemId": "STONE",
           "quantity": 1
@@ -77,11 +57,9 @@
           "xp": 0
         }
       },
-      "gold": 0,
-      "guildReputation": 0,
-      "activeContracts": [
-        "mining-contract-1"
-      ],
+      "gold": 1.39051475,
+      "guildReputation": 5,
+      "activeContracts": [],
       "equippedWeapon": null,
       "contractKillProgress": {},
       "appraisedNodeIds": [],
@@ -607,33 +585,6 @@
       ],
       "contracts": [
         {
-          "id": "mining-contract-1",
-          "level": 1,
-          "acceptLocationId": "TOWN_MINERS_GUILD",
-          "guildType": "Mining",
-          "requirements": [
-            {
-              "itemId": "STONE",
-              "quantity": 5
-            }
-          ],
-          "rewards": [],
-          "reputationReward": 5,
-          "goldReward": 1.39051475,
-          "slot": "at-level",
-          "includedMap": {
-            "targetAreaId": "area-d1-i0",
-            "targetNodeId": "area-d1-i0-node-0",
-            "connectionIds": [
-              "TOWN->area-d1-i0"
-            ],
-            "areaIds": [
-              "TOWN",
-              "area-d1-i0"
-            ]
-          }
-        },
-        {
           "id": "mining-contract-2",
           "level": 20,
           "acceptLocationId": "TOWN_MINERS_GUILD",
@@ -661,7 +612,7 @@
           }
         },
         {
-          "id": "mining-contract-3",
+          "id": "mining-contract-1",
           "level": 1,
           "acceptLocationId": "TOWN_MINERS_GUILD",
           "guildType": "Mining",
@@ -673,7 +624,7 @@
           ],
           "rewards": [],
           "reputationReward": 5,
-          "goldReward": 0.7155560000000001,
+          "goldReward": 0.6899372,
           "slot": "at-level",
           "includedMap": {
             "targetAreaId": "area-d1-i1",
@@ -1144,7 +1095,7 @@
     },
     "rng": {
       "seed": "session-1768692993954",
-      "counter": 285
+      "counter": 287
     }
   },
   "stats": {
@@ -1670,6 +1621,32 @@
         "levelUps": [],
         "rngRolls": [],
         "stateDeltaSummary": "Traveled to Miners Guild"
+      },
+      {
+        "tickBefore": 281,
+        "actionType": "TurnInContract",
+        "parameters": {
+          "contractId": "mining-contract-1"
+        },
+        "success": true,
+        "timeConsumed": 0,
+        "levelUps": [],
+        "contractsCompleted": [
+          {
+            "contractId": "mining-contract-1",
+            "itemsConsumed": [
+              {
+                "itemId": "STONE",
+                "quantity": 5
+              }
+            ],
+            "rewardsGranted": [],
+            "reputationGained": 5,
+            "goldEarned": 1.39051475
+          }
+        ],
+        "rngRolls": [],
+        "stateDeltaSummary": "Turned in contract mining-contract-1, earned 1.4 gold, +5 reputation"
       }
     ],
     "startingSkills": {
@@ -1698,6 +1675,6 @@
         "xp": 0
       }
     },
-    "sessionStartLogIndex": 16
+    "sessionStartLogIndex": 18
   }
 }
