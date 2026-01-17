@@ -480,7 +480,7 @@ describe("Contract Generation", () => {
         // Create a node with COPPER_ORE
         const testAreaId = "area-d1-i0"
         const testNodeId = `${testAreaId}-node-0`
-        const testLocationId = `${testAreaId}-ORE_VEIN-loc-0`
+        const testLocationId = `${testAreaId}-loc-0`
         state.world.nodes.push({
           nodeId: testNodeId,
           nodeType: NodeType.ORE_VEIN,
@@ -515,7 +515,7 @@ describe("Contract Generation", () => {
         // Create a discoverable node with STONE
         const testAreaId = "area-d1-i0"
         const testNodeId = `${testAreaId}-node-0`
-        const testLocationId = `${testAreaId}-ORE_VEIN-loc-0`
+        const testLocationId = `${testAreaId}-loc-0`
         state.world.nodes.push({
           nodeId: testNodeId,
           nodeType: NodeType.ORE_VEIN,
@@ -583,7 +583,7 @@ describe("Contract Generation", () => {
         // Create a discoverable node with STONE
         const testAreaId = "area-d1-i0"
         const testNodeId = `${testAreaId}-node-0`
-        const testLocationId = `${testAreaId}-ORE_VEIN-loc-0`
+        const testLocationId = `${testAreaId}-loc-0`
         state.world.nodes.push({
           nodeId: testNodeId,
           nodeType: NodeType.ORE_VEIN,
@@ -651,7 +651,7 @@ describe("Contract Generation", () => {
             generated: true,
             locations: [
               {
-                id: `${testAreaId}-ORE_VEIN-loc-0`,
+                id: `${testAreaId}-loc-0`,
                 areaId: testAreaId,
                 type: ExplorationLocationType.GATHERING_NODE,
                 gatheringSkillType: "Mining",
@@ -761,10 +761,44 @@ describe("Contract Generation", () => {
           )
         ).toBe(true)
       })
+
+      it("should include discovered location in stateDeltaSummary when accepting contract with map", async () => {
+        const { executeAction } = await import("./engine.js")
+        const { refreshMiningContracts } = await import("./contracts.js")
+
+        const state = createWorld("map-discovery-message-test")
+        state.player.skills.Mining = { level: 5, xp: 0 }
+
+        // Generate mining contracts with maps
+        refreshMiningContracts(state)
+
+        // Find the at-level contract
+        const contract = state.world.contracts.find(
+          (c) => c.guildType === "Mining" && c.slot === "at-level"
+        )
+        expect(contract).toBeDefined()
+        expect(contract!.includedMap).toBeDefined()
+
+        const contractId = contract!.id
+
+        // Go to miners guild and accept the contract
+        state.exploration.playerState.currentAreaId = "TOWN"
+        state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD
+
+        const acceptLog = await executeAction(state, {
+          type: "AcceptContract",
+          contractId,
+        })
+        expect(acceptLog.success).toBe(true)
+
+        // The stateDeltaSummary should mention the discovered location
+        expect(acceptLog.stateDeltaSummary).toContain("Accepted contract")
+        expect(acceptLog.stateDeltaSummary).toMatch(/discovered|revealed/i)
+      })
     })
 
     describe("node discovery on area arrival", () => {
-      it("should auto-discover node when arriving at area with pending discovery", async () => {
+      it("should auto-discover node when arriving at area with pending discovery (FarTravel)", async () => {
         const { executeAction } = await import("./engine.js")
         const { refreshMiningContracts } = await import("./contracts.js")
 
@@ -806,7 +840,63 @@ describe("Contract Generation", () => {
         expect(state.exploration.playerState.currentAreaId).toBe(map.targetAreaId)
 
         // The node location should now be discovered
-        const nodeLocationId = map.targetNodeId.replace("-node-", "-ORE_VEIN-loc-")
+        const nodeLocationId = map.targetNodeId.replace("-node-", "-loc-")
+        expect(state.exploration.playerState.knownLocationIds).toContain(nodeLocationId)
+
+        // The pending discovery should be consumed
+        expect(
+          state.player.pendingNodeDiscoveries!.some(
+            (p) => p.areaId === map.targetAreaId && p.nodeLocationId === map.targetNodeId
+          )
+        ).toBe(false)
+      })
+
+      it("should auto-discover node when arriving at area with pending discovery (ExplorationTravel)", async () => {
+        const { executeAction } = await import("./engine.js")
+        const { refreshMiningContracts } = await import("./contracts.js")
+
+        const state = createWorld("node-auto-discovery-exploration-travel")
+        state.player.skills.Mining = { level: 5, xp: 0 }
+        state.player.skills.Exploration = { level: 1, xp: 0 } // Need exploration for travel
+
+        // Generate mining contracts with maps
+        refreshMiningContracts(state)
+
+        // Find the at-level contract with a map
+        const contract = state.world.contracts.find(
+          (c) => c.guildType === "Mining" && c.slot === "at-level" && c.includedMap
+        )
+        expect(contract).toBeDefined()
+
+        const map = contract!.includedMap!
+        const contractId = contract!.id
+
+        // Accept the contract to redeem the map
+        state.exploration.playerState.currentAreaId = "TOWN"
+        state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD
+
+        await executeAction(state, {
+          type: "AcceptContract",
+          contractId,
+        })
+
+        // The connection should now be known
+        expect(state.exploration.playerState.knownAreaIds).toContain(map.targetAreaId)
+
+        // Leave the guild first to be at hub (required for ExplorationTravel)
+        await executeAction(state, { type: "Leave" })
+
+        // Travel to the target area using ExplorationTravel (what "go" uses for adjacent areas)
+        await executeAction(state, {
+          type: "ExplorationTravel",
+          destinationAreaId: map.targetAreaId,
+        })
+
+        // Verify we arrived
+        expect(state.exploration.playerState.currentAreaId).toBe(map.targetAreaId)
+
+        // The node location should now be discovered
+        const nodeLocationId = map.targetNodeId.replace("-node-", "-loc-")
         expect(state.exploration.playerState.knownLocationIds).toContain(nodeLocationId)
 
         // The pending discovery should be consumed

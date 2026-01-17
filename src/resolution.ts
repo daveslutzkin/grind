@@ -7,6 +7,7 @@
 import type { WorldState, ExplorationLocation, GatheringSkillID } from "./types.js"
 import { ExplorationLocationType } from "./types.js"
 import { LOCATION_DISPLAY_NAMES } from "./world.js"
+import { getAreaDisplayName } from "./exploration.js"
 
 /**
  * Result of destination resolution
@@ -221,13 +222,20 @@ function matchAreaByName(state: WorldState, input: string, mode: "near" | "far")
   for (const areaId of searchAreaIds) {
     const area = state.exploration.areas.get(areaId)
 
-    // Match against area name
+    // Match against area name (LLM-generated if available)
     if (area?.name) {
       const normalizedAreaName = normalizeName(area.name)
       if (normalizedAreaName === normalizedInput) {
         exactMatches.push(areaId)
       } else if (normalizedAreaName.startsWith(normalizedInput)) {
         prefixMatches.push(areaId)
+      }
+    } else {
+      // Match against fallback display name (e.g., "a nearby area", "a distant area")
+      const fallbackName = getAreaDisplayName(areaId, area)
+      const normalizedFallback = normalizeName(fallbackName)
+      if (normalizedFallback === normalizedInput) {
+        exactMatches.push(areaId)
       }
     }
 

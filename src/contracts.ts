@@ -32,10 +32,7 @@ import {
  * Convert a node ID to its corresponding location ID.
  *
  * Node ID format: {areaId}-node-{index}
- * Location ID format: {areaId}-ORE_VEIN-loc-{index}
- *
- * Note: This assumes all mining contract nodes are ORE_VEIN type, which is
- * currently true for the mining node generation system.
+ * Location ID format: {areaId}-loc-{index}
  *
  * @returns The location ID, or null if the node ID format is invalid
  */
@@ -43,7 +40,7 @@ export function nodeIdToLocationId(nodeId: string): string | null {
   const match = nodeId.match(/^(.+)-node-(\d+)$/)
   if (!match) return null
   const [, areaId, index] = match
-  return `${areaId}-ORE_VEIN-loc-${index}`
+  return `${areaId}-loc-${index}`
 }
 
 // ============================================================================

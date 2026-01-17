@@ -34,6 +34,7 @@ import {
   executeFarTravel,
   grantExplorationGuildBenefits,
   getAreaDisplayName,
+  ensureAreaFullyGenerated,
 } from "./exploration.js"
 import {
   checkAcceptContractAction,
@@ -273,10 +274,15 @@ async function* executeAcceptContract(
   if (contract?.includedMap) {
     const map = contract.includedMap
 
-    // Reveal all areas in the path (add to knownAreaIds)
+    // Reveal all areas in the path (add to knownAreaIds) and generate their names
     for (const areaId of map.areaIds) {
       if (!state.exploration.playerState.knownAreaIds.includes(areaId)) {
         state.exploration.playerState.knownAreaIds.push(areaId)
+      }
+      // Ensure area is fully generated (content + connections + name)
+      const area = state.exploration.areas.get(areaId)
+      if (area) {
+        await ensureAreaFullyGenerated(state, area)
       }
     }
 
@@ -305,6 +311,15 @@ async function* executeAcceptContract(
   // Check for contract completion (after every successful action)
   const contractsCompleted = checkAndCompleteContracts(state)
 
+  // Build state delta summary
+  let stateDeltaSummary = `Accepted contract ${contractId}`
+  if (contract?.includedMap) {
+    const targetAreaId = contract.includedMap.targetAreaId
+    const targetArea = state.exploration.areas.get(targetAreaId)
+    const areaName = getAreaDisplayName(targetAreaId, targetArea)
+    stateDeltaSummary += `, discovered path to ${areaName}`
+  }
+
   // 0-tick action - yield only the final done tick
   yield {
     done: true,
@@ -317,7 +332,7 @@ async function* executeAcceptContract(
       levelUps: mergeLevelUps([], contractsCompleted),
       contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
       rngRolls: [],
-      stateDeltaSummary: `Accepted contract ${contractId}`,
+      stateDeltaSummary,
     },
   }
 }
@@ -1302,10 +1317,15 @@ async function* executeBuyMap(state: WorldState, action: BuyMapAction): ActionGe
       return
     }
 
-    // Reveal all areas in the path (add to knownAreaIds)
+    // Reveal all areas in the path (add to knownAreaIds) and generate their names
     for (const areaId of map.areaIds) {
       if (!state.exploration.playerState.knownAreaIds.includes(areaId)) {
         state.exploration.playerState.knownAreaIds.push(areaId)
+      }
+      // Ensure area is fully generated (content + connections + name)
+      const area = state.exploration.areas.get(areaId)
+      if (area) {
+        await ensureAreaFullyGenerated(state, area)
       }
     }
 
@@ -1325,6 +1345,10 @@ async function* executeBuyMap(state: WorldState, action: BuyMapAction): ActionGe
       nodeLocationId: map.targetNodeId,
     })
 
+    // Get the target area name for the summary
+    const targetArea = state.exploration.areas.get(map.targetAreaId)
+    const targetAreaName = getAreaDisplayName(map.targetAreaId, targetArea)
+
     // Check for contract completion (after every successful action)
     const contractsCompleted = checkAndCompleteContracts(state)
 
@@ -1339,7 +1363,7 @@ async function* executeBuyMap(state: WorldState, action: BuyMapAction): ActionGe
         levelUps: mergeLevelUps([], contractsCompleted),
         contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
         rngRolls: [],
-        stateDeltaSummary: `Purchased ${action.materialTier} node map for ${price} gold, revealing path to ${map.targetAreaId}`,
+        stateDeltaSummary: `Purchased ${action.materialTier} node map for ${price} gold, revealing path to ${targetAreaName}`,
       },
     }
   } else if (action.mapType === "area") {
@@ -1403,10 +1427,15 @@ async function* executeBuyMap(state: WorldState, action: BuyMapAction): ActionGe
       return
     }
 
-    // Reveal all areas in the path
+    // Reveal all areas in the path and generate their names
     for (const areaId of pathResult.areaIds) {
       if (!exploration.playerState.knownAreaIds.includes(areaId)) {
         exploration.playerState.knownAreaIds.push(areaId)
+      }
+      // Ensure area is fully generated (content + connections + name)
+      const area = exploration.areas.get(areaId)
+      if (area) {
+        await ensureAreaFullyGenerated(state, area)
       }
     }
 
@@ -1416,6 +1445,10 @@ async function* executeBuyMap(state: WorldState, action: BuyMapAction): ActionGe
         exploration.playerState.knownConnectionIds.push(connectionId)
       }
     }
+
+    // Get the target area name for the summary
+    const targetAreaForSummary = exploration.areas.get(targetAreaId)
+    const targetAreaName = getAreaDisplayName(targetAreaId, targetAreaForSummary)
 
     // Check for contract completion (after every successful action)
     const contractsCompleted = checkAndCompleteContracts(state)
@@ -1431,7 +1464,7 @@ async function* executeBuyMap(state: WorldState, action: BuyMapAction): ActionGe
         levelUps: mergeLevelUps([], contractsCompleted),
         contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
         rngRolls: [],
-        stateDeltaSummary: `Purchased area map for ${price} gold, revealing path to ${targetAreaId}`,
+        stateDeltaSummary: `Purchased area map for ${price} gold, revealing path to ${targetAreaName}`,
       },
     }
   }
