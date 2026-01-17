@@ -58,6 +58,22 @@ describe("getAvailableActions", () => {
       // In town, leave is 0t
       expect(leaveAction?.timeCost).toBe(0)
     })
+
+    it("should include fartravel when at a guild hall with known reachable areas", async () => {
+      const state = createWorld("fartravel-from-guild-test")
+      state.player.skills.Exploration = { level: 1, xp: 0 }
+
+      // Discover a distance 1 area (this adds to knownAreaIds and knownConnectionIds)
+      await grantExplorationGuildBenefits(state)
+
+      // Go to Miners Guild (not at hub)
+      state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD
+
+      const actions = getAvailableActions(state)
+
+      // Should have fartravel option even when at a guild location
+      expect(hasAction(actions, "fartravel <area>")).toBe(true)
+    })
   })
 
   describe("At gathering node", () => {

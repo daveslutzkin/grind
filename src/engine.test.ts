@@ -1179,7 +1179,7 @@ describe("Engine", () => {
       expect(log.actionType).toBe("Enrol")
       // Log includes resolved skill for clarity
       expect(log.parameters).toEqual({ skill: "Mining" })
-      expect(log.stateDeltaSummary).toContain("Mining")
+      expect(log.stateDeltaSummary).toContain("Miners Guild")
     })
 
     it("should discover an ore vein when enrolling in Mining guild", async () => {
@@ -1304,59 +1304,27 @@ describe("Engine", () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
 
-      // Capture all ticks to check feedback
-      const generator = getActionGenerator(state, { type: "Enrol" })
-      const ticks: ActionTick[] = []
-      for await (const tick of generator) {
-        ticks.push(tick)
-      }
+      const log = await executeAction(state, { type: "Enrol" })
 
-      // Find the completion feedback tick (last tick before done=true with feedback)
-      const feedbackTicks = ticks.filter(
-        (t) => !t.done && (t as { feedback?: { message?: string } }).feedback?.message
-      )
-      expect(feedbackTicks.length).toBeGreaterThan(0)
-
-      const lastFeedback = feedbackTicks[feedbackTicks.length - 1] as {
-        feedback?: { message?: string }
-      }
-      const message = lastFeedback.feedback?.message || ""
-
-      // Should include Mining-specific orientation text
-      expect(message).toContain("how to mine")
-      expect(message).toContain("ore vein")
-      expect(message).toContain("Explorers Guild")
+      // Should include Mining-specific orientation text in the summary
+      expect(log.stateDeltaSummary).toContain("how to mine")
+      expect(log.stateDeltaSummary).toContain("ore vein")
+      expect(log.stateDeltaSummary).toContain("Explorers Guild")
     })
 
     it("should show Woodcutting orientation message with area name on completion", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.FORESTERS_GUILD)
 
-      // Capture all ticks to check feedback
-      const generator = getActionGenerator(state, { type: "Enrol" })
-      const ticks: ActionTick[] = []
-      for await (const tick of generator) {
-        ticks.push(tick)
-      }
+      const log = await executeAction(state, { type: "Enrol" })
 
-      // Find the completion feedback tick (last tick before done=true with feedback)
-      const feedbackTicks = ticks.filter(
-        (t) => !t.done && (t as { feedback?: { message?: string } }).feedback?.message
-      )
-      expect(feedbackTicks.length).toBeGreaterThan(0)
-
-      const lastFeedback = feedbackTicks[feedbackTicks.length - 1] as {
-        feedback?: { message?: string }
-      }
-      const message = lastFeedback.feedback?.message || ""
-
-      // Should include Woodcutting-specific orientation text
-      expect(message).toContain("how to chop wood")
-      expect(message).toContain("trees")
-      expect(message).toContain("Explorers Guild")
+      // Should include Woodcutting-specific orientation text in the summary
+      expect(log.stateDeltaSummary).toContain("how to chop wood")
+      expect(log.stateDeltaSummary).toContain("trees")
+      expect(log.stateDeltaSummary).toContain("Explorers Guild")
     })
 
-    it("should show Training progress during gathering guild enrollment", async () => {
+    it("should not show 'Training' text during enrollment progress", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
 
@@ -1367,15 +1335,50 @@ describe("Engine", () => {
         ticks.push(tick)
       }
 
-      // Find training feedback ticks
+      // Find any ticks with "Training" in the feedback - there should be none
       const trainingTicks = ticks.filter((t) => {
         if (t.done) return false
         const tick = t as { feedback?: { message?: string } }
         return tick.feedback?.message?.includes("Training")
       })
 
-      // Should have training progress messages during the 20 tick enrollment
-      expect(trainingTicks.length).toBeGreaterThan(0)
+      // Should NOT have any "Training" messages
+      expect(trainingTicks.length).toBe(0)
+    })
+
+    it("should show 'Trained' message at the end of enrollment", async () => {
+      const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
+
+      // Capture all ticks to check feedback
+      const generator = getActionGenerator(state, { type: "Enrol" })
+      const ticks: ActionTick[] = []
+      for await (const tick of generator) {
+        ticks.push(tick)
+      }
+
+      // Find all feedback messages in order
+      const feedbackMessages = ticks
+        .filter((t) => !t.done)
+        .map((t) => (t as { feedback?: { message?: string } }).feedback?.message)
+        .filter((m) => m !== undefined)
+
+      // The last feedback before the completion message should be "Trained"
+      // Find a message that ends with or equals "Trained"
+      const trainedMessage = feedbackMessages.find((m) => m === "Trained")
+      expect(trainedMessage).toBeDefined()
+    })
+
+    it("should include orientation text in action log summary for Mining enrollment", async () => {
+      const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
+
+      const log = await executeAction(state, { type: "Enrol" })
+
+      // Should include Mining-specific orientation text in the summary
+      expect(log.stateDeltaSummary).toContain("Enrolled in Miners Guild")
+      expect(log.stateDeltaSummary).toContain("how to mine")
+      expect(log.stateDeltaSummary).toContain("ore vein")
     })
   })
 
@@ -1673,6 +1676,60 @@ describe("Engine", () => {
 
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("ALREADY_AT_HUB")
+    })
+  })
+
+  describe("FarTravel with area name resolution", () => {
+    it("should resolve area name to ID when using FarTravel", async () => {
+      const state = createWorld("fartravel-name-test")
+      // Find a distance-1 area and make it known
+      const areaId = getDistance1AreaId(state)
+      makeAreaKnown(state, areaId)
+
+      // Set a known name for the area
+      const area = state.exploration.areas.get(areaId)!
+      area.name = "Greenstone Ridge"
+
+      // FarTravel using the area NAME, not the ID
+      const log = await executeAction(state, {
+        type: "FarTravel",
+        destinationAreaId: "greenstone ridge", // lowercase name, not area ID
+      })
+
+      expect(log.success).toBe(true)
+      expect(state.exploration.playerState.currentAreaId).toBe(areaId)
+      expect(log.stateDeltaSummary).toContain("Far traveled")
+    })
+
+    it("should support partial name matching for FarTravel", async () => {
+      const state = createWorld("fartravel-partial-test")
+      const areaId = getDistance1AreaId(state)
+      makeAreaKnown(state, areaId)
+
+      const area = state.exploration.areas.get(areaId)!
+      area.name = "Greenstone Ridge"
+
+      // FarTravel using partial name
+      const log = await executeAction(state, {
+        type: "FarTravel",
+        destinationAreaId: "greenstone", // partial name
+      })
+
+      expect(log.success).toBe(true)
+      expect(state.exploration.playerState.currentAreaId).toBe(areaId)
+    })
+
+    it("should fail FarTravel with name that doesn't match any known area", async () => {
+      const state = createWorld("fartravel-unknown-name-test")
+      // No areas are known, so resolution should fail
+
+      const log = await executeAction(state, {
+        type: "FarTravel",
+        destinationAreaId: "nonexistent area",
+      })
+
+      expect(log.success).toBe(false)
+      expect(log.failureDetails?.type).toBe("NO_PATH_TO_DESTINATION")
     })
   })
 })

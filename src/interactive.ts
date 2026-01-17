@@ -30,6 +30,7 @@ import {
 } from "./exploration.js"
 import { formatActionLog, formatTickFeedback, formatWorldState } from "./agent/formatters.js"
 import { promptYesNo } from "./prompt.js"
+import { resolveDestination } from "./resolution.js"
 
 // ============================================================================
 // Animation Runner Infrastructure
@@ -487,8 +488,17 @@ export async function interactiveFarTravel(
   action: FarTravelAction
 ): Promise<ActionLog[]> {
   const exploration = state.exploration!
-  const { destinationAreaId } = action
   const currentAreaId = exploration.playerState.currentAreaId
+
+  // Resolve the destination name to an area ID
+  const resolved = resolveDestination(state, action.destinationAreaId, "far")
+  const destinationAreaId =
+    resolved.type === "farTravel" || resolved.type === "area" ? resolved.areaId! : null
+
+  if (!destinationAreaId) {
+    console.log("\n✗ Area not known")
+    return []
+  }
 
   // Check preconditions
   if (exploration.playerState.currentAreaId === destinationAreaId) {
@@ -496,7 +506,7 @@ export async function interactiveFarTravel(
     return []
   }
 
-  // Destination must be known for far travel
+  // Destination must be known for far travel (this should always pass after resolution)
   if (!exploration.playerState.knownAreaIds.includes(destinationAreaId)) {
     console.log("\n✗ Area not known")
     return []
@@ -517,7 +527,13 @@ export async function interactiveFarTravel(
 
   try {
     // Execute with animation (generator yields ticks, runAnimatedAction displays them)
-    const generator = executeFarTravel(state, action)
+    // Use the resolved area ID, not the original name string
+    const resolvedAction: FarTravelAction = {
+      type: "FarTravel",
+      destinationAreaId,
+      scavenge: action.scavenge,
+    }
+    const generator = executeFarTravel(state, resolvedAction)
     const {
       log: finalLog,
       cancelled,

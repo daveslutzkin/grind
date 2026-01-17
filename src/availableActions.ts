@@ -154,6 +154,14 @@ export function getAvailableActions(state: WorldState): AvailableAction[] {
     addFarTravelActions(state, actions)
   }
 
+  // ========== TOWN LOCATION ACTIONS ==========
+
+  // Far travel is also available from any town location (not just hub)
+  // This allows players to fartravel directly from guilds without going to the hub first
+  if (inTown && !isAtHub) {
+    addFarTravelActions(state, actions)
+  }
+
   // ========== INVENTORY ACTIONS ==========
 
   // Drop actions (available anywhere with inventory)
