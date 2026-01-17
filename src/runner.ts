@@ -249,6 +249,14 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
       return { type: "Leave" }
     }
 
+    case "see": {
+      // Parse "see gathering map" command
+      if (parts.slice(1).join(" ").toLowerCase() === "gathering map") {
+        return { type: "SeeGatheringMap" }
+      }
+      return null
+    }
+
     default:
       return null
   }

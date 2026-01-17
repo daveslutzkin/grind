@@ -15,6 +15,7 @@ import type {
   CraftAction,
   BuyMapAction,
   TurnInContractAction,
+  SeeGatheringMapAction,
 } from "./types.js"
 import {
   getCurrentAreaId,
@@ -106,6 +107,20 @@ export function getAvailableActions(state: WorldState): AvailableAction[] {
 
       // Map shop actions (Phase 3)
       addMapShopActions(state, actions, currentLocation.guildType as SkillID)
+
+      // See gathering map action (at Mining and Woodcutting guilds)
+      if (skill === "Mining" || skill === "Woodcutting") {
+        const seeMapAction: SeeGatheringMapAction = { type: "SeeGatheringMap" }
+        const check = checkAction(state, seeMapAction)
+        if (check.valid) {
+          actions.push({
+            displayName: "see gathering map",
+            timeCost: 0,
+            isVariable: false,
+            successProbability: 1,
+          })
+        }
+      }
     }
   }
 

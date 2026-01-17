@@ -17,6 +17,7 @@ import type {
   TravelToLocationAction,
   LeaveAction,
   BuyMapAction,
+  SeeGatheringMapAction,
   FailureType,
   ContractCompletion,
   LevelUp,
@@ -50,6 +51,7 @@ import {
   checkTravelToLocationAction,
   checkLeaveAction,
   checkBuyMapAction,
+  checkSeeGatheringMapAction,
   getNodeSkill,
 } from "./actionChecks.js"
 import { getCollateralRate, getBonusYieldChance, hasMasteryUnlock } from "./masteryData.js"
@@ -214,6 +216,8 @@ export function getActionGenerator(state: WorldState, action: Action): ActionGen
       return executeLeave(state, action)
     case "BuyMap":
       return executeBuyMap(state, action)
+    case "SeeGatheringMap":
+      return executeSeeGatheringMap(state, action)
   }
 }
 
@@ -1137,6 +1141,131 @@ async function* executeTurnInCombatToken(
   }
 }
 
+/**
+ * Convert a node ID to its corresponding location ID
+ * Node IDs follow pattern: "area-d1-i0-node-0"
+ * Location IDs follow pattern: "area-d1-i0-loc-0"
+ */
+function nodeIdToLocationId(nodeId: string): string | null {
+  const match = nodeId.match(/^(.+)-node-(\d+)$/)
+  if (!match) return null
+  return `${match[1]}-loc-${match[2]}`
+}
+
+/**
+ * Grant benefits when enrolling in a gathering guild (Mining or Woodcutting).
+ * Discovers the closest unknown gathering node of the appropriate type.
+ *
+ * Returns the discovered area name for use in the welcome message.
+ */
+async function grantGatheringGuildBenefits(
+  state: WorldState,
+  skill: GatheringSkillID
+): Promise<{
+  discoveredAreaId: string
+  discoveredAreaName: string
+  discoveredConnectionId: string
+  discoveredLocationId: string
+}> {
+  const exploration = state.exploration
+  const nodeType = skill === "Mining" ? NodeType.ORE_VEIN : NodeType.TREE_STAND
+
+  // Find all nodes of this type
+  const candidateNodes = state.world.nodes.filter((node) => node.nodeType === nodeType)
+
+  // Get known locations set
+  const knownLocationIds = new Set(exploration.playerState.knownLocationIds)
+
+  // Filter to unknown nodes and calculate distances from TOWN
+  const unknownNodesWithDistance: Array<{
+    node: Node
+    locationId: string
+    distance: number
+    areaId: string
+    pathResult: { areaIds: string[]; connectionIds: string[] }
+  }> = []
+
+  for (const node of candidateNodes) {
+    const locationId = nodeIdToLocationId(node.nodeId)
+    if (!locationId) continue
+
+    // Skip if already known
+    if (knownLocationIds.has(locationId)) continue
+
+    // Calculate path from TOWN to this node's area
+    const pathResult = findPathUsingAllConnections(state, "TOWN", node.areaId)
+    if (!pathResult) continue
+
+    // Ensure the area is fully generated
+    const area = exploration.areas.get(node.areaId)
+    if (area) {
+      await ensureAreaFullyGenerated(state, area)
+    }
+
+    unknownNodesWithDistance.push({
+      node,
+      locationId,
+      distance: pathResult.areaIds.length - 1, // Number of hops from TOWN
+      areaId: node.areaId,
+      pathResult,
+    })
+  }
+
+  // Sort by distance (closest first)
+  unknownNodesWithDistance.sort((a, b) => a.distance - b.distance)
+
+  if (unknownNodesWithDistance.length === 0) {
+    // Edge case: no unknown nodes found (shouldn't happen normally)
+    return {
+      discoveredAreaId: "",
+      discoveredAreaName: "",
+      discoveredConnectionId: "",
+      discoveredLocationId: "",
+    }
+  }
+
+  // Pick the closest unknown node
+  const selected = unknownNodesWithDistance[0]
+
+  // Discover all areas and connections along the path
+  for (const areaId of selected.pathResult.areaIds) {
+    if (!exploration.playerState.knownAreaIds.includes(areaId)) {
+      exploration.playerState.knownAreaIds.push(areaId)
+    }
+  }
+
+  for (const connId of selected.pathResult.connectionIds) {
+    if (!exploration.playerState.knownConnectionIds.includes(connId)) {
+      exploration.playerState.knownConnectionIds.push(connId)
+    }
+    // Also add reverse connection for bidirectional travel
+    const parts = connId.split("->")
+    if (parts.length === 2) {
+      const reverseConnId = `${parts[1]}->${parts[0]}`
+      if (!exploration.playerState.knownConnectionIds.includes(reverseConnId)) {
+        exploration.playerState.knownConnectionIds.push(reverseConnId)
+      }
+    }
+  }
+
+  // Discover the node location
+  if (!exploration.playerState.knownLocationIds.includes(selected.locationId)) {
+    exploration.playerState.knownLocationIds.push(selected.locationId)
+  }
+
+  // Get area display name
+  const area = exploration.areas.get(selected.areaId)
+  const areaName = getAreaDisplayName(selected.areaId, area)
+
+  return {
+    discoveredAreaId: selected.areaId,
+    discoveredAreaName: areaName,
+    discoveredConnectionId:
+      selected.pathResult.connectionIds.length > 0 ? selected.pathResult.connectionIds[0] : "",
+    discoveredLocationId: selected.locationId,
+  }
+}
+
 async function* executeGuildEnrolment(
   state: WorldState,
   action: GuildEnrolmentAction
@@ -1164,10 +1293,18 @@ async function* executeGuildEnrolment(
     return
   }
 
-  // Enrol takes 3 ticks
-  for (let tick = 0; tick < 3; tick++) {
+  // Enrol takes timeCost ticks (20 for gathering guilds, 3 for others)
+  const isGatheringGuild = skill === "Mining" || skill === "Woodcutting"
+  for (let tick = 0; tick < check.timeCost; tick++) {
     consumeTime(state, 1)
-    yield { done: false }
+    // Show training progress for gathering guilds
+    if (isGatheringGuild) {
+      // Show "Training" with accumulating dots (1-5 dots cycling every 4 ticks)
+      const dots = ".".repeat(((tick % 20) % 5) + 1)
+      yield { done: false, feedback: { message: `Training${dots}` } }
+    } else {
+      yield { done: false }
+    }
   }
 
   // Set skill to level 1 (unlock it)
@@ -1184,23 +1321,58 @@ async function* executeGuildEnrolment(
     refreshMiningContracts(state)
   }
 
+  // Gathering guild enrolment discovers a nearby node
+  let gatheringBenefits:
+    | {
+        discoveredAreaId: string
+        discoveredAreaName: string
+        discoveredConnectionId: string
+        discoveredLocationId: string
+      }
+    | undefined
+  if (skill === "Mining" || skill === "Woodcutting") {
+    gatheringBenefits = await grantGatheringGuildBenefits(state, skill)
+  }
+
   // Exploration enrolment grants one distance 1 area and connection
   let explorationBenefits: { discoveredAreaId: string; discoveredConnectionId: string } | undefined
   if (skill === "Exploration") {
     explorationBenefits = await grantExplorationGuildBenefits(state)
   }
 
-  const discoveredAreaId = explorationBenefits?.discoveredAreaId
-  const discoveredArea = discoveredAreaId
-    ? state.exploration?.areas.get(discoveredAreaId)
-    : undefined
-  const summary =
-    discoveredArea && discoveredAreaId
-      ? `Enrolled in ${skill} guild, discovered ${getAreaDisplayName(discoveredAreaId, discoveredArea)}`
-      : `Enrolled in ${skill} guild`
+  // Build summary message
+  let summary = `Enrolled in ${skill} guild`
+  const discoveredAreaId =
+    gatheringBenefits?.discoveredAreaId || explorationBenefits?.discoveredAreaId
+  if (discoveredAreaId) {
+    const discoveredArea = state.exploration?.areas.get(discoveredAreaId)
+    const areaName = getAreaDisplayName(discoveredAreaId, discoveredArea)
+    summary = `Enrolled in ${skill} guild, discovered ${areaName}`
+  }
 
   // Feedback after enrolment completes
-  yield { done: false, feedback: { message: `Enrolled in ${skill} guild!` } }
+  // For gathering guilds, show skill-specific orientation text
+  let completionMessage = `Enrolled in ${skill} guild!`
+  if (skill === "Mining" && gatheringBenefits?.discoveredAreaName) {
+    completionMessage = `Enrolled in Miners Guild, congratulations! (${check.timeCost}t)\n\nYou now know how to mine! There's a promising ore vein at ${gatheringBenefits.discoveredAreaName} - go there to begin your mining career. Discover more locations by accepting contracts, or join the Explorers Guild to survey the wilderness yourself.`
+  } else if (skill === "Woodcutting" && gatheringBenefits?.discoveredAreaName) {
+    completionMessage = `Enrolled in Foresters Guild, congratulations! (${check.timeCost}t)\n\nYou now know how to chop wood! There's a fine stand of trees at ${gatheringBenefits.discoveredAreaName} - go there to start harvesting lumber. Discover more locations by accepting contracts, or join the Explorers Guild to survey the wilderness yourself.`
+  }
+  yield { done: false, feedback: { message: completionMessage } }
+
+  // Build exploration log for either gathering or exploration benefits
+  const explorationLog =
+    gatheringBenefits?.discoveredAreaId || explorationBenefits?.discoveredAreaId
+      ? {
+          discoveredAreaId:
+            gatheringBenefits?.discoveredAreaId || explorationBenefits?.discoveredAreaId || "",
+          discoveredConnectionId:
+            gatheringBenefits?.discoveredConnectionId ||
+            explorationBenefits?.discoveredConnectionId ||
+            "",
+          discoveredLocationId: gatheringBenefits?.discoveredLocationId,
+        }
+      : undefined
 
   yield {
     done: true,
@@ -1213,12 +1385,7 @@ async function* executeGuildEnrolment(
       levelUps: [],
       rngRolls: [],
       stateDeltaSummary: summary,
-      explorationLog: explorationBenefits
-        ? {
-            discoveredAreaId: explorationBenefits.discoveredAreaId,
-            discoveredConnectionId: explorationBenefits.discoveredConnectionId,
-          }
-        : undefined,
+      explorationLog,
     },
   }
 }
@@ -1323,6 +1490,133 @@ async function* executeLeave(state: WorldState, action: LeaveAction): ActionGene
       levelUps: [],
       rngRolls: [],
       stateDeltaSummary: `Left ${getLocationDisplayName(previousLocation, state.exploration.playerState.currentAreaId, state)} for ${hubName}`,
+    },
+  }
+}
+
+/**
+ * Execute SeeGatheringMap action
+ *
+ * Displays a list of all known gathering nodes of the appropriate type
+ * based on which guild the player is at.
+ */
+async function* executeSeeGatheringMap(
+  state: WorldState,
+  action: SeeGatheringMapAction
+): ActionGenerator {
+  const tickBefore = state.time.currentTick
+
+  // Use shared precondition check
+  const check = checkSeeGatheringMapAction(state, action)
+  if (!check.valid) {
+    yield {
+      done: true,
+      log: createFailureLog(
+        state,
+        action,
+        check.failureType!,
+        0,
+        check.failureReason,
+        check.failureContext
+      ),
+    }
+    return
+  }
+
+  const skill = check.skill!
+  const nodeType = skill === "Mining" ? NodeType.ORE_VEIN : NodeType.TREE_STAND
+  const headerText = skill === "Mining" ? "Known Ore Veins:" : "Known Tree Stands:"
+  const emptyText =
+    skill === "Mining"
+      ? "Known Ore Veins: none\n\nFind ore veins by accepting contracts or joining the Explorers Guild."
+      : "Known Tree Stands: none\n\nFind tree stands by accepting contracts or joining the Explorers Guild."
+
+  // Get all known nodes of the appropriate type
+  const knownLocationIds = new Set(state.exploration.playerState.knownLocationIds)
+  const knownNodes: Array<{
+    areaId: string
+    areaName: string
+    distance: number
+    travelTicks: number
+    locationId: string
+    contents: string
+  }> = []
+
+  for (const node of state.world.nodes) {
+    if (node.nodeType !== nodeType) continue
+
+    // Convert node ID to location ID
+    const locationIdMatch = node.nodeId.match(/^(.+)-node-(\d+)$/)
+    if (!locationIdMatch) continue
+    const locationId = `${locationIdMatch[1]}-loc-${locationIdMatch[2]}`
+
+    // Skip if location not known
+    if (!knownLocationIds.has(locationId)) continue
+
+    // Get area info
+    const area = state.exploration.areas.get(node.areaId)
+    if (!area) continue
+
+    // Calculate travel time from TOWN
+    const pathResult = findPathUsingAllConnections(state, "TOWN", node.areaId)
+    const travelTicks = pathResult
+      ? pathResult.connectionIds.length * 10 // Base travel time per connection
+      : 999
+
+    // Build contents string
+    let contents = node.depleted
+      ? "depleted, regenerating"
+      : node.materials
+          .filter((m) => m.remainingUnits > 0)
+          .map((m) => m.materialId.toLowerCase().replace(/_/g, " "))
+          .join(", ") || "empty"
+
+    knownNodes.push({
+      areaId: node.areaId,
+      areaName: getAreaDisplayName(node.areaId, area),
+      distance: area.distance,
+      travelTicks,
+      locationId,
+      contents,
+    })
+  }
+
+  // Sort by travel ticks, then alphabetically by area name
+  knownNodes.sort((a, b) => {
+    if (a.travelTicks !== b.travelTicks) return a.travelTicks - b.travelTicks
+    return a.areaName.localeCompare(b.areaName)
+  })
+
+  // Build display message
+  let message: string
+  if (knownNodes.length === 0) {
+    message = emptyText
+  } else {
+    const lines = [headerText]
+    for (const node of knownNodes) {
+      lines.push(
+        `  ${node.areaName} (distance ${node.distance}, ${node.travelTicks}t) - ${node.contents}`
+      )
+    }
+    lines.push("")
+    lines.push("Use 'fartravel <area>' to travel to any of these locations.")
+    message = lines.join("\n")
+  }
+
+  // Show the message
+  yield { done: false, feedback: { message } }
+
+  yield {
+    done: true,
+    log: {
+      tickBefore,
+      actionType: "SeeGatheringMap" as const,
+      parameters: { skill },
+      success: true,
+      timeConsumed: 0,
+      levelUps: [],
+      rngRolls: [],
+      stateDeltaSummary: `Viewed ${skill === "Mining" ? "ore veins" : "tree stands"} map`,
     },
   }
 }

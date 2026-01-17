@@ -306,6 +306,7 @@ export type ActionType =
   | "TravelToLocation"
   | "Leave"
   | "BuyMap" // Phase 3: Purchase maps from guild shops
+  | "SeeGatheringMap" // View known gathering nodes at guild hall
 
 export interface MoveAction {
   type: "Move"
@@ -444,6 +445,14 @@ export interface BuyMapAction {
   targetDistance?: number // For area maps - distance tier to reveal
 }
 
+/**
+ * See gathering map - view all known gathering nodes of a type
+ * Available at gathering guild halls (Miners Guild, Foresters Guild)
+ */
+export interface SeeGatheringMapAction {
+  type: "SeeGatheringMap"
+}
+
 export type Action =
   | MoveAction
   | AcceptContractAction
@@ -464,6 +473,7 @@ export type Action =
   | TravelToLocationAction
   | LeaveAction
   | BuyMapAction
+  | SeeGatheringMapAction
 
 // ============================================================================
 // Action Tick Types (for generator-based execution)

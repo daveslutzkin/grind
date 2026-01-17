@@ -29,7 +29,8 @@ describe("getAvailableActions", () => {
       const enrolAction = findAction(actions, "enrol")
 
       expect(enrolAction).toBeDefined()
-      expect(enrolAction?.timeCost).toBe(3)
+      // Mining is a gathering skill, so enrol takes 20 ticks (vs 3 for non-gathering)
+      expect(enrolAction?.timeCost).toBe(20)
       expect(enrolAction?.isVariable).toBe(false)
       expect(enrolAction?.successProbability).toBe(1)
     })

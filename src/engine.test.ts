@@ -1,4 +1,5 @@
-import { executeAction } from "./engine.js"
+import { executeAction, getActionGenerator } from "./engine.js"
+import type { ActionTick } from "./types.js"
 import { createWorld, TOWN_LOCATIONS } from "./world.js"
 import type {
   MoveAction,
@@ -1052,9 +1053,39 @@ describe("Engine", () => {
       expect(state.player.skills.Mining.xp).toBe(0)
     })
 
-    it("should consume 3 ticks", async () => {
+    it("should consume 20 ticks for Mining guild (gathering)", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
+      const action: GuildEnrolmentAction = { type: "Enrol" }
+
+      const log = await executeAction(state, action)
+
+      expect(log.timeConsumed).toBe(20)
+    })
+
+    it("should consume 20 ticks for Woodcutting guild (gathering)", async () => {
+      const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.FORESTERS_GUILD)
+      const action: GuildEnrolmentAction = { type: "Enrol" }
+
+      const log = await executeAction(state, action)
+
+      expect(log.timeConsumed).toBe(20)
+    })
+
+    it("should consume 3 ticks for Combat guild (non-gathering)", async () => {
+      const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.COMBAT_GUILD)
+      const action: GuildEnrolmentAction = { type: "Enrol" }
+
+      const log = await executeAction(state, action)
+
+      expect(log.timeConsumed).toBe(3)
+    })
+
+    it("should consume 3 ticks for Exploration guild (non-gathering)", async () => {
+      const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.EXPLORERS_GUILD)
       const action: GuildEnrolmentAction = { type: "Enrol" }
 
       const log = await executeAction(state, action)
@@ -1149,6 +1180,314 @@ describe("Engine", () => {
       // Log includes resolved skill for clarity
       expect(log.parameters).toEqual({ skill: "Mining" })
       expect(log.stateDeltaSummary).toContain("Mining")
+    })
+
+    it("should discover an ore vein when enrolling in Mining guild", async () => {
+      const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
+      const initialKnownLocations = [...state.exploration.playerState.knownLocationIds]
+
+      await executeAction(state, { type: "Enrol" })
+
+      // Should have discovered at least one new location (an ore vein)
+      const newLocations = state.exploration.playerState.knownLocationIds.filter(
+        (loc) => !initialKnownLocations.includes(loc)
+      )
+      expect(newLocations.length).toBeGreaterThan(0)
+
+      // The discovered location should be an ore vein (at a gathering node)
+      const discoveredLocationId = newLocations[0]
+      const areaIdMatch = discoveredLocationId.match(/^(area-d\d+-i\d+)-loc-/)
+      expect(areaIdMatch).toBeTruthy()
+      if (areaIdMatch) {
+        const areaId = areaIdMatch[1]
+        const area = state.exploration.areas.get(areaId)
+        const location = area?.locations.find((l) => l.id === discoveredLocationId)
+        expect(location?.gatheringSkillType).toBe("Mining")
+      }
+    })
+
+    it("should discover a tree stand when enrolling in Woodcutting guild", async () => {
+      const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.FORESTERS_GUILD)
+      const initialKnownLocations = [...state.exploration.playerState.knownLocationIds]
+
+      await executeAction(state, { type: "Enrol" })
+
+      // Should have discovered at least one new location (a tree stand)
+      const newLocations = state.exploration.playerState.knownLocationIds.filter(
+        (loc) => !initialKnownLocations.includes(loc)
+      )
+      expect(newLocations.length).toBeGreaterThan(0)
+
+      // The discovered location should be a tree stand
+      const discoveredLocationId = newLocations[0]
+      const areaIdMatch = discoveredLocationId.match(/^(area-d\d+-i\d+)-loc-/)
+      expect(areaIdMatch).toBeTruthy()
+      if (areaIdMatch) {
+        const areaId = areaIdMatch[1]
+        const area = state.exploration.areas.get(areaId)
+        const location = area?.locations.find((l) => l.id === discoveredLocationId)
+        expect(location?.gatheringSkillType).toBe("Woodcutting")
+      }
+    })
+
+    it("should discover the area containing the node when enrolling in gathering guild", async () => {
+      const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
+      const initialKnownAreas = [...state.exploration.playerState.knownAreaIds]
+
+      await executeAction(state, { type: "Enrol" })
+
+      // Should have discovered at least one new area
+      const newAreas = state.exploration.playerState.knownAreaIds.filter(
+        (area) => !initialKnownAreas.includes(area)
+      )
+      expect(newAreas.length).toBeGreaterThan(0)
+    })
+
+    it("should discover the connection to the node area when enrolling in gathering guild", async () => {
+      const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
+      const initialKnownConnections = [...state.exploration.playerState.knownConnectionIds]
+
+      await executeAction(state, { type: "Enrol" })
+
+      // Should have discovered at least one new connection
+      const newConnections = state.exploration.playerState.knownConnectionIds.filter(
+        (conn) => !initialKnownConnections.includes(conn)
+      )
+      expect(newConnections.length).toBeGreaterThan(0)
+    })
+
+    it("should allow fartravel to discovered area after enrollment", async () => {
+      const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
+      const initialKnownAreas = [...state.exploration.playerState.knownAreaIds]
+
+      await executeAction(state, { type: "Enrol" })
+
+      // Get the newly discovered area
+      const newAreas = state.exploration.playerState.knownAreaIds.filter(
+        (area) => !initialKnownAreas.includes(area)
+      )
+      expect(newAreas.length).toBeGreaterThan(0)
+
+      // Move back to town square to fartravel
+      state.exploration.playerState.currentLocationId = null
+
+      // Should be able to fartravel to the discovered area
+      const log = await executeAction(state, {
+        type: "FarTravel",
+        destinationAreaId: newAreas[0],
+      })
+      expect(log.success).toBe(true)
+      expect(state.exploration.playerState.currentAreaId).toBe(newAreas[0])
+    })
+
+    it("should not discover nodes for non-gathering guilds", async () => {
+      const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.COMBAT_GUILD)
+      const initialKnownLocations = [...state.exploration.playerState.knownLocationIds]
+
+      await executeAction(state, { type: "Enrol" })
+
+      // Should not have discovered any new gathering node locations
+      const newLocations = state.exploration.playerState.knownLocationIds.filter(
+        (loc) => !initialKnownLocations.includes(loc)
+      )
+      // Combat guild shouldn't discover new node locations (only combat guild gives weapon)
+      expect(newLocations.length).toBe(0)
+    })
+
+    it("should show Mining orientation message with area name on completion", async () => {
+      const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
+
+      // Capture all ticks to check feedback
+      const generator = getActionGenerator(state, { type: "Enrol" })
+      const ticks: ActionTick[] = []
+      for await (const tick of generator) {
+        ticks.push(tick)
+      }
+
+      // Find the completion feedback tick (last tick before done=true with feedback)
+      const feedbackTicks = ticks.filter(
+        (t) => !t.done && (t as { feedback?: { message?: string } }).feedback?.message
+      )
+      expect(feedbackTicks.length).toBeGreaterThan(0)
+
+      const lastFeedback = feedbackTicks[feedbackTicks.length - 1] as {
+        feedback?: { message?: string }
+      }
+      const message = lastFeedback.feedback?.message || ""
+
+      // Should include Mining-specific orientation text
+      expect(message).toContain("how to mine")
+      expect(message).toContain("ore vein")
+      expect(message).toContain("Explorers Guild")
+    })
+
+    it("should show Woodcutting orientation message with area name on completion", async () => {
+      const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.FORESTERS_GUILD)
+
+      // Capture all ticks to check feedback
+      const generator = getActionGenerator(state, { type: "Enrol" })
+      const ticks: ActionTick[] = []
+      for await (const tick of generator) {
+        ticks.push(tick)
+      }
+
+      // Find the completion feedback tick (last tick before done=true with feedback)
+      const feedbackTicks = ticks.filter(
+        (t) => !t.done && (t as { feedback?: { message?: string } }).feedback?.message
+      )
+      expect(feedbackTicks.length).toBeGreaterThan(0)
+
+      const lastFeedback = feedbackTicks[feedbackTicks.length - 1] as {
+        feedback?: { message?: string }
+      }
+      const message = lastFeedback.feedback?.message || ""
+
+      // Should include Woodcutting-specific orientation text
+      expect(message).toContain("how to chop wood")
+      expect(message).toContain("trees")
+      expect(message).toContain("Explorers Guild")
+    })
+
+    it("should show Training progress during gathering guild enrollment", async () => {
+      const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
+
+      // Capture all ticks to check feedback
+      const generator = getActionGenerator(state, { type: "Enrol" })
+      const ticks: ActionTick[] = []
+      for await (const tick of generator) {
+        ticks.push(tick)
+      }
+
+      // Find training feedback ticks
+      const trainingTicks = ticks.filter((t) => {
+        if (t.done) return false
+        const tick = t as { feedback?: { message?: string } }
+        return tick.feedback?.message?.includes("Training")
+      })
+
+      // Should have training progress messages during the 20 tick enrollment
+      expect(trainingTicks.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe("SeeGatheringMap action", () => {
+    it("should fail if not at a gathering guild", async () => {
+      const state = createWorld("ore-test")
+      state.player.skills.Mining = { level: 1, xp: 0 } // Enrolled in Mining
+      setTownLocation(state, TOWN_LOCATIONS.COMBAT_GUILD) // But at Combat guild
+
+      const log = await executeAction(state, { type: "SeeGatheringMap" })
+
+      expect(log.success).toBe(false)
+      expect(log.failureDetails?.type).toBe("WRONG_LOCATION")
+    })
+
+    it("should fail if not enrolled in the gathering skill", async () => {
+      const state = createWorld("ore-test")
+      // Mining level is 0 (not enrolled)
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
+
+      const log = await executeAction(state, { type: "SeeGatheringMap" })
+
+      expect(log.success).toBe(false)
+      expect(log.failureDetails?.type).toBe("NOT_ENROLLED")
+    })
+
+    it("should cost 0 ticks", async () => {
+      const state = createWorld("ore-test")
+      state.player.skills.Mining = { level: 1, xp: 0 }
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
+
+      const log = await executeAction(state, { type: "SeeGatheringMap" })
+
+      expect(log.success).toBe(true)
+      expect(log.timeConsumed).toBe(0)
+    })
+
+    it("should show empty state when no nodes known", async () => {
+      const state = createWorld("ore-test")
+      state.player.skills.Mining = { level: 1, xp: 0 }
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
+      // Clear known locations (no nodes known)
+      state.exploration.playerState.knownLocationIds = []
+
+      // Capture feedback
+      const generator = getActionGenerator(state, { type: "SeeGatheringMap" })
+      const ticks: ActionTick[] = []
+      for await (const tick of generator) {
+        ticks.push(tick)
+      }
+
+      const feedbackTicks = ticks.filter(
+        (t) => !t.done && (t as { feedback?: { message?: string } }).feedback?.message
+      )
+      expect(feedbackTicks.length).toBeGreaterThan(0)
+
+      const feedback = feedbackTicks[0] as { feedback?: { message?: string } }
+      expect(feedback.feedback?.message).toContain("Known Ore Veins: none")
+    })
+
+    it("should list known ore veins when at Miners Guild", async () => {
+      const state = createWorld("ore-test")
+      state.player.skills.Mining = { level: 1, xp: 0 }
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
+
+      // Discover an ore vein location
+      const oreAreaId = getOreAreaId(state)
+      makeAreaKnown(state, oreAreaId)
+      discoverAllLocations(state, oreAreaId)
+
+      // Capture feedback
+      const generator = getActionGenerator(state, { type: "SeeGatheringMap" })
+      const ticks: ActionTick[] = []
+      for await (const tick of generator) {
+        ticks.push(tick)
+      }
+
+      const feedbackTicks = ticks.filter(
+        (t) => !t.done && (t as { feedback?: { message?: string } }).feedback?.message
+      )
+      expect(feedbackTicks.length).toBeGreaterThan(0)
+
+      const feedback = feedbackTicks[0] as { feedback?: { message?: string } }
+      expect(feedback.feedback?.message).toContain("Known Ore Veins:")
+      expect(feedback.feedback?.message).toContain("fartravel")
+    })
+
+    it("should list known tree stands when at Foresters Guild", async () => {
+      const state = createWorld("ore-test")
+      state.player.skills.Woodcutting = { level: 1, xp: 0 }
+      setTownLocation(state, TOWN_LOCATIONS.FORESTERS_GUILD)
+
+      // Discover a tree stand location
+      const treeAreaId = getTreeAreaId(state)
+      makeAreaKnown(state, treeAreaId)
+      discoverAllLocations(state, treeAreaId)
+
+      // Capture feedback
+      const generator = getActionGenerator(state, { type: "SeeGatheringMap" })
+      const ticks: ActionTick[] = []
+      for await (const tick of generator) {
+        ticks.push(tick)
+      }
+
+      const feedbackTicks = ticks.filter(
+        (t) => !t.done && (t as { feedback?: { message?: string } }).feedback?.message
+      )
+      expect(feedbackTicks.length).toBeGreaterThan(0)
+
+      const feedback = feedbackTicks[0] as { feedback?: { message?: string } }
+      expect(feedback.feedback?.message).toContain("Known Tree Stands:")
+      expect(feedback.feedback?.message).toContain("fartravel")
     })
   })
 

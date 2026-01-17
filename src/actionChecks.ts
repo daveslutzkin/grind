@@ -16,6 +16,7 @@ import type {
   TravelToLocationAction,
   LeaveAction,
   BuyMapAction,
+  SeeGatheringMapAction,
   FailureType,
   ItemStack,
   Node,
@@ -927,15 +928,21 @@ export function checkDropAction(state: WorldState, action: DropAction): ActionCh
  * Check GuildEnrolment action preconditions
  * Takes a skill from level 0 to level 1
  */
+/** Gathering skills have longer enrollment times for extended training */
+const GATHERING_SKILLS: Set<string> = new Set(["Mining", "Woodcutting"])
+const GATHERING_ENROL_TIME = 20
+const DEFAULT_ENROL_TIME = 3
+
 export function checkGuildEnrolmentAction(
   state: WorldState,
   _action: GuildEnrolmentAction
 ): ActionCheckResult {
-  const enrolTime = 3
-
   // Resolve skill from current location
   const currentLocationId = getCurrentLocationId(state)
   const skill = getSkillForGuildLocation(currentLocationId)
+
+  // Determine enrollment time based on skill type
+  const enrolTime = skill && GATHERING_SKILLS.has(skill) ? GATHERING_ENROL_TIME : DEFAULT_ENROL_TIME
 
   // Must be at a guild hall
   if (!skill) {
@@ -1024,6 +1031,53 @@ export function checkTurnInCombatTokenAction(
   }
 
   return { valid: true, timeCost: 0, successProbability: 1 }
+}
+
+/**
+ * Check SeeGatheringMap action preconditions
+ * Cost: 0 ticks (viewing information only)
+ * Must be at a gathering guild (Miners Guild or Foresters Guild)
+ * Must be enrolled in that guild (skill level >= 1)
+ */
+export function checkSeeGatheringMapAction(
+  state: WorldState,
+  _action: SeeGatheringMapAction
+): ActionCheckResult & { skill?: GatheringSkillID } {
+  const currentLocationId = getCurrentLocationId(state)
+  const skill = getSkillForGuildLocation(currentLocationId) as GatheringSkillID | null
+
+  // Must be at a gathering guild
+  if (!skill || (skill !== "Mining" && skill !== "Woodcutting")) {
+    return {
+      valid: false,
+      failureType: "WRONG_LOCATION",
+      failureReason: "must_be_at_gathering_guild",
+      failureContext: {
+        currentLocationId,
+        acceptedLocations: ["TOWN_MINERS_GUILD", "TOWN_FORESTERS_GUILD"],
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
+  }
+
+  // Must be enrolled in that skill (level >= 1)
+  const skillState = state.player.skills[skill]
+  if (!skillState || skillState.level < 1) {
+    return {
+      valid: false,
+      failureType: "NOT_ENROLLED",
+      failureReason: "not_enrolled_in_guild",
+      failureContext: {
+        skill,
+        currentLevel: skillState?.level ?? 0,
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
+  }
+
+  return { valid: true, timeCost: 0, successProbability: 1, skill }
 }
 
 /**
@@ -1373,6 +1427,8 @@ export function checkAction(state: WorldState, action: Action): ActionCheckResul
       return checkLeaveAction(state, action)
     case "BuyMap":
       return checkBuyMapAction(state, action)
+    case "SeeGatheringMap":
+      return checkSeeGatheringMapAction(state, action)
     // Movement and exploration actions have their own validation in exploration.ts/engine.ts
     case "Move":
     case "Survey":
