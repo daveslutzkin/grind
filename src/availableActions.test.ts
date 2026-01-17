@@ -634,4 +634,30 @@ describe("getAvailableActions", () => {
       expect(hasAction(actions, "leave")).toBe(true)
     })
   })
+
+  describe("At gathering guild", () => {
+    it("should NOT include 'see gathering map' before enrollment", () => {
+      const state = createWorld("test-seed")
+      // At Miners Guild but NOT enrolled in Mining
+      state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD
+
+      const actions = getAvailableActions(state)
+
+      expect(hasAction(actions, "see gathering map")).toBe(false)
+    })
+
+    it("should include 'see gathering map' after enrollment", () => {
+      const state = createWorld("test-seed")
+      // At Miners Guild and enrolled in Mining
+      state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD
+      state.player.skills.Mining = { level: 1, xp: 0 }
+
+      const actions = getAvailableActions(state)
+
+      expect(hasAction(actions, "see gathering map")).toBe(true)
+
+      const mapAction = findAction(actions, "see gathering map")
+      expect(mapAction?.timeCost).toBe(0)
+    })
+  })
 })

@@ -62,6 +62,7 @@ import {
   getAreaMapPrice,
   ensureCorridorToDistance,
   findPathUsingAllConnections,
+  nodeIdToLocationId,
 } from "./contracts.js"
 import {
   consumeTime,
@@ -1142,17 +1143,6 @@ async function* executeTurnInCombatToken(
 }
 
 /**
- * Convert a node ID to its corresponding location ID
- * Node IDs follow pattern: "area-d1-i0-node-0"
- * Location IDs follow pattern: "area-d1-i0-loc-0"
- */
-function nodeIdToLocationId(nodeId: string): string | null {
-  const match = nodeId.match(/^(.+)-node-(\d+)$/)
-  if (!match) return null
-  return `${match[1]}-loc-${match[2]}`
-}
-
-/**
  * Grant benefits when enrolling in a gathering guild (Mining or Woodcutting).
  * Discovers the closest unknown gathering node of the appropriate type.
  *
@@ -1524,6 +1514,8 @@ async function* executeSeeGatheringMap(
   }
 
   const skill = check.skill!
+  const skillLevel = state.player.skills[skill]?.level ?? 0
+  const hasAppraise = skillLevel >= 3 // APPRAISE unlocked at L3
   const nodeType = skill === "Mining" ? NodeType.ORE_VEIN : NodeType.TREE_STAND
   const headerText = skill === "Mining" ? "Known Ore Veins:" : "Known Tree Stands:"
   const emptyText =
@@ -1546,9 +1538,8 @@ async function* executeSeeGatheringMap(
     if (node.nodeType !== nodeType) continue
 
     // Convert node ID to location ID
-    const locationIdMatch = node.nodeId.match(/^(.+)-node-(\d+)$/)
-    if (!locationIdMatch) continue
-    const locationId = `${locationIdMatch[1]}-loc-${locationIdMatch[2]}`
+    const locationId = nodeIdToLocationId(node.nodeId)
+    if (!locationId) continue
 
     // Skip if location not known
     if (!knownLocationIds.has(locationId)) continue
@@ -1557,19 +1548,29 @@ async function* executeSeeGatheringMap(
     const area = state.exploration.areas.get(node.areaId)
     if (!area) continue
 
-    // Calculate travel time from TOWN
+    // Calculate travel time from TOWN using actual connection multipliers
     const pathResult = findPathUsingAllConnections(state, "TOWN", node.areaId)
-    const travelTicks = pathResult
-      ? pathResult.connectionIds.length * 10 // Base travel time per connection
-      : 999
+    const travelTicks = pathResult ? pathResult.totalTravelTime : 999
 
-    // Build contents string
-    let contents = node.depleted
-      ? "depleted, regenerating"
-      : node.materials
-          .filter((m) => m.remainingUnits > 0)
+    // Build contents string (show quantities if APPRAISE unlocked)
+    let contents: string
+    if (node.depleted) {
+      contents = "depleted, regenerating"
+    } else {
+      const availableMaterials = node.materials.filter((m) => m.remainingUnits > 0)
+      if (availableMaterials.length === 0) {
+        contents = "empty"
+      } else if (hasAppraise) {
+        // Show quantities when APPRAISE is unlocked
+        contents = availableMaterials
+          .map((m) => `${m.materialId.toLowerCase().replace(/_/g, " ")} (${m.remainingUnits})`)
+          .join(", ")
+      } else {
+        contents = availableMaterials
           .map((m) => m.materialId.toLowerCase().replace(/_/g, " "))
-          .join(", ") || "empty"
+          .join(", ")
+      }
+    }
 
     knownNodes.push({
       areaId: node.areaId,

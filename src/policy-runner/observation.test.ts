@@ -70,10 +70,13 @@ describe("observation", () => {
       // Check that we have at least one known area
       expect(obs.knownAreas.length).toBeGreaterThan(0)
 
-      // Nodes in known areas should only include discovered nodes
-      // Mining enrollment now discovers a node, so at least one node is discovered
-      const firstArea = obs.knownAreas[0]
-      expect(firstArea.discoveredNodes.length).toBeGreaterThanOrEqual(0) // May or may not have nodes depending on area
+      // Mining enrollment discovers an ore vein, so we should have at least one
+      // discovered node across all known areas
+      const totalDiscoveredNodes = obs.knownAreas.reduce(
+        (sum, area) => sum + area.discoveredNodes.length,
+        0
+      )
+      expect(totalDiscoveredNodes).toBeGreaterThan(0)
     })
 
     it("correctly identifies canDeposit condition", async () => {

@@ -22,6 +22,7 @@ import {
   ensureAreaGenerated,
   createAreaPlaceholder,
   getAreaCountForDistance,
+  BASE_TRAVEL_TIME,
 } from "./exploration.js"
 
 // ============================================================================
@@ -404,7 +405,7 @@ export function findPathUsingAllConnections(
   state: WorldState,
   fromAreaId: AreaID,
   toAreaId: AreaID
-): { areaIds: AreaID[]; connectionIds: string[] } | null {
+): { areaIds: AreaID[]; connectionIds: string[]; totalTravelTime: number } | null {
   const exploration = state.exploration
 
   // BFS for shortest path
@@ -421,7 +422,12 @@ export function findPathUsingAllConnections(
       const connectionIds = current.connections.map((conn) =>
         createConnectionId(conn.fromAreaId, conn.toAreaId)
       )
-      return { areaIds: current.path, connectionIds }
+      // Calculate total travel time using connection multipliers
+      let totalTravelTime = 0
+      for (const conn of current.connections) {
+        totalTravelTime += BASE_TRAVEL_TIME * conn.travelTimeMultiplier
+      }
+      return { areaIds: current.path, connectionIds, totalTravelTime: Math.round(totalTravelTime) }
     }
 
     // Find all connections from current area (not filtered by knowledge)

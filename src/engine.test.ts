@@ -1489,6 +1489,54 @@ describe("Engine", () => {
       expect(feedback.feedback?.message).toContain("Known Tree Stands:")
       expect(feedback.feedback?.message).toContain("fartravel")
     })
+
+    it("should sort nodes by travel ticks, then alphabetically by area name", async () => {
+      const state = createWorld("sorting-test")
+      state.player.skills.Mining = { level: 1, xp: 0 }
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
+
+      // Find multiple ore areas at different distances
+      const oreAreas = Array.from(state.exploration.areas.values())
+        .filter(
+          (a) =>
+            a.distance > 0 &&
+            state.world.nodes?.some((n) => n.areaId === a.id && n.nodeType === NodeType.ORE_VEIN)
+        )
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, 3) // Get up to 3 ore areas
+
+      // Make all these areas and their nodes known
+      for (const area of oreAreas) {
+        makeAreaKnown(state, area.id)
+        discoverAllLocations(state, area.id)
+      }
+
+      // Capture feedback
+      const generator = getActionGenerator(state, { type: "SeeGatheringMap" })
+      const ticks: ActionTick[] = []
+      for await (const tick of generator) {
+        ticks.push(tick)
+      }
+
+      const feedbackTicks = ticks.filter(
+        (t) => !t.done && (t as { feedback?: { message?: string } }).feedback?.message
+      )
+      expect(feedbackTicks.length).toBeGreaterThan(0)
+
+      const feedback = feedbackTicks[0] as { feedback?: { message?: string } }
+      const message = feedback.feedback?.message || ""
+
+      // Extract travel tick values from the message lines
+      // Format: "  Area Name (distance N, Xt) - contents"
+      const travelTickPattern = /\(distance \d+, (\d+)t\)/g
+      const matches = [...message.matchAll(travelTickPattern)]
+      const travelTicks = matches.map((m) => parseInt(m[1], 10))
+
+      // Verify nodes are sorted by travel ticks (ascending)
+      for (let i = 1; i < travelTicks.length; i++) {
+        expect(travelTicks[i]).toBeGreaterThanOrEqual(travelTicks[i - 1])
+      }
+    })
   })
 
   describe("TravelToLocation action", () => {
