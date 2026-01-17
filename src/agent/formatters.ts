@@ -829,10 +829,14 @@ export function formatActionLog(log: ActionLog, state?: WorldState): string {
     if (state) {
       const skill = state.player.skills[log.skillGained.skill]
       if (skill) {
-        const threshold =
-          log.skillGained.skill === "Exploration"
-            ? getExplorationXPThreshold(skill.level)
-            : getXPThresholdForNextLevel(skill.level)
+        // Mining and Woodcutting use exploration XP thresholds per canonical-gathering.md
+        const useExplorationThresholds =
+          log.skillGained.skill === "Exploration" ||
+          log.skillGained.skill === "Mining" ||
+          log.skillGained.skill === "Woodcutting"
+        const threshold = useExplorationThresholds
+          ? getExplorationXPThreshold(skill.level)
+          : getXPThresholdForNextLevel(skill.level)
         const remaining = threshold - skill.xp
         const percentToNext = Math.round((skill.xp / threshold) * 100)
         xpLine += ` (${remaining} to next level, ${percentToNext}% there)`

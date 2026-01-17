@@ -1083,6 +1083,45 @@ describe("Formatters", () => {
       }
     })
 
+    it("should use exploration XP thresholds for Mining skill display", async () => {
+      // Bug: formatters.ts was using N² thresholds for Mining, but Mining uses
+      // exploration thresholds (25 XP for L1→L2). This caused negative "to next level"
+      // values and percentages over 100%.
+      const state = createWorld("mining-xp-threshold-test")
+
+      // Join Miners Guild
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
+      await executeAction(state, { type: "Enrol" })
+
+      // Set Mining to level 1 with 20 XP (80% of the 25 XP threshold)
+      // With N² threshold (buggy): would be 20/4 = 500% and -16 remaining
+      // With exploration threshold (correct): 20/25 = 80% and 5 remaining
+      state.player.skills.Mining = { level: 1, xp: 20 }
+
+      // Create a mock action log for mining
+      const mockLog = {
+        tickBefore: 0,
+        success: true,
+        actionType: "Gather" as const,
+        parameters: {},
+        timeConsumed: 20,
+        skillGained: { skill: "Mining" as const, amount: 1 },
+        rngRolls: [],
+        stateDeltaSummary: "Extracted resources",
+      }
+
+      const formatted = formatActionLog(mockLog, state)
+
+      // Should show correct remaining (5 to next level) not negative
+      // and correct percentage (80%) not over 100%
+      // With 20 XP and 25 threshold: remaining = 25-20 = 5, percent = 20/25 = 80%
+      expect(formatted).toContain("Mining XP")
+      expect(formatted).toMatch(/\(5 to next level, 80% there\)/)
+      // Ensure we're not showing buggy negative values or percentages over 100
+      expect(formatted).not.toMatch(/-\d+ to next level/)
+      expect(formatted).not.toMatch(/1\d\d% there/) // No 100%+ percentages
+    })
+
     it("should show connection travel time for discovered connections", async () => {
       const state = createWorld("connection-test")
       setTownLocation(state, TOWN_LOCATIONS.EXPLORERS_GUILD)
