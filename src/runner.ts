@@ -217,9 +217,20 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
 
     case "turn-in":
     case "turnin": {
-      const contractId = parts[1]
+      let contractId = parts[1]
+      if (!contractId && context.state) {
+        // If no contract ID provided, try to find an active contract at this location
+        const currentLocationId =
+          context.currentLocationId ?? context.state.exploration.playerState.currentLocationId
+        for (const activeContractId of context.state.player.activeContracts) {
+          const contract = context.state.world.contracts.find((c) => c.id === activeContractId)
+          if (contract && contract.acceptLocationId === currentLocationId) {
+            contractId = activeContractId
+            break
+          }
+        }
+      }
       if (!contractId) {
-        // If no contract ID provided, try to find the active contract
         return null
       }
       return { type: "TurnInContract", contractId }

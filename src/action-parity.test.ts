@@ -200,4 +200,45 @@ describe("Action Parity: REPL and Agent Parser", () => {
       }
     })
   })
+
+  describe("context-aware parsing", () => {
+    it("should parse turn-in without contract ID when active contract exists at current location", async () => {
+      const { createWorld, TOWN_LOCATIONS } = await import("./world.js")
+      const { refreshMiningContracts } = await import("./contracts.js")
+      const { executeAction } = await import("./engine.js")
+
+      // Set up a state with an active contract at the miners guild
+      const state = createWorld("turn-in-no-id-test")
+      state.player.skills.Mining = { level: 10, xp: 0 }
+      refreshMiningContracts(state)
+
+      // Go to miners guild and accept a contract
+      state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD
+      const contract = state.world.contracts.find(
+        (c) => c.acceptLocationId === TOWN_LOCATIONS.MINERS_GUILD
+      )
+      expect(contract).toBeDefined()
+
+      await executeAction(state, { type: "AcceptContract", contractId: contract!.id })
+      expect(state.player.activeContracts).toContain(contract!.id)
+
+      // Give player the required items to satisfy the contract
+      const requiredItem = contract!.requirements[0]
+      if (requiredItem) {
+        for (let i = 0; i < requiredItem.quantity; i++) {
+          state.player.inventory.push({ itemId: requiredItem.itemId, quantity: 1 })
+        }
+      }
+
+      // Now test that "turn-in" (without contract ID) parses correctly
+      const result = parseReplAction("turn-in", {
+        currentLocationId: TOWN_LOCATIONS.MINERS_GUILD,
+        state,
+      })
+
+      expect(result).not.toBeNull()
+      expect(result?.type).toBe("TurnInContract")
+      expect((result as { contractId: string }).contractId).toBe(contract!.id)
+    })
+  })
 })
