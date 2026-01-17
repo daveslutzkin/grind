@@ -716,50 +716,20 @@ describe("Contract Generation", () => {
         const state = createWorld("find-node-test")
         state.player.skills.Mining = { level: 10, xp: 0 }
 
-        // Create a discoverable node with STONE
-        const testAreaId = "area-d1-i0"
-        const testNodeId = `${testAreaId}-node-0`
-        const testLocationId = `${testAreaId}-loc-0`
-        state.world.nodes.push({
-          nodeId: testNodeId,
-          nodeType: NodeType.ORE_VEIN,
-          areaId: testAreaId,
-          materials: [
-            {
-              materialId: "STONE",
-              remainingUnits: 10,
-              maxUnitsInitial: 10,
-              requiresSkill: "Mining",
-              requiredLevel: 1,
-              tier: 1,
-            },
-          ],
-          depleted: false,
-        })
-
-        // Make sure the area exists in exploration
-        if (!state.exploration.areas.has(testAreaId)) {
-          state.exploration.areas.set(testAreaId, {
-            id: testAreaId,
-            distance: 1,
-            generated: true,
-            locations: [
-              {
-                id: testLocationId,
-                areaId: testAreaId,
-                type: ExplorationLocationType.GATHERING_NODE,
-                gatheringSkillType: "Mining",
-              },
-            ],
-            indexInDistance: 0,
-          })
-        }
-
+        // findNodeForMap should find a STONE node at distance 1
+        // (guaranteed by ensureMinimumNodes during world creation)
         const result = findNodeForMap("STONE", state)
 
         expect(result).not.toBeNull()
-        expect(result!.targetAreaId).toBe(testAreaId)
-        expect(result!.targetNodeId).toBe(testNodeId)
+        // Should find a node at distance 1 (closest)
+        const targetArea = state.exploration.areas.get(result!.targetAreaId)
+        expect(targetArea).toBeDefined()
+        expect(targetArea!.distance).toBe(1)
+
+        // The node should contain STONE
+        const node = state.world.nodes.find((n) => n.nodeId === result!.targetNodeId)
+        expect(node).toBeDefined()
+        expect(node!.materials.some((m) => m.materialId === "STONE")).toBe(true)
       })
 
       it("should generate distant areas to find high-tier materials", async () => {
@@ -1118,20 +1088,97 @@ describe("Contract Generation", () => {
   // ============================================================================
 
   describe("First contract node distance issue", () => {
-    it("should reproduce the issue with seed session-1768632206429 - no mining nodes at distance 1", async () => {
-      // This test reproduces an issue where the first mining contract pointed to
-      // a node at distance 2 (taking 3 travel hops) instead of distance 1.
-      // The root cause: with 25% probability of ore veins at each distance-1 area,
-      // and only 5 areas at distance 1, there's (0.75)^5 = ~23.7% chance of NO
-      // mining nodes at distance 1.
+    it("should guarantee at least 2 mining nodes at distance 1", () => {
+      // Test multiple seeds to verify the guarantee holds
+      const seeds = [
+        "session-1768632206429", // Known problematic seed
+        "test-seed-1",
+        "test-seed-2",
+        "test-seed-3",
+        "guarantee-test",
+      ]
+
+      for (const seed of seeds) {
+        const state = createWorld(seed)
+
+        const miningNodesAtD1 = state.world.nodes.filter((node) => {
+          const area = state.exploration.areas.get(node.areaId)
+          return area?.distance === 1 && node.nodeType === NodeType.ORE_VEIN
+        })
+
+        expect(miningNodesAtD1.length).toBeGreaterThanOrEqual(2)
+      }
+    })
+
+    it("should guarantee at least 2 woodcutting nodes at distance 1", () => {
+      const seeds = [
+        "session-1768632206429",
+        "test-seed-1",
+        "test-seed-2",
+        "test-seed-3",
+        "guarantee-test",
+      ]
+
+      for (const seed of seeds) {
+        const state = createWorld(seed)
+
+        const woodcuttingNodesAtD1 = state.world.nodes.filter((node) => {
+          const area = state.exploration.areas.get(node.areaId)
+          return area?.distance === 1 && node.nodeType === NodeType.TREE_STAND
+        })
+
+        expect(woodcuttingNodesAtD1.length).toBeGreaterThanOrEqual(2)
+      }
+    })
+
+    it("should guarantee at least 3 mining nodes at distance 2", () => {
+      const seeds = [
+        "session-1768632206429",
+        "test-seed-1",
+        "test-seed-2",
+        "test-seed-3",
+        "guarantee-test",
+      ]
+
+      for (const seed of seeds) {
+        const state = createWorld(seed)
+
+        const miningNodesAtD2 = state.world.nodes.filter((node) => {
+          const area = state.exploration.areas.get(node.areaId)
+          return area?.distance === 2 && node.nodeType === NodeType.ORE_VEIN
+        })
+
+        expect(miningNodesAtD2.length).toBeGreaterThanOrEqual(3)
+      }
+    })
+
+    it("should guarantee at least 3 woodcutting nodes at distance 2", () => {
+      const seeds = [
+        "session-1768632206429",
+        "test-seed-1",
+        "test-seed-2",
+        "test-seed-3",
+        "guarantee-test",
+      ]
+
+      for (const seed of seeds) {
+        const state = createWorld(seed)
+
+        const woodcuttingNodesAtD2 = state.world.nodes.filter((node) => {
+          const area = state.exploration.areas.get(node.areaId)
+          return area?.distance === 2 && node.nodeType === NodeType.TREE_STAND
+        })
+
+        expect(woodcuttingNodesAtD2.length).toBeGreaterThanOrEqual(3)
+      }
+    })
+
+    it("should now have mining nodes at distance 1 for seed session-1768632206429 (fix verified)", async () => {
+      // This test verifies that the fix works: seed session-1768632206429 previously had
+      // NO mining nodes at distance 1 (due to 25% probability per area and unlucky RNG).
+      // After the fix, we guarantee at least 2 mining nodes at distance 1.
 
       const state = createWorld("session-1768632206429")
-
-      // Check all distance-1 areas for mining nodes
-      const distance1Areas = Array.from(state.exploration.areas.values()).filter(
-        (a) => a.distance === 1
-      )
-      expect(distance1Areas.length).toBe(5) // Fibonacci at d1 = 5
 
       // Find all mining nodes at distance 1
       const miningNodesAtD1 = state.world.nodes.filter((node) => {
@@ -1139,10 +1186,10 @@ describe("Contract Generation", () => {
         return area?.distance === 1 && node.nodeType === NodeType.ORE_VEIN
       })
 
-      // This test PROVES that with this seed, there are NO mining nodes at distance 1
-      expect(miningNodesAtD1.length).toBe(0)
+      // After the fix, we should have at least 2 mining nodes at distance 1
+      expect(miningNodesAtD1.length).toBeGreaterThanOrEqual(2)
 
-      // Find the closest mining node
+      // Find the closest mining node - should now be at distance 1
       const allMiningNodes = state.world.nodes.filter((node) => node.nodeType === NodeType.ORE_VEIN)
       expect(allMiningNodes.length).toBeGreaterThan(0)
 
@@ -1154,10 +1201,10 @@ describe("Contract Generation", () => {
         }
       }
 
-      // The closest mining node is at distance 2, not 1
-      expect(closestDistance).toBe(2)
+      // The closest mining node is now at distance 1!
+      expect(closestDistance).toBe(1)
 
-      // Verify that when we generate a contract, it points to distance 2
+      // Verify that when we generate a contract, it points to distance 1
       state.player.skills.Mining = { level: 1, xp: 0 }
       const { refreshMiningContracts } = await import("./contracts.js")
       refreshMiningContracts(state)
@@ -1168,13 +1215,9 @@ describe("Contract Generation", () => {
       expect(contract).toBeDefined()
       expect(contract!.includedMap).toBeDefined()
 
-      // The map points to an area at distance 2
+      // The map now points to an area at distance 1
       const targetArea = state.exploration.areas.get(contract!.includedMap!.targetAreaId)
-      expect(targetArea!.distance).toBe(2)
-
-      // Path requires 3 hops: TOWN -> d1 -> d2 -> target (which is at d2)
-      // The areaIds in the map include TOWN + intermediate areas + target
-      expect(contract!.includedMap!.areaIds.length).toBeGreaterThanOrEqual(3)
+      expect(targetArea!.distance).toBe(1)
     })
   })
 

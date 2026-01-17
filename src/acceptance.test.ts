@@ -128,7 +128,10 @@ describe("Acceptance Tests: Gathering MVP", () => {
       world.exploration.playerState.currentAreaId = oreAreaId
       discoverAllLocations(world, oreAreaId)
 
-      const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
+      // Find specifically an ORE_VEIN node (not just any node in the area)
+      const node = world.world.nodes!.find(
+        (n) => n.areaId === oreAreaId && n.nodeType === NodeType.ORE_VEIN
+      )!
       moveToNodeLocation(world, node)
       // Set level high enough to mine the lowest-level material in this node
       const minRequiredLevel = Math.min(...node.materials.map((m) => m.requiredLevel))
@@ -164,7 +167,10 @@ describe("Acceptance Tests: Gathering MVP", () => {
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
       discoverAllLocations(world, oreAreaId)
-      const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
+      // Find specifically an ORE_VEIN node (not just any node in the area)
+      const node = world.world.nodes!.find(
+        (n) => n.areaId === oreAreaId && n.nodeType === NodeType.ORE_VEIN
+      )!
       moveToNodeLocation(world, node)
       // Set level high enough to mine the lowest-level material in this node
       const minRequiredLevel = Math.min(...node.materials.map((m) => m.requiredLevel))
@@ -251,7 +257,10 @@ describe("Acceptance Tests: Gathering MVP", () => {
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
       discoverAllLocations(world, oreAreaId)
-      const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
+      // Find specifically an ORE_VEIN node (not just any node in the area)
+      const node = world.world.nodes!.find(
+        (n) => n.areaId === oreAreaId && n.nodeType === NodeType.ORE_VEIN
+      )!
       moveToNodeLocation(world, node)
       // Set level high enough to mine materials (need L16 for STONE M16 Careful unlock for CAREFUL_ALL mode)
       const minRequiredLevel = Math.min(...node.materials.map((m) => m.requiredLevel))
@@ -375,7 +384,10 @@ describe("Acceptance Tests: Gathering MVP", () => {
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
       discoverAllLocations(world, oreAreaId)
-      const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
+      // Find specifically an ORE_VEIN node (not just any node in the area)
+      const node = world.world.nodes!.find(
+        (n) => n.areaId === oreAreaId && n.nodeType === NodeType.ORE_VEIN
+      )!
       moveToNodeLocation(world, node)
       // Set level high enough to mine the lowest-level material in this node
       const minRequiredLevel = Math.min(...node.materials.map((m) => m.requiredLevel))
@@ -408,7 +420,10 @@ describe("Acceptance Tests: Gathering MVP", () => {
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
       discoverAllLocations(world, oreAreaId)
-      const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
+      // Find specifically an ORE_VEIN node (not just any node in the area)
+      const node = world.world.nodes!.find(
+        (n) => n.areaId === oreAreaId && n.nodeType === NodeType.ORE_VEIN
+      )!
       moveToNodeLocation(world, node)
       // Set level high enough to mine the lowest-level material in this node
       const minRequiredLevel = Math.min(...node.materials.map((m) => m.requiredLevel))
@@ -452,7 +467,10 @@ describe("Acceptance Tests: Gathering MVP", () => {
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
       discoverAllLocations(world, oreAreaId)
-      const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
+      // Find specifically an ORE_VEIN node (not just any node in the area)
+      const node = world.world.nodes!.find(
+        (n) => n.areaId === oreAreaId && n.nodeType === NodeType.ORE_VEIN
+      )!
       moveToNodeLocation(world, node)
 
       // L2: APPRAISE should fail
@@ -485,7 +503,10 @@ describe("Acceptance Tests: Gathering MVP", () => {
       makeAreaKnown(world, oreAreaId)
       world.exploration.playerState.currentAreaId = oreAreaId
       discoverAllLocations(world, oreAreaId)
-      const node = world.world.nodes!.find((n) => n.areaId === oreAreaId)!
+      // Find specifically an ORE_VEIN node (not just any node in the area)
+      const node = world.world.nodes!.find(
+        (n) => n.areaId === oreAreaId && n.nodeType === NodeType.ORE_VEIN
+      )!
       moveToNodeLocation(world, node)
       // Set level high enough to mine the lowest-level material in this node
       const minRequiredLevel = Math.min(...node.materials.map((m) => m.requiredLevel))

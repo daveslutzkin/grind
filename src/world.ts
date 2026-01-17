@@ -531,6 +531,137 @@ export function generateNodesForArea(
 }
 
 // ============================================================================
+// Minimum Node Guarantees
+// ============================================================================
+
+/**
+ * Minimum nodes required at each distance to ensure players can always get started.
+ * Distance 1: At least 2 of each gathering type (mining/woodcutting)
+ * Distance 2: At least 3 of each gathering type
+ */
+const MINIMUM_NODES: Record<number, { mining: number; woodcutting: number }> = {
+  1: { mining: 2, woodcutting: 2 },
+  2: { mining: 3, woodcutting: 3 },
+}
+
+/**
+ * Ensure minimum nodes exist at distances 1 and 2 for both gathering types.
+ * This runs after probabilistic node generation to guarantee players can always
+ * find nearby gathering nodes when starting out.
+ */
+function ensureMinimumNodes(allNodes: Node[], areas: Map<AreaID, Area>, rng: RngState): void {
+  for (const [distanceStr, minimums] of Object.entries(MINIMUM_NODES)) {
+    const distance = parseInt(distanceStr, 10)
+
+    // Count existing nodes by type at this distance
+    const existingMining = allNodes.filter((node) => {
+      const area = areas.get(node.areaId)
+      return area?.distance === distance && node.nodeType === NodeType.ORE_VEIN
+    })
+
+    const existingWoodcutting = allNodes.filter((node) => {
+      const area = areas.get(node.areaId)
+      return area?.distance === distance && node.nodeType === NodeType.TREE_STAND
+    })
+
+    // Get areas at this distance that don't have mining nodes
+    const areasAtDistance = Array.from(areas.values()).filter((a) => a.distance === distance)
+    const areasWithMining = new Set(existingMining.map((n) => n.areaId))
+    const areasWithWoodcutting = new Set(existingWoodcutting.map((n) => n.areaId))
+
+    // Add mining nodes if needed
+    const miningNeeded = minimums.mining - existingMining.length
+    if (miningNeeded > 0) {
+      const areasWithoutMining = areasAtDistance.filter((a) => !areasWithMining.has(a.id))
+      const areasToAddMining = areasWithoutMining.slice(0, miningNeeded)
+
+      for (const area of areasToAddMining) {
+        // Find the next available index that works for both node and location
+        // Node IDs and location IDs must use the same index (node-X corresponds to loc-X)
+        // We need to find the max index across BOTH existing nodes AND existing locations
+        // to avoid ID collisions with mob camps (which have locations but no nodes)
+        const existingNodeIndices = allNodes
+          .filter((n) => n.areaId === area.id)
+          .map((n) => {
+            const match = n.nodeId.match(/-node-(\d+)$/)
+            return match ? parseInt(match[1], 10) : -1
+          })
+        const existingLocationIndices = area.locations.map((loc) => {
+          const match = loc.id.match(/-loc-(\d+)$/)
+          return match ? parseInt(match[1], 10) : -1
+        })
+        const allIndices = [...existingNodeIndices, ...existingLocationIndices]
+        const nextIndex = allIndices.length > 0 ? Math.max(...allIndices) + 1 : 0
+
+        const nodeId = `${area.id}-node-${nextIndex}`
+        const locationId = `${area.id}-loc-${nextIndex}`
+
+        // Get the pool config for this distance
+        const pools = getNodePoolsForDistance(distance)
+        const miningPool = pools.find((p) => p.nodeType === NodeType.ORE_VEIN)!
+
+        // Generate the node
+        const node = generateNode(nodeId, area.id, distance, miningPool, rng)
+        allNodes.push(node)
+
+        // Add the location to the area
+        area.locations.push({
+          id: locationId,
+          areaId: area.id,
+          type: ExplorationLocationType.GATHERING_NODE,
+          gatheringSkillType: "Mining",
+        })
+      }
+    }
+
+    // Add woodcutting nodes if needed
+    const woodcuttingNeeded = minimums.woodcutting - existingWoodcutting.length
+    if (woodcuttingNeeded > 0) {
+      const areasWithoutWoodcutting = areasAtDistance.filter((a) => !areasWithWoodcutting.has(a.id))
+      const areasToAddWoodcutting = areasWithoutWoodcutting.slice(0, woodcuttingNeeded)
+
+      for (const area of areasToAddWoodcutting) {
+        // Find the next available index that works for both node and location
+        // Node IDs and location IDs must use the same index (node-X corresponds to loc-X)
+        // We need to find the max index across BOTH existing nodes AND existing locations
+        // to avoid ID collisions with mob camps (which have locations but no nodes)
+        const existingNodeIndices = allNodes
+          .filter((n) => n.areaId === area.id)
+          .map((n) => {
+            const match = n.nodeId.match(/-node-(\d+)$/)
+            return match ? parseInt(match[1], 10) : -1
+          })
+        const existingLocationIndices = area.locations.map((loc) => {
+          const match = loc.id.match(/-loc-(\d+)$/)
+          return match ? parseInt(match[1], 10) : -1
+        })
+        const allIndices = [...existingNodeIndices, ...existingLocationIndices]
+        const nextIndex = allIndices.length > 0 ? Math.max(...allIndices) + 1 : 0
+
+        const nodeId = `${area.id}-node-${nextIndex}`
+        const locationId = `${area.id}-loc-${nextIndex}`
+
+        // Get the pool config for this distance
+        const pools = getNodePoolsForDistance(distance)
+        const woodcuttingPool = pools.find((p) => p.nodeType === NodeType.TREE_STAND)!
+
+        // Generate the node
+        const node = generateNode(nodeId, area.id, distance, woodcuttingPool, rng)
+        allNodes.push(node)
+
+        // Add the location to the area
+        area.locations.push({
+          id: locationId,
+          areaId: area.id,
+          type: ExplorationLocationType.GATHERING_NODE,
+          gatheringSkillType: "Woodcutting",
+        })
+      }
+    }
+  }
+}
+
+// ============================================================================
 // World Factory
 // ============================================================================
 
@@ -576,6 +707,9 @@ export function createWorld(seed: string): WorldState {
       area.generated = true
     }
   }
+
+  // Ensure minimum nodes exist at distances 1 and 2 for new player experience
+  ensureMinimumNodes(allNodes, areas, rng)
 
   // Start knowing only TOWN and all town locations
   const knownAreaIds = ["TOWN"]
