@@ -14,6 +14,7 @@ import type {
   GatherAction,
   CraftAction,
   BuyMapAction,
+  TurnInContractAction,
 } from "./types.js"
 import {
   getCurrentAreaId,
@@ -99,6 +100,9 @@ export function getAvailableActions(state: WorldState): AvailableAction[] {
 
       // Accept contracts available at this location
       addContractActions(state, actions, currentLocationId!)
+
+      // Turn in active contracts at this location
+      addTurnInContractActions(state, actions, currentLocationId!)
 
       // Map shop actions (Phase 3)
       addMapShopActions(state, actions, currentLocation.guildType as SkillID)
@@ -223,6 +227,34 @@ function addContractActions(
         successProbability: 1,
       })
       return // Only add one accept action
+    }
+  }
+}
+
+/**
+ * Add turn-in contract action if player has an active contract that can be turned in here.
+ */
+function addTurnInContractActions(
+  state: WorldState,
+  actions: AvailableAction[],
+  locationId: string
+): void {
+  // Check if player has any active contracts that can be turned in at this location
+  for (const contractId of state.player.activeContracts) {
+    const contract = state.world.contracts.find((c) => c.id === contractId)
+    if (!contract || contract.acceptLocationId !== locationId) continue
+
+    const turnInAction: TurnInContractAction = { type: "TurnInContract", contractId }
+    const turnInCheck = checkAction(state, turnInAction)
+
+    if (turnInCheck.valid) {
+      actions.push({
+        displayName: "turn-in",
+        timeCost: turnInCheck.timeCost,
+        isVariable: false,
+        successProbability: 1,
+      })
+      return // Only add one turn-in action
     }
   }
 }

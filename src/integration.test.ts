@@ -214,26 +214,36 @@ describe("Integration: Full Session Flow", () => {
     state.player.inventory.push({ itemId: "COPPER_BAR", quantity: 2 })
 
     // Accept the test-mining-contract (requires 2 COPPER_BAR, rewards 5 COPPER_ORE, 10 rep)
-    // Since requirements are already met, contract completes immediately
     const acceptLog = await executeAction(state, {
       type: "AcceptContract",
       contractId: "test-mining-contract",
     })
     expect(acceptLog.success).toBe(true)
 
-    // Contract completes immediately since requirements were met
-    expect(acceptLog.contractsCompleted).toBeDefined()
-    expect(acceptLog.contractsCompleted).toHaveLength(1)
-    expect(acceptLog.contractsCompleted![0].contractId).toBe("test-mining-contract")
+    // Contract requires explicit turn-in, so it's not completed yet
+    expect(acceptLog.contractsCompleted).toBeUndefined()
+    expect(state.player.activeContracts).toContain("test-mining-contract")
+
+    // Turn in the contract at the guild
+    const turnInLog = await executeAction(state, {
+      type: "TurnInContract",
+      contractId: "test-mining-contract",
+    })
+    expect(turnInLog.success).toBe(true)
+
+    // Contract completes on turn-in
+    expect(turnInLog.contractsCompleted).toBeDefined()
+    expect(turnInLog.contractsCompleted).toHaveLength(1)
+    expect(turnInLog.contractsCompleted![0].contractId).toBe("test-mining-contract")
 
     // Verify log shows what was consumed and granted
-    expect(acceptLog.contractsCompleted![0].itemsConsumed).toEqual([
+    expect(turnInLog.contractsCompleted![0].itemsConsumed).toEqual([
       { itemId: "COPPER_BAR", quantity: 2 },
     ])
-    expect(acceptLog.contractsCompleted![0].rewardsGranted).toEqual([
+    expect(turnInLog.contractsCompleted![0].rewardsGranted).toEqual([
       { itemId: "COPPER_ORE", quantity: 5 },
     ])
-    expect(acceptLog.contractsCompleted![0].reputationGained).toBe(10)
+    expect(turnInLog.contractsCompleted![0].reputationGained).toBe(10)
 
     // Verify state changes:
     // - COPPER_BAR consumed (should be gone)
@@ -257,11 +267,15 @@ describe("Integration: Full Session Flow", () => {
     })
     expect(acceptLog2.success).toBe(true)
 
-    // Contract does NOT complete because we don't have the required items anymore
-    expect(acceptLog2.contractsCompleted).toBeUndefined()
-
     // Contract is now active, waiting for items
     expect(state.player.activeContracts).toContain("test-mining-contract")
+
+    // Try to turn in without items - should fail
+    const turnInLog2 = await executeAction(state, {
+      type: "TurnInContract",
+      contractId: "test-mining-contract",
+    })
+    expect(turnInLog2.success).toBe(false)
 
     // Reputation should still be 10 (no double reward without items)
     expect(state.player.guildReputation).toBe(10)
@@ -293,29 +307,39 @@ describe("Integration: Full Session Flow", () => {
     // Give player the required items
     state.player.inventory.push({ itemId: "IRON_BAR", quantity: 1 })
 
-    // Accept the contract - it should complete immediately and grant XP
+    // Accept the contract
     const acceptLog = await executeAction(state, {
       type: "AcceptContract",
       contractId: "xp-contract",
     })
-
     expect(acceptLog.success).toBe(true)
-    expect(acceptLog.contractsCompleted).toHaveLength(1)
-    expect(acceptLog.contractsCompleted![0].xpGained).toEqual({ skill: "Smithing", amount: 5 })
+
+    // Contract requires explicit turn-in
+    expect(acceptLog.contractsCompleted).toBeUndefined()
+
+    // Turn in the contract at the guild to complete it and grant XP
+    const turnInLog = await executeAction(state, {
+      type: "TurnInContract",
+      contractId: "xp-contract",
+    })
+
+    expect(turnInLog.success).toBe(true)
+    expect(turnInLog.contractsCompleted).toHaveLength(1)
+    expect(turnInLog.contractsCompleted![0].xpGained).toEqual({ skill: "Smithing", amount: 5 })
 
     // Level-ups from contract should appear in ContractCompletion.levelUps
-    expect(acceptLog.contractsCompleted![0].levelUps).toBeDefined()
-    expect(acceptLog.contractsCompleted![0].levelUps).toHaveLength(1)
-    expect(acceptLog.contractsCompleted![0].levelUps![0]).toEqual({
+    expect(turnInLog.contractsCompleted![0].levelUps).toBeDefined()
+    expect(turnInLog.contractsCompleted![0].levelUps).toHaveLength(1)
+    expect(turnInLog.contractsCompleted![0].levelUps![0]).toEqual({
       skill: "Smithing",
       fromLevel: 1,
       toLevel: 2,
     })
 
     // Level-ups from contract should ALSO appear in ActionLog.levelUps
-    expect(acceptLog.levelUps).toBeDefined()
-    expect(acceptLog.levelUps).toHaveLength(1)
-    expect(acceptLog.levelUps![0]).toEqual({
+    expect(turnInLog.levelUps).toBeDefined()
+    expect(turnInLog.levelUps).toHaveLength(1)
+    expect(turnInLog.levelUps![0]).toEqual({
       skill: "Smithing",
       fromLevel: 1,
       toLevel: 2,

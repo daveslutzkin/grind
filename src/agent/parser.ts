@@ -49,8 +49,15 @@ function parseAction(actionText: string): Action | null {
   }
 
   // Try to parse Go/Move action - engine resolves destination
-  // Patterns: "Go to DEST", "Move to DEST", "Go DEST", "Move DEST"
-  const goPatterns = [/^go\s+to\s+(.+)/i, /^go\s+(.+)/i, /^move\s+to\s+(.+)/i, /^move\s+(.+)/i]
+  // Patterns: "Go to DEST", "Move to DEST", "Go DEST", "Move DEST", "Goto DEST", "Travel DEST"
+  const goPatterns = [
+    /^go\s+to\s+(.+)/i,
+    /^go\s+(.+)/i,
+    /^goto\s+(.+)/i,
+    /^move\s+to\s+(.+)/i,
+    /^move\s+(.+)/i,
+    /^travel\s+(.+)/i,
+  ]
   for (const pattern of goPatterns) {
     const match = text.match(pattern)
     if (match) {
@@ -88,11 +95,13 @@ function parseAction(actionText: string): Action | null {
   }
 
   // Try to parse Mine action (alias for gather mining)
-  // Patterns: "mine MODE [MATERIAL]"
-  const mineMatch = text.match(/^mine\s+(FOCUS|CAREFUL_ALL|APPRAISE)(?:\s+(\S+))?/i)
+  // Patterns: "mine MODE [MATERIAL]" - supports both full mode names and short aliases
+  const mineMatch = text.match(/^mine\s+(FOCUS|CAREFUL_ALL|CAREFUL|APPRAISE)(?:\s+(\S+))?/i)
   if (mineMatch) {
-    const mode = mineMatch[1].toUpperCase() as GatherMode
-    const action: Action = { type: "Mine", mode }
+    let mode = mineMatch[1].toUpperCase()
+    // Map short aliases to full mode names
+    if (mode === "CAREFUL") mode = "CAREFUL_ALL"
+    const action: Action = { type: "Mine", mode: mode as GatherMode }
     if (mode === "FOCUS" && mineMatch[2]) {
       ;(action as { focusMaterialId?: string }).focusMaterialId = mineMatch[2]
     }
@@ -100,11 +109,13 @@ function parseAction(actionText: string): Action | null {
   }
 
   // Try to parse Chop action (alias for gather woodcutting)
-  // Patterns: "chop MODE [MATERIAL]"
-  const chopMatch = text.match(/^chop\s+(FOCUS|CAREFUL_ALL|APPRAISE)(?:\s+(\S+))?/i)
+  // Patterns: "chop MODE [MATERIAL]" - supports both full mode names and short aliases
+  const chopMatch = text.match(/^chop\s+(FOCUS|CAREFUL_ALL|CAREFUL|APPRAISE)(?:\s+(\S+))?/i)
   if (chopMatch) {
-    const mode = chopMatch[1].toUpperCase() as GatherMode
-    const action: Action = { type: "Chop", mode }
+    let mode = chopMatch[1].toUpperCase()
+    // Map short aliases to full mode names
+    if (mode === "CAREFUL") mode = "CAREFUL_ALL"
+    const action: Action = { type: "Chop", mode: mode as GatherMode }
     if (mode === "FOCUS" && chopMatch[2]) {
       ;(action as { focusMaterialId?: string }).focusMaterialId = chopMatch[2]
     }
@@ -112,7 +123,8 @@ function parseAction(actionText: string): Action | null {
   }
 
   // Try to parse Enrol action (no arguments - skill resolved by engine)
-  if (/^enrol$/i.test(text)) {
+  // Supports both "enrol" and "enroll" spellings
+  if (/^enrol{1,2}$/i.test(text)) {
     return { type: "Enrol" }
   }
 
@@ -123,22 +135,40 @@ function parseAction(actionText: string): Action | null {
   }
 
   // Try to parse Store action
-  const storeMatch = text.match(/^store\s+(\d+)\s+(\S+)/i)
-  if (storeMatch) {
+  // Supports both "store 5 STONE" and "store STONE 5" formats
+  const storeMatch1 = text.match(/^store\s+(\d+)\s+(\S+)/i)
+  if (storeMatch1) {
     return {
       type: "Store",
-      quantity: parseInt(storeMatch[1], 10),
-      itemId: storeMatch[2],
+      quantity: parseInt(storeMatch1[1], 10),
+      itemId: storeMatch1[2],
+    }
+  }
+  const storeMatch2 = text.match(/^store\s+(\S+)\s+(\d+)/i)
+  if (storeMatch2) {
+    return {
+      type: "Store",
+      itemId: storeMatch2[1],
+      quantity: parseInt(storeMatch2[2], 10),
     }
   }
 
   // Try to parse Drop action
-  const dropMatch = text.match(/^drop\s+(\d+)\s+(\S+)/i)
-  if (dropMatch) {
+  // Supports both "drop 5 STONE" and "drop STONE 5" formats
+  const dropMatch1 = text.match(/^drop\s+(\d+)\s+(\S+)/i)
+  if (dropMatch1) {
     return {
       type: "Drop",
-      quantity: parseInt(dropMatch[1], 10),
-      itemId: dropMatch[2],
+      quantity: parseInt(dropMatch1[1], 10),
+      itemId: dropMatch1[2],
+    }
+  }
+  const dropMatch2 = text.match(/^drop\s+(\S+)\s+(\d+)/i)
+  if (dropMatch2) {
+    return {
+      type: "Drop",
+      itemId: dropMatch2[1],
+      quantity: parseInt(dropMatch2[2], 10),
     }
   }
 
@@ -154,6 +184,16 @@ function parseAction(actionText: string): Action | null {
     const match = text.match(pattern)
     if (match) {
       return { type: "AcceptContract", contractId: match[1] }
+    }
+  }
+
+  // Try to parse TurnInContract action
+  // Patterns: "turn-in CONTRACT_ID", "turnin CONTRACT_ID", "TurnInContract CONTRACT_ID"
+  const turnInPatterns = [/^turn-in\s+(\S+)/i, /^turnin\s+(\S+)/i, /^turnincontract\s+(\S+)/i]
+  for (const pattern of turnInPatterns) {
+    const match = text.match(pattern)
+    if (match) {
+      return { type: "TurnInContract", contractId: match[1] }
     }
   }
 

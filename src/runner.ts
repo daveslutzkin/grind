@@ -215,6 +215,16 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
       return { type: "AcceptContract", contractId }
     }
 
+    case "turn-in":
+    case "turnin": {
+      const contractId = parts[1]
+      if (!contractId) {
+        // If no contract ID provided, try to find the active contract
+        return null
+      }
+      return { type: "TurnInContract", contractId }
+    }
+
     case "enrol":
     case "enroll": {
       // No arguments - skill resolved by engine from current guild location
@@ -516,6 +526,7 @@ export function printHelp(state: WorldState, options?: { showHints?: boolean }):
   console.log("│ store <item> <qty>  - Store items at warehouse              │")
   console.log("│ drop <item> <qty>   - Drop items                            │")
   console.log("│ accept <contract>   - Accept a contract at guild            │")
+  console.log("│ turn-in <contract> - Turn in completed contract at guild   │")
   console.log("├─────────────────────────────────────────────────────────────┤")
   console.log("│ map                 - Show map of known areas/connections   │")
   console.log("│ state               - Show current world state              │")

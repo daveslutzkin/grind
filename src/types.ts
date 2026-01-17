@@ -298,6 +298,7 @@ export type ActionType =
   | "Drop"
   | "Enrol"
   | "TurnInCombatToken"
+  | "TurnInContract"
   | "Survey"
   | "Explore"
   | "ExplorationTravel"
@@ -374,6 +375,11 @@ export interface TurnInCombatTokenAction {
   type: "TurnInCombatToken"
 }
 
+export interface TurnInContractAction {
+  type: "TurnInContract"
+  contractId: ContractID
+}
+
 /**
  * Survey action - discover a new area connected to current area
  */
@@ -441,6 +447,7 @@ export interface BuyMapAction {
 export type Action =
   | MoveAction
   | AcceptContractAction
+  | TurnInContractAction
   | GatherAction
   | MineAction
   | ChopAction
@@ -567,6 +574,9 @@ export type FailureType =
   | "TIER_NOT_UNLOCKED"
   | "NO_MAPS_AVAILABLE"
   | "INVALID_MAP_TYPE"
+  // Contract turn-in failure types
+  | "CONTRACT_NOT_ACTIVE"
+  | "REQUIREMENTS_NOT_MET"
 
 // RNG roll log entry
 export interface RngRoll {

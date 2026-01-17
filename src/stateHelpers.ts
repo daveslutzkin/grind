@@ -131,9 +131,11 @@ export function consumeContractRequirements(state: WorldState, requirements: Ite
   for (const req of requirements) {
     let remaining = req.quantity
 
-    // Take from inventory first
-    const invItem = state.player.inventory.find((i) => i.itemId === req.itemId)
-    if (invItem) {
+    // Take from inventory first (may be spread across multiple non-stacking slots)
+    while (remaining > 0) {
+      const invItem = state.player.inventory.find((i) => i.itemId === req.itemId)
+      if (!invItem) break
+
       const takeFromInv = Math.min(invItem.quantity, remaining)
       invItem.quantity -= takeFromInv
       remaining -= takeFromInv
@@ -247,10 +249,15 @@ export function checkAndCompleteContracts(state: WorldState): ContractCompletion
     if (!contract) continue
 
     // Check if all item requirements are met (in inventory or storage)
+    // Sum quantities across all matching slots (inventory may be non-stacking)
     const allItemRequirementsMet = contract.requirements.every((req) => {
-      const inInventory = state.player.inventory.find((i) => i.itemId === req.itemId)
-      const inStorage = state.player.storage.find((i) => i.itemId === req.itemId)
-      const totalQuantity = (inInventory?.quantity ?? 0) + (inStorage?.quantity ?? 0)
+      const inventoryQuantity = state.player.inventory
+        .filter((i) => i.itemId === req.itemId)
+        .reduce((sum, i) => sum + i.quantity, 0)
+      const storageQuantity = state.player.storage
+        .filter((i) => i.itemId === req.itemId)
+        .reduce((sum, i) => sum + i.quantity, 0)
+      const totalQuantity = inventoryQuantity + storageQuantity
       return totalQuantity >= req.quantity
     })
 

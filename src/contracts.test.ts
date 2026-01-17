@@ -444,6 +444,210 @@ describe("Contract Generation", () => {
       expect(completions[0].goldEarned).toBe(contract!.goldReward)
       expect(state.player.gold).toBe(contract!.goldReward)
     })
+
+    it("should complete contract when items are in separate inventory slots (non-stacking)", async () => {
+      const { executeAction } = await import("./engine.js")
+      const { checkAndCompleteContracts } = await import("./stateHelpers.js")
+
+      const state = createWorld("non-stacking-inventory-test")
+      state.player.skills.Mining = { level: 10, xp: 0 }
+
+      // Generate mining contracts
+      refreshMiningContracts(state)
+
+      // Find the at-level contract (requires STONE)
+      const contract = state.world.contracts.find(
+        (c) => c.guildType === "Mining" && c.slot === "at-level"
+      )
+      expect(contract).toBeDefined()
+      expect(contract!.requirements[0].itemId).toBe("STONE")
+
+      const contractId = contract!.id
+      const requiredQuantity = contract!.requirements[0].quantity
+
+      // Go to miners guild and accept the contract
+      state.exploration.playerState.currentAreaId = "TOWN"
+      state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD
+
+      await executeAction(state, {
+        type: "AcceptContract",
+        contractId,
+      })
+
+      // Give player items as SEPARATE inventory slots (simulating non-stacking behavior)
+      // Each item is in its own slot with quantity: 1
+      for (let i = 0; i < requiredQuantity; i++) {
+        state.player.inventory.push({ itemId: "STONE", quantity: 1 })
+      }
+
+      const startingGold = state.player.gold
+
+      // Check contracts - should complete since we have enough total items
+      const completions = checkAndCompleteContracts(state)
+
+      expect(completions).toHaveLength(1)
+      expect(completions[0].goldEarned).toBe(contract!.goldReward)
+      expect(state.player.gold).toBe(startingGold + contract!.goldReward!)
+
+      // All the STONE items should be consumed
+      const remainingStone = state.player.inventory.filter((i) => i.itemId === "STONE")
+      expect(remainingStone).toHaveLength(0)
+    })
+  })
+
+  describe("explicit turn-in requirement", () => {
+    it("should NOT auto-complete contracts - requires explicit turn-in at guild", async () => {
+      const { executeAction } = await import("./engine.js")
+
+      const state = createWorld("no-auto-complete-test")
+      state.player.skills.Mining = { level: 10, xp: 0 }
+
+      // Generate mining contracts
+      refreshMiningContracts(state)
+
+      // Find and accept the at-level contract
+      const contract = state.world.contracts.find(
+        (c) => c.guildType === "Mining" && c.slot === "at-level"
+      )
+      expect(contract).toBeDefined()
+
+      state.exploration.playerState.currentAreaId = "TOWN"
+      state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD
+
+      await executeAction(state, {
+        type: "AcceptContract",
+        contractId: contract!.id,
+      })
+
+      // Give player the required items
+      const requiredItem = contract!.requirements[0]
+      for (let i = 0; i < requiredItem.quantity; i++) {
+        state.player.inventory.push({ itemId: requiredItem.itemId, quantity: 1 })
+      }
+
+      // Leave the guild
+      await executeAction(state, { type: "Leave" })
+
+      // Verify contract is still active - should NOT have auto-completed
+      expect(state.player.activeContracts).toContain(contract!.id)
+      expect(state.player.gold).toBe(0)
+    })
+
+    it("should complete contract when explicitly turned in at the guild", async () => {
+      const { executeAction } = await import("./engine.js")
+
+      const state = createWorld("turn-in-at-guild-test")
+      state.player.skills.Mining = { level: 10, xp: 0 }
+
+      // Generate mining contracts
+      refreshMiningContracts(state)
+
+      // Find and accept the at-level contract
+      const contract = state.world.contracts.find(
+        (c) => c.guildType === "Mining" && c.slot === "at-level"
+      )
+      expect(contract).toBeDefined()
+
+      state.exploration.playerState.currentAreaId = "TOWN"
+      state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD
+
+      await executeAction(state, {
+        type: "AcceptContract",
+        contractId: contract!.id,
+      })
+
+      // Give player the required items
+      const requiredItem = contract!.requirements[0]
+      for (let i = 0; i < requiredItem.quantity; i++) {
+        state.player.inventory.push({ itemId: requiredItem.itemId, quantity: 1 })
+      }
+
+      // Stay at the guild and turn in the contract
+      const turnInLog = await executeAction(state, {
+        type: "TurnInContract",
+        contractId: contract!.id,
+      })
+
+      expect(turnInLog.success).toBe(true)
+      expect(state.player.activeContracts).not.toContain(contract!.id)
+      expect(state.player.gold).toBe(contract!.goldReward)
+    })
+
+    it("should fail to turn in contract when not at the guild", async () => {
+      const { executeAction } = await import("./engine.js")
+
+      const state = createWorld("turn-in-wrong-location-test")
+      state.player.skills.Mining = { level: 10, xp: 0 }
+
+      // Generate mining contracts
+      refreshMiningContracts(state)
+
+      // Find and accept the at-level contract
+      const contract = state.world.contracts.find(
+        (c) => c.guildType === "Mining" && c.slot === "at-level"
+      )
+      expect(contract).toBeDefined()
+
+      state.exploration.playerState.currentAreaId = "TOWN"
+      state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD
+
+      await executeAction(state, {
+        type: "AcceptContract",
+        contractId: contract!.id,
+      })
+
+      // Give player the required items
+      const requiredItem = contract!.requirements[0]
+      for (let i = 0; i < requiredItem.quantity; i++) {
+        state.player.inventory.push({ itemId: requiredItem.itemId, quantity: 1 })
+      }
+
+      // Leave the guild - now at town hub
+      await executeAction(state, { type: "Leave" })
+
+      // Try to turn in the contract while not at guild
+      const turnInLog = await executeAction(state, {
+        type: "TurnInContract",
+        contractId: contract!.id,
+      })
+
+      expect(turnInLog.success).toBe(false)
+      expect(state.player.activeContracts).toContain(contract!.id)
+      expect(state.player.gold).toBe(0)
+    })
+
+    it("should fail to turn in contract when requirements not met", async () => {
+      const { executeAction } = await import("./engine.js")
+
+      const state = createWorld("turn-in-no-items-test")
+      state.player.skills.Mining = { level: 10, xp: 0 }
+
+      // Generate mining contracts
+      refreshMiningContracts(state)
+
+      // Find and accept the at-level contract
+      const contract = state.world.contracts.find(
+        (c) => c.guildType === "Mining" && c.slot === "at-level"
+      )
+      expect(contract).toBeDefined()
+
+      state.exploration.playerState.currentAreaId = "TOWN"
+      state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD
+
+      await executeAction(state, {
+        type: "AcceptContract",
+        contractId: contract!.id,
+      })
+
+      // Don't give player any items - try to turn in anyway
+      const turnInLog = await executeAction(state, {
+        type: "TurnInContract",
+        contractId: contract!.id,
+      })
+
+      expect(turnInLog.success).toBe(false)
+      expect(state.player.activeContracts).toContain(contract!.id)
+    })
   })
 
   // ============================================================================
@@ -906,6 +1110,71 @@ describe("Contract Generation", () => {
           )
         ).toBe(false)
       })
+    })
+  })
+
+  // ============================================================================
+  // Issue Reproduction: First contract node distance
+  // ============================================================================
+
+  describe("First contract node distance issue", () => {
+    it("should reproduce the issue with seed session-1768632206429 - no mining nodes at distance 1", async () => {
+      // This test reproduces an issue where the first mining contract pointed to
+      // a node at distance 2 (taking 3 travel hops) instead of distance 1.
+      // The root cause: with 25% probability of ore veins at each distance-1 area,
+      // and only 5 areas at distance 1, there's (0.75)^5 = ~23.7% chance of NO
+      // mining nodes at distance 1.
+
+      const state = createWorld("session-1768632206429")
+
+      // Check all distance-1 areas for mining nodes
+      const distance1Areas = Array.from(state.exploration.areas.values()).filter(
+        (a) => a.distance === 1
+      )
+      expect(distance1Areas.length).toBe(5) // Fibonacci at d1 = 5
+
+      // Find all mining nodes at distance 1
+      const miningNodesAtD1 = state.world.nodes.filter((node) => {
+        const area = state.exploration.areas.get(node.areaId)
+        return area?.distance === 1 && node.nodeType === NodeType.ORE_VEIN
+      })
+
+      // This test PROVES that with this seed, there are NO mining nodes at distance 1
+      expect(miningNodesAtD1.length).toBe(0)
+
+      // Find the closest mining node
+      const allMiningNodes = state.world.nodes.filter((node) => node.nodeType === NodeType.ORE_VEIN)
+      expect(allMiningNodes.length).toBeGreaterThan(0)
+
+      let closestDistance = Infinity
+      for (const node of allMiningNodes) {
+        const area = state.exploration.areas.get(node.areaId)
+        if (area && area.distance < closestDistance) {
+          closestDistance = area.distance
+        }
+      }
+
+      // The closest mining node is at distance 2, not 1
+      expect(closestDistance).toBe(2)
+
+      // Verify that when we generate a contract, it points to distance 2
+      state.player.skills.Mining = { level: 1, xp: 0 }
+      const { refreshMiningContracts } = await import("./contracts.js")
+      refreshMiningContracts(state)
+
+      const contract = state.world.contracts.find(
+        (c) => c.guildType === "Mining" && c.slot === "at-level"
+      )
+      expect(contract).toBeDefined()
+      expect(contract!.includedMap).toBeDefined()
+
+      // The map points to an area at distance 2
+      const targetArea = state.exploration.areas.get(contract!.includedMap!.targetAreaId)
+      expect(targetArea!.distance).toBe(2)
+
+      // Path requires 3 hops: TOWN -> d1 -> d2 -> target (which is at d2)
+      // The areaIds in the map include TOWN + intermediate areas + target
+      expect(contract!.includedMap!.areaIds.length).toBeGreaterThanOrEqual(3)
     })
   })
 

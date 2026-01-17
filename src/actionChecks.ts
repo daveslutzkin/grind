@@ -5,6 +5,7 @@ import type {
   WorldState,
   Action,
   AcceptContractAction,
+  TurnInContractAction,
   GatherAction,
   FightAction,
   CraftAction,
@@ -211,6 +212,104 @@ export function checkAcceptContractAction(
       },
       timeCost: 0,
       successProbability: 0,
+    }
+  }
+
+  return { valid: true, timeCost: 0, successProbability: 1 }
+}
+
+/**
+ * Check TurnInContract action preconditions
+ */
+export function checkTurnInContractAction(
+  state: WorldState,
+  action: TurnInContractAction
+): ActionCheckResult {
+  const contract = state.world.contracts.find((c) => c.id === action.contractId)
+
+  if (!contract) {
+    return {
+      valid: false,
+      failureType: "CONTRACT_NOT_FOUND",
+      failureReason: "not_found",
+      failureContext: { contractId: action.contractId },
+      timeCost: 0,
+      successProbability: 0,
+    }
+  }
+
+  // Must have this contract active
+  if (!state.player.activeContracts.includes(action.contractId)) {
+    return {
+      valid: false,
+      failureType: "CONTRACT_NOT_ACTIVE",
+      failureReason: "not_active",
+      failureContext: { contractId: action.contractId },
+      timeCost: 0,
+      successProbability: 0,
+    }
+  }
+
+  // Must be at the location where the contract was accepted
+  if (getCurrentLocationId(state) !== contract.acceptLocationId) {
+    return {
+      valid: false,
+      failureType: "WRONG_LOCATION",
+      failureReason: "must_be_at_guild",
+      failureContext: {
+        requiredLocationId: contract.acceptLocationId,
+        currentLocationId: getCurrentLocationId(state),
+        contractId: contract.id,
+      },
+      timeCost: 0,
+      successProbability: 0,
+    }
+  }
+
+  // Check if all item requirements are met (sum across all inventory slots)
+  for (const req of contract.requirements) {
+    const inventoryQuantity = state.player.inventory
+      .filter((i) => i.itemId === req.itemId)
+      .reduce((sum, i) => sum + i.quantity, 0)
+    const storageQuantity = state.player.storage
+      .filter((i) => i.itemId === req.itemId)
+      .reduce((sum, i) => sum + i.quantity, 0)
+    const totalQuantity = inventoryQuantity + storageQuantity
+
+    if (totalQuantity < req.quantity) {
+      return {
+        valid: false,
+        failureType: "REQUIREMENTS_NOT_MET",
+        failureReason: "insufficient_items",
+        failureContext: {
+          itemId: req.itemId,
+          required: req.quantity,
+          have: totalQuantity,
+          contractId: contract.id,
+        },
+        timeCost: 0,
+        successProbability: 0,
+      }
+    }
+  }
+
+  // Check if all kill requirements are met
+  for (const req of contract.killRequirements ?? []) {
+    const progress = state.player.contractKillProgress[action.contractId]?.[req.enemyId] ?? 0
+    if (progress < req.count) {
+      return {
+        valid: false,
+        failureType: "REQUIREMENTS_NOT_MET",
+        failureReason: "insufficient_kills",
+        failureContext: {
+          enemyId: req.enemyId,
+          required: req.count,
+          have: progress,
+          contractId: contract.id,
+        },
+        timeCost: 0,
+        successProbability: 0,
+      }
     }
   }
 
@@ -1248,6 +1347,8 @@ export function checkAction(state: WorldState, action: Action): ActionCheckResul
   switch (action.type) {
     case "AcceptContract":
       return checkAcceptContractAction(state, action)
+    case "TurnInContract":
+      return checkTurnInContractAction(state, action)
     case "Gather":
       return checkGatherAction(state, action)
     case "Mine":

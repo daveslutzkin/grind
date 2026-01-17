@@ -4,6 +4,7 @@ import type {
   ActionLog,
   RngRoll,
   AcceptContractAction,
+  TurnInContractAction,
   GatherAction,
   MineAction,
   ChopAction,
@@ -38,6 +39,7 @@ import {
 } from "./exploration.js"
 import {
   checkAcceptContractAction,
+  checkTurnInContractAction,
   checkGatherAction,
   checkFightAction,
   checkCraftAction,
@@ -66,7 +68,9 @@ import {
   addToInventoryWithOverflow,
   addToStorage,
   grantXP,
-  checkAndCompleteContracts,
+  consumeContractRequirements,
+  grantContractRewards,
+  canFitContractRewards,
 } from "./stateHelpers.js"
 import { getLocationDisplayName, getSkillForGuildLocation } from "./world.js"
 import { resolveDestination } from "./resolution.js"
@@ -86,31 +90,6 @@ export async function executeToCompletion(generator: ActionGenerator): Promise<A
     throw new Error("Generator completed without producing a final log")
   }
   return log
-}
-
-/**
- * Collect all level-ups from contract completions
- */
-function collectContractLevelUps(completions: ContractCompletion[]): LevelUp[] {
-  const allLevelUps: LevelUp[] = []
-  for (const c of completions) {
-    if (c.levelUps) {
-      allLevelUps.push(...c.levelUps)
-    }
-  }
-  return allLevelUps
-}
-
-/**
- * Merge action level-ups with contract level-ups
- */
-function mergeLevelUps(
-  actionLevelUps: LevelUp[],
-  contractCompletions: ContractCompletion[]
-): LevelUp[] | undefined {
-  const contractLevelUps = collectContractLevelUps(contractCompletions)
-  const allLevelUps = [...actionLevelUps, ...contractLevelUps]
-  return allLevelUps.length > 0 ? allLevelUps : undefined
 }
 
 function createFailureLog(
@@ -189,6 +168,8 @@ export function getActionGenerator(state: WorldState, action: Action): ActionGen
     }
     case "AcceptContract":
       return executeAcceptContract(state, action)
+    case "TurnInContract":
+      return executeTurnInContract(state, action)
     case "Gather":
       return executeGather(state, action)
     case "Mine":
@@ -308,9 +289,6 @@ async function* executeAcceptContract(
     refreshMiningContracts(state, contract.slot)
   }
 
-  // Check for contract completion (after every successful action)
-  const contractsCompleted = checkAndCompleteContracts(state)
-
   // Build state delta summary
   let stateDeltaSummary = `Accepted contract ${contractId}`
   if (contract?.includedMap) {
@@ -329,10 +307,127 @@ async function* executeAcceptContract(
       parameters: { contractId },
       success: true,
       timeConsumed: 0,
-      levelUps: mergeLevelUps([], contractsCompleted),
-      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+      levelUps: [],
       rngRolls: [],
       stateDeltaSummary,
+    },
+  }
+}
+
+async function* executeTurnInContract(
+  state: WorldState,
+  action: TurnInContractAction
+): ActionGenerator {
+  const tickBefore = state.time.currentTick
+  const contractId = action.contractId
+
+  // Use shared precondition check
+  const check = checkTurnInContractAction(state, action)
+  if (!check.valid) {
+    yield {
+      done: true,
+      log: createFailureLog(
+        state,
+        action,
+        check.failureType!,
+        0,
+        check.failureReason,
+        check.failureContext
+      ),
+    }
+    return
+  }
+
+  const contract = state.world.contracts.find((c) => c.id === contractId)!
+
+  // Check if rewards will fit in inventory
+  if (!canFitContractRewards(state, contract.requirements, contract.rewards)) {
+    yield {
+      done: true,
+      log: createFailureLog(state, action, "INVENTORY_FULL", 0, "rewards_wont_fit", {
+        contractId,
+      }),
+    }
+    return
+  }
+
+  // Record what we're consuming for the log
+  const itemsConsumed = contract.requirements.map((req) => ({
+    itemId: req.itemId,
+    quantity: req.quantity,
+  }))
+
+  // Consume required items
+  consumeContractRequirements(state, contract.requirements)
+
+  // Record what we're granting for the log
+  const rewardsGranted = contract.rewards.map((reward) => ({
+    itemId: reward.itemId,
+    quantity: reward.quantity,
+  }))
+
+  // Grant contract rewards
+  grantContractRewards(state, contract.rewards)
+
+  // Award reputation
+  state.player.guildReputation += contract.reputationReward
+
+  // Award gold if contract has goldReward
+  let goldEarned: number | undefined
+  if (contract.goldReward) {
+    state.player.gold += contract.goldReward
+    goldEarned = contract.goldReward
+  }
+
+  // Award XP if contract has xpReward and capture level-ups
+  let contractLevelUps: LevelUp[] = []
+  if (contract.xpReward) {
+    contractLevelUps = grantXP(state, contract.xpReward.skill, contract.xpReward.amount)
+  }
+
+  // Remove from active contracts
+  const index = state.player.activeContracts.indexOf(contractId)
+  state.player.activeContracts.splice(index, 1)
+
+  // Clean up kill progress for this contract
+  delete state.player.contractKillProgress[contractId]
+
+  // Regenerate the completed contract's slot immediately
+  if (contract.slot && contract.guildType === "Mining") {
+    refreshMiningContracts(state, contract.slot)
+  }
+
+  // Build completion result
+  const completion: ContractCompletion = {
+    contractId,
+    itemsConsumed,
+    rewardsGranted,
+    reputationGained: contract.reputationReward,
+    goldEarned,
+    xpGained: contract.xpReward,
+    levelUps: contractLevelUps.length > 0 ? contractLevelUps : undefined,
+  }
+
+  // Build summary
+  let summary = `Turned in contract ${contractId}`
+  if (goldEarned) {
+    summary += `, earned ${goldEarned.toFixed(1)} gold`
+  }
+  summary += `, +${contract.reputationReward} reputation`
+
+  // 0-tick action
+  yield {
+    done: true,
+    log: {
+      tickBefore,
+      actionType: "TurnInContract",
+      parameters: { contractId },
+      success: true,
+      timeConsumed: 0,
+      levelUps: contractLevelUps,
+      contractsCompleted: [completion],
+      rngRolls: [],
+      stateDeltaSummary: summary,
     },
   }
 }
@@ -475,9 +570,6 @@ function executeMultiMaterialGatherInternal(
       state.player.appraisedNodeIds.push(node.nodeId)
     }
 
-    // Check for contract completion
-    const contractsCompleted = checkAndCompleteContracts(state)
-
     return {
       tickBefore,
       actionType: "Gather",
@@ -487,8 +579,7 @@ function executeMultiMaterialGatherInternal(
       rngRolls: rolls,
       extraction,
       stateDeltaSummary: `Appraised node ${action.nodeId}`,
-      levelUps: mergeLevelUps([], contractsCompleted),
-      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+      levelUps: [],
     }
   }
 
@@ -689,9 +780,6 @@ function executeFocusExtraction(
     },
   }
 
-  // Check for contract completion
-  const contractsCompleted = checkAndCompleteContracts(state)
-
   return {
     tickBefore,
     actionType: "Gather",
@@ -699,8 +787,7 @@ function executeFocusExtraction(
     success: true,
     timeConsumed: actualTicks,
     skillGained: { skill, amount: xpAmount },
-    levelUps: mergeLevelUps(levelUps, contractsCompleted),
-    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+    levelUps,
     rngRolls: rolls,
     extraction,
     xpSource: "node_extraction",
@@ -789,9 +876,6 @@ function executeCarefulAllExtraction(
     },
   }
 
-  // Check for contract completion
-  const contractsCompleted = checkAndCompleteContracts(state)
-
   return {
     tickBefore,
     actionType: "Gather",
@@ -799,8 +883,7 @@ function executeCarefulAllExtraction(
     success: true,
     timeConsumed: actualTicks,
     skillGained: { skill, amount: xpAmount },
-    levelUps: mergeLevelUps(levelUps, contractsCompleted),
-    contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+    levelUps,
     rngRolls: rolls,
     extraction,
     xpSource: "node_extraction",
@@ -892,9 +975,6 @@ async function* executeCraft(state: WorldState, action: CraftAction): ActionGene
   // Grant XP to the skill matching the recipe's guild type
   const levelUps = grantXP(state, recipe.guildType, 1)
 
-  // Check for contract completion (after every successful action)
-  const contractsCompleted = checkAndCompleteContracts(state)
-
   yield {
     done: true,
     log: {
@@ -904,8 +984,7 @@ async function* executeCraft(state: WorldState, action: CraftAction): ActionGene
       success: true,
       timeConsumed: check.timeCost,
       skillGained: { skill: recipe.guildType, amount: 1 },
-      levelUps: mergeLevelUps(levelUps, contractsCompleted),
-      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+      levelUps,
       rngRolls: [],
       stateDeltaSummary: `Crafted ${recipe.output.quantity} ${recipe.output.itemId}`,
     },
@@ -939,9 +1018,6 @@ async function* executeStore(state: WorldState, action: StoreAction): ActionGene
   removeFromInventory(state, itemId, quantity)
   addToStorage(state, itemId, quantity)
 
-  // Check for contract completion (after every successful action)
-  const contractsCompleted = checkAndCompleteContracts(state)
-
   // 0-tick action - yield only the final done tick
   yield {
     done: true,
@@ -951,8 +1027,7 @@ async function* executeStore(state: WorldState, action: StoreAction): ActionGene
       parameters: { itemId, quantity },
       success: true,
       timeConsumed: 0,
-      levelUps: mergeLevelUps([], contractsCompleted),
-      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+      levelUps: [],
       rngRolls: [],
       stateDeltaSummary: `Stored ${quantity} ${itemId}`,
     },
@@ -989,9 +1064,6 @@ async function* executeDrop(state: WorldState, action: DropAction): ActionGenera
   // Yield tick with feedback
   yield { done: false, feedback: { message: `Dropped ${quantity}x ${itemId}` } }
 
-  // Check for contract completion (after every successful action)
-  const contractsCompleted = checkAndCompleteContracts(state)
-
   // Final yield with log
   yield {
     done: true,
@@ -1001,8 +1073,7 @@ async function* executeDrop(state: WorldState, action: DropAction): ActionGenera
       parameters: { itemId, quantity },
       success: true,
       timeConsumed: check.timeCost,
-      levelUps: mergeLevelUps([], contractsCompleted),
-      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+      levelUps: [],
       rngRolls: [],
       stateDeltaSummary: `Dropped ${quantity} ${itemId}`,
     },
@@ -1050,9 +1121,6 @@ async function* executeTurnInCombatToken(
     })
   }
 
-  // Check for contract completion (after every successful action)
-  const contractsCompleted = checkAndCompleteContracts(state)
-
   // 0-tick action - yield only the final done tick
   yield {
     done: true,
@@ -1062,8 +1130,7 @@ async function* executeTurnInCombatToken(
       parameters: {},
       success: true,
       timeConsumed: 0,
-      levelUps: mergeLevelUps([], contractsCompleted),
-      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+      levelUps: [],
       rngRolls: [],
       stateDeltaSummary: "Turned in Combat Guild Token, unlocked combat-guild-1 contract",
     },
@@ -1123,9 +1190,6 @@ async function* executeGuildEnrolment(
     explorationBenefits = await grantExplorationGuildBenefits(state)
   }
 
-  // Check for contract completion (after every successful action)
-  const contractsCompleted = checkAndCompleteContracts(state)
-
   const discoveredAreaId = explorationBenefits?.discoveredAreaId
   const discoveredArea = discoveredAreaId
     ? state.exploration?.areas.get(discoveredAreaId)
@@ -1146,8 +1210,7 @@ async function* executeGuildEnrolment(
       parameters: { skill },
       success: true,
       timeConsumed: check.timeCost,
-      levelUps: mergeLevelUps([], contractsCompleted),
-      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+      levelUps: [],
       rngRolls: [],
       stateDeltaSummary: summary,
       explorationLog: explorationBenefits
@@ -1200,9 +1263,6 @@ async function* executeTravelToLocation(
     state.exploration.playerState.visitedLocationIds.push(locationId)
   }
 
-  // Check for contract completion (after every successful action)
-  const contractsCompleted = checkAndCompleteContracts(state)
-
   yield {
     done: true,
     log: {
@@ -1211,8 +1271,7 @@ async function* executeTravelToLocation(
       parameters: { locationId },
       success: true,
       timeConsumed: check.timeCost,
-      levelUps: mergeLevelUps([], contractsCompleted),
-      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+      levelUps: [],
       rngRolls: [],
       stateDeltaSummary: `Traveled to ${getLocationDisplayName(locationId, state.exploration.playerState.currentAreaId, state)}`,
     },
@@ -1251,9 +1310,6 @@ async function* executeLeave(state: WorldState, action: LeaveAction): ActionGene
   // Return to hub (null)
   state.exploration.playerState.currentLocationId = null
 
-  // Check for contract completion (after every successful action)
-  const contractsCompleted = checkAndCompleteContracts(state)
-
   const hubName = isInTown(state) ? "Town Square" : "clearing"
 
   yield {
@@ -1264,8 +1320,7 @@ async function* executeLeave(state: WorldState, action: LeaveAction): ActionGene
       parameters: {},
       success: true,
       timeConsumed: check.timeCost,
-      levelUps: mergeLevelUps([], contractsCompleted),
-      contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+      levelUps: [],
       rngRolls: [],
       stateDeltaSummary: `Left ${getLocationDisplayName(previousLocation, state.exploration.playerState.currentAreaId, state)} for ${hubName}`,
     },
@@ -1349,9 +1404,6 @@ async function* executeBuyMap(state: WorldState, action: BuyMapAction): ActionGe
     const targetArea = state.exploration.areas.get(map.targetAreaId)
     const targetAreaName = getAreaDisplayName(map.targetAreaId, targetArea)
 
-    // Check for contract completion (after every successful action)
-    const contractsCompleted = checkAndCompleteContracts(state)
-
     yield {
       done: true,
       log: {
@@ -1360,8 +1412,7 @@ async function* executeBuyMap(state: WorldState, action: BuyMapAction): ActionGe
         parameters: { mapType: action.mapType, materialTier: action.materialTier },
         success: true,
         timeConsumed: 0,
-        levelUps: mergeLevelUps([], contractsCompleted),
-        contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+        levelUps: [],
         rngRolls: [],
         stateDeltaSummary: `Purchased ${action.materialTier} node map for ${price} gold, revealing path to ${targetAreaName}`,
       },
@@ -1450,9 +1501,6 @@ async function* executeBuyMap(state: WorldState, action: BuyMapAction): ActionGe
     const targetAreaForSummary = exploration.areas.get(targetAreaId)
     const targetAreaName = getAreaDisplayName(targetAreaId, targetAreaForSummary)
 
-    // Check for contract completion (after every successful action)
-    const contractsCompleted = checkAndCompleteContracts(state)
-
     yield {
       done: true,
       log: {
@@ -1461,8 +1509,7 @@ async function* executeBuyMap(state: WorldState, action: BuyMapAction): ActionGe
         parameters: { mapType: action.mapType, targetDistance: action.targetDistance },
         success: true,
         timeConsumed: 0,
-        levelUps: mergeLevelUps([], contractsCompleted),
-        contractsCompleted: contractsCompleted.length > 0 ? contractsCompleted : undefined,
+        levelUps: [],
         rngRolls: [],
         stateDeltaSummary: `Purchased area map for ${price} gold, revealing path to ${targetAreaName}`,
       },
