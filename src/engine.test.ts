@@ -1380,6 +1380,36 @@ describe("Engine", () => {
       expect(log.stateDeltaSummary).toContain("how to mine")
       expect(log.stateDeltaSummary).toContain("ore vein")
     })
+
+    it("should generate contracts that discover different areas than enrollment", async () => {
+      const state = createWorld("ore-test")
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
+
+      // Capture areas before enrollment
+      const beforeAreas = new Set(state.exploration.playerState.knownAreaIds)
+
+      // Enroll in miners guild
+      await executeAction(state, { type: "Enrol" })
+
+      // Get the areas discovered by enrollment
+      const afterEnrollAreas = new Set(state.exploration.playerState.knownAreaIds)
+      const enrollmentDiscoveredAreas = [...afterEnrollAreas].filter(
+        (area) => !beforeAreas.has(area)
+      )
+      expect(enrollmentDiscoveredAreas.length).toBeGreaterThan(0)
+
+      // Get the first contract that has an included map
+      const contractWithMap = state.world.contracts.find(
+        (c) => c.guildType === "Mining" && c.includedMap
+      )
+      expect(contractWithMap).toBeDefined()
+
+      // The contract's included map should target a DIFFERENT area than what enrollment discovered
+      // This is the bug: contracts are generated before enrollment discovers its area,
+      // so both point to the same closest area
+      const contractTargetArea = contractWithMap!.includedMap!.targetAreaId
+      expect(enrollmentDiscoveredAreas).not.toContain(contractTargetArea)
+    })
   })
 
   describe("SeeGatheringMap action", () => {
@@ -1538,6 +1568,60 @@ describe("Engine", () => {
       // Verify nodes are sorted by travel ticks (ascending)
       for (let i = 1; i < travelTicks.length; i++) {
         expect(travelTicks[i]).toBeGreaterThanOrEqual(travelTicks[i - 1])
+      }
+    })
+
+    it("should only show materials the player can see based on skill level", async () => {
+      const state = createWorld("ore-test")
+      state.player.skills.Mining = { level: 1, xp: 0 } // Level 1 mining
+      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
+
+      // Discover an ore vein location
+      const oreAreaId = getOreAreaId(state)
+      makeAreaKnown(state, oreAreaId)
+      discoverAllLocations(state, oreAreaId)
+
+      // Find the node in this area
+      const node = state.world.nodes?.find(
+        (n) => n.areaId === oreAreaId && n.nodeType === NodeType.ORE_VEIN
+      )
+      expect(node).toBeDefined()
+
+      // Check that node has materials requiring higher levels than player can see
+      // Player at level 1 can see materials up to level 3 (skill + 2 rule)
+      const highLevelMaterials = node!.materials.filter((m) => m.requiredLevel > 3)
+      const lowLevelMaterials = node!.materials.filter((m) => m.requiredLevel <= 3)
+
+      // Skip test if node doesn't have a mix of low and high level materials
+      if (highLevelMaterials.length === 0 || lowLevelMaterials.length === 0) {
+        return // Can't test visibility filtering without both types
+      }
+
+      // Capture feedback from SeeGatheringMap
+      const generator = getActionGenerator(state, { type: "SeeGatheringMap" })
+      const ticks: ActionTick[] = []
+      for await (const tick of generator) {
+        ticks.push(tick)
+      }
+
+      const feedbackTicks = ticks.filter(
+        (t) => !t.done && (t as { feedback?: { message?: string } }).feedback?.message
+      )
+      expect(feedbackTicks.length).toBeGreaterThan(0)
+
+      const feedback = feedbackTicks[0] as { feedback?: { message?: string } }
+      const message = feedback.feedback?.message || ""
+
+      // Low level materials should be visible
+      for (const mat of lowLevelMaterials) {
+        const materialName = mat.materialId.toLowerCase().replace(/_/g, " ")
+        expect(message).toContain(materialName)
+      }
+
+      // High level materials should NOT be visible (player can't see them yet)
+      for (const mat of highLevelMaterials) {
+        const materialName = mat.materialId.toLowerCase().replace(/_/g, " ")
+        expect(message).not.toContain(materialName)
       }
     })
   })

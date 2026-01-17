@@ -77,6 +77,7 @@ import {
 } from "./stateHelpers.js"
 import { getLocationDisplayName, getSkillForGuildLocation } from "./world.js"
 import { resolveDestination } from "./resolution.js"
+import { getVisibleMaterials } from "./visibility.js"
 
 /**
  * Helper to consume an action generator and return the final ActionLog.
@@ -1305,12 +1306,8 @@ async function* executeGuildEnrolment(
     state.player.equippedWeapon = "CRUDE_WEAPON"
   }
 
-  // Mining enrolment generates initial mining contracts
-  if (skill === "Mining") {
-    refreshMiningContracts(state)
-  }
-
   // Gathering guild enrolment discovers a nearby node
+  // This must happen BEFORE contract generation so contracts don't target the same area
   let gatheringBenefits:
     | {
         discoveredAreaId: string
@@ -1321,6 +1318,12 @@ async function* executeGuildEnrolment(
     | undefined
   if (skill === "Mining" || skill === "Woodcutting") {
     gatheringBenefits = await grantGatheringGuildBenefits(state, skill)
+  }
+
+  // Mining enrolment generates initial mining contracts
+  // This must happen AFTER discovering the enrollment area so contracts target different areas
+  if (skill === "Mining") {
+    refreshMiningContracts(state)
   }
 
   // Exploration enrolment grants one distance 1 area and connection
@@ -1549,11 +1552,13 @@ async function* executeSeeGatheringMap(
     const travelTicks = pathResult ? pathResult.totalTravelTime : 999
 
     // Build contents string (show quantities if APPRAISE unlocked)
+    // Only show materials the player can see based on their skill level (skill + 2 rule)
     let contents: string
     if (node.depleted) {
       contents = "depleted, regenerating"
     } else {
-      const availableMaterials = node.materials.filter((m) => m.remainingUnits > 0)
+      const visibleMaterials = getVisibleMaterials(node, state)
+      const availableMaterials = visibleMaterials.filter((m) => m.remainingUnits > 0)
       if (availableMaterials.length === 0) {
         contents = "empty"
       } else if (hasAppraise) {
