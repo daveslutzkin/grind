@@ -1287,14 +1287,13 @@ async function* executeGuildEnrolment(
   const isGatheringGuild = skill === "Mining" || skill === "Woodcutting"
   for (let tick = 0; tick < check.timeCost; tick++) {
     consumeTime(state, 1)
-    // Show training progress for gathering guilds
-    if (isGatheringGuild) {
-      // Show "Training" with accumulating dots (1-5 dots cycling every 4 ticks)
-      const dots = ".".repeat(((tick % 20) % 5) + 1)
-      yield { done: false, feedback: { message: `Training${dots}` } }
-    } else {
-      yield { done: false }
-    }
+    // Just yield without feedback - dots are handled by the UI
+    yield { done: false }
+  }
+
+  // Show "Trained" message at the end of enrollment for gathering guilds
+  if (isGatheringGuild) {
+    yield { done: false, feedback: { message: "Trained" } }
   }
 
   // Set skill to level 1 (unlock it)
@@ -1340,15 +1339,12 @@ async function* executeGuildEnrolment(
     summary = `Enrolled in ${skill} guild, discovered ${areaName}`
   }
 
-  // Feedback after enrolment completes
-  // For gathering guilds, show skill-specific orientation text
-  let completionMessage = `Enrolled in ${skill} guild!`
+  // For gathering guilds, replace summary with skill-specific orientation text
   if (skill === "Mining" && gatheringBenefits?.discoveredAreaName) {
-    completionMessage = `Enrolled in Miners Guild, congratulations! (${check.timeCost}t)\n\nYou now know how to mine! There's a promising ore vein at ${gatheringBenefits.discoveredAreaName} - go there to begin your mining career. Discover more locations by accepting contracts, or join the Explorers Guild to survey the wilderness yourself.`
+    summary = `Enrolled in Miners Guild, congratulations! (${check.timeCost}t)\n\nYou now know how to mine! There's a promising ore vein at ${gatheringBenefits.discoveredAreaName} - go there to begin your mining career. Discover more locations by accepting contracts, or join the Explorers Guild to survey the wilderness yourself.`
   } else if (skill === "Woodcutting" && gatheringBenefits?.discoveredAreaName) {
-    completionMessage = `Enrolled in Foresters Guild, congratulations! (${check.timeCost}t)\n\nYou now know how to chop wood! There's a fine stand of trees at ${gatheringBenefits.discoveredAreaName} - go there to start harvesting lumber. Discover more locations by accepting contracts, or join the Explorers Guild to survey the wilderness yourself.`
+    summary = `Enrolled in Foresters Guild, congratulations! (${check.timeCost}t)\n\nYou now know how to chop wood! There's a fine stand of trees at ${gatheringBenefits.discoveredAreaName} - go there to start harvesting lumber. Discover more locations by accepting contracts, or join the Explorers Guild to survey the wilderness yourself.`
   }
-  yield { done: false, feedback: { message: completionMessage } }
 
   // Build exploration log for either gathering or exploration benefits
   const explorationLog =
