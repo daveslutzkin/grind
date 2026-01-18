@@ -1,8 +1,8 @@
 import { useState } from "preact/hooks"
 import { useGameState, loadSavedGames, deleteSavedGame, type SaveEntry } from "./hooks/useGameState"
-import { ActionHistory } from "./components/ActionHistory"
 import { CommandInput } from "./components/CommandInput"
-import { ValidActions } from "./components/ValidActions"
+import { CurrentArea } from "./components/CurrentArea"
+import { CompactActionLog } from "./components/CompactActionLog"
 import { Sidebar } from "./components/Sidebar"
 
 export function App() {
@@ -147,10 +147,16 @@ export function App() {
 
       <div class="game-layout">
         <main class="main-panel">
-          <ActionHistory history={commandHistory} currentCommand={currentCommand} />
+          <CurrentArea
+            location={state.location}
+            contracts={state.contracts}
+            actions={validActions}
+            onAction={sendCommand}
+            disabled={isExecuting}
+          />
           <div class="input-area">
-            <ValidActions actions={validActions} onAction={sendCommand} disabled={isExecuting} />
             <CommandInput onSubmit={sendCommand} disabled={isExecuting} />
+            <CompactActionLog history={commandHistory} currentCommand={currentCommand} />
           </div>
         </main>
 

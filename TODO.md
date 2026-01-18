@@ -13,35 +13,37 @@ Based on playtesting session evaluating the web UI.
 
 ---
 
-### 1.2 Restructure Main Content Area
+### ~~1.2 Restructure Main Content Area~~ [DONE]
 **Type:** UI Redesign
 
-Currently the main content area fills with action history, pushing useful context off screen. Need to restructure so the main area shows "here's where you are and what you can do."
+~~Currently the main content area fills with action history, pushing useful context off screen. Need to restructure so the main area shows "here's where you are and what you can do."~~
 
-**New main content area should include:**
-- Prominent area title (currently hidden at top of screen)
-- Area description (if available)
-- Contracts available at this location
-- Actions available as buttons, with text command shown next to each button
+**Fixed:** Main content area now shows:
+- Prominent area title with location name
+- Exploration status indicator
+- Contracts available at current location with rewards
+- Actions grouped by type, with text command shown next to each button
 
 **Action log changes:**
-- Move to a small box below the action bar (bottom of main content)
-- Show only last 1-2 actions
-- Expandable to see action outcomes/details
-- Clickable to see full action history
+- Moved to compact box below command input (bottom of main content)
+- Shows last 2 actions in collapsed format
+- Expandable entries show details (items, XP, level ups)
+- "View full history" button opens full history modal
 
 ---
 
 ## Phase 2: Builds on New Structure
 
-### 2.1 Compact Action Log Component
+### ~~2.1 Compact Action Log Component~~ [DONE]
 **Type:** UI Redesign
 
-Implement the new action log as described in 1.2:
-- Small box at bottom, below action bar
-- Shows last 1-2 actions in compact format
-- Expandable for details
-- Click to open full history view
+~~Implement the new action log as described in 1.2:~~
+- ~~Small box at bottom, below action bar~~
+- ~~Shows last 1-2 actions in compact format~~
+- ~~Expandable for details~~
+- ~~Click to open full history view~~
+
+**Fixed:** Implemented as part of 1.2 in `CompactActionLog.tsx`.
 
 ---
 
