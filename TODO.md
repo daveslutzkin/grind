@@ -7,7 +7,7 @@ Five changes to improve the mining user experience:
 2. ~~Allow `mine` with no params when there's only one visible resource~~ ✅ DONE
 3. ~~Always show the Time line in extraction results~~ ✅ DONE
 4. ~~Show collateral damage info for undiscovered materials~~ ✅ DONE
-5. Include gathering time variance in the game summary RNG stats
+5. ~~Include gathering time variance in the game summary RNG stats~~ ✅ DONE
 
 ---
 
@@ -115,7 +115,7 @@ Five changes to improve the mining user experience:
 
 ---
 
-## 5. Include Gathering Time Variance in Game Summary RNG Stats
+## 5. Include Gathering Time Variance in Game Summary RNG Stats ✅ DONE
 
 **Current behavior:**
 - Game summary says "N/A (no RNG actions)" even after 10 mining extractions

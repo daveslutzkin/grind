@@ -5,9 +5,10 @@
 import * as fs from "fs"
 import * as path from "path"
 import * as os from "os"
-import type { ActionLog, WorldState } from "./types.js"
+import type { ActionLog, WorldState, ExtractionLog } from "./types.js"
 import type { SessionStats } from "./runner.js"
-import { runSession } from "./runner.js"
+import { runSession, buildRngStreams, computeLuckString } from "./runner.js"
+import { GatherMode } from "./types.js"
 import { setSavesDirectory, deleteSave } from "./persistence.js"
 
 describe("runSession", () => {
@@ -319,6 +320,113 @@ describe("runSession", () => {
           onInvalidCommand: () => "continue",
         })
       ).resolves.not.toThrow()
+    })
+  })
+})
+
+describe("buildRngStreams and computeLuckString", () => {
+  function makeGatherLog(variance: {
+    expected: number
+    actual: number
+    luckDelta: number
+  }): ActionLog {
+    const extraction: ExtractionLog = {
+      mode: GatherMode.FOCUS,
+      focusMaterial: "STONE",
+      extracted: [{ itemId: "STONE", quantity: 1 }],
+      focusWaste: 0,
+      collateralDamage: {},
+      variance: {
+        expected: variance.expected,
+        actual: variance.actual,
+        range: [1, 1],
+        luckDelta: variance.luckDelta,
+      },
+    }
+    return {
+      tickBefore: 0,
+      actionType: "Gather",
+      parameters: { nodeId: "test-node", mode: GatherMode.FOCUS },
+      success: true,
+      timeConsumed: variance.actual,
+      rngRolls: [],
+      stateDeltaSummary: "test",
+      extraction,
+    }
+  }
+
+  describe("gathering time variance", () => {
+    it("should include gathering extractions in RNG result", () => {
+      // 10 extractions, each with expected=20, actual=15 (5 ticks saved each = lucky)
+      const logs: ActionLog[] = []
+      for (let i = 0; i < 10; i++) {
+        logs.push(makeGatherLog({ expected: 20, actual: 15, luckDelta: 5 }))
+      }
+
+      const result = buildRngStreams(logs)
+
+      // Should have z-scores for gathering time variance
+      expect(result.gatheringZScores.length).toBe(10)
+      // Each z-score should be positive (lucky - faster than expected)
+      // z = luckDelta / (expected * 0.25) = 5 / 5 = 1
+      expect(result.gatheringZScores[0]).toBe(1)
+    })
+
+    it("should not return N/A when only gathering actions are present", () => {
+      // Multiple extractions to build up RNG data
+      const logs: ActionLog[] = []
+      for (let i = 0; i < 10; i++) {
+        logs.push(makeGatherLog({ expected: 20, actual: 15, luckDelta: 5 }))
+      }
+
+      const rngResult = buildRngStreams(logs)
+      const luckStr = computeLuckString(rngResult)
+
+      // Should NOT say "N/A (no RNG actions)" since we have gathering variance
+      expect(luckStr).not.toBe("N/A (no RNG actions)")
+    })
+
+    it("should show lucky when extractions are faster than expected", () => {
+      // 10 extractions, each finishing 5 ticks faster (luckDelta = 5)
+      // With stdDev = 25% of expected (20 * 0.25 = 5), z-score = 5/5 = 1 per extraction
+      const logs: ActionLog[] = []
+      for (let i = 0; i < 10; i++) {
+        logs.push(makeGatherLog({ expected: 20, actual: 15, luckDelta: 5 }))
+      }
+
+      const rngResult = buildRngStreams(logs)
+      const luckStr = computeLuckString(rngResult)
+
+      // With z-score of 1 per extraction, combined should show lucky
+      expect(luckStr).toContain("lucky")
+    })
+
+    it("should show unlucky when extractions are slower than expected", () => {
+      // 10 extractions, each finishing 5 ticks slower (luckDelta = -5)
+      const logs: ActionLog[] = []
+      for (let i = 0; i < 10; i++) {
+        logs.push(makeGatherLog({ expected: 20, actual: 25, luckDelta: -5 }))
+      }
+
+      const rngResult = buildRngStreams(logs)
+      const luckStr = computeLuckString(rngResult)
+
+      // Should show unlucky
+      expect(luckStr).toContain("unlucky")
+    })
+
+    it("should show average when extractions match expected time", () => {
+      // 10 extractions with no variance (actual = expected)
+      const logs: ActionLog[] = []
+      for (let i = 0; i < 10; i++) {
+        logs.push(makeGatherLog({ expected: 20, actual: 20, luckDelta: 0 }))
+      }
+
+      const rngResult = buildRngStreams(logs)
+      const luckStr = computeLuckString(rngResult)
+
+      // Should show average or not be N/A
+      expect(luckStr).not.toBe("N/A (no RNG actions)")
     })
   })
 })

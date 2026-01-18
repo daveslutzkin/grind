@@ -608,12 +608,22 @@ export function normalCDF(z: number): number {
 }
 
 /**
+ * Result from buildRngStreams, containing both binomial streams and gathering time z-scores
+ */
+export interface RngStreamsResult {
+  streams: RngStream[]
+  gatheringZScores: number[] // Z-scores from gathering time variance
+}
+
+/**
  * Build RNG streams from action logs for luck calculation.
  * Groups rolls by type: combat, gather (by skill), and loot (by item).
+ * Also extracts gathering time variance as z-scores.
  */
-export function buildRngStreams(logs: ActionLog[]): RngStream[] {
+export function buildRngStreams(logs: ActionLog[]): RngStreamsResult {
   const streamMap: Map<string, { trials: number; probability: number; successes: number }> =
     new Map()
+  const gatheringZScores: number[] = []
 
   for (const log of logs) {
     const nonLootRolls = log.rngRolls.filter((r) => !r.label.startsWith("loot:"))
@@ -640,24 +650,42 @@ export function buildRngStreams(logs: ActionLog[]): RngStream[] {
       stream.trials++
       if (roll.result) stream.successes++
     }
+
+    // Extract gathering time variance as z-scores
+    // Time variance uses normal distribution with stdDev = 25% of expected time
+    if (log.extraction?.variance && log.extraction.variance.expected > 0) {
+      const { expected, luckDelta } = log.extraction.variance
+      if (luckDelta !== undefined) {
+        const stdDev = expected * 0.25
+        if (stdDev > 0) {
+          // z-score = luckDelta / stdDev
+          // Positive luckDelta (faster) = positive z-score = lucky
+          const z = luckDelta / stdDev
+          gatheringZScores.push(z)
+        }
+      }
+    }
   }
 
-  return Array.from(streamMap.entries()).map(([name, data]) => ({
+  const streams = Array.from(streamMap.entries()).map(([name, data]) => ({
     name,
     trials: data.trials,
     probability: data.probability,
     successes: data.successes,
   }))
+
+  return { streams, gatheringZScores }
 }
 
 /**
  * Compute luck using Stouffer's method for combining z-scores across RNG streams.
+ * Includes both binomial streams (combat, loot) and gathering time variance z-scores.
  */
-export function computeLuckString(streams: RngStream[]): string {
+export function computeLuckString(rngResult: RngStreamsResult): string {
+  const { streams, gatheringZScores } = rngResult
   const validStreams = streams.filter((s) => s.trials > 0 && s.probability > 0 && s.probability < 1)
 
-  if (validStreams.length === 0) return "N/A (no RNG actions)"
-
+  // Compute z-scores from binomial streams
   const zScores: number[] = []
   for (const stream of validStreams) {
     const expected = stream.trials * stream.probability
@@ -668,7 +696,10 @@ export function computeLuckString(streams: RngStream[]): string {
     }
   }
 
-  if (zScores.length === 0) return "N/A (no variance)"
+  // Add gathering time z-scores (already computed)
+  zScores.push(...gatheringZScores)
+
+  if (zScores.length === 0) return "N/A (no RNG actions)"
 
   const zLuck = zScores.reduce((sum, z) => sum + z, 0) / Math.sqrt(zScores.length)
   const percentile = normalCDF(zLuck) * 100
