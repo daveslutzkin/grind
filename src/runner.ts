@@ -57,20 +57,16 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
 
   switch (cmd) {
     case "gather": {
-      // Check if first argument is a mode (not a nodeId) - allows omitting nodeId when at a node
+      // Check if first argument is a mode keyword (not a nodeId) - allows omitting nodeId when at a node
       const firstArg = parts[1]?.toLowerCase()
-      const possibleModes = ["focus", "careful", "appraise"]
-      const isFirstArgMode = possibleModes.includes(firstArg || "")
+      const modeKeywords = ["careful", "appraise"]
+      const isFirstArgMode = modeKeywords.includes(firstArg || "")
 
       let nodeId: string | undefined
-      let modeName: string | undefined
-      let materialIndex = 3
+      let arg2: string | undefined
 
       if (isFirstArgMode) {
-        // Usage: gather <mode> [material] - infer nodeId from current location
-        modeName = firstArg
-        materialIndex = 2
-
+        // Usage: gather <mode> - infer nodeId from current location
         // Try to infer nodeId from current location
         const currentLocationId = context.currentLocationId
         if (currentLocationId && context.state) {
@@ -84,74 +80,72 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
         if (!nodeId) {
           return null
         }
-      } else {
-        // Usage: gather <node> <mode> [material]
-        nodeId = parts[1]
-        modeName = parts[2]?.toLowerCase()
+
+        // Mode keywords map directly
+        if (firstArg === "careful") {
+          return { type: "Gather", nodeId, mode: GatherMode.CAREFUL_ALL }
+        } else if (firstArg === "appraise") {
+          return { type: "Gather", nodeId, mode: GatherMode.APPRAISE }
+        }
       }
 
-      if (!nodeId || !modeName) {
+      // Usage: gather <node> <arg2>
+      // where arg2 is either a mode keyword (careful/appraise) or a material ID (implicit FOCUS)
+      nodeId = parts[1]
+      arg2 = parts[2]?.toLowerCase()
+
+      if (!nodeId || !arg2) {
         return null
       }
 
-      if (modeName === "focus") {
-        const focusMaterial = parts[materialIndex]?.toUpperCase()
-        if (!focusMaterial) {
-          return null
-        }
-        return { type: "Gather", nodeId, mode: GatherMode.FOCUS, focusMaterialId: focusMaterial }
-      } else if (modeName === "careful") {
+      if (arg2 === "careful") {
         return { type: "Gather", nodeId, mode: GatherMode.CAREFUL_ALL }
-      } else if (modeName === "appraise") {
+      } else if (arg2 === "appraise") {
         return { type: "Gather", nodeId, mode: GatherMode.APPRAISE }
       } else {
-        return null
+        // Treat arg2 as material ID (implicit FOCUS mode)
+        const focusMaterial = arg2.toUpperCase()
+        return { type: "Gather", nodeId, mode: GatherMode.FOCUS, focusMaterialId: focusMaterial }
       }
     }
 
     case "mine": {
       // Alias for gather mining - finds ore vein in current area
-      const modeName = parts[1]?.toLowerCase()
+      const arg1 = parts[1]?.toLowerCase()
 
-      if (!modeName) {
+      if (!arg1) {
         return null
       }
 
-      if (modeName === "focus") {
-        const focusMaterial = parts[2]?.toUpperCase()
-        if (!focusMaterial) {
-          return null
-        }
-        return { type: "Mine", mode: GatherMode.FOCUS, focusMaterialId: focusMaterial }
-      } else if (modeName === "careful") {
+      // Check for mode keywords first
+      if (arg1 === "careful") {
         return { type: "Mine", mode: GatherMode.CAREFUL_ALL }
-      } else if (modeName === "appraise") {
+      } else if (arg1 === "appraise") {
         return { type: "Mine", mode: GatherMode.APPRAISE }
       } else {
-        return null
+        // Treat arg1 as material ID (implicit FOCUS mode)
+        const focusMaterial = arg1.toUpperCase()
+        return { type: "Mine", mode: GatherMode.FOCUS, focusMaterialId: focusMaterial }
       }
     }
 
     case "chop": {
       // Alias for gather woodcutting - finds tree stand in current area
-      const modeName = parts[1]?.toLowerCase()
+      const arg1 = parts[1]?.toLowerCase()
 
-      if (!modeName) {
+      if (!arg1) {
         return null
       }
 
-      if (modeName === "focus") {
-        const focusMaterial = parts[2]?.toUpperCase()
-        if (!focusMaterial) {
-          return null
-        }
-        return { type: "Chop", mode: GatherMode.FOCUS, focusMaterialId: focusMaterial }
-      } else if (modeName === "careful") {
+      // Check for mode keywords first
+      if (arg1 === "careful") {
         return { type: "Chop", mode: GatherMode.CAREFUL_ALL }
-      } else if (modeName === "appraise") {
+      } else if (arg1 === "appraise") {
         return { type: "Chop", mode: GatherMode.APPRAISE }
       } else {
-        return null
+        // Treat arg1 as material ID (implicit FOCUS mode)
+        const focusMaterial = arg1.toUpperCase()
+        return { type: "Chop", mode: GatherMode.FOCUS, focusMaterialId: focusMaterial }
       }
     }
 

@@ -345,11 +345,10 @@ function isModeUnlocked(mode: GatherMode, skillLevel: number): boolean {
 
 /**
  * Get list of unlocked gathering modes for a skill level.
- * Returns modes in order of unlock (FOCUS first, then APPRAISE, then CAREFUL_ALL).
+ * Returns only non-default modes (APPRAISE, CAREFUL_ALL) since FOCUS is implicit.
  */
 export function getUnlockedModes(skillLevel: number): GatherMode[] {
   const modes: GatherMode[] = []
-  if (skillLevel >= 1) modes.push(GatherMode.FOCUS)
   if (skillLevel >= 3) modes.push(GatherMode.APPRAISE)
   if (skillLevel >= 4) modes.push(GatherMode.CAREFUL_ALL)
   return modes

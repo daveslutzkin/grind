@@ -8,7 +8,6 @@
 
 import type {
   WorldState,
-  GatherMode,
   SkillID,
   Action,
   GatherAction,
@@ -17,6 +16,7 @@ import type {
   TurnInContractAction,
   SeeGatheringMapAction,
 } from "./types.js"
+import { GatherMode } from "./types.js"
 import {
   getCurrentAreaId,
   getCurrentLocationId,
@@ -330,52 +330,52 @@ function addGatheringActions(
   const skillLevel = state.player.skills[skill]?.level ?? 0
   const commandName = skill === "Mining" ? "mine" : "chop"
 
-  // Get unlocked modes for this skill level
-  const unlockedModes = getUnlockedModes(skillLevel)
-
-  for (const mode of unlockedModes) {
-    const modeLower = mode.toLowerCase()
-
-    if (mode === "FOCUS") {
-      // FOCUS mode requires a material ID - check if any material is gatherable
-      const gatherableMat = node.materials.find(
-        (mat) => mat.requiredLevel <= skillLevel && mat.remainingUnits > 0
-      )
-      if (gatherableMat) {
-        const gatherAction: GatherAction = {
-          type: "Gather",
-          nodeId,
-          mode: mode as GatherMode,
-          focusMaterialId: gatherableMat.materialId,
-        }
-        const gatherCheck = checkAction(state, gatherAction)
-
-        if (gatherCheck.valid) {
-          actions.push({
-            displayName: `${commandName} focus <resource>`,
-            timeCost: gatherCheck.timeCost,
-            isVariable: false,
-            successProbability: 1,
-          })
-        }
-      }
-    } else {
-      // APPRAISE and CAREFUL_ALL don't need material ID
+  // FOCUS mode is always available at L1+ - check if any material is gatherable
+  if (skillLevel >= 1) {
+    const gatherableMat = node.materials.find(
+      (mat) => mat.requiredLevel <= skillLevel && mat.remainingUnits > 0
+    )
+    if (gatherableMat) {
       const gatherAction: GatherAction = {
         type: "Gather",
         nodeId,
-        mode: mode as GatherMode,
+        mode: GatherMode.FOCUS,
+        focusMaterialId: gatherableMat.materialId,
       }
       const gatherCheck = checkAction(state, gatherAction)
 
       if (gatherCheck.valid) {
         actions.push({
-          displayName: `${commandName} ${modeLower}`,
+          displayName: `${commandName} <resource>`,
           timeCost: gatherCheck.timeCost,
           isVariable: false,
           successProbability: 1,
         })
       }
+    }
+  }
+
+  // Get other unlocked modes for this skill level (APPRAISE, CAREFUL_ALL)
+  const unlockedModes = getUnlockedModes(skillLevel)
+
+  for (const mode of unlockedModes) {
+    const modeLower = mode.toLowerCase()
+
+    // APPRAISE and CAREFUL_ALL don't need material ID
+    const gatherAction: GatherAction = {
+      type: "Gather",
+      nodeId,
+      mode: mode as GatherMode,
+    }
+    const gatherCheck = checkAction(state, gatherAction)
+
+    if (gatherCheck.valid) {
+      actions.push({
+        displayName: `${commandName} ${modeLower}`,
+        timeCost: gatherCheck.timeCost,
+        isVariable: false,
+        successProbability: 1,
+      })
     }
   }
 }

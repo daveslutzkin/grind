@@ -210,10 +210,15 @@ export function formatWorldState(state: WorldState): string {
       if (id === "Mining" || id === "Woodcutting") {
         const modes = getUnlockedModes(s.level)
         const nextUnlock = getNextModeUnlock(s.level)
-        const modesStr = modes.join("/")
-        skillStr += ` [${modesStr}]`
-        if (nextUnlock) {
-          skillStr += ` (${nextUnlock.mode}@L${nextUnlock.level})`
+        // Format mode names: CAREFUL_ALL -> CAREFUL for display
+        const formatMode = (m: string) => (m === "CAREFUL_ALL" ? "CAREFUL" : m)
+        if (modes.length > 0) {
+          const modesStr = modes.map(formatMode).join("/")
+          skillStr += ` [${modesStr}]`
+        }
+        // Only show prospective unlock if within 3 levels
+        if (nextUnlock && nextUnlock.level - s.level <= 3) {
+          skillStr += ` (${formatMode(nextUnlock.mode)}@L${nextUnlock.level})`
         }
       }
       return skillStr

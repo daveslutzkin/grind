@@ -25,7 +25,7 @@ import type {
 import { ExplorationLocationType, NodeType } from "./types.js"
 import { rollFloat, roll, rollNormal } from "./rng.js"
 import { consumeTime } from "./stateHelpers.js"
-import { generateNodesForArea, getLocationDisplayName } from "./world.js"
+import { generateNodesForArea } from "./world.js"
 import { generateAreaName, getNeighborNames } from "./areaNaming.js"
 import { nodeIdToLocationId } from "./contracts.js"
 
@@ -1029,13 +1029,6 @@ export async function* executeSurvey(state: WorldState, _action: SurveyAction): 
       discoveredAreaId = targetId
       discoveredConnectionId = connId
       succeeded = true
-
-      // Show discovery feedback
-      const areaName = getAreaDisplayName(targetId, targetArea)
-      yield {
-        done: false,
-        feedback: { discovered: { type: "area", name: areaName, id: targetId } },
-      }
     }
   }
 
@@ -1291,13 +1284,6 @@ export async function* executeExplore(state: WorldState, _action: ExploreAction)
       if (picked.type === "location") {
         exploration.playerState.knownLocationIds.push(picked.id)
         discoveredLocationId = picked.id
-
-        // Show discovery feedback
-        const locationName = getLocationDisplayName(picked.id, currentArea.id, state)
-        yield {
-          done: false,
-          feedback: { discovered: { type: "location", name: locationName, id: picked.id } },
-        }
       } else {
         exploration.playerState.knownConnectionIds.push(picked.id)
         discoveredConnectionId = picked.id
@@ -1313,37 +1299,6 @@ export async function* executeExplore(state: WorldState, _action: ExploreAction)
           const targetArea = exploration.areas.get(targetAreaId)
           if (targetArea) {
             await ensureAreaFullyGenerated(state, targetArea)
-          }
-
-          // Show discovery feedback with "new area" annotation
-          const targetName = targetArea
-            ? getAreaDisplayName(targetAreaId, targetArea)
-            : "unknown area"
-          yield {
-            done: false,
-            feedback: {
-              discovered: {
-                type: "connection",
-                name: `connection to ${targetName} (new area)`,
-                id: picked.id,
-              },
-            },
-          }
-        } else {
-          // Known connection - show the destination name
-          const targetArea = exploration.areas.get(targetAreaId)
-          const targetName = targetArea
-            ? getAreaDisplayName(targetAreaId, targetArea)
-            : "unknown area"
-          yield {
-            done: false,
-            feedback: {
-              discovered: {
-                type: "connection",
-                name: `connection to ${targetName}`,
-                id: picked.id,
-              },
-            },
           }
         }
       }

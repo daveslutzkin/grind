@@ -48,20 +48,20 @@ describe("Action Parity: REPL and Agent Parser", () => {
     },
     {
       actionType: "Mine",
-      replCommands: ["mine focus STONE", "mine careful", "mine appraise"],
-      agentCommands: ["mine focus STONE", "mine careful", "mine appraise"],
+      replCommands: ["mine STONE", "mine careful", "mine appraise"],
+      agentCommands: ["mine STONE", "mine careful", "mine appraise"],
       description: "Mine at a node with various modes",
     },
     {
       actionType: "Chop",
-      replCommands: ["chop focus OAK_LOG", "chop careful"],
-      agentCommands: ["chop focus OAK_LOG", "chop careful"],
+      replCommands: ["chop OAK_LOG", "chop careful"],
+      agentCommands: ["chop OAK_LOG", "chop careful"],
       description: "Chop at a tree stand",
     },
     {
       actionType: "Gather",
-      replCommands: ["gather node-1 focus STONE", "gather node-1 careful"],
-      agentCommands: ["gather node-1 focus STONE", "gather node-1 careful"],
+      replCommands: ["gather node-1 STONE", "gather node-1 careful"],
+      agentCommands: ["gather node-1 STONE", "gather node-1 careful"],
       description: "Generic gather action",
     },
     {
@@ -180,7 +180,7 @@ describe("Action Parity: REPL and Agent Parser", () => {
       const universalCommands = [
         "accept test-contract",
         "turn-in test-contract",
-        "mine focus STONE",
+        "mine STONE",
         "craft iron-bar",
         "drop STONE 1",
         "enrol",

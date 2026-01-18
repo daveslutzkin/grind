@@ -70,9 +70,9 @@ ACTION: Gather node ore_vein_1 APPRAISE
 
     it("should parse a Mine action with FOCUS mode", () => {
       const response = `
-REASONING: I want to focus mine copper.
+REASONING: I want to mine copper.
 
-ACTION: mine FOCUS COPPER_ORE
+ACTION: mine COPPER_ORE
 `
       const parsed = parseAgentResponse(response)
 
@@ -113,9 +113,9 @@ ACTION: mine APPRAISE
 
     it("should parse a Chop action with FOCUS mode", () => {
       const response = `
-REASONING: I want to focus chop oak.
+REASONING: I want to chop oak.
 
-ACTION: chop FOCUS OAK
+ACTION: chop OAK
 `
       const parsed = parseAgentResponse(response)
 

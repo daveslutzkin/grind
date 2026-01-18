@@ -95,31 +95,35 @@ function parseAction(actionText: string): Action | null {
   }
 
   // Try to parse Mine action (alias for gather mining)
-  // Patterns: "mine MODE [MATERIAL]" - supports both full mode names and short aliases
-  const mineMatch = text.match(/^mine\s+(FOCUS|CAREFUL_ALL|CAREFUL|APPRAISE)(?:\s+(\S+))?/i)
+  // Patterns: "mine <material>" for FOCUS mode (implicit), "mine careful" or "mine appraise" for other modes
+  const mineMatch = text.match(/^mine\s+(\S+)/i)
   if (mineMatch) {
-    let mode = mineMatch[1].toUpperCase()
-    // Map short aliases to full mode names
-    if (mode === "CAREFUL") mode = "CAREFUL_ALL"
-    const action: Action = { type: "Mine", mode: mode as GatherMode }
-    if (mode === "FOCUS" && mineMatch[2]) {
-      ;(action as { focusMaterialId?: string }).focusMaterialId = mineMatch[2]
+    const arg = mineMatch[1].toUpperCase()
+    // Check for mode keywords
+    if (arg === "CAREFUL_ALL" || arg === "CAREFUL") {
+      return { type: "Mine", mode: GatherMode.CAREFUL_ALL } as Action
+    } else if (arg === "APPRAISE") {
+      return { type: "Mine", mode: GatherMode.APPRAISE } as Action
+    } else {
+      // Treat as material ID (implicit FOCUS mode)
+      return { type: "Mine", mode: GatherMode.FOCUS, focusMaterialId: arg } as Action
     }
-    return action
   }
 
   // Try to parse Chop action (alias for gather woodcutting)
-  // Patterns: "chop MODE [MATERIAL]" - supports both full mode names and short aliases
-  const chopMatch = text.match(/^chop\s+(FOCUS|CAREFUL_ALL|CAREFUL|APPRAISE)(?:\s+(\S+))?/i)
+  // Patterns: "chop <material>" for FOCUS mode (implicit), "chop careful" or "chop appraise" for other modes
+  const chopMatch = text.match(/^chop\s+(\S+)/i)
   if (chopMatch) {
-    let mode = chopMatch[1].toUpperCase()
-    // Map short aliases to full mode names
-    if (mode === "CAREFUL") mode = "CAREFUL_ALL"
-    const action: Action = { type: "Chop", mode: mode as GatherMode }
-    if (mode === "FOCUS" && chopMatch[2]) {
-      ;(action as { focusMaterialId?: string }).focusMaterialId = chopMatch[2]
+    const arg = chopMatch[1].toUpperCase()
+    // Check for mode keywords
+    if (arg === "CAREFUL_ALL" || arg === "CAREFUL") {
+      return { type: "Chop", mode: GatherMode.CAREFUL_ALL } as Action
+    } else if (arg === "APPRAISE") {
+      return { type: "Chop", mode: GatherMode.APPRAISE } as Action
+    } else {
+      // Treat as material ID (implicit FOCUS mode)
+      return { type: "Chop", mode: GatherMode.FOCUS, focusMaterialId: arg } as Action
     }
-    return action
   }
 
   // Try to parse Enrol action (no arguments - skill resolved by engine)
