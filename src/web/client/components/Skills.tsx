@@ -18,7 +18,9 @@ export function Skills({ skills }: SkillsProps) {
             <div class="skill-progress">
               <div
                 class="skill-progress-bar"
-                style={{ width: `${(skill.xp / skill.xpToNextLevel) * 100}%` }}
+                style={{
+                  width: `${skill.xpToNextLevel > 0 ? (skill.xp / skill.xpToNextLevel) * 100 : 100}%`,
+                }}
               />
               <span class="skill-xp">
                 {skill.xp}/{skill.xpToNextLevel} XP

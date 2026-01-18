@@ -5,6 +5,10 @@ interface MapProps {
   exploration: ExplorationInfo
 }
 
+function truncate(text: string, maxLen: number): string {
+  return text.length > maxLen ? text.slice(0, maxLen - 1) + "…" : text
+}
+
 // Simple SVG map showing current area and connections
 export function Map({ location, exploration }: MapProps) {
   const { connections } = exploration
@@ -69,7 +73,7 @@ export function Map({ location, exploration }: MapProps) {
         {/* Current location (center) */}
         <circle cx={centerX} cy={centerY} r={20} fill="#3b82f6" stroke="#60a5fa" strokeWidth={3} />
         <text x={centerX} y={centerY + 4} textAnchor="middle" fill="white" fontSize={10}>
-          {location.areaName.slice(0, 6)}
+          {truncate(location.areaName, 6)}
         </text>
         <text
           x={centerX}
@@ -90,7 +94,7 @@ export function Map({ location, exploration }: MapProps) {
             <g key={conn.toAreaId}>
               <circle cx={pos.x} cy={pos.y} r={15} fill={color} stroke="#333" strokeWidth={2} />
               <text x={pos.x} y={pos.y + 3} textAnchor="middle" fill="white" fontSize={8}>
-                {conn.toAreaName.slice(0, 5)}
+                {truncate(conn.toAreaName, 5)}
               </text>
               <text x={pos.x} y={pos.y + 25} textAnchor="middle" fill="#888" fontSize={7}>
                 {conn.travelTime}t

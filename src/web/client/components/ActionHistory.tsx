@@ -83,8 +83,8 @@ function CurrentEntry({ entry }: { entry: CommandHistoryEntry }) {
 }
 
 export function ActionHistory({ history, currentCommand }: ActionHistoryProps) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const containerRef = useRef<any>(null)
+  // eslint-disable-next-line no-undef
+  const containerRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to bottom when new entries are added
   useEffect(() => {
@@ -101,8 +101,8 @@ export function ActionHistory({ history, currentCommand }: ActionHistoryProps) {
           <p>Type a command or click an action to begin.</p>
         </div>
       )}
-      {history.map((entry, i) => (
-        <HistoryEntry key={i} entry={entry} />
+      {history.map((entry) => (
+        <HistoryEntry key={entry.timestamp} entry={entry} />
       ))}
       {currentCommand && <CurrentEntry entry={currentCommand} />}
     </div>

@@ -22,8 +22,8 @@ export function CommandInput({ onSubmit, disabled = false }: CommandInputProps) 
   )
 
   const handleKeyDown = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (e: JSX.TargetedKeyboardEvent<any>) => {
+    // eslint-disable-next-line no-undef
+    (e: JSX.TargetedKeyboardEvent<HTMLInputElement>) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault()
         const trimmed = value.trim()
