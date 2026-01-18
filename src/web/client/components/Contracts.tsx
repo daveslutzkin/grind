@@ -53,7 +53,7 @@ export function Contracts({ contracts }: ContractsProps) {
         </div>
       )}
 
-      {contracts.length === 0 && <p class="empty">No contracts available</p>}
+      {contracts.length === 0 && <p class="empty">No current contracts</p>}
     </div>
   )
 }
