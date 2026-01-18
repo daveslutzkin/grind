@@ -137,11 +137,12 @@ describe("GameSession", () => {
       }
     })
 
-    it("includes go <location> action in TOWN", () => {
+    it("includes Go to ... actions in TOWN (expanded from go <location>)", () => {
       const session = GameSession.create("town-actions-test")
       const actions = session.getValidActions()
 
-      const goAction = actions.find((a) => a.displayName.includes("go"))
+      // Actions are now expanded, e.g., "Go to Mining Guild" instead of "go <location>"
+      const goAction = actions.find((a) => a.displayName.startsWith("Go to "))
       expect(goAction).toBeDefined()
     })
   })

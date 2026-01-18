@@ -19,7 +19,8 @@ import { parseAction, type ParseContext } from "../runner.js"
 import { getAvailableActions, type AvailableAction } from "../availableActions.js"
 import { getLocationDisplayName } from "../world.js"
 import { getAreaDisplayName, BASE_TRAVEL_TIME } from "../exploration.js"
-import { getUnlockedModes } from "../actionChecks.js"
+import { getUnlockedModes, checkAction } from "../actionChecks.js"
+import { getReachableAreas, isConnectionKnown } from "../exploration.js"
 import { deserializeSession, type SaveFile } from "../persistence.js"
 import { SAVE_VERSION } from "../types.js"
 import type { SessionStats } from "../runner.js"
@@ -100,10 +101,23 @@ export class GameSession {
 
   /**
    * Get the list of valid actions in the current state.
+   * Expands parametric actions (like "go <location>") into concrete clickable options.
    */
   getValidActions(): ValidAction[] {
     const available = getAvailableActions(this.state)
-    return available.map((action) => this.convertToValidAction(action))
+    const result: ValidAction[] = []
+
+    for (const action of available) {
+      // Check if this is a parametric action (has <...> in displayName)
+      if (action.displayName.includes("<")) {
+        const expanded = this.expandParametricAction(action)
+        result.push(...expanded)
+      } else {
+        result.push(this.convertToValidAction(action))
+      }
+    }
+
+    return result
   }
 
   /**
@@ -336,6 +350,273 @@ export class GameSession {
       isVariable: available.isVariable,
       successProbability: available.successProbability,
     }
+  }
+
+  /**
+   * Expand a parametric action into concrete clickable options.
+   * For example, "go <location>" becomes multiple "go guild_hall", "go market", etc.
+   */
+  private expandParametricAction(available: AvailableAction): ValidAction[] {
+    const displayName = available.displayName
+
+    // Handle different parametric action types
+    if (displayName === "go <location>") {
+      return this.expandGoLocationAction(available)
+    }
+    if (displayName === "go <area>") {
+      return this.expandGoAreaAction(available)
+    }
+    if (displayName === "fartravel <area>") {
+      return this.expandFarTravelAction(available)
+    }
+    if (displayName === "craft <recipe>") {
+      return this.expandCraftAction(available)
+    }
+    if (displayName === "accept <contract>") {
+      return this.expandAcceptContractAction(available)
+    }
+    if (displayName.match(/^(mine|chop) <resource>$/)) {
+      return this.expandGatherAction(available)
+    }
+
+    // For other parametric actions (store, drop), keep the placeholder
+    // These require numeric quantities which are harder to expand
+    return [this.convertToValidAction(available)]
+  }
+
+  /**
+   * Expand "go <location>" to concrete location options in current area.
+   */
+  private expandGoLocationAction(_available: AvailableAction): ValidAction[] {
+    const result: ValidAction[] = []
+    const currentAreaId = getCurrentAreaId(this.state)
+    const area = this.state.exploration.areas.get(currentAreaId)
+    if (!area) return []
+
+    const knownLocationIds = this.state.exploration.playerState.knownLocationIds
+    const inTown = isInTown(this.state)
+
+    for (const location of area.locations) {
+      if (!knownLocationIds.includes(location.id)) continue
+
+      const action: Action = { type: "TravelToLocation", locationId: location.id }
+      const check = checkAction(this.state, action)
+      if (!check.valid) continue
+
+      const locationName = getLocationDisplayName(location.id, currentAreaId, this.state)
+
+      result.push({
+        displayName: `Go to ${locationName}`,
+        command: `go ${location.id}`,
+        action,
+        timeCost: inTown ? 0 : 1,
+        isVariable: false,
+        successProbability: 1,
+      })
+    }
+
+    return result
+  }
+
+  /**
+   * Expand "go <area>" to concrete adjacent area options.
+   */
+  private expandGoAreaAction(_available: AvailableAction): ValidAction[] {
+    const result: ValidAction[] = []
+    const currentAreaId = getCurrentAreaId(this.state)
+    const knownConnectionIds = new Set(this.state.exploration.playerState.knownConnectionIds)
+
+    // Find all known connected adjacent areas
+    for (const conn of this.state.exploration.connections) {
+      // Must connect to current area
+      if (conn.fromAreaId !== currentAreaId && conn.toAreaId !== currentAreaId) continue
+
+      // Must be a known connection
+      if (!isConnectionKnown(knownConnectionIds, conn.fromAreaId, conn.toAreaId)) continue
+
+      const destAreaId = conn.fromAreaId === currentAreaId ? conn.toAreaId : conn.fromAreaId
+      const destArea = this.state.exploration.areas.get(destAreaId)
+
+      const action: Action = { type: "ExplorationTravel", destinationAreaId: destAreaId }
+      const check = checkAction(this.state, action)
+      if (!check.valid) continue
+
+      const areaName = getAreaDisplayName(destAreaId, destArea)
+      const travelTime = Math.round(BASE_TRAVEL_TIME * conn.travelTimeMultiplier)
+
+      result.push({
+        displayName: `Go to ${areaName}`,
+        command: `go ${destAreaId}`,
+        action,
+        timeCost: travelTime,
+        isVariable: false,
+        successProbability: 1,
+      })
+    }
+
+    return result
+  }
+
+  /**
+   * Expand "fartravel <area>" to concrete reachable area options.
+   */
+  private expandFarTravelAction(_available: AvailableAction): ValidAction[] {
+    const result: ValidAction[] = []
+    const reachableAreas = getReachableAreas(this.state)
+
+    for (const { areaId, travelTime } of reachableAreas) {
+      const action: Action = { type: "FarTravel", destinationAreaId: areaId }
+      const check = checkAction(this.state, action)
+      if (!check.valid) continue
+
+      const area = this.state.exploration.areas.get(areaId)
+      const areaName = getAreaDisplayName(areaId, area)
+
+      result.push({
+        displayName: `Fartravel to ${areaName}`,
+        command: `fartravel ${areaId}`,
+        action,
+        timeCost: travelTime,
+        isVariable: false,
+        successProbability: 1,
+      })
+    }
+
+    return result
+  }
+
+  /**
+   * Expand "craft <recipe>" to concrete craftable recipe options.
+   */
+  private expandCraftAction(_available: AvailableAction): ValidAction[] {
+    const result: ValidAction[] = []
+    const currentLocationId = getCurrentLocationId(this.state)
+    if (!currentLocationId) return []
+
+    // Find the location to get its guild type
+    const currentAreaId = getCurrentAreaId(this.state)
+    const area = this.state.exploration.areas.get(currentAreaId)
+    const location = area?.locations.find((l) => l.id === currentLocationId)
+    if (!location || !("guildType" in location)) return []
+
+    const guildType = location.guildType as SkillID
+    const recipes = this.state.world.recipes.filter((r) => r.guildType === guildType)
+
+    for (const recipe of recipes) {
+      // Check guild level requirement
+      if (
+        "guildLevel" in location &&
+        location.guildLevel !== undefined &&
+        location.guildLevel < recipe.requiredSkillLevel
+      ) {
+        continue
+      }
+
+      const action: Action = { type: "Craft", recipeId: recipe.id }
+      const check = checkAction(this.state, action)
+      if (!check.valid) continue
+
+      // Create a human-readable recipe name
+      const recipeName = recipe.id.replace(/_/g, " ").toLowerCase()
+
+      result.push({
+        displayName: `Craft ${recipeName}`,
+        command: `craft ${recipe.id}`,
+        action,
+        timeCost: recipe.craftTime,
+        isVariable: false,
+        successProbability: 1,
+      })
+    }
+
+    return result
+  }
+
+  /**
+   * Expand "accept <contract>" to concrete contract options.
+   */
+  private expandAcceptContractAction(_available: AvailableAction): ValidAction[] {
+    const result: ValidAction[] = []
+    const currentLocationId = getCurrentLocationId(this.state)
+    if (!currentLocationId) return []
+
+    const contracts = this.state.world.contracts.filter(
+      (c) =>
+        c.acceptLocationId === currentLocationId &&
+        !this.state.player.activeContracts.includes(c.id)
+    )
+
+    for (const contract of contracts) {
+      const action: Action = { type: "AcceptContract", contractId: contract.id }
+      const check = checkAction(this.state, action)
+      if (!check.valid) continue
+
+      // Create a human-readable contract name
+      const contractName = `L${contract.level} ${contract.guildType}`
+
+      result.push({
+        displayName: `Accept ${contractName}`,
+        command: `accept ${contract.id}`,
+        action,
+        timeCost: check.timeCost,
+        isVariable: false,
+        successProbability: 1,
+      })
+    }
+
+    return result
+  }
+
+  /**
+   * Expand "mine <resource>" or "chop <resource>" to concrete material options.
+   */
+  private expandGatherAction(_available: AvailableAction): ValidAction[] {
+    const result: ValidAction[] = []
+    const currentLocationId = getCurrentLocationId(this.state)
+    const currentAreaId = getCurrentAreaId(this.state)
+    if (!currentLocationId) return []
+
+    // Extract node index from location ID
+    const match = currentLocationId.match(/-loc-(\d+)$/)
+    if (!match) return []
+
+    const nodeIndex = match[1]
+    const nodeId = `${currentAreaId}-node-${nodeIndex}`
+    const node = this.state.world.nodes?.find((n) => n.nodeId === nodeId)
+    if (!node || node.depleted) return []
+
+    const skill = node.materials[0]?.requiresSkill ?? "Mining"
+    const skillLevel = this.state.player.skills[skill]?.level ?? 0
+    const commandName = skill === "Mining" ? "mine" : "chop"
+
+    // Add an option for each gatherable material
+    const gatherableMaterials = node.materials.filter(
+      (mat) => mat.requiredLevel <= skillLevel && mat.remainingUnits > 0
+    )
+
+    for (const mat of gatherableMaterials) {
+      const action: Action = {
+        type: "Gather",
+        nodeId,
+        mode: GatherMode.FOCUS,
+        focusMaterialId: mat.materialId,
+      }
+      const check = checkAction(this.state, action)
+      if (!check.valid) continue
+
+      const materialName = mat.materialId.replace(/_/g, " ").toLowerCase()
+
+      result.push({
+        displayName: `${commandName.charAt(0).toUpperCase() + commandName.slice(1)} ${materialName}`,
+        command: `${commandName} ${mat.materialId}`,
+        action,
+        timeCost: check.timeCost,
+        isVariable: false,
+        successProbability: 1,
+      })
+    }
+
+    return result
   }
 
   private buildStateSnapshot(): GameStateSnapshot {
