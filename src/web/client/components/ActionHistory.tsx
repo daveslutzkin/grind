@@ -1,32 +1,67 @@
 import type { CommandHistoryEntry } from "../hooks/useGameState"
-import type { CommandTick } from "../../../session/types"
+import type { ActionLog } from "../../../types"
 import { useEffect, useRef } from "preact/hooks"
+import {
+  collapseTicks,
+  extractResultDetails,
+  getResultMessage,
+  formatTick,
+  formatLevelUp,
+} from "./actionHistoryUtils"
 
 interface ActionHistoryProps {
   history: CommandHistoryEntry[]
   currentCommand: CommandHistoryEntry | null
 }
 
-function formatTick(tick: CommandTick): string {
-  if (tick.message) {
-    return tick.message
+/**
+ * Render ticks with progress collapsing - meaningful ticks shown individually,
+ * progress-only ticks collapsed into a single count
+ */
+function renderTicks(ticks: Parameters<typeof collapseTicks>[0], showCurrentProgress: boolean) {
+  const { meaningful, progressCount, lastProgress } = collapseTicks(ticks)
+
+  return (
+    <>
+      {meaningful.map((tick, i) => {
+        const text = formatTick(tick)
+        return text ? (
+          <div key={i} class="tick">
+            {text}
+          </div>
+        ) : null
+      })}
+      {progressCount > 0 && (
+        <div class="tick progress-summary">
+          {showCurrentProgress && lastProgress?.ticksElapsed !== undefined
+            ? `(${lastProgress.ticksElapsed}${lastProgress.totalTicks ? `/${lastProgress.totalTicks}` : ""} ticks)`
+            : `(${progressCount} ticks)`}
+        </div>
+      )}
+    </>
+  )
+}
+
+/**
+ * Render additional result details (items, XP, level ups)
+ */
+function ResultDetails({ log }: { log: ActionLog }) {
+  const { details, levelUps } = extractResultDetails(log)
+
+  if (details.length === 0 && levelUps.length === 0) {
+    return null
   }
-  if (tick.gathered) {
-    return `Gathered ${tick.gathered.quantity}x ${tick.gathered.itemId}`
-  }
-  if (tick.discovered) {
-    return `Discovered ${tick.discovered.type}: ${tick.discovered.name}`
-  }
-  if (tick.xpGained) {
-    return `+${tick.xpGained.amount} ${tick.xpGained.skill} XP`
-  }
-  if (tick.type === "progress" && tick.ticksElapsed !== undefined) {
-    if (tick.totalTicks !== undefined) {
-      return `Progress: ${tick.ticksElapsed}/${tick.totalTicks}`
-    }
-    return `Progress: ${tick.ticksElapsed}`
-  }
-  return ""
+
+  return (
+    <div class="result-details">
+      {details.length > 0 && <span class="details-text">{details.join(" | ")}</span>}
+      {levelUps.map((lu, i) => (
+        <span key={i} class="level-up">
+          [LEVEL UP: {formatLevelUp(lu)}]
+        </span>
+      ))}
+    </div>
+  )
 }
 
 function HistoryEntry({ entry }: { entry: CommandHistoryEntry }) {
@@ -37,25 +72,15 @@ function HistoryEntry({ entry }: { entry: CommandHistoryEntry }) {
       <div class="history-command">
         <span class="prompt">&gt;</span> {entry.command}
       </div>
-      {entry.ticks.length > 0 && (
-        <div class="history-ticks">
-          {entry.ticks.map((tick, i) => {
-            const text = formatTick(tick)
-            return text ? (
-              <div key={i} class="tick">
-                {text}
-              </div>
-            ) : null
-          })}
-        </div>
-      )}
+      {entry.ticks.length > 0 && <div class="history-ticks">{renderTicks(entry.ticks, false)}</div>}
       {result && (
         <div class="history-result">
           {result.success ? (
-            <span class="result-success">{result.log.message || "Done"}</span>
+            <span class="result-success">{getResultMessage(result)}</span>
           ) : (
-            <span class="result-failure">{result.log.message || "Failed"}</span>
+            <span class="result-failure">{getResultMessage(result)}</span>
           )}
+          <ResultDetails log={result.log} />
         </div>
       )}
     </div>
@@ -69,18 +94,7 @@ function CurrentEntry({ entry }: { entry: CommandHistoryEntry }) {
         <span class="prompt">&gt;</span> {entry.command}
         <span class="executing">...</span>
       </div>
-      {entry.ticks.length > 0 && (
-        <div class="history-ticks">
-          {entry.ticks.map((tick, i) => {
-            const text = formatTick(tick)
-            return text ? (
-              <div key={i} class="tick">
-                {text}
-              </div>
-            ) : null
-          })}
-        </div>
-      )}
+      {entry.ticks.length > 0 && <div class="history-ticks">{renderTicks(entry.ticks, true)}</div>}
     </div>
   )
 }
