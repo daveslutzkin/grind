@@ -5,11 +5,13 @@ interface SkillsProps {
 }
 
 export function Skills({ skills }: SkillsProps) {
+  const learnedSkills = skills.filter((skill) => skill.level > 0)
+
   return (
     <div class="skills panel">
       <h3>Skills</h3>
       <ul>
-        {skills.map((skill) => (
+        {learnedSkills.map((skill) => (
           <li key={skill.id}>
             <div class="skill-header">
               <span class="skill-name">{skill.id}</span>
