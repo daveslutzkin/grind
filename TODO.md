@@ -3,7 +3,7 @@
 ## Summary
 
 Five changes to improve the mining user experience:
-1. Remove "focus" as a keyword since it's the default mode
+1. ~~Remove "focus" as a keyword since it's the default mode~~ ✅ DONE
 2. Allow `mine` with no params when there's only one visible resource
 3. ~~Always show the Time line in extraction results~~ ✅ DONE
 4. ~~Show collateral damage info for undiscovered materials~~ ✅ DONE
@@ -11,7 +11,7 @@ Five changes to improve the mining user experience:
 
 ---
 
-## 1. Remove "focus" Keyword from Commands and Display
+## 1. Remove "focus" Keyword from Commands and Display ✅ DONE
 
 **Current behavior:**
 - Commands: `mine focus stone`, `chop focus oak`
