@@ -117,10 +117,10 @@ export class GameSession {
       // Return a failure result for invalid commands
       const failureLog: ActionLog = {
         tickBefore: this.state.time.currentTick,
-        actionType: "Move", // Placeholder
+        actionType: "Unknown",
         parameters: { command },
         success: false,
-        failureDetails: { type: "NO_PATH_TO_DESTINATION", reason: "invalid_command" },
+        failureDetails: { type: "INVALID_COMMAND", reason: "Could not parse command" },
         timeConsumed: 0,
         rngRolls: [],
         stateDeltaSummary: "Invalid command",
@@ -133,6 +133,14 @@ export class GameSession {
       }
     }
 
+    return this.executeAction(action)
+  }
+
+  /**
+   * Execute an Action directly (without parsing from a command string).
+   * Use this when you already have an Action object (e.g., from the Agent).
+   */
+  async executeAction(action: Action): Promise<CommandResult> {
     const generator = getActionGenerator(this.state, action)
     const log = await executeToCompletion(generator)
     this.stats.logs.push(log)
@@ -156,10 +164,10 @@ export class GameSession {
     if (!action) {
       const failureLog: ActionLog = {
         tickBefore: this.state.time.currentTick,
-        actionType: "Move",
+        actionType: "Unknown",
         parameters: { command },
         success: false,
-        failureDetails: { type: "NO_PATH_TO_DESTINATION", reason: "invalid_command" },
+        failureDetails: { type: "INVALID_COMMAND", reason: "Could not parse command" },
         timeConsumed: 0,
         rngRolls: [],
         stateDeltaSummary: "Invalid command",
@@ -259,22 +267,52 @@ export class GameSession {
     return new GameSession(state, stats, seed)
   }
 
-  // ============================================================================
-  // Private Helpers
-  // ============================================================================
-
-  private parseCommand(command: string): Action | null {
+  /**
+   * Parse a command string into an Action.
+   * Returns null if the command cannot be parsed.
+   */
+  parseCommand(command: string): Action | null {
     const trimmed = command.trim()
     if (!trimmed) return null
 
+    // Include both visited areas and reachable areas (via known connections)
+    const currentArea = this.state.exploration.playerState.currentAreaId
+    const reachableAreas = new Set(this.state.exploration.playerState.knownAreaIds)
+    for (const connId of this.state.exploration.playerState.knownConnectionIds) {
+      const [from, to] = connId.split("->")
+      if (from === currentArea) reachableAreas.add(to)
+      if (to === currentArea) reachableAreas.add(from)
+    }
+
     const context: ParseContext = {
-      knownAreaIds: Array.from(this.state.exploration.playerState.knownAreaIds),
+      knownAreaIds: Array.from(reachableAreas),
       currentLocationId: getCurrentLocationId(this.state),
       state: this.state,
     }
 
     return parseAction(trimmed, context)
   }
+
+  /**
+   * Record an action log from external execution (e.g., interactive handlers).
+   * Use this when actions are executed outside of executeCommand().
+   */
+  recordLog(log: ActionLog): void {
+    this.stats.logs.push(log)
+  }
+
+  /**
+   * Record multiple action logs from external execution.
+   */
+  recordLogs(logs: ActionLog[]): void {
+    for (const log of logs) {
+      this.stats.logs.push(log)
+    }
+  }
+
+  // ============================================================================
+  // Private Helpers
+  // ============================================================================
 
   private convertToValidAction(available: AvailableAction): ValidAction {
     // Parse the display name to get a command string

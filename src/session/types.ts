@@ -28,6 +28,8 @@ export interface LocationInfo {
   locationId: string | null // null = at hub/clearing
   locationName: string
   isInTown: boolean
+  // Note: No "undiscovered" status - player's current location is always discovered.
+  // See ConnectionInfo.explorationStatus for areas that may be undiscovered.
   explorationStatus: "unexplored" | "partly explored" | "fully explored"
 }
 
@@ -96,6 +98,8 @@ export interface ConnectionInfo {
   toAreaId: AreaID
   toAreaName: string
   travelTime: number
+  // Includes "undiscovered" for areas the player knows about but hasn't visited.
+  // Compare to LocationInfo.explorationStatus which excludes "undiscovered".
   explorationStatus: "undiscovered" | "unexplored" | "partly explored" | "fully explored"
   relativeDistance: "closer" | "same" | "further"
 }
@@ -178,9 +182,9 @@ export interface CommandTick {
 
 /**
  * Result of executing a command.
+ * Distinguish from CommandTick by checking for the presence of 'log'.
  */
 export interface CommandResult {
-  type?: "result" // Optional type field to distinguish from CommandTick
   success: boolean
   log: ActionLog
   stateAfter: GameStateSnapshot

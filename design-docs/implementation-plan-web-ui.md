@@ -118,13 +118,32 @@ class GameSession {
   // Creation
   static create(seed: string): GameSession
   static fromSavedState(json: string): GameSession
+  static fromSession(state: WorldState, stats: SessionStats, seed: string): GameSession
 
   // State access (returns structured data, not formatted text)
   getState(): GameStateSnapshot
   getValidActions(): ValidAction[]
 
-  // Command execution
-  executeCommand(command: string): AsyncGenerator<CommandTick, CommandResult>
+  // Command parsing
+  parseCommand(command: string): Action | null
+
+  // Command execution (simple API - waits for completion)
+  executeCommand(command: string): Promise<CommandResult>
+
+  // Action execution (for pre-parsed actions, e.g., from Agent)
+  executeAction(action: Action): Promise<CommandResult>
+
+  // Command execution with progress updates (for animated UIs)
+  executeCommandWithProgress(command: string): AsyncGenerator<CommandTick | CommandResult>
+
+  // Log recording (for interactive handlers that execute actions externally)
+  recordLog(log: ActionLog): void
+  recordLogs(logs: ActionLog[]): void
+
+  // Raw state access (for formatters and backwards compatibility)
+  getRawState(): WorldState
+  getStats(): SessionStats
+  toSession(): { state: WorldState; stats: SessionStats }
 
   // Persistence
   serialize(): string
@@ -146,8 +165,13 @@ interface GameStateSnapshot {
 
 interface CommandTick {
   type: 'progress' | 'feedback'
+  ticksElapsed?: number
+  totalTicks?: number
   message?: string
-  progress?: number
+  // Structured feedback for specific action types
+  gathered?: { itemId: string; quantity: number }
+  discovered?: { type: 'location' | 'connection' | 'area'; name: string }
+  xpGained?: { skill: SkillID; amount: number }
 }
 
 interface CommandResult {

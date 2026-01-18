@@ -5,6 +5,7 @@
  */
 
 import { GameSession } from "./GameSession.js"
+import type { CommandTick, CommandResult } from "./types.js"
 
 describe("GameSession", () => {
   describe("creation", () => {
@@ -224,19 +225,32 @@ describe("GameSession", () => {
       expect(ticks.length).toBeGreaterThan(1)
     })
 
-    it("yields final result with done: true", async () => {
+    it("yields final result with log, success, and stateAfter", async () => {
       const session = GameSession.create("done-test")
 
       await session.executeCommand("go miners guild")
 
-      let finalTick: unknown = null
+      const ticks: (CommandTick | CommandResult)[] = []
       for await (const tick of session.executeCommandWithProgress("enrol")) {
-        finalTick = tick
+        ticks.push(tick)
       }
 
-      expect(finalTick).toBeDefined()
-      // The last tick should have the log
-      expect((finalTick as { log?: unknown }).log).toBeDefined()
+      expect(ticks.length).toBeGreaterThan(0)
+
+      // All ticks except the last should be progress ticks (no 'log' property)
+      const progressTicks = ticks.slice(0, -1)
+      for (const tick of progressTicks) {
+        expect("log" in tick).toBe(false)
+        expect((tick as CommandTick).type).toMatch(/progress|feedback/)
+      }
+
+      // The last tick should be the CommandResult
+      const finalResult = ticks[ticks.length - 1] as CommandResult
+      expect(finalResult.log).toBeDefined()
+      expect(finalResult.success).toBe(true)
+      expect(finalResult.stateAfter).toBeDefined()
+      expect(finalResult.stateAfter.location).toBeDefined()
+      expect(finalResult.stateAfter.skills).toBeDefined()
     })
   })
 

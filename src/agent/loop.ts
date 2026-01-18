@@ -1,4 +1,3 @@
-import { executeAction } from "../engine.js"
 import type { WorldState, Action, ActionLog } from "../types.js"
 import { formatWorldState, formatActionLog } from "./formatters.js"
 import { GameSession } from "../session/index.js"
@@ -125,11 +124,12 @@ function categorizeLearning(learning: string): keyof AgentKnowledge | null {
 
 /**
  * Create an agent loop with the given configuration.
- * Internally uses GameSession for state management.
+ * Uses GameSession for state management and action execution.
  */
 export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
   // Initialize world using GameSession
   const gameSession = GameSession.create(config.seed)
+  // Keep a reference to the raw state for formatters (mutable, same object as in GameSession)
   const state = gameSession.getRawState()
 
   // Track stats
@@ -296,7 +296,7 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
         }
       }
 
-      // Execute action
+      // Execute action using GameSession
       const action = response.action!
       stats.actionsAttempted++
 
@@ -305,9 +305,10 @@ export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
         console.log(`Reasoning: ${response.reasoning}`)
       }
 
-      const log = await executeAction(state, action)
+      const result = await gameSession.executeAction(action)
+      const log = result.log
 
-      // Track action log for summarization
+      // Track action log for summarization (log is already recorded in GameSession)
       actionLogs.push(log)
 
       // Update stats

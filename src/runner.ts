@@ -969,47 +969,15 @@ export function printSummary(state: WorldState, stats: SessionStats): void {
 // Runner Creation
 // ============================================================================
 
-export interface CreateSessionOptions {
-  seed: string
-  createWorld: (seed: string) => WorldState
-}
-
 export interface Session {
   state: WorldState
   stats: SessionStats
-}
-
-/**
- * Create a new session with initial state and stats tracking
- */
-export function createSession(options: CreateSessionOptions): Session {
-  const state = options.createWorld(options.seed)
-  const stats: SessionStats = {
-    logs: [],
-    startingSkills: { ...state.player.skills },
-    sessionStartLogIndex: 0,
-  }
-  return { state, stats }
-}
-
-/**
- * Execute an action and record it in stats
- */
-export async function executeAndRecord(
-  session: Session,
-  action: Action,
-  execute: (state: WorldState, action: Action) => Promise<ActionLog>
-): Promise<ActionLog> {
-  const log = await execute(session.state, action)
-  session.stats.logs.push(log)
-  return log
 }
 
 // ============================================================================
 // Unified Session Runner
 // ============================================================================
 
-import { executeAction } from "./engine.js"
 import { saveExists, loadSave, writeSave, deserializeSession } from "./persistence.js"
 import { promptResume } from "./savePrompt.js"
 import { closeInput } from "./prompt.js"
@@ -1084,7 +1052,6 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
 
   // Get the raw state for callbacks (they expect WorldState)
   const state = gameSession.getRawState()
-  const stats = gameSession.getStats()
 
   // Call onSessionStart hook if provided
   config.onSessionStart?.(state)
@@ -1129,21 +1096,8 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
       continue
     }
 
-    // Parse the action
-    // Include both visited areas and reachable areas (via known connections)
-    const currentArea = state.exploration.playerState.currentAreaId
-    const reachableAreas = new Set(state.exploration.playerState.knownAreaIds)
-    for (const connId of state.exploration.playerState.knownConnectionIds) {
-      const [from, to] = connId.split("->")
-      if (from === currentArea) reachableAreas.add(to)
-      if (to === currentArea) reachableAreas.add(from)
-    }
-
-    const action = parseAction(cmd, {
-      knownAreaIds: Array.from(reachableAreas),
-      currentLocationId: state.exploration.playerState.currentLocationId,
-      state: state,
-    })
+    // Parse the action using GameSession
+    const action = gameSession.parseCommand(cmd)
 
     if (!action) {
       const result = config.onInvalidCommand(cmd)
@@ -1171,28 +1125,20 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
         // Special handling for Explore/Survey/Travel actions (they have interactive loops)
         if (action.type === "Explore") {
           const logs = await interactiveExplore(state)
-          for (const log of logs) {
-            stats.logs.push(log)
-          }
+          gameSession.recordLogs(logs)
         } else if (action.type === "Survey") {
           const logs = await interactiveSurvey(state)
-          for (const log of logs) {
-            stats.logs.push(log)
-          }
+          gameSession.recordLogs(logs)
         } else if (action.type === "ExplorationTravel") {
           const logs = await interactiveExplorationTravel(state, action)
-          for (const log of logs) {
-            stats.logs.push(log)
-          }
+          gameSession.recordLogs(logs)
         } else if (action.type === "FarTravel") {
           const logs = await interactiveFarTravel(state, action)
-          for (const log of logs) {
-            stats.logs.push(log)
-          }
+          gameSession.recordLogs(logs)
         } else {
           // All other actions: use generic animation
           const log = await executeAnimatedAction(state, action)
-          stats.logs.push(log)
+          gameSession.recordLog(log)
           config.onActionComplete(log, state)
         }
       } finally {
@@ -1203,14 +1149,13 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
       continue
     }
 
-    // Non-TTY mode: execute without animation (for scripts, CI, etc.)
-    const log = await executeAction(state, action)
-    stats.logs.push(log)
-    config.onActionComplete(log, state)
+    // Non-TTY mode: execute using GameSession
+    const result = await gameSession.executeCommand(cmd)
+    config.onActionComplete(result.log, state)
 
     // Auto-save after each action
     writeSave(seed, getSession())
   }
 
-  config.onSessionEnd(state, stats, showSummary)
+  config.onSessionEnd(state, gameSession.getStats(), showSummary)
 }

@@ -308,6 +308,7 @@ export type ActionType =
   | "Leave"
   | "BuyMap" // Phase 3: Purchase maps from guild shops
   | "SeeGatheringMap" // View known gathering nodes at guild hall
+  | "Unknown" // For invalid/unparseable commands
 
 export interface MoveAction {
   type: "Move"
@@ -588,6 +589,8 @@ export type FailureType =
   // Contract turn-in failure types
   | "CONTRACT_NOT_ACTIVE"
   | "REQUIREMENTS_NOT_MET"
+  // Command parsing failure types
+  | "INVALID_COMMAND"
 
 // RNG roll log entry
 export interface RngRoll {
