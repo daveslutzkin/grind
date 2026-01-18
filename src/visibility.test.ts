@@ -40,6 +40,7 @@ function createTestState(overrides: Partial<WorldState> = {}): WorldState {
       recipes: [],
       contracts: [],
       storageAreaId: "TOWN",
+      nextContractId: 1,
     },
     exploration: {
       areas: new Map(),

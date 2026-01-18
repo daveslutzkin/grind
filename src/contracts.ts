@@ -138,7 +138,7 @@ export function getNodeMapPrice(materialTier: string): number | null {
 export interface ContractGenerationParams {
   playerMiningLevel: number
   rng: RngState
-  state?: WorldState // Optional state for Phase 2 map generation
+  state: WorldState // Required for unique contract ID generation
 }
 
 // ============================================================================
@@ -631,15 +631,13 @@ export function findNodeForMap(requiredMaterial: string, state: WorldState): Con
   return null
 }
 
-// Contract ID counter for unique IDs
-let contractIdCounter = 0
-
 /**
- * Generate a unique contract ID
+ * Generate a unique contract ID using persistent state counter
  */
-function generateContractId(): ContractID {
-  contractIdCounter++
-  return `mining-contract-${contractIdCounter}`
+function generateContractId(state: WorldState): ContractID {
+  const id = state.world.nextContractId
+  state.world.nextContractId++
+  return `mining-contract-${id}`
 }
 
 // ============================================================================
@@ -695,7 +693,7 @@ export function generateMiningContract(
 
   // Generate the contract
   const contract: MiningContract = {
-    id: generateContractId(),
+    id: generateContractId(state),
     level: tier.unlockLevel,
     acceptLocationId: TOWN_LOCATIONS.MINERS_GUILD,
     guildType: "Mining",
@@ -708,7 +706,7 @@ export function generateMiningContract(
   }
 
   // Phase 2: Include map if appropriate
-  if (state && shouldIncludeMap(playerMiningLevel, tier.materialId, state)) {
+  if (shouldIncludeMap(playerMiningLevel, tier.materialId, state)) {
     const map = findNodeForMap(tier.materialId, state)
     if (map) {
       contract.includedMap = map
@@ -716,13 +714,6 @@ export function generateMiningContract(
   }
 
   return contract
-}
-
-/**
- * Reset contract ID counter (for testing)
- */
-export function resetContractIdCounter(): void {
-  contractIdCounter = 0
 }
 
 // Re-export ContractSlot for backwards compatibility

@@ -137,6 +137,7 @@ describe("Contract Generation", () => {
       const contract = generateMiningContract("at-level", {
         playerMiningLevel: 10,
         rng: state.rng,
+        state,
       })
 
       expect(contract).not.toBeNull()
@@ -156,6 +157,7 @@ describe("Contract Generation", () => {
       const contract = generateMiningContract("aspirational", {
         playerMiningLevel: 10,
         rng: state.rng,
+        state,
       })
 
       expect(contract).not.toBeNull()
@@ -170,6 +172,7 @@ describe("Contract Generation", () => {
       const contract = generateMiningContract("aspirational", {
         playerMiningLevel: 140, // Max tier (Obsidium)
         rng: state.rng,
+        state,
       })
 
       expect(contract).toBeNull()
@@ -182,6 +185,7 @@ describe("Contract Generation", () => {
       const contract = generateMiningContract("at-level", {
         playerMiningLevel: 1,
         rng: state.rng,
+        state,
       })
 
       // Gold = quantity * resaleValue * (1 + bounty)
@@ -201,6 +205,7 @@ describe("Contract Generation", () => {
       const contract = generateMiningContract("at-level", {
         playerMiningLevel: 10,
         rng: state.rng,
+        state,
       })
 
       expect(contract!.xpReward).toBeUndefined()
@@ -212,23 +217,26 @@ describe("Contract Generation", () => {
       const contract = generateMiningContract("at-level", {
         playerMiningLevel: 10,
         rng: state.rng,
+        state,
       })
 
       expect(contract!.rewards).toEqual([])
     })
 
     it("should generate deterministic contracts", () => {
-      const rng1 = createRng("determinism-test")
-      const rng2 = createRng("determinism-test")
+      const state1 = createWorld("determinism-test")
+      const state2 = createWorld("determinism-test")
 
       const contract1 = generateMiningContract("at-level", {
         playerMiningLevel: 10,
-        rng: rng1,
+        rng: state1.rng,
+        state: state1,
       })
 
       const contract2 = generateMiningContract("at-level", {
         playerMiningLevel: 10,
-        rng: rng2,
+        rng: state2.rng,
+        state: state2,
       })
 
       expect(contract1!.requirements).toEqual(contract2!.requirements)
@@ -238,6 +246,34 @@ describe("Contract Generation", () => {
   })
 
   describe("refreshMiningContracts", () => {
+    it("should generate unique contract IDs across multiple refreshes", () => {
+      const state = createWorld("unique-ids-test")
+      state.player.skills.Mining = { level: 10, xp: 0 }
+
+      // Track all IDs ever generated
+      const allGeneratedIds: string[] = []
+
+      // Generate initial contracts
+      refreshMiningContracts(state)
+      allGeneratedIds.push(...state.world.contracts.map((c) => c.id))
+      expect(allGeneratedIds).toHaveLength(2)
+
+      // Refresh the at-level slot (simulating contract turn-in)
+      refreshMiningContracts(state, "at-level")
+      const newAtLevel = state.world.contracts.find((c) => c.slot === "at-level")!
+      allGeneratedIds.push(newAtLevel.id)
+
+      // Refresh again
+      refreshMiningContracts(state, "at-level")
+      const newerAtLevel = state.world.contracts.find((c) => c.slot === "at-level")!
+      allGeneratedIds.push(newerAtLevel.id)
+
+      // All generated IDs should be unique (no reuse)
+      const uniqueIds = new Set(allGeneratedIds)
+      expect(uniqueIds.size).toBe(allGeneratedIds.length)
+      expect(uniqueIds.size).toBe(4) // 2 initial + 2 refreshes
+    })
+
     it("should generate both at-level and aspirational contracts when enrolled", () => {
       const state = createWorld("refresh-test")
       state.player.skills.Mining = { level: 10, xp: 0 }
@@ -807,9 +843,8 @@ describe("Contract Generation", () => {
 
     describe("contract with map generation", () => {
       it("should include a map for early game contracts", async () => {
-        const { generateMiningContract, resetContractIdCounter, findNodeForMap, shouldIncludeMap } =
+        const { generateMiningContract, findNodeForMap, shouldIncludeMap } =
           await import("./contracts.js")
-        resetContractIdCounter()
 
         const state = createWorld("contract-map-generation")
         state.player.skills.Mining = { level: 5, xp: 0 }

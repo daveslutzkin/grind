@@ -765,6 +765,7 @@ export function createWorld(seed: string): WorldState {
       ],
       contracts: [], // Contracts are now generated dynamically
       storageAreaId: "TOWN",
+      nextContractId: 1, // Counter for generating unique contract IDs
     },
 
     exploration: {

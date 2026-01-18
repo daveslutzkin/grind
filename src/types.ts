@@ -245,6 +245,7 @@ export interface WorldState {
     recipes: Recipe[]
     contracts: Contract[]
     storageAreaId: AreaID // Where storage is located (usually TOWN)
+    nextContractId: number // Counter for generating unique contract IDs
   }
 
   // Exploration system - THE location system
