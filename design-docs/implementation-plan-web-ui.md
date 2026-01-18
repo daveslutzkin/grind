@@ -161,6 +161,8 @@ interface GameStateSnapshot {
   contracts: ContractInfo[]
   exploration: ExplorationInfo
   time: TimeInfo
+  gold: number
+  guildReputation: number
 }
 
 interface CommandTick {
