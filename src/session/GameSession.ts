@@ -41,6 +41,9 @@ import type {
   NodeMaterialInfo,
   ContractRequirement,
   ContractReward,
+  WorldMapInfo,
+  WorldMapAreaInfo,
+  WorldMapConnectionInfo,
 } from "./types.js"
 import { getVisibleMaterials } from "../visibility.js"
 import { nodeIdToLocationId } from "../contracts.js"
@@ -871,12 +874,53 @@ export class GameSession {
       ? currentArea.locations.some((loc) => !knownLocationIds.includes(loc.id))
       : false
 
+    // Build world map data (all known areas and connections)
+    const worldMap = this.buildWorldMapInfo()
+
     return {
       connections,
       knownGatheringNodes,
       hasUndiscoveredAreas,
       hasUndiscoveredLocations,
+      worldMap,
     }
+  }
+
+  private buildWorldMapInfo(): WorldMapInfo {
+    const knownAreaIds = this.state.exploration.playerState.knownAreaIds
+    const knownConnectionIds = new Set(this.state.exploration.playerState.knownConnectionIds)
+
+    // Build all known areas
+    const areas: WorldMapAreaInfo[] = []
+    for (const areaId of knownAreaIds) {
+      const area = this.state.exploration.areas.get(areaId)
+      areas.push({
+        areaId,
+        areaName: getAreaDisplayName(areaId, area),
+        distance: area?.distance ?? 0,
+        explorationStatus: this.getExplorationStatus(areaId),
+      })
+    }
+
+    // Build all known connections (deduplicated)
+    const connections: WorldMapConnectionInfo[] = []
+    const addedConnections = new Set<string>()
+
+    for (const connId of knownConnectionIds) {
+      const [from, to] = connId.split("->")
+
+      // Only include if both areas are known
+      if (!knownAreaIds.includes(from) || !knownAreaIds.includes(to)) continue
+
+      // Deduplicate bidirectional connections
+      const normalizedId = [from, to].sort().join("-")
+      if (!addedConnections.has(normalizedId)) {
+        addedConnections.add(normalizedId)
+        connections.push({ fromAreaId: from, toAreaId: to })
+      }
+    }
+
+    return { areas, connections }
   }
 
   private buildTimeInfo(): TimeInfo {

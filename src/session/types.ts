@@ -130,6 +130,28 @@ export interface ExplorationInfo {
   knownGatheringNodes: GatheringNodeInfo[]
   hasUndiscoveredAreas: boolean
   hasUndiscoveredLocations: boolean
+  worldMap: WorldMapInfo
+}
+
+// ============================================================================
+// World Map (for full-screen map view)
+// ============================================================================
+
+export interface WorldMapAreaInfo {
+  areaId: AreaID
+  areaName: string
+  distance: number // Distance from town (0 = town)
+  explorationStatus: "undiscovered" | "unexplored" | "partly explored" | "fully explored"
+}
+
+export interface WorldMapConnectionInfo {
+  fromAreaId: AreaID
+  toAreaId: AreaID
+}
+
+export interface WorldMapInfo {
+  areas: WorldMapAreaInfo[]
+  connections: WorldMapConnectionInfo[]
 }
 
 // ============================================================================

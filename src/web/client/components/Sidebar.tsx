@@ -16,7 +16,7 @@ export function Sidebar({ state }: SidebarProps) {
         <Inventory inventory={state.inventory} />
         <Storage storage={state.storage} />
         <Skills skills={state.skills} />
-        <Contracts contracts={state.contracts} />
+        <Contracts contracts={state.contracts} skills={state.skills} />
       </div>
       <div class="sidebar-bottom">
         <Map location={state.location} exploration={state.exploration} />

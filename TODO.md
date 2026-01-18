@@ -47,33 +47,34 @@ Based on playtesting session evaluating the web UI.
 
 ---
 
-### 2.2 Gray Out Unavailable Contracts
+### ~~2.2 Gray Out Unavailable Contracts~~ [DONE]
 **Type:** UI Enhancement
 
-The contracts sidebar shows contracts the player can't accept (e.g., Lv 20 contracts when player is Lv 1) with no visual distinction.
+~~The contracts sidebar shows contracts the player can't accept (e.g., Lv 20 contracts when player is Lv 1) with no visual distinction.~~
 
-**Expected behavior:**
+**Fixed:**
 - Contracts player can accept: normal display
-- Contracts player cannot accept: grayed out / visually dimmed
-- Show requirement: "Requires Mining Lv 20"
-- Players should see what's coming (progression) but clearly know what they can act on
+- Contracts player cannot accept: grayed out (50% opacity)
+- Shows "Requires Mining Lv X" for unavailable contracts
+- Added `canAcceptContract()` helper that checks skill level >= contract level
 
 ---
 
-### 2.3 Mini-Map Redesign
+### ~~2.3 Mini-Map Redesign~~ [DONE]
 **Type:** UI Redesign
 
-Current map has truncated names ("near...") and unclear relationships.
+~~Current map has truncated names ("near...") and unclear relationships.~~
 
-**New mini-map behavior:**
-- Current area: displayed as small dot
-- Connected areas (1 hop away): displayed as larger dots
-- Focus on "where can I go from here?" navigation
+**Fixed:** Mini-map redesigned with:
+- Current area: small dot (8px radius) at center
+- Connected areas (1 hop away): larger dots (18px radius) with full names and travel times
+- Focus on "where can I go from here?" navigation with prominent destination labels
 
 **Full-screen map:**
-- Click mini-map to expand to full screen
-- See and explore entire world
-- Show full details and area names
+- Click mini-map to expand to full-screen modal
+- Shows entire known world with areas positioned by distance from town
+- Full area names displayed with exploration status colors
+- Current location highlighted with "You are here" indicator
 
 ---
 
