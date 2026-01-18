@@ -3,6 +3,7 @@ import {
   GATHERING_NODE_ALIASES,
   ENEMY_CAMP_ALIASES,
   toSlug,
+  normalizeName,
 } from "./resolution.js"
 import type { WorldState, Area } from "./types.js"
 import { ExplorationLocationType } from "./types.js"
@@ -33,6 +34,43 @@ describe("toSlug", () => {
     expect(toSlug("a nearby area")).toBe("a-nearby-area")
     expect(toSlug("a distant area")).toBe("a-distant-area")
     expect(toSlug("a remote area")).toBe("a-remote-area")
+  })
+})
+
+describe("normalizeName", () => {
+  it("converts dashes to spaces (allows slug matching)", () => {
+    expect(normalizeName("rocky-clearing")).toBe("rocky clearing")
+  })
+
+  it("converts underscores to spaces", () => {
+    expect(normalizeName("rocky_clearing")).toBe("rocky clearing")
+  })
+
+  it("converts to lowercase", () => {
+    expect(normalizeName("Rocky Clearing")).toBe("rocky clearing")
+  })
+
+  it("removes punctuation", () => {
+    expect(normalizeName("Dragon's Lair")).toBe("dragons lair")
+  })
+})
+
+describe("toSlug and normalizeName round-trip", () => {
+  it("slug can be matched back to original area name", () => {
+    const testNames = [
+      "Rocky Clearing",
+      "Dragon's Lair",
+      "a nearby area",
+      "Misty Mountains",
+      "TOWN",
+    ]
+
+    for (const name of testNames) {
+      const slug = toSlug(name)
+      const normalizedSlug = normalizeName(slug)
+      const normalizedName = normalizeName(name)
+      expect(normalizedSlug).toBe(normalizedName)
+    }
   })
 })
 

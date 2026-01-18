@@ -257,6 +257,33 @@ describe("GameSession", () => {
           expect(action.command).toBe(`go ${expectedSlug}`)
         }
       })
+
+      it("slug-based go commands can be executed successfully (round-trip)", async () => {
+        const session = GameSession.create("travel-roundtrip-test")
+
+        await session.executeCommand("go miners guild")
+        await session.executeCommand("enrol")
+        // Survey to discover adjacent areas
+        for (let i = 0; i < 5; i++) {
+          await session.executeCommand("survey")
+        }
+
+        const actions = session.getValidActions()
+        const travelAction = actions.find((a) => a.displayName.startsWith("Travel to "))
+
+        if (travelAction) {
+          // Get expected destination from the action
+          const expectedDestinationId = (travelAction.action as { destinationAreaId: string })
+            .destinationAreaId
+
+          // Execute the slug-based command
+          const result = await session.executeCommand(travelAction.command)
+
+          // Verify the command succeeded and player is at the expected destination
+          expect(result.success).toBe(true)
+          expect(session.getState().location.areaId).toBe(expectedDestinationId)
+        }
+      })
     })
 
     describe("fartravel <area> expansion", () => {
@@ -309,6 +336,32 @@ describe("GameSession", () => {
           const areaNameFromDisplay = action.displayName.replace("Fartravel to ", "")
           const expectedSlug = areaNameFromDisplay.toLowerCase().replace(/\s+/g, "-")
           expect(action.command).toBe(`fartravel ${expectedSlug}`)
+        }
+      })
+
+      it("slug-based commands can be executed successfully (round-trip)", async () => {
+        const session = GameSession.create("fartravel-roundtrip-test")
+
+        // Setup: discover an area
+        await session.executeCommand("go miners guild")
+        await session.executeCommand("enrol")
+        await session.executeCommand("survey")
+        await session.executeCommand("survey")
+
+        const actions = session.getValidActions()
+        const fartravelAction = actions.find((a) => a.displayName.startsWith("Fartravel to "))
+
+        if (fartravelAction) {
+          // Get expected destination from the action
+          const expectedDestinationId = (fartravelAction.action as { destinationAreaId: string })
+            .destinationAreaId
+
+          // Execute the slug-based command
+          const result = await session.executeCommand(fartravelAction.command)
+
+          // Verify the command succeeded and player is at the expected destination
+          expect(result.success).toBe(true)
+          expect(session.getState().location.areaId).toBe(expectedDestinationId)
         }
       })
     })

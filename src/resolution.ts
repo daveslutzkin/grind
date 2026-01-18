@@ -21,13 +21,14 @@ export interface ResolvedDestination {
 
 /**
  * Normalize a name for comparison by removing punctuation (apostrophes, periods, etc.)
- * and converting underscores to spaces for flexible matching
+ * and converting underscores/dashes to spaces for flexible matching.
+ * This allows both "Rocky Clearing" and "rocky-clearing" to match.
  */
 export function normalizeName(name: string): string {
   return name
     .toLowerCase()
-    .replace(/_/g, " ") // Convert underscores to spaces
-    .replace(/[^\w\s-]/g, "") // Remove punctuation
+    .replace(/[_-]/g, " ") // Convert underscores and dashes to spaces
+    .replace(/[^\w\s]/g, "") // Remove punctuation
 }
 
 /**
