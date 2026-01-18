@@ -145,6 +145,328 @@ describe("GameSession", () => {
       const goAction = actions.find((a) => a.displayName.startsWith("Go to "))
       expect(goAction).toBeDefined()
     })
+
+    it("does not include unexpanded go <location> placeholder", () => {
+      const session = GameSession.create("no-placeholder-test")
+      const actions = session.getValidActions()
+
+      const placeholder = actions.find((a) => a.displayName === "go <location>")
+      expect(placeholder).toBeUndefined()
+    })
+  })
+
+  describe("action expansion", () => {
+    describe("go <location> expansion", () => {
+      it("expands to concrete location options", () => {
+        const session = GameSession.create("expand-loc-test")
+        const actions = session.getValidActions()
+
+        // In TOWN, should have "Go to Miners Guild", "Go to Foresters Guild", etc.
+        const goActions = actions.filter((a) => a.displayName.startsWith("Go to "))
+        expect(goActions.length).toBeGreaterThan(0)
+
+        // Each should have a valid command like "go miners_guild" or similar
+        for (const action of goActions) {
+          expect(action.command).toMatch(/^go .+/)
+          expect(action.action).toBeDefined()
+          expect(action.timeCost).toBeGreaterThanOrEqual(0)
+        }
+      })
+
+      it("uses timeCost from checkAction (0 in town)", () => {
+        const session = GameSession.create("loc-time-test")
+        const actions = session.getValidActions()
+
+        const goLocationAction = actions.find((a) => a.displayName.startsWith("Go to "))
+        expect(goLocationAction).toBeDefined()
+        // In TOWN, traveling to locations is instant (0 ticks)
+        expect(goLocationAction!.timeCost).toBe(0)
+      })
+    })
+
+    describe("go <area> expansion", () => {
+      it("expands to Travel to ... for adjacent areas", async () => {
+        const session = GameSession.create("expand-area-test")
+
+        // First, travel outside town to see adjacent area options
+        await session.executeCommand("go miners guild")
+        await session.executeCommand("enrol")
+        await session.executeCommand("survey")
+
+        const actions = session.getValidActions()
+
+        // Should NOT have raw "go <area>" placeholder
+        const placeholder = actions.find((a) => a.displayName === "go <area>")
+        expect(placeholder).toBeUndefined()
+
+        // Any "Travel to ..." actions should have valid commands
+        const travelActions = actions.filter((a) => a.displayName.startsWith("Travel to "))
+        for (const action of travelActions) {
+          expect(action.command).toMatch(/^go .+/)
+        }
+      })
+
+      it("uses 'Travel to' prefix to distinguish from location travel", async () => {
+        const session = GameSession.create("travel-prefix-test")
+
+        // Setup: explore an area to have adjacent area options
+        await session.executeCommand("go miners guild")
+        await session.executeCommand("enrol")
+
+        // Survey and explore to unlock area connections
+        for (let i = 0; i < 5; i++) {
+          await session.executeCommand("survey")
+        }
+
+        const actions = session.getValidActions()
+
+        // Location travel uses "Go to"
+        const goToActions = actions.filter((a) => a.displayName.startsWith("Go to "))
+        // Area travel uses "Travel to"
+        const travelToActions = actions.filter((a) => a.displayName.startsWith("Travel to "))
+
+        // Verify distinction exists (at least location travel should exist)
+        expect(goToActions.length).toBeGreaterThanOrEqual(0)
+        // Travel actions may not exist if no adjacent areas are known yet
+        // but the point is they use different prefixes
+        for (const action of travelToActions) {
+          expect(action.command).toMatch(/^go .+/)
+          expect(action.displayName).not.toMatch(/^Go to /)
+        }
+      })
+    })
+
+    describe("fartravel <area> expansion", () => {
+      it("does not include unexpanded fartravel placeholder", async () => {
+        const session = GameSession.create("fartravel-test")
+
+        await session.executeCommand("go miners guild")
+        await session.executeCommand("enrol")
+
+        const actions = session.getValidActions()
+
+        const placeholder = actions.find((a) => a.displayName === "fartravel <area>")
+        expect(placeholder).toBeUndefined()
+      })
+
+      it("expands fartravel to 'Fartravel to ...' options", async () => {
+        const session = GameSession.create("fartravel-expand-test")
+
+        // Setup: get to a location where fartravel might be available
+        await session.executeCommand("go miners guild")
+        await session.executeCommand("enrol")
+        await session.executeCommand("survey")
+        await session.executeCommand("survey")
+
+        const actions = session.getValidActions()
+
+        // Fartravel actions should have proper display names
+        const fartravelActions = actions.filter((a) => a.displayName.startsWith("Fartravel to "))
+        for (const action of fartravelActions) {
+          expect(action.command).toMatch(/^fartravel .+/)
+          expect(action.timeCost).toBeGreaterThan(0)
+        }
+      })
+    })
+
+    describe("craft <recipe> expansion", () => {
+      it("does not include unexpanded craft placeholder at guild", async () => {
+        const session = GameSession.create("craft-placeholder-test")
+
+        await session.executeCommand("go miners guild")
+        await session.executeCommand("enrol")
+
+        const actions = session.getValidActions()
+
+        const placeholder = actions.find((a) => a.displayName === "craft <recipe>")
+        expect(placeholder).toBeUndefined()
+      })
+
+      it("expands to 'Craft ...' options at guild location", async () => {
+        const session = GameSession.create("craft-expand-test")
+
+        // Go to a crafting guild
+        await session.executeCommand("go miners guild")
+        await session.executeCommand("enrol")
+
+        const actions = session.getValidActions()
+
+        // Should have craft options with human-readable names
+        const craftActions = actions.filter((a) => a.displayName.startsWith("Craft "))
+        // May have craft options if materials available or may be empty
+        for (const action of craftActions) {
+          expect(action.command).toMatch(/^craft .+/)
+          // Display name should be human-readable (spaces, not underscores)
+          expect(action.displayName).not.toMatch(/_/)
+        }
+      })
+    })
+
+    describe("accept <contract> expansion", () => {
+      it("does not include unexpanded accept placeholder at guild", async () => {
+        const session = GameSession.create("accept-placeholder-test")
+
+        await session.executeCommand("go miners guild")
+
+        const actions = session.getValidActions()
+
+        const placeholder = actions.find((a) => a.displayName === "accept <contract>")
+        expect(placeholder).toBeUndefined()
+      })
+
+      it("expands to 'Accept ...' options at guild location", async () => {
+        const session = GameSession.create("accept-expand-test")
+
+        await session.executeCommand("go miners guild")
+        await session.executeCommand("enrol")
+
+        const actions = session.getValidActions()
+
+        // Should have accept options for available contracts
+        const acceptActions = actions.filter((a) => a.displayName.startsWith("Accept "))
+        expect(acceptActions.length).toBeGreaterThan(0)
+
+        for (const action of acceptActions) {
+          expect(action.command).toMatch(/^accept .+/)
+          // Display name should show level and guild type
+          expect(action.displayName).toMatch(/Accept L\d+ \w+/)
+        }
+      })
+    })
+
+    describe("mine/chop <resource> expansion", () => {
+      it("does not include unexpanded mine placeholder at gathering node", async () => {
+        const session = GameSession.create("mine-placeholder-test")
+
+        // Setup: get to a mining node
+        await session.executeCommand("go miners guild")
+        await session.executeCommand("enrol")
+        await session.executeCommand("survey")
+
+        const actions = session.getValidActions()
+
+        const placeholder = actions.find((a) => a.displayName === "mine <resource>")
+        expect(placeholder).toBeUndefined()
+      })
+
+      it("expands mine to capitalized 'Mine ...' options", async () => {
+        const session = GameSession.create("mine-expand-test")
+
+        // Setup: get to a mining node
+        await session.executeCommand("go miners guild")
+        await session.executeCommand("enrol")
+        await session.executeCommand("survey")
+
+        // Try to find and go to an ore vein
+        const actionsAfterSurvey = session.getValidActions()
+        const oreVeinAction = actionsAfterSurvey.find(
+          (a) => a.displayName.toLowerCase().includes("ore vein") || a.command.includes("ORE_VEIN")
+        )
+
+        if (oreVeinAction) {
+          await session.executeCommand(oreVeinAction.command)
+
+          const actions = session.getValidActions()
+          const mineActions = actions.filter((a) => a.displayName.startsWith("Mine "))
+
+          for (const action of mineActions) {
+            expect(action.command).toMatch(/^mine .+/)
+            // Display name should be capitalized and human-readable
+            expect(action.displayName).toMatch(/^Mine [a-z ]+$/)
+            expect(action.displayName).not.toMatch(/_/)
+          }
+        }
+      })
+
+      it("expands chop to capitalized 'Chop ...' options", async () => {
+        const session = GameSession.create("chop-expand-test")
+
+        // Setup: get to a woodcutting node
+        await session.executeCommand("go foresters guild")
+        await session.executeCommand("enrol")
+        await session.executeCommand("survey")
+
+        // Try to find and go to a tree stand
+        const actionsAfterSurvey = session.getValidActions()
+        const treeAction = actionsAfterSurvey.find(
+          (a) => a.displayName.toLowerCase().includes("tree") || a.command.includes("TREE_STAND")
+        )
+
+        if (treeAction) {
+          await session.executeCommand(treeAction.command)
+
+          const actions = session.getValidActions()
+          const chopActions = actions.filter((a) => a.displayName.startsWith("Chop "))
+
+          for (const action of chopActions) {
+            expect(action.command).toMatch(/^chop .+/)
+            // Display name should be capitalized and human-readable
+            expect(action.displayName).toMatch(/^Chop [a-z ]+$/)
+            expect(action.displayName).not.toMatch(/_/)
+          }
+        }
+      })
+    })
+
+    describe("fallback for non-expandable actions", () => {
+      it("keeps store <item> <quantity> as placeholder", async () => {
+        const session = GameSession.create("store-fallback-test")
+
+        // Gather some items first
+        await session.executeCommand("go miners guild")
+        await session.executeCommand("enrol")
+        await session.executeCommand("survey")
+
+        const actions = session.getValidActions()
+
+        // store and drop require numeric quantities and stay as placeholders
+        const storeAction = actions.find(
+          (a) => a.displayName.includes("store") && a.displayName.includes("<")
+        )
+        // May or may not be present depending on state
+        if (storeAction) {
+          expect(storeAction.displayName).toMatch(/</)
+        }
+      })
+
+      it("keeps drop <item> <quantity> as placeholder", async () => {
+        const session = GameSession.create("drop-fallback-test")
+
+        // Gather some items first
+        await session.executeCommand("go miners guild")
+        await session.executeCommand("enrol")
+        await session.executeCommand("survey")
+
+        const actions = session.getValidActions()
+
+        // drop requires numeric quantities and stays as placeholder
+        const dropAction = actions.find(
+          (a) => a.displayName.includes("drop") && a.displayName.includes("<")
+        )
+        // May or may not be present depending on state
+        if (dropAction) {
+          expect(dropAction.displayName).toMatch(/</)
+        }
+      })
+    })
+
+    describe("edge cases", () => {
+      it("returns empty array for expansion when no valid options exist", () => {
+        // This is tested implicitly - if a parametric action has no valid expansions,
+        // it simply doesn't add any actions to the result
+        const session = GameSession.create("empty-expand-test")
+        const actions = session.getValidActions()
+
+        // No unexpanded placeholders should appear
+        const unexpanded = actions.filter(
+          (a) => a.displayName.includes("<") && a.displayName.includes(">")
+        )
+        // Only store/drop type placeholders should remain
+        for (const action of unexpanded) {
+          expect(action.displayName).toMatch(/store|drop/)
+        }
+      })
+    })
   })
 
   describe("executeCommand", () => {

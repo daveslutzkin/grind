@@ -192,15 +192,16 @@ The `--llm-cache` flag enables deterministic replays by caching LLM responses (f
 
 **What it tests:** Visual manual exploration, UI/UX validation, real-time state display.
 
-**Status:** In development. See `design-docs/implementation-plan-web-ui.md` for details.
-
 **Run with:**
 ```bash
 npm run web:dev    # Development mode with hot reload
 npm run web        # Production build
 ```
 
-Opens at `http://localhost:3000`.
+### URLs
+
+- **Development mode:** Opens at `http://localhost:5173` (Vite dev server with hot reload, proxies WebSocket to backend on port 3000)
+- **Production mode:** Opens at `http://localhost:3000` (Fastify serves static files directly)
 
 ### How it works
 

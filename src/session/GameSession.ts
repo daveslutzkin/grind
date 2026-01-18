@@ -44,6 +44,7 @@ import type {
 } from "./types.js"
 import { getVisibleMaterials } from "../visibility.js"
 import { nodeIdToLocationId } from "../contracts.js"
+import { formatIdAsName, capitalize, parseLocationIndex } from "../utils.js"
 
 export class GameSession {
   private state: WorldState
@@ -361,22 +362,22 @@ export class GameSession {
 
     // Handle different parametric action types
     if (displayName === "go <location>") {
-      return this.expandGoLocationAction(available)
+      return this.expandGoLocationAction()
     }
     if (displayName === "go <area>") {
-      return this.expandGoAreaAction(available)
+      return this.expandGoAreaAction()
     }
     if (displayName === "fartravel <area>") {
-      return this.expandFarTravelAction(available)
+      return this.expandFarTravelAction()
     }
     if (displayName === "craft <recipe>") {
-      return this.expandCraftAction(available)
+      return this.expandCraftAction()
     }
     if (displayName === "accept <contract>") {
-      return this.expandAcceptContractAction(available)
+      return this.expandAcceptContractAction()
     }
     if (displayName.match(/^(mine|chop) <resource>$/)) {
-      return this.expandGatherAction(available)
+      return this.expandGatherAction()
     }
 
     // For other parametric actions (store, drop), keep the placeholder
@@ -387,14 +388,13 @@ export class GameSession {
   /**
    * Expand "go <location>" to concrete location options in current area.
    */
-  private expandGoLocationAction(_available: AvailableAction): ValidAction[] {
+  private expandGoLocationAction(): ValidAction[] {
     const result: ValidAction[] = []
     const currentAreaId = getCurrentAreaId(this.state)
     const area = this.state.exploration.areas.get(currentAreaId)
     if (!area) return []
 
     const knownLocationIds = this.state.exploration.playerState.knownLocationIds
-    const inTown = isInTown(this.state)
 
     for (const location of area.locations) {
       if (!knownLocationIds.includes(location.id)) continue
@@ -409,7 +409,7 @@ export class GameSession {
         displayName: `Go to ${locationName}`,
         command: `go ${location.id}`,
         action,
-        timeCost: inTown ? 0 : 1,
+        timeCost: check.timeCost,
         isVariable: false,
         successProbability: 1,
       })
@@ -421,7 +421,7 @@ export class GameSession {
   /**
    * Expand "go <area>" to concrete adjacent area options.
    */
-  private expandGoAreaAction(_available: AvailableAction): ValidAction[] {
+  private expandGoAreaAction(): ValidAction[] {
     const result: ValidAction[] = []
     const currentAreaId = getCurrentAreaId(this.state)
     const knownConnectionIds = new Set(this.state.exploration.playerState.knownConnectionIds)
@@ -445,7 +445,7 @@ export class GameSession {
       const travelTime = Math.round(BASE_TRAVEL_TIME * conn.travelTimeMultiplier)
 
       result.push({
-        displayName: `Go to ${areaName}`,
+        displayName: `Travel to ${areaName}`,
         command: `go ${destAreaId}`,
         action,
         timeCost: travelTime,
@@ -460,7 +460,7 @@ export class GameSession {
   /**
    * Expand "fartravel <area>" to concrete reachable area options.
    */
-  private expandFarTravelAction(_available: AvailableAction): ValidAction[] {
+  private expandFarTravelAction(): ValidAction[] {
     const result: ValidAction[] = []
     const reachableAreas = getReachableAreas(this.state)
 
@@ -488,7 +488,7 @@ export class GameSession {
   /**
    * Expand "craft <recipe>" to concrete craftable recipe options.
    */
-  private expandCraftAction(_available: AvailableAction): ValidAction[] {
+  private expandCraftAction(): ValidAction[] {
     const result: ValidAction[] = []
     const currentLocationId = getCurrentLocationId(this.state)
     if (!currentLocationId) return []
@@ -516,8 +516,7 @@ export class GameSession {
       const check = checkAction(this.state, action)
       if (!check.valid) continue
 
-      // Create a human-readable recipe name
-      const recipeName = recipe.id.replace(/_/g, " ").toLowerCase()
+      const recipeName = formatIdAsName(recipe.id)
 
       result.push({
         displayName: `Craft ${recipeName}`,
@@ -535,7 +534,7 @@ export class GameSession {
   /**
    * Expand "accept <contract>" to concrete contract options.
    */
-  private expandAcceptContractAction(_available: AvailableAction): ValidAction[] {
+  private expandAcceptContractAction(): ValidAction[] {
     const result: ValidAction[] = []
     const currentLocationId = getCurrentLocationId(this.state)
     if (!currentLocationId) return []
@@ -570,17 +569,14 @@ export class GameSession {
   /**
    * Expand "mine <resource>" or "chop <resource>" to concrete material options.
    */
-  private expandGatherAction(_available: AvailableAction): ValidAction[] {
+  private expandGatherAction(): ValidAction[] {
     const result: ValidAction[] = []
     const currentLocationId = getCurrentLocationId(this.state)
     const currentAreaId = getCurrentAreaId(this.state)
     if (!currentLocationId) return []
 
-    // Extract node index from location ID
-    const match = currentLocationId.match(/-loc-(\d+)$/)
-    if (!match) return []
-
-    const nodeIndex = match[1]
+    const nodeIndex = parseLocationIndex(currentLocationId)
+    if (!nodeIndex) return []
     const nodeId = `${currentAreaId}-node-${nodeIndex}`
     const node = this.state.world.nodes?.find((n) => n.nodeId === nodeId)
     if (!node || node.depleted) return []
@@ -604,10 +600,10 @@ export class GameSession {
       const check = checkAction(this.state, action)
       if (!check.valid) continue
 
-      const materialName = mat.materialId.replace(/_/g, " ").toLowerCase()
+      const materialName = formatIdAsName(mat.materialId)
 
       result.push({
-        displayName: `${commandName.charAt(0).toUpperCase() + commandName.slice(1)} ${materialName}`,
+        displayName: `${capitalize(commandName)} ${materialName}`,
         command: `${commandName} ${mat.materialId}`,
         action,
         timeCost: check.timeCost,
@@ -832,7 +828,7 @@ export class GameSession {
 
       const materials: NodeMaterialInfo[] = visibleMaterials.map((m) => ({
         materialId: m.materialId,
-        materialName: m.materialId.replace(/_/g, " ").toLowerCase(),
+        materialName: formatIdAsName(m.materialId),
         requiredLevel: m.requiredLevel,
         remainingUnits: isAppraised ? m.remainingUnits : undefined,
         maxUnits: isAppraised ? m.maxUnitsInitial : undefined,
