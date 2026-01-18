@@ -83,18 +83,28 @@ export class WebSocketHandler {
     const actualSeed = seed ?? this.generateSeed()
     this.session = GameSession.create(actualSeed)
 
+    // Send both state and valid_actions so client doesn't need to request them
     send({
       type: "state",
       state: this.session.getState(),
+    })
+    send({
+      type: "valid_actions",
+      actions: this.session.getValidActions(),
     })
   }
 
   private handleLoadGame(savedState: string, send: SendFunction): void {
     try {
       this.session = GameSession.fromSavedState(savedState)
+      // Send both state and valid_actions so client doesn't need to request them
       send({
         type: "state",
         state: this.session.getState(),
+      })
+      send({
+        type: "valid_actions",
+        actions: this.session.getValidActions(),
       })
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to load game"
@@ -114,6 +124,11 @@ export class WebSocketHandler {
         send({
           type: "command_result",
           result: tick,
+        })
+        // Send updated valid_actions after command completes
+        send({
+          type: "valid_actions",
+          actions: this.session.getValidActions(),
         })
       } else {
         send({

@@ -13,18 +13,35 @@ import type {
 
 // ============================================================================
 // Client -> Server Messages
+//
+// Note: Some messages trigger automatic responses:
+// - new_game: Server responds with state + valid_actions
+// - load_game: Server responds with state + valid_actions (or error)
+// - command: Server responds with command_tick(s), command_result, then valid_actions
 // ============================================================================
 
+/**
+ * Start a new game with optional seed.
+ * Server responds with: state, valid_actions
+ */
 export interface NewGameMessage {
   type: "new_game"
   seed?: string
 }
 
+/**
+ * Load a previously saved game.
+ * Server responds with: state, valid_actions (or error if invalid)
+ */
 export interface LoadGameMessage {
   type: "load_game"
   savedState: string
 }
 
+/**
+ * Execute a game command.
+ * Server responds with: command_tick (0+), command_result, valid_actions
+ */
 export interface CommandMessage {
   type: "command"
   command: string

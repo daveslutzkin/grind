@@ -16,12 +16,13 @@ describe("WebSocketHandler", () => {
 
   describe("handleMessage", () => {
     describe("new_game", () => {
-      it("creates a new game session", async () => {
+      it("creates a new game session and sends state + valid_actions", async () => {
         const message: ClientMessage = { type: "new_game" }
         await handler.handleMessage(message, mockSend)
 
-        expect(sentMessages.length).toBe(1)
+        expect(sentMessages.length).toBe(2)
         expect(sentMessages[0].type).toBe("state")
+        expect(sentMessages[1].type).toBe("valid_actions")
 
         const stateMsg = sentMessages[0] as { type: "state"; state: unknown }
         expect(stateMsg.state).toBeDefined()
@@ -31,8 +32,9 @@ describe("WebSocketHandler", () => {
         const message: ClientMessage = { type: "new_game", seed: "test-seed" }
         await handler.handleMessage(message, mockSend)
 
-        expect(sentMessages.length).toBe(1)
+        expect(sentMessages.length).toBe(2)
         expect(sentMessages[0].type).toBe("state")
+        expect(sentMessages[1].type).toBe("valid_actions")
       })
     })
 
@@ -93,12 +95,16 @@ describe("WebSocketHandler", () => {
 
         await handler.handleMessage({ type: "command", command: "survey" }, mockSend)
 
-        // Should have progress ticks and a final result
-        expect(sentMessages.length).toBeGreaterThan(0)
+        // Should have progress ticks, command_result, and valid_actions
+        expect(sentMessages.length).toBeGreaterThan(1)
 
-        // Last message should be command_result
+        // Last message should be valid_actions (sent after command_result)
         const lastMsg = sentMessages[sentMessages.length - 1]
-        expect(lastMsg.type).toBe("command_result")
+        expect(lastMsg.type).toBe("valid_actions")
+
+        // Second to last should be command_result
+        const resultMsg = sentMessages[sentMessages.length - 2]
+        expect(resultMsg.type).toBe("command_result")
       })
     })
 
@@ -129,7 +135,7 @@ describe("WebSocketHandler", () => {
     })
 
     describe("load_game", () => {
-      it("loads a saved game state", async () => {
+      it("loads a saved game state and sends state + valid_actions", async () => {
         // First create and save a game
         await handler.handleMessage({ type: "new_game", seed: "test-seed" }, mockSend)
         sentMessages = []
@@ -143,8 +149,9 @@ describe("WebSocketHandler", () => {
         handler = new WebSocketHandler()
         await handler.handleMessage({ type: "load_game", savedState }, mockSend)
 
-        expect(sentMessages.length).toBe(1)
+        expect(sentMessages.length).toBe(2)
         expect(sentMessages[0].type).toBe("state")
+        expect(sentMessages[1].type).toBe("valid_actions")
       })
 
       it("returns error for invalid saved state", async () => {

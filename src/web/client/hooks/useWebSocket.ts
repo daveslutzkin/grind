@@ -24,12 +24,9 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRes
   const reconnectTimeoutRef = useRef<number | null>(null)
 
   const getWebSocketUrl = useCallback((): string => {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
     // In development, Vite proxies /ws to the backend
     // In production, we connect directly to the same host
-    if (import.meta.env.DEV) {
-      return `${protocol}//${window.location.host}/ws`
-    }
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
     return `${protocol}//${window.location.host}/ws`
   }, [])
 

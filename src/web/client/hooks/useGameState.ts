@@ -21,6 +21,7 @@ export interface UseGameStateResult {
   isConnected: boolean
   error: string | null
   isExecuting: boolean
+  currentCommand: CommandHistoryEntry | null
   commandHistory: CommandHistoryEntry[]
   sendCommand: (command: string) => void
   startNewGame: (seed?: string) => void
@@ -34,7 +35,7 @@ export function useGameState(): UseGameStateResult {
   const [validActions, setValidActions] = useState<ValidAction[]>([])
   const [isExecuting, setIsExecuting] = useState(false)
   const [commandHistory, setCommandHistory] = useState<CommandHistoryEntry[]>([])
-  const [_currentCommand, setCurrentCommand] = useState<CommandHistoryEntry | null>(null)
+  const [currentCommand, setCurrentCommand] = useState<CommandHistoryEntry | null>(null)
 
   const handleMessage = useCallback((message: ServerMessage) => {
     switch (message.type) {
@@ -101,18 +102,16 @@ export function useGameState(): UseGameStateResult {
 
   const startNewGame = useCallback(
     (seed?: string) => {
+      // Server automatically sends state and valid_actions after new_game
       send({ type: "new_game", seed })
-      send({ type: "get_state" })
-      send({ type: "get_valid_actions" })
     },
     [send]
   )
 
   const loadGame = useCallback(
     (savedState: string) => {
+      // Server automatically sends state and valid_actions after load_game
       send({ type: "load_game", savedState })
-      send({ type: "get_state" })
-      send({ type: "get_valid_actions" })
     },
     [send]
   )
@@ -132,6 +131,7 @@ export function useGameState(): UseGameStateResult {
     isConnected,
     error,
     isExecuting,
+    currentCommand,
     commandHistory,
     sendCommand,
     startNewGame,
