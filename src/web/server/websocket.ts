@@ -12,8 +12,17 @@ import { validateClientMessage } from "./protocol.js"
 
 export type SendFunction = (msg: ServerMessage) => void
 
+export interface Logger {
+  info(msg: string): void
+}
+
 export class WebSocketHandler {
   private session: GameSession | null = null
+  private logger: Logger | null = null
+
+  constructor(logger?: Logger) {
+    this.logger = logger ?? null
+  }
 
   /**
    * Check if a session currently exists.
@@ -118,9 +127,19 @@ export class WebSocketHandler {
       return
     }
 
+    this.logger?.info(`[ACTION] command="${command}"`)
+
     // Use the streaming API to send progress updates
     for await (const tick of this.session.executeCommandWithProgress(command)) {
       if (this.isCommandResult(tick)) {
+        const { log } = tick
+        const status = log.success ? "SUCCESS" : "FAILED"
+        const params = JSON.stringify(log.parameters)
+        const failure = log.failureDetails ? ` reason="${log.failureDetails.reason}"` : ""
+        this.logger?.info(
+          `[RESULT] ${status} action=${log.actionType} params=${params} time=${log.timeConsumed}${failure} summary="${log.stateDeltaSummary}"`
+        )
+
         send({
           type: "command_result",
           result: tick,

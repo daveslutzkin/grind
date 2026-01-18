@@ -16,7 +16,7 @@ import type { ServerMessage } from "./protocol.js"
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-const PORT = parseInt(process.env.PORT ?? "3000", 10)
+const PORT = parseInt(process.env.PORT ?? "5173", 10)
 const HOST = process.env.HOST ?? "0.0.0.0"
 
 async function startServer() {
@@ -36,7 +36,7 @@ async function startServer() {
 
   // WebSocket route for game connection
   fastify.get("/ws", { websocket: true }, (socket) => {
-    const handler = new WebSocketHandler()
+    const handler = new WebSocketHandler(fastify.log)
 
     const send = (msg: ServerMessage) => {
       if (socket.readyState === socket.OPEN) {

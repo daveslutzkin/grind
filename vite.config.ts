@@ -5,10 +5,10 @@ export default defineConfig({
   plugins: [preact()],
   root: "src/web/client",
   server: {
-    port: 5173,
+    port: 3000,
     proxy: {
       "/ws": {
-        target: "ws://localhost:3000",
+        target: "ws://localhost:5173",
         ws: true,
       },
     },
