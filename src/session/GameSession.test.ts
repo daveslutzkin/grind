@@ -630,6 +630,53 @@ describe("GameSession", () => {
     })
   })
 
+  describe("contracts filtering", () => {
+    it("only shows available contracts at the current location", async () => {
+      const session = GameSession.create("contracts-location-test")
+
+      // At Town Square, there should be no available contracts
+      // (contracts are at guild locations, not Town Square)
+      const stateAtTownSquare = session.getState()
+      const availableAtTownSquare = stateAtTownSquare.contracts.filter((c) => !c.isActive)
+      expect(availableAtTownSquare).toHaveLength(0)
+
+      // Go to Miners Guild and enrol to unlock contracts
+      await session.executeCommand("go miners guild")
+      await session.executeCommand("enrol")
+
+      const stateAtMinersGuild = session.getState()
+      const availableAtMinersGuild = stateAtMinersGuild.contracts.filter((c) => !c.isActive)
+      expect(availableAtMinersGuild.length).toBeGreaterThan(0)
+
+      // Leave Miners Guild and go back to Town Square
+      await session.executeCommand("leave")
+      const stateBackAtTownSquare = session.getState()
+      const availableBackAtTownSquare = stateBackAtTownSquare.contracts.filter((c) => !c.isActive)
+      expect(availableBackAtTownSquare).toHaveLength(0)
+    })
+
+    it("always shows active contracts regardless of location", async () => {
+      const session = GameSession.create("contracts-active-test")
+
+      // Go to Miners Guild and accept a contract
+      await session.executeCommand("go miners guild")
+      await session.executeCommand("enrol")
+      await session.executeCommand("accept mining-contract-1")
+
+      // Verify contract is active at the guild
+      const stateAtGuild = session.getState()
+      const activeAtGuild = stateAtGuild.contracts.filter((c) => c.isActive)
+      expect(activeAtGuild.length).toBeGreaterThan(0)
+
+      // Leave guild and verify active contract is still shown
+      await session.executeCommand("leave")
+      const stateAtTownSquare = session.getState()
+      const activeAtTownSquare = stateAtTownSquare.contracts.filter((c) => c.isActive)
+      expect(activeAtTownSquare.length).toBeGreaterThan(0)
+      expect(activeAtTownSquare[0].id).toBe("mining-contract-1")
+    })
+  })
+
   describe("edge cases", () => {
     it("handles invalid command gracefully", async () => {
       const session = GameSession.create("invalid-cmd-test")

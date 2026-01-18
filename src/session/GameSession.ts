@@ -725,9 +725,16 @@ export class GameSession {
 
   private buildContractsInfo(): ContractInfo[] {
     const contracts: ContractInfo[] = []
+    const currentLocationId = getCurrentLocationId(this.state)
 
     for (const contract of this.state.world.contracts) {
       const isActive = this.state.player.activeContracts.includes(contract.id)
+
+      // Only show available contracts at the current location (matching REPL behavior)
+      // Active contracts are always shown regardless of location
+      if (!isActive && contract.acceptLocationId !== currentLocationId) {
+        continue
+      }
 
       // Check if requirements are met
       let isComplete = true
