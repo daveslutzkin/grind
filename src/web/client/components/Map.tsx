@@ -73,7 +73,7 @@ export function Map({ location, exploration }: MapProps) {
         {/* Current location (center) */}
         <circle cx={centerX} cy={centerY} r={20} fill="#3b82f6" stroke="#60a5fa" strokeWidth={3} />
         <text x={centerX} y={centerY + 4} textAnchor="middle" fill="white" fontSize={10}>
-          {truncate(location.areaName, 6)}
+          {truncate(location.areaName, 8)}
         </text>
         <text
           x={centerX}
@@ -83,7 +83,7 @@ export function Map({ location, exploration }: MapProps) {
           fontSize={8}
           class="map-label"
         >
-          {location.locationName}
+          {truncate(location.locationName, 16)}
         </text>
 
         {/* Connected areas */}
@@ -94,7 +94,7 @@ export function Map({ location, exploration }: MapProps) {
             <g key={conn.toAreaId}>
               <circle cx={pos.x} cy={pos.y} r={15} fill={color} stroke="#333" strokeWidth={2} />
               <text x={pos.x} y={pos.y + 3} textAnchor="middle" fill="white" fontSize={8}>
-                {truncate(conn.toAreaName, 5)}
+                {truncate(conn.toAreaName, 7)}
               </text>
               <text x={pos.x} y={pos.y + 25} textAnchor="middle" fill="#888" fontSize={7}>
                 {conn.travelTime}t
@@ -103,22 +103,22 @@ export function Map({ location, exploration }: MapProps) {
           )
         })}
 
-        {/* Legend */}
-        <g class="map-legend" transform="translate(5, 170)">
+        {/* Legend - two rows for better readability */}
+        <g class="map-legend" transform="translate(10, 165)">
           <circle cx={5} cy={5} r={4} fill="#4ade80" />
-          <text x={12} y={8} fill="#aaa" fontSize={7}>
+          <text x={12} y={8} fill="#aaa" fontSize={8}>
             Explored
           </text>
-          <circle cx={55} cy={5} r={4} fill="#facc15" />
-          <text x={62} y={8} fill="#aaa" fontSize={7}>
+          <circle cx={80} cy={5} r={4} fill="#facc15" />
+          <text x={87} y={8} fill="#aaa" fontSize={8}>
             Partial
           </text>
-          <circle cx={100} cy={5} r={4} fill="#f97316" />
-          <text x={107} y={8} fill="#aaa" fontSize={7}>
+          <circle cx={5} cy={20} r={4} fill="#f97316" />
+          <text x={12} y={23} fill="#aaa" fontSize={8}>
             New
           </text>
-          <circle cx={135} cy={5} r={4} fill="#6b7280" />
-          <text x={142} y={8} fill="#aaa" fontSize={7}>
+          <circle cx={80} cy={20} r={4} fill="#6b7280" />
+          <text x={87} y={23} fill="#aaa" fontSize={8}>
             Unknown
           </text>
         </g>

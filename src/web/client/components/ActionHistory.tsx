@@ -21,7 +21,10 @@ function formatTick(tick: CommandTick): string {
     return `+${tick.xpGained.amount} ${tick.xpGained.skill} XP`
   }
   if (tick.type === "progress" && tick.ticksElapsed !== undefined) {
-    return `Progress: ${tick.ticksElapsed}/${tick.totalTicks}`
+    if (tick.totalTicks !== undefined) {
+      return `Progress: ${tick.ticksElapsed}/${tick.totalTicks}`
+    }
+    return `Progress: ${tick.ticksElapsed}`
   }
   return ""
 }
