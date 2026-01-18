@@ -4,6 +4,7 @@
  * Fastify server with WebSocket support for the web interface.
  */
 
+import "dotenv/config"
 import Fastify from "fastify"
 import websocketPlugin from "@fastify/websocket"
 import staticPlugin from "@fastify/static"
