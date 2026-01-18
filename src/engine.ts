@@ -948,38 +948,26 @@ async function* executeCraft(state: WorldState, action: CraftAction): ActionGene
   const recipe = state.world.recipes.find((r) => r.id === recipeId)!
   const totalTicks = recipe.craftTime
 
-  // Consume materials on first tick
+  // Consume materials
   for (const input of recipe.inputs) {
     removeFromInventory(state, input.itemId, input.quantity)
   }
 
-  // Yield ticks
+  // Yield ticks for progress (no intermediate feedback)
   for (let tick = 0; tick < totalTicks; tick++) {
     consumeTime(state, 1)
-
-    if (tick === 0) {
-      // Show materials consumed on first tick
-      yield {
-        done: false,
-        feedback: {
-          materialsConsumed: recipe.inputs.map((i) => ({ itemId: i.itemId, quantity: i.quantity })),
-        },
-      }
-    } else if (tick === totalTicks - 1) {
-      // Produce output on last tick
+    // Produce output on last tick
+    if (tick === totalTicks - 1) {
       addToInventory(state, recipe.output.itemId, recipe.output.quantity)
-      yield {
-        done: false,
-        feedback: { crafted: { itemId: recipe.output.itemId, quantity: recipe.output.quantity } },
-      }
-    } else {
-      // Intermediate ticks
-      yield { done: false }
     }
+    yield { done: false }
   }
 
   // Grant XP to the skill matching the recipe's guild type
   const levelUps = grantXP(state, recipe.guildType, 1)
+
+  // Build summary with materials used
+  const usedStr = recipe.inputs.map((i) => `${i.quantity} ${i.itemId}`).join(", ")
 
   yield {
     done: true,
@@ -992,7 +980,7 @@ async function* executeCraft(state: WorldState, action: CraftAction): ActionGene
       skillGained: { skill: recipe.guildType, amount: 1 },
       levelUps,
       rngRolls: [],
-      stateDeltaSummary: `Crafted ${recipe.output.quantity} ${recipe.output.itemId}`,
+      stateDeltaSummary: `Crafted ${recipe.output.quantity} ${recipe.output.itemId} (used ${usedStr})`,
     },
   }
 }
@@ -1067,10 +1055,7 @@ async function* executeDrop(state: WorldState, action: DropAction): ActionGenera
   // Remove item from inventory
   removeFromInventory(state, itemId, quantity)
 
-  // Yield tick with feedback
-  yield { done: false, feedback: { message: `Dropped ${quantity}x ${itemId}` } }
-
-  // Final yield with log
+  // Final yield with log (no progress for ≤2 tick actions)
   yield {
     done: true,
     log: {
@@ -1285,16 +1270,9 @@ async function* executeGuildEnrolment(
   }
 
   // Enrol takes timeCost ticks (20 for gathering guilds, 3 for others)
-  const isGatheringGuild = skill === "Mining" || skill === "Woodcutting"
   for (let tick = 0; tick < check.timeCost; tick++) {
     consumeTime(state, 1)
-    // Just yield without feedback - dots are handled by the UI
     yield { done: false }
-  }
-
-  // Show "Trained" message at the end of enrollment for gathering guilds
-  if (isGatheringGuild) {
-    yield { done: false, feedback: { message: "Trained" } }
   }
 
   // Set skill to level 1 (unlock it)

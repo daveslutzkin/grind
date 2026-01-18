@@ -1346,29 +1346,6 @@ describe("Engine", () => {
       expect(trainingTicks.length).toBe(0)
     })
 
-    it("should show 'Trained' message at the end of enrollment", async () => {
-      const state = createWorld("ore-test")
-      setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
-
-      // Capture all ticks to check feedback
-      const generator = getActionGenerator(state, { type: "Enrol" })
-      const ticks: ActionTick[] = []
-      for await (const tick of generator) {
-        ticks.push(tick)
-      }
-
-      // Find all feedback messages in order
-      const feedbackMessages = ticks
-        .filter((t) => !t.done)
-        .map((t) => (t as { feedback?: { message?: string } }).feedback?.message)
-        .filter((m) => m !== undefined)
-
-      // The last feedback before the completion message should be "Trained"
-      // Find a message that ends with or equals "Trained"
-      const trainedMessage = feedbackMessages.find((m) => m === "Trained")
-      expect(trainedMessage).toBeDefined()
-    })
-
     it("should include orientation text in action log summary for Mining enrollment", async () => {
       const state = createWorld("ore-test")
       setTownLocation(state, TOWN_LOCATIONS.MINERS_GUILD)
