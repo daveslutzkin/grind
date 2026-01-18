@@ -195,9 +195,23 @@ header {
   border-bottom: 1px solid var(--border-color);
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .header-left h1 {
   color: var(--accent-gold);
   font-size: 1.25rem;
+}
+
+.header-left .game-id {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+  padding: 0.15rem 0.5rem;
+  border-radius: 2px;
 }
 
 .header-center .location {
@@ -325,6 +339,27 @@ header {
 
 .result-failure {
   color: var(--error);
+}
+
+.result-details {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+.result-details .details-text {
+  display: block;
+}
+
+.result-details .level-up {
+  display: block;
+  color: var(--accent-gold);
+  font-weight: bold;
+}
+
+.history-ticks .progress-summary {
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 /* ============================================================================

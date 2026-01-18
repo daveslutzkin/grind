@@ -36,6 +36,24 @@ describe("WebSocketHandler", () => {
         expect(sentMessages[0].type).toBe("state")
         expect(sentMessages[1].type).toBe("valid_actions")
       })
+
+      it("includes the seed in the state message", async () => {
+        const message: ClientMessage = { type: "new_game", seed: "my-test-seed" }
+        await handler.handleMessage(message, mockSend)
+
+        const stateMsg = sentMessages[0] as { type: "state"; seed: string }
+        expect(stateMsg.seed).toBe("my-test-seed")
+      })
+
+      it("generates a seed when none is provided", async () => {
+        const message: ClientMessage = { type: "new_game" }
+        await handler.handleMessage(message, mockSend)
+
+        const stateMsg = sentMessages[0] as { type: "state"; seed: string }
+        expect(stateMsg.seed).toBeDefined()
+        expect(typeof stateMsg.seed).toBe("string")
+        expect(stateMsg.seed.length).toBeGreaterThan(0)
+      })
     })
 
     describe("get_state", () => {
@@ -55,6 +73,16 @@ describe("WebSocketHandler", () => {
 
         expect(sentMessages.length).toBe(1)
         expect(sentMessages[0].type).toBe("state")
+      })
+
+      it("includes the seed in get_state response", async () => {
+        await handler.handleMessage({ type: "new_game", seed: "state-test-seed" }, mockSend)
+        sentMessages = []
+
+        await handler.handleMessage({ type: "get_state" }, mockSend)
+
+        const stateMsg = sentMessages[0] as { type: "state"; seed: string }
+        expect(stateMsg.seed).toBe("state-test-seed")
       })
     })
 
@@ -152,6 +180,24 @@ describe("WebSocketHandler", () => {
         expect(sentMessages.length).toBe(2)
         expect(sentMessages[0].type).toBe("state")
         expect(sentMessages[1].type).toBe("valid_actions")
+      })
+
+      it("includes the seed in load_game response", async () => {
+        // First create and save a game with a known seed
+        await handler.handleMessage({ type: "new_game", seed: "load-test-seed" }, mockSend)
+        sentMessages = []
+        await handler.handleMessage({ type: "save_game" }, mockSend)
+
+        const savedMsg = sentMessages[0] as { type: "saved_game"; savedState: string }
+        const savedState = savedMsg.savedState
+        sentMessages = []
+
+        // Now create a fresh handler and load the state
+        handler = new WebSocketHandler()
+        await handler.handleMessage({ type: "load_game", savedState }, mockSend)
+
+        const stateMsg = sentMessages[0] as { type: "state"; seed: string }
+        expect(stateMsg.seed).toBe("load-test-seed")
       })
 
       it("returns error for invalid saved state", async () => {

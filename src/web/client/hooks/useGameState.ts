@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "preact/hooks"
+import { useState, useCallback, useRef, useEffect } from "preact/hooks"
 import { useWebSocket } from "./useWebSocket"
 import type { ServerMessage, ClientMessage } from "../../server/protocol"
 import type {
@@ -13,6 +13,27 @@ export interface CommandHistoryEntry {
   result?: CommandResult
   ticks: CommandTick[]
   timestamp: number
+}
+
+/**
+ * Get the game ID from the URL query string.
+ */
+function getGameIdFromUrl(): string | null {
+  const params = new URLSearchParams(window.location.search)
+  return params.get("game")
+}
+
+/**
+ * Update the URL with the given game ID.
+ */
+function setGameIdInUrl(gameId: string | null): void {
+  const url = new URL(window.location.href)
+  if (gameId) {
+    url.searchParams.set("game", gameId)
+  } else {
+    url.searchParams.delete("game")
+  }
+  window.history.replaceState({}, "", url.toString())
 }
 
 /**
@@ -115,6 +136,7 @@ export function deleteSavedGame(seed: string): void {
 
 export interface UseGameStateResult {
   state: GameStateSnapshot | null
+  gameId: string | null
   validActions: ValidAction[]
   isConnected: boolean
   error: string | null
@@ -128,6 +150,7 @@ export interface UseGameStateResult {
 
 export function useGameState(): UseGameStateResult {
   const [state, setState] = useState<GameStateSnapshot | null>(null)
+  const [gameId, setGameId] = useState<string | null>(null)
   const [validActions, setValidActions] = useState<ValidAction[]>([])
   const [isExecuting, setIsExecuting] = useState(false)
   const [commandHistory, setCommandHistory] = useState<CommandHistoryEntry[]>([])
@@ -137,11 +160,15 @@ export function useGameState(): UseGameStateResult {
   const pendingAutoSave = useRef(false)
   // Store send function ref for auto-save
   const sendRef = useRef<((msg: ClientMessage) => void) | null>(null)
+  // Track if we've attempted to load from URL
+  const urlLoadAttempted = useRef(false)
 
   const handleMessage = useCallback((message: ServerMessage) => {
     switch (message.type) {
       case "state":
         setState(message.state)
+        setGameId(message.seed)
+        setGameIdInUrl(message.seed)
         break
 
       case "valid_actions":
@@ -196,6 +223,22 @@ export function useGameState(): UseGameStateResult {
   // Keep sendRef updated for auto-save
   sendRef.current = send
 
+  // Auto-load game from URL when connected
+  useEffect(() => {
+    if (!isConnected || urlLoadAttempted.current) return
+    urlLoadAttempted.current = true
+
+    const urlGameId = getGameIdFromUrl()
+    if (urlGameId) {
+      // Try to load from localStorage
+      const savedGames = loadSavedGames()
+      const save = savedGames.find((s) => s.metadata.seed === urlGameId)
+      if (save) {
+        send({ type: "load_game", savedState: save.savedState })
+      }
+    }
+  }, [isConnected, send])
+
   const sendCommand = useCallback(
     (command: string) => {
       if (isExecuting) return
@@ -231,6 +274,7 @@ export function useGameState(): UseGameStateResult {
 
   return {
     state,
+    gameId,
     validActions,
     isConnected,
     error,

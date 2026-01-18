@@ -10,6 +10,7 @@ export function App() {
   const [saveListVersion, setSaveListVersion] = useState(0)
   const {
     state,
+    gameId,
     validActions,
     isConnected,
     error,
@@ -124,6 +125,7 @@ export function App() {
       <header>
         <div class="header-left">
           <h1>Grind</h1>
+          {gameId && <span class="game-id">{gameId}</span>}
         </div>
         <div class="header-center">
           <span class="location">

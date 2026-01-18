@@ -96,6 +96,7 @@ export class WebSocketHandler {
     send({
       type: "state",
       state: this.session.getState(),
+      seed: actualSeed,
     })
     send({
       type: "valid_actions",
@@ -110,6 +111,7 @@ export class WebSocketHandler {
       send({
         type: "state",
         state: this.session.getState(),
+        seed: this.session.getSessionId(),
       })
       send({
         type: "valid_actions",
@@ -167,6 +169,7 @@ export class WebSocketHandler {
     send({
       type: "state",
       state: this.session.getState(),
+      seed: this.session.getSessionId(),
     })
   }
 

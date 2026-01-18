@@ -74,6 +74,7 @@ export type ClientMessage =
 export interface StateMessage {
   type: "state"
   state: GameStateSnapshot
+  seed: string
 }
 
 export interface ValidActionsMessage {
