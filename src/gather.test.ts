@@ -783,6 +783,60 @@ describe("Phase 3: Gather Action Overhaul", () => {
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("NODE_NOT_FOUND")
     })
+
+    it("should auto-select material when only one gatherable material exists", async () => {
+      world.player.skills.Mining.level = 1 // Only STONE is gatherable at L1
+      const node = getFirstOreNode()
+
+      // Count how many materials are gatherable at this level
+      const gatherableMaterials = node.materials.filter(
+        (m) => m.requiredLevel <= world.player.skills.Mining.level && m.remainingUnits > 0
+      )
+
+      // If there's exactly one gatherable material, mine without specifying should work
+      if (gatherableMaterials.length === 1) {
+        const focusMat = gatherableMaterials[0]
+        const initialUnits = focusMat.remainingUnits
+
+        // Mine without specifying focusMaterialId
+        const action: MineAction = {
+          type: "Mine",
+          mode: GatherMode.FOCUS,
+          // No focusMaterialId specified
+        }
+
+        const log = await executeAction(world, action)
+
+        expect(log.success).toBe(true)
+        expect(log.actionType).toBe("Gather")
+        expect(focusMat.remainingUnits).toBeLessThan(initialUnits)
+      }
+    })
+
+    it("should fail with helpful error when multiple materials are gatherable and none specified", async () => {
+      world.player.skills.Mining.level = 5 // Multiple materials gatherable at L5
+      const node = getFirstOreNode()
+
+      // Count how many materials are gatherable at this level
+      const gatherableMaterials = node.materials.filter(
+        (m) => m.requiredLevel <= world.player.skills.Mining.level && m.remainingUnits > 0
+      )
+
+      // Only run this test if there are multiple gatherable materials
+      if (gatherableMaterials.length > 1) {
+        // Mine without specifying focusMaterialId
+        const action: MineAction = {
+          type: "Mine",
+          mode: GatherMode.FOCUS,
+          // No focusMaterialId specified
+        }
+
+        const log = await executeAction(world, action)
+
+        expect(log.success).toBe(false)
+        expect(log.failureDetails?.type).toBe("MISSING_FOCUS_MATERIAL")
+      }
+    })
   })
 
   describe("Chop command (alias for gather woodcutting)", () => {

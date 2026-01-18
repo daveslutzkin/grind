@@ -186,8 +186,8 @@ describe("getAvailableActions", () => {
     it("should include gather modes for player skill level", () => {
       const actions = getAvailableActions(state)
 
-      // At Mining L1, should have FOCUS mode available (implicit, no "focus" keyword)
-      expect(hasAction(actions, "mine <resource>")).toBe(true)
+      // At Mining L1, only STONE is gatherable, so bare "mine" is shown (no need to specify resource)
+      expect(hasAction(actions, "mine")).toBe(true)
 
       // Should NOT have APPRAISE at L1 (requires L3)
       expect(hasAction(actions, "mine appraise")).toBe(false)
@@ -207,7 +207,8 @@ describe("getAvailableActions", () => {
 
     it("should have correct time cost for FOCUS mode", () => {
       const actions = getAvailableActions(state)
-      const focusAction = findAction(actions, "mine <resource>")
+      // At L1, only STONE is gatherable, so bare "mine" is shown
+      const focusAction = findAction(actions, "mine")
 
       expect(focusAction).toBeDefined()
       // Now mastery-based: L1 STONE = 20 ticks (base speed)

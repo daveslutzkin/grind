@@ -113,19 +113,18 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
       // Alias for gather mining - finds ore vein in current area
       const arg1 = parts[1]?.toLowerCase()
 
-      if (!arg1) {
-        return null
-      }
-
       // Check for mode keywords first
       if (arg1 === "careful") {
         return { type: "Mine", mode: GatherMode.CAREFUL_ALL }
       } else if (arg1 === "appraise") {
         return { type: "Mine", mode: GatherMode.APPRAISE }
-      } else {
+      } else if (arg1) {
         // Treat arg1 as material ID (implicit FOCUS mode)
         const focusMaterial = arg1.toUpperCase()
         return { type: "Mine", mode: GatherMode.FOCUS, focusMaterialId: focusMaterial }
+      } else {
+        // No argument: FOCUS mode, engine will auto-select if only one material
+        return { type: "Mine", mode: GatherMode.FOCUS }
       }
     }
 
@@ -133,19 +132,18 @@ export function parseAction(input: string, context: ParseContext = {}): Action |
       // Alias for gather woodcutting - finds tree stand in current area
       const arg1 = parts[1]?.toLowerCase()
 
-      if (!arg1) {
-        return null
-      }
-
       // Check for mode keywords first
       if (arg1 === "careful") {
         return { type: "Chop", mode: GatherMode.CAREFUL_ALL }
       } else if (arg1 === "appraise") {
         return { type: "Chop", mode: GatherMode.APPRAISE }
-      } else {
+      } else if (arg1) {
         // Treat arg1 as material ID (implicit FOCUS mode)
         const focusMaterial = arg1.toUpperCase()
         return { type: "Chop", mode: GatherMode.FOCUS, focusMaterialId: focusMaterial }
+      } else {
+        // No argument: FOCUS mode, engine will auto-select if only one material
+        return { type: "Chop", mode: GatherMode.FOCUS }
       }
     }
 

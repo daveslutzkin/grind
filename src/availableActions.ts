@@ -332,21 +332,24 @@ function addGatheringActions(
 
   // FOCUS mode is always available at L1+ - check if any material is gatherable
   if (skillLevel >= 1) {
-    const gatherableMat = node.materials.find(
+    const gatherableMaterials = node.materials.filter(
       (mat) => mat.requiredLevel <= skillLevel && mat.remainingUnits > 0
     )
-    if (gatherableMat) {
+    if (gatherableMaterials.length > 0) {
       const gatherAction: GatherAction = {
         type: "Gather",
         nodeId,
         mode: GatherMode.FOCUS,
-        focusMaterialId: gatherableMat.materialId,
+        focusMaterialId: gatherableMaterials[0].materialId,
       }
       const gatherCheck = checkAction(state, gatherAction)
 
       if (gatherCheck.valid) {
+        // Show simpler command when only one material is gatherable
+        const displayName =
+          gatherableMaterials.length === 1 ? commandName : `${commandName} <resource>`
         actions.push({
-          displayName: `${commandName} <resource>`,
+          displayName,
           timeCost: gatherCheck.timeCost,
           isVariable: false,
           successProbability: 1,

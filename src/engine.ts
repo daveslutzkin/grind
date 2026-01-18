@@ -655,12 +655,26 @@ async function* executeMine(state: WorldState, action: MineAction): ActionGenera
     return
   }
 
+  // Auto-select focusMaterialId in FOCUS mode when only one material is gatherable
+  let focusMaterialId = action.focusMaterialId
+  if (action.mode === GatherMode.FOCUS && !focusMaterialId) {
+    const skill = getNodeSkill(node)
+    const skillLevel = state.player.skills[skill]?.level ?? 0
+    const gatherableMaterials = node.materials.filter(
+      (m) => m.requiredLevel <= skillLevel && m.remainingUnits > 0
+    )
+    if (gatherableMaterials.length === 1) {
+      focusMaterialId = gatherableMaterials[0].materialId
+    }
+    // If 0 or >1 materials, let validation in executeGather handle the error
+  }
+
   // Convert to GatherAction and execute
   const gatherAction: GatherAction = {
     type: "Gather",
     nodeId: node.nodeId,
     mode: action.mode,
-    focusMaterialId: action.focusMaterialId,
+    focusMaterialId,
   }
 
   yield* executeGather(state, gatherAction)
@@ -685,12 +699,26 @@ async function* executeChop(state: WorldState, action: ChopAction): ActionGenera
     return
   }
 
+  // Auto-select focusMaterialId in FOCUS mode when only one material is gatherable
+  let focusMaterialId = action.focusMaterialId
+  if (action.mode === GatherMode.FOCUS && !focusMaterialId) {
+    const skill = getNodeSkill(node)
+    const skillLevel = state.player.skills[skill]?.level ?? 0
+    const gatherableMaterials = node.materials.filter(
+      (m) => m.requiredLevel <= skillLevel && m.remainingUnits > 0
+    )
+    if (gatherableMaterials.length === 1) {
+      focusMaterialId = gatherableMaterials[0].materialId
+    }
+    // If 0 or >1 materials, let validation in executeGather handle the error
+  }
+
   // Convert to GatherAction and execute
   const gatherAction: GatherAction = {
     type: "Gather",
     nodeId: node.nodeId,
     mode: action.mode,
-    focusMaterialId: action.focusMaterialId,
+    focusMaterialId,
   }
 
   yield* executeGather(state, gatherAction)

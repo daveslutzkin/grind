@@ -95,34 +95,40 @@ function parseAction(actionText: string): Action | null {
   }
 
   // Try to parse Mine action (alias for gather mining)
-  // Patterns: "mine <material>" for FOCUS mode (implicit), "mine careful" or "mine appraise" for other modes
-  const mineMatch = text.match(/^mine\s+(\S+)/i)
+  // Patterns: "mine" (bare), "mine <material>" for FOCUS mode, "mine careful" or "mine appraise" for other modes
+  const mineMatch = text.match(/^mine(?:\s+(\S+))?$/i)
   if (mineMatch) {
-    const arg = mineMatch[1].toUpperCase()
+    const arg = mineMatch[1]?.toUpperCase()
     // Check for mode keywords
     if (arg === "CAREFUL_ALL" || arg === "CAREFUL") {
       return { type: "Mine", mode: GatherMode.CAREFUL_ALL } as Action
     } else if (arg === "APPRAISE") {
       return { type: "Mine", mode: GatherMode.APPRAISE } as Action
-    } else {
+    } else if (arg) {
       // Treat as material ID (implicit FOCUS mode)
       return { type: "Mine", mode: GatherMode.FOCUS, focusMaterialId: arg } as Action
+    } else {
+      // Bare "mine" - FOCUS mode, engine will auto-select if only one material
+      return { type: "Mine", mode: GatherMode.FOCUS } as Action
     }
   }
 
   // Try to parse Chop action (alias for gather woodcutting)
-  // Patterns: "chop <material>" for FOCUS mode (implicit), "chop careful" or "chop appraise" for other modes
-  const chopMatch = text.match(/^chop\s+(\S+)/i)
+  // Patterns: "chop" (bare), "chop <material>" for FOCUS mode, "chop careful" or "chop appraise" for other modes
+  const chopMatch = text.match(/^chop(?:\s+(\S+))?$/i)
   if (chopMatch) {
-    const arg = chopMatch[1].toUpperCase()
+    const arg = chopMatch[1]?.toUpperCase()
     // Check for mode keywords
     if (arg === "CAREFUL_ALL" || arg === "CAREFUL") {
       return { type: "Chop", mode: GatherMode.CAREFUL_ALL } as Action
     } else if (arg === "APPRAISE") {
       return { type: "Chop", mode: GatherMode.APPRAISE } as Action
-    } else {
+    } else if (arg) {
       // Treat as material ID (implicit FOCUS mode)
       return { type: "Chop", mode: GatherMode.FOCUS, focusMaterialId: arg } as Action
+    } else {
+      // Bare "chop" - FOCUS mode, engine will auto-select if only one material
+      return { type: "Chop", mode: GatherMode.FOCUS } as Action
     }
   }
 
