@@ -1009,11 +1009,11 @@ export async function executeAndRecord(
 // Unified Session Runner
 // ============================================================================
 
-import { createWorld } from "./world.js"
 import { executeAction } from "./engine.js"
 import { saveExists, loadSave, writeSave, deserializeSession } from "./persistence.js"
 import { promptResume } from "./savePrompt.js"
 import { closeInput } from "./prompt.js"
+import { GameSession } from "./session/index.js"
 
 export type MetaCommandResult = "continue" | "end" | "quit"
 
@@ -1049,19 +1049,21 @@ export interface RunnerConfig {
 /**
  * Run a session with the given configuration.
  * This is the core loop used by the REPL.
+ * Internally uses GameSession for state management.
  */
 export async function runSession(seed: string, config: RunnerConfig): Promise<void> {
   // Check if a save exists for this seed (only in interactive/TTY mode)
-  let session: Session
+  let gameSession: GameSession
   if (process.stdin.isTTY && saveExists(seed)) {
     const save = loadSave(seed)
     // promptResume uses promptYesNo which handles readline conflicts internally
     const shouldResume = await promptResume(save)
     if (shouldResume) {
-      // Resume from save
-      session = deserializeSession(save)
+      // Resume from save using GameSession
+      const { state, stats } = deserializeSession(save)
       // Update session boundary - all existing logs are from previous sessions
-      session.stats.sessionStartLogIndex = session.stats.logs.length
+      stats.sessionStartLogIndex = stats.logs.length
+      gameSession = GameSession.fromSession(state, stats, seed)
       console.log("\nResuming saved game...")
     } else {
       // User declined to resume - exit without deleting the save
@@ -1071,14 +1073,21 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
       return
     }
   } else {
-    // No save exists, create new session
-    session = createSession({ seed, createWorld })
+    // No save exists, create new session using GameSession
+    gameSession = GameSession.create(seed)
   }
+
+  // Create a Session view for backwards compatibility with callbacks
+  const getSession = (): Session => gameSession.toSession()
 
   let showSummary = true
 
+  // Get the raw state for callbacks (they expect WorldState)
+  const state = gameSession.getRawState()
+  const stats = gameSession.getStats()
+
   // Call onSessionStart hook if provided
-  config.onSessionStart?.(session.state)
+  config.onSessionStart?.(state)
 
   while (true) {
     const cmd = await config.getNextCommand()
@@ -1088,7 +1097,7 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
 
     // Check meta-commands first
     if (config.metaCommands && trimmedCmd in config.metaCommands) {
-      const result = config.metaCommands[trimmedCmd](session.state)
+      const result = config.metaCommands[trimmedCmd](state)
       if (result === "end") break
       if (result === "quit") {
         showSummary = false
@@ -1099,7 +1108,7 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
 
     // Handle fartravel with no args - show list of reachable areas
     if (trimmedCmd === "fartravel" || trimmedCmd === "far") {
-      const reachable = getReachableAreas(session.state)
+      const reachable = getReachableAreas(state)
       if (reachable.length === 0) {
         console.log("\nNo reachable areas from current location.")
       } else {
@@ -1107,7 +1116,7 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
         console.log("│ FAR TRAVEL - Reachable Areas                                │")
         console.log("├─────────────────────────────────────────────────────────────┤")
         for (const { areaId, travelTime, hops } of reachable) {
-          const area = session.state.exploration.areas.get(areaId)
+          const area = state.exploration.areas.get(areaId)
           const displayName = getAreaDisplayName(areaId, area)
           const hopStr = hops === 1 ? "1 hop" : `${hops} hops`
           console.log(
@@ -1122,9 +1131,9 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
 
     // Parse the action
     // Include both visited areas and reachable areas (via known connections)
-    const currentArea = session.state.exploration.playerState.currentAreaId
-    const reachableAreas = new Set(session.state.exploration.playerState.knownAreaIds)
-    for (const connId of session.state.exploration.playerState.knownConnectionIds) {
+    const currentArea = state.exploration.playerState.currentAreaId
+    const reachableAreas = new Set(state.exploration.playerState.knownAreaIds)
+    for (const connId of state.exploration.playerState.knownConnectionIds) {
       const [from, to] = connId.split("->")
       if (from === currentArea) reachableAreas.add(to)
       if (to === currentArea) reachableAreas.add(from)
@@ -1132,8 +1141,8 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
 
     const action = parseAction(cmd, {
       knownAreaIds: Array.from(reachableAreas),
-      currentLocationId: session.state.exploration.playerState.currentLocationId,
-      state: session.state,
+      currentLocationId: state.exploration.playerState.currentLocationId,
+      state: state,
     })
 
     if (!action) {
@@ -1143,7 +1152,7 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
     }
 
     // Call beforeAction hook if provided
-    config.beforeAction?.(action, session.state)
+    config.beforeAction?.(action, state)
 
     // In TTY mode, use animated execution for ALL actions
     if (process.stdin.isTTY) {
@@ -1161,47 +1170,47 @@ export async function runSession(seed: string, config: RunnerConfig): Promise<vo
 
         // Special handling for Explore/Survey/Travel actions (they have interactive loops)
         if (action.type === "Explore") {
-          const logs = await interactiveExplore(session.state)
+          const logs = await interactiveExplore(state)
           for (const log of logs) {
-            session.stats.logs.push(log)
+            stats.logs.push(log)
           }
         } else if (action.type === "Survey") {
-          const logs = await interactiveSurvey(session.state)
+          const logs = await interactiveSurvey(state)
           for (const log of logs) {
-            session.stats.logs.push(log)
+            stats.logs.push(log)
           }
         } else if (action.type === "ExplorationTravel") {
-          const logs = await interactiveExplorationTravel(session.state, action)
+          const logs = await interactiveExplorationTravel(state, action)
           for (const log of logs) {
-            session.stats.logs.push(log)
+            stats.logs.push(log)
           }
         } else if (action.type === "FarTravel") {
-          const logs = await interactiveFarTravel(session.state, action)
+          const logs = await interactiveFarTravel(state, action)
           for (const log of logs) {
-            session.stats.logs.push(log)
+            stats.logs.push(log)
           }
         } else {
           // All other actions: use generic animation
-          const log = await executeAnimatedAction(session.state, action)
-          session.stats.logs.push(log)
-          config.onActionComplete(log, session.state)
+          const log = await executeAnimatedAction(state, action)
+          stats.logs.push(log)
+          config.onActionComplete(log, state)
         }
       } finally {
         config.onAfterInteractive?.()
       }
 
-      writeSave(seed, session)
+      writeSave(seed, getSession())
       continue
     }
 
     // Non-TTY mode: execute without animation (for scripts, CI, etc.)
-    const log = await executeAction(session.state, action)
-    session.stats.logs.push(log)
-    config.onActionComplete(log, session.state)
+    const log = await executeAction(state, action)
+    stats.logs.push(log)
+    config.onActionComplete(log, state)
 
     // Auto-save after each action
-    writeSave(seed, session)
+    writeSave(seed, getSession())
   }
 
-  config.onSessionEnd(session.state, session.stats, showSummary)
+  config.onSessionEnd(state, stats, showSummary)
 }

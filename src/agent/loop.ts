@@ -1,7 +1,7 @@
-import { createWorld } from "../world.js"
 import { executeAction } from "../engine.js"
 import type { WorldState, Action, ActionLog } from "../types.js"
 import { formatWorldState, formatActionLog } from "./formatters.js"
+import { GameSession } from "../session/index.js"
 import { summarizeAction, summarizeActionHistory, summarizeLearnings } from "./summarize.js"
 import { parseAgentResponse, AgentResponse } from "./parser.js"
 import { createSystemPrompt } from "./prompts.js"
@@ -124,11 +124,13 @@ function categorizeLearning(learning: string): keyof AgentKnowledge | null {
 }
 
 /**
- * Create an agent loop with the given configuration
+ * Create an agent loop with the given configuration.
+ * Internally uses GameSession for state management.
  */
 export function createAgentLoop(config: AgentLoopConfig): AgentLoop {
-  // Initialize world
-  const state = createWorld(config.seed)
+  // Initialize world using GameSession
+  const gameSession = GameSession.create(config.seed)
+  const state = gameSession.getRawState()
 
   // Track stats
   const stats: AgentSessionStats = {
