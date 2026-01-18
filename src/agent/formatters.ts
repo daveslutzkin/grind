@@ -798,12 +798,23 @@ export function formatActionLog(log: ActionLog, state?: WorldState): string {
 
     // Filter collateral damage by material visibility
     if (state) {
-      const visibleCollateral = Object.entries(log.extraction.collateralDamage).filter(([m]) =>
-        isMaterialVisible(m, state)
-      )
-      if (visibleCollateral.length > 0) {
-        const dmg = visibleCollateral.map(([m, d]) => `-${d} ${m}`).join(", ")
-        lines.push(`  Collateral: ${dmg}`)
+      const allCollateral = Object.entries(log.extraction.collateralDamage)
+      const visibleCollateral = allCollateral.filter(([m]) => isMaterialVisible(m, state))
+      const hasInvisibleCollateral = allCollateral.length > visibleCollateral.length
+
+      if (visibleCollateral.length > 0 || hasInvisibleCollateral) {
+        let collateralLine = "  Collateral:"
+        if (visibleCollateral.length > 0) {
+          const dmg = visibleCollateral.map(([m, d]) => `-${d} ${m}`).join(", ")
+          collateralLine += ` ${dmg}`
+        }
+        if (hasInvisibleCollateral) {
+          collateralLine +=
+            visibleCollateral.length > 0
+              ? " (some collateral loss of undiscovered materials)"
+              : " (some collateral loss of undiscovered materials)"
+        }
+        lines.push(collateralLine)
       }
     } else if (Object.keys(log.extraction.collateralDamage).length > 0) {
       // No state = show all collateral
@@ -813,10 +824,10 @@ export function formatActionLog(log: ActionLog, state?: WorldState): string {
       lines.push(`  Collateral: ${dmg}`)
     }
 
-    // Show time variance luck if significant
-    if (log.extraction.variance?.luckDelta && log.extraction.variance.luckDelta !== 0) {
+    // Show time variance when variance data is present
+    if (log.extraction.variance) {
       const { expected, actual, luckDelta } = log.extraction.variance
-      const luckStr = luckDelta > 0 ? `+${luckDelta} luck` : `${luckDelta} luck`
+      const luckStr = luckDelta && luckDelta > 0 ? `+${luckDelta} luck` : `${luckDelta ?? 0} luck`
       lines.push(`  Time: ${actual} ticks (${expected} base, ${luckStr})`)
     }
   }

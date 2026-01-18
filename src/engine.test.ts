@@ -1453,20 +1453,10 @@ describe("Engine", () => {
       // Clear known locations (no nodes known)
       state.exploration.playerState.knownLocationIds = []
 
-      // Capture feedback
-      const generator = getActionGenerator(state, { type: "SeeGatheringMap" })
-      const ticks: ActionTick[] = []
-      for await (const tick of generator) {
-        ticks.push(tick)
-      }
+      const log = await executeAction(state, { type: "SeeGatheringMap" })
 
-      const feedbackTicks = ticks.filter(
-        (t) => !t.done && (t as { feedback?: { message?: string } }).feedback?.message
-      )
-      expect(feedbackTicks.length).toBeGreaterThan(0)
-
-      const feedback = feedbackTicks[0] as { feedback?: { message?: string } }
-      expect(feedback.feedback?.message).toContain("Known Ore Veins: none")
+      expect(log.success).toBe(true)
+      expect(log.stateDeltaSummary).toContain("Known Ore Veins: none")
     })
 
     it("should list known ore veins when at Miners Guild", async () => {
@@ -1479,21 +1469,11 @@ describe("Engine", () => {
       makeAreaKnown(state, oreAreaId)
       discoverAllLocations(state, oreAreaId)
 
-      // Capture feedback
-      const generator = getActionGenerator(state, { type: "SeeGatheringMap" })
-      const ticks: ActionTick[] = []
-      for await (const tick of generator) {
-        ticks.push(tick)
-      }
+      const log = await executeAction(state, { type: "SeeGatheringMap" })
 
-      const feedbackTicks = ticks.filter(
-        (t) => !t.done && (t as { feedback?: { message?: string } }).feedback?.message
-      )
-      expect(feedbackTicks.length).toBeGreaterThan(0)
-
-      const feedback = feedbackTicks[0] as { feedback?: { message?: string } }
-      expect(feedback.feedback?.message).toContain("Known Ore Veins:")
-      expect(feedback.feedback?.message).toContain("fartravel")
+      expect(log.success).toBe(true)
+      expect(log.stateDeltaSummary).toContain("Known Ore Veins:")
+      expect(log.stateDeltaSummary).toContain("fartravel")
     })
 
     it("should list known tree stands when at Foresters Guild", async () => {
@@ -1506,21 +1486,11 @@ describe("Engine", () => {
       makeAreaKnown(state, treeAreaId)
       discoverAllLocations(state, treeAreaId)
 
-      // Capture feedback
-      const generator = getActionGenerator(state, { type: "SeeGatheringMap" })
-      const ticks: ActionTick[] = []
-      for await (const tick of generator) {
-        ticks.push(tick)
-      }
+      const log = await executeAction(state, { type: "SeeGatheringMap" })
 
-      const feedbackTicks = ticks.filter(
-        (t) => !t.done && (t as { feedback?: { message?: string } }).feedback?.message
-      )
-      expect(feedbackTicks.length).toBeGreaterThan(0)
-
-      const feedback = feedbackTicks[0] as { feedback?: { message?: string } }
-      expect(feedback.feedback?.message).toContain("Known Tree Stands:")
-      expect(feedback.feedback?.message).toContain("fartravel")
+      expect(log.success).toBe(true)
+      expect(log.stateDeltaSummary).toContain("Known Tree Stands:")
+      expect(log.stateDeltaSummary).toContain("fartravel")
     })
 
     it("should sort nodes by travel ticks, then alphabetically by area name", async () => {
@@ -1544,20 +1514,10 @@ describe("Engine", () => {
         discoverAllLocations(state, area.id)
       }
 
-      // Capture feedback
-      const generator = getActionGenerator(state, { type: "SeeGatheringMap" })
-      const ticks: ActionTick[] = []
-      for await (const tick of generator) {
-        ticks.push(tick)
-      }
+      const log = await executeAction(state, { type: "SeeGatheringMap" })
 
-      const feedbackTicks = ticks.filter(
-        (t) => !t.done && (t as { feedback?: { message?: string } }).feedback?.message
-      )
-      expect(feedbackTicks.length).toBeGreaterThan(0)
-
-      const feedback = feedbackTicks[0] as { feedback?: { message?: string } }
-      const message = feedback.feedback?.message || ""
+      expect(log.success).toBe(true)
+      const message = log.stateDeltaSummary
 
       // Extract travel tick values from the message lines
       // Format: "  Area Name (distance N, Xt) - contents"
@@ -1597,20 +1557,10 @@ describe("Engine", () => {
         return // Can't test visibility filtering without both types
       }
 
-      // Capture feedback from SeeGatheringMap
-      const generator = getActionGenerator(state, { type: "SeeGatheringMap" })
-      const ticks: ActionTick[] = []
-      for await (const tick of generator) {
-        ticks.push(tick)
-      }
+      const log = await executeAction(state, { type: "SeeGatheringMap" })
 
-      const feedbackTicks = ticks.filter(
-        (t) => !t.done && (t as { feedback?: { message?: string } }).feedback?.message
-      )
-      expect(feedbackTicks.length).toBeGreaterThan(0)
-
-      const feedback = feedbackTicks[0] as { feedback?: { message?: string } }
-      const message = feedback.feedback?.message || ""
+      expect(log.success).toBe(true)
+      const message = log.stateDeltaSummary
 
       // Low level materials should be visible
       for (const mat of lowLevelMaterials) {

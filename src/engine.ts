@@ -1605,9 +1605,7 @@ async function* executeSeeGatheringMap(
     message = lines.join("\n")
   }
 
-  // Show the message
-  yield { done: false, feedback: { message } }
-
+  // Return the map content directly (no intermediate feedback to avoid "Working." animation)
   yield {
     done: true,
     log: {
@@ -1618,7 +1616,7 @@ async function* executeSeeGatheringMap(
       timeConsumed: 0,
       levelUps: [],
       rngRolls: [],
-      stateDeltaSummary: `Viewed ${skill === "Mining" ? "ore veins" : "tree stands"} map`,
+      stateDeltaSummary: message,
     },
   }
 }

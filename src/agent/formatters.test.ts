@@ -1076,6 +1076,162 @@ describe("Formatters", () => {
       }
     })
 
+    it("should always show Time line when variance data is present, even with zero luck", () => {
+      // Item 3: Always show Time line in extraction results
+      const mockLog = {
+        tickBefore: 0,
+        success: true,
+        actionType: "Gather" as const,
+        parameters: {},
+        timeConsumed: 20,
+        stateDeltaSummary: "Focused extraction of STONE",
+        extraction: {
+          mode: "FOCUS" as GatherMode,
+          focusMaterial: "STONE",
+          extracted: [{ itemId: "STONE", quantity: 1 }],
+          focusWaste: 0,
+          collateralDamage: {},
+          variance: {
+            expected: 20,
+            actual: 20,
+            range: [0, 0] as [number, number],
+            luckDelta: 0, // Zero luck - should still show Time line
+          },
+        },
+        rngRolls: [],
+      }
+
+      const formatted = formatActionLog(mockLog)
+
+      // Should show Time line even when luckDelta is 0
+      expect(formatted).toContain("Time: 20 ticks (20 base, 0 luck)")
+    })
+
+    it("should show message about undiscovered materials when invisible collateral exists", () => {
+      // Item 4: Show collateral damage for undiscovered materials
+      const state = createWorld("collateral-test")
+      // Player has Mining L1, can see STONE (L1) but not IRON_ORE (L5 requires L3+ to see)
+      state.player.skills.Mining = { level: 1, xp: 0 }
+
+      // Add a node with materials at different levels so isMaterialVisible can check them
+      state.world.nodes = [
+        {
+          nodeId: "test-node",
+          nodeType: NodeType.ORE_VEIN,
+          areaId: "area-d1-i0",
+          depleted: false,
+          materials: [
+            {
+              materialId: "STONE",
+              remainingUnits: 100,
+              maxUnitsInitial: 100,
+              requiresSkill: "Mining",
+              requiredLevel: 1, // Visible at L1
+              tier: 1,
+            },
+            {
+              materialId: "IRON_ORE",
+              remainingUnits: 50,
+              maxUnitsInitial: 50,
+              requiresSkill: "Mining",
+              requiredLevel: 5, // Requires L3+ to see (L+2 visibility rule)
+              tier: 3,
+            },
+          ],
+        },
+      ]
+
+      const mockLog = {
+        tickBefore: 0,
+        success: true,
+        actionType: "Gather" as const,
+        parameters: {},
+        timeConsumed: 20,
+        stateDeltaSummary: "Focused extraction of STONE",
+        extraction: {
+          mode: "FOCUS" as GatherMode,
+          focusMaterial: "STONE",
+          extracted: [{ itemId: "STONE", quantity: 1 }],
+          focusWaste: 0,
+          collateralDamage: {
+            STONE: 2, // Visible at L1
+            IRON_ORE: 1, // Not visible at L1 (requires L5, visibility max is L+2=3)
+          },
+          variance: {
+            expected: 20,
+            actual: 20,
+            range: [0, 0] as [number, number],
+            luckDelta: 0,
+          },
+        },
+        rngRolls: [],
+      }
+
+      const formatted = formatActionLog(mockLog, state)
+
+      // Should show visible collateral
+      expect(formatted).toContain("-2 STONE")
+      // Should indicate undiscovered materials had collateral
+      expect(formatted).toContain("undiscovered materials")
+    })
+
+    it("should show only undiscovered materials message when no visible collateral", () => {
+      // Item 4: When collateral is only for undiscovered materials
+      const state = createWorld("collateral-invisible-test")
+      // Player has Mining L1, but all collateral materials require higher levels
+      state.player.skills.Mining = { level: 1, xp: 0 }
+
+      // Add a node with a high-level material that won't be visible at L1
+      state.world.nodes = [
+        {
+          nodeId: "test-node",
+          nodeType: NodeType.ORE_VEIN,
+          areaId: "area-d1-i0",
+          depleted: false,
+          materials: [
+            {
+              materialId: "MITHRIL_ORE",
+              remainingUnits: 30,
+              maxUnitsInitial: 30,
+              requiresSkill: "Mining",
+              requiredLevel: 10, // Not visible at L1 (max visible is L1+2=3)
+              tier: 5,
+            },
+          ],
+        },
+      ]
+
+      const mockLog = {
+        tickBefore: 0,
+        success: true,
+        actionType: "Gather" as const,
+        parameters: {},
+        timeConsumed: 20,
+        stateDeltaSummary: "Careful extraction",
+        extraction: {
+          mode: "CAREFUL_ALL" as GatherMode,
+          extracted: [{ itemId: "STONE", quantity: 1 }],
+          focusWaste: 0,
+          collateralDamage: {
+            MITHRIL_ORE: 1, // Not visible at L1 (requires L10)
+          },
+          variance: {
+            expected: 20,
+            actual: 20,
+            range: [0, 0] as [number, number],
+            luckDelta: 0,
+          },
+        },
+        rngRolls: [],
+      }
+
+      const formatted = formatActionLog(mockLog, state)
+
+      // Should indicate undiscovered materials had collateral
+      expect(formatted).toContain("Collateral:")
+      expect(formatted).toContain("undiscovered materials")
+    })
+
     it("should show XP progress with percentage when state is provided", async () => {
       const state = createWorld("xp-test")
       // Join Explorers Guild to start gaining XP

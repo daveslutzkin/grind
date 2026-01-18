@@ -5,8 +5,8 @@
 Five changes to improve the mining user experience:
 1. Remove "focus" as a keyword since it's the default mode
 2. Allow `mine` with no params when there's only one visible resource
-3. Always show the Time line in extraction results
-4. Show collateral damage info for undiscovered materials
+3. ~~Always show the Time line in extraction results~~ ✅ DONE
+4. ~~Show collateral damage info for undiscovered materials~~ ✅ DONE
 5. Include gathering time variance in the game summary RNG stats
 
 ---
