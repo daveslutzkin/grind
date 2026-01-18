@@ -1,7 +1,40 @@
-import { resolveDestination, GATHERING_NODE_ALIASES, ENEMY_CAMP_ALIASES } from "./resolution.js"
+import {
+  resolveDestination,
+  GATHERING_NODE_ALIASES,
+  ENEMY_CAMP_ALIASES,
+  toSlug,
+} from "./resolution.js"
 import type { WorldState, Area } from "./types.js"
 import { ExplorationLocationType } from "./types.js"
 import { createWorld } from "./world.js"
+
+describe("toSlug", () => {
+  it("converts spaces to dashes", () => {
+    expect(toSlug("Rocky Clearing")).toBe("rocky-clearing")
+  })
+
+  it("converts to lowercase", () => {
+    expect(toSlug("TOWN")).toBe("town")
+  })
+
+  it("removes punctuation", () => {
+    expect(toSlug("Dragon's Lair")).toBe("dragons-lair")
+  })
+
+  it("handles multiple spaces", () => {
+    expect(toSlug("a  distant   area")).toBe("a-distant-area")
+  })
+
+  it("trims whitespace", () => {
+    expect(toSlug("  area  ")).toBe("area")
+  })
+
+  it("handles generic fallback names", () => {
+    expect(toSlug("a nearby area")).toBe("a-nearby-area")
+    expect(toSlug("a distant area")).toBe("a-distant-area")
+    expect(toSlug("a remote area")).toBe("a-remote-area")
+  })
+})
 
 describe("Resolution Module", () => {
   let state: WorldState

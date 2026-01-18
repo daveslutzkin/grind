@@ -234,6 +234,29 @@ describe("GameSession", () => {
           expect(action.displayName).not.toMatch(/^Go to /)
         }
       })
+
+      it("uses friendly slugs instead of internal area IDs in commands", async () => {
+        const session = GameSession.create("travel-slug-test")
+
+        await session.executeCommand("go miners guild")
+        await session.executeCommand("enrol")
+        // Survey to discover adjacent areas
+        for (let i = 0; i < 5; i++) {
+          await session.executeCommand("survey")
+        }
+
+        const actions = session.getValidActions()
+        const travelToActions = actions.filter((a) => a.displayName.startsWith("Travel to "))
+
+        for (const action of travelToActions) {
+          // Command should NOT contain raw area IDs like "area-d1-i0"
+          expect(action.command).not.toMatch(/area-d\d+-i\d+/)
+          // Command should use the slugified area name from displayName
+          const areaNameFromDisplay = action.displayName.replace("Travel to ", "")
+          const expectedSlug = areaNameFromDisplay.toLowerCase().replace(/\s+/g, "-")
+          expect(action.command).toBe(`go ${expectedSlug}`)
+        }
+      })
     })
 
     describe("fartravel <area> expansion", () => {
@@ -265,6 +288,27 @@ describe("GameSession", () => {
         for (const action of fartravelActions) {
           expect(action.command).toMatch(/^fartravel .+/)
           expect(action.timeCost).toBeGreaterThan(0)
+        }
+      })
+
+      it("uses friendly slugs instead of internal area IDs in commands", async () => {
+        const session = GameSession.create("fartravel-slug-test")
+
+        await session.executeCommand("go miners guild")
+        await session.executeCommand("enrol")
+        await session.executeCommand("survey")
+        await session.executeCommand("survey")
+
+        const actions = session.getValidActions()
+
+        const fartravelActions = actions.filter((a) => a.displayName.startsWith("Fartravel to "))
+        for (const action of fartravelActions) {
+          // Command should NOT contain raw area IDs like "area-d1-i0"
+          expect(action.command).not.toMatch(/area-d\d+-i\d+/)
+          // Command should use the slugified area name from displayName
+          const areaNameFromDisplay = action.displayName.replace("Fartravel to ", "")
+          const expectedSlug = areaNameFromDisplay.toLowerCase().replace(/\s+/g, "-")
+          expect(action.command).toBe(`fartravel ${expectedSlug}`)
         }
       })
     })

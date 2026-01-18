@@ -31,6 +31,18 @@ export function normalizeName(name: string): string {
 }
 
 /**
+ * Convert a name to a slug for use in commands.
+ * For example: "Rocky Clearing" -> "rocky-clearing"
+ */
+export function toSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "") // Remove punctuation
+    .trim()
+    .replace(/\s+/g, "-") // Convert spaces to dashes
+}
+
+/**
  * Constants for gathering node aliases
  */
 export const GATHERING_NODE_ALIASES: Record<string, GatheringSkillID> = {

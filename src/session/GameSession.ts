@@ -45,6 +45,7 @@ import type {
 import { getVisibleMaterials } from "../visibility.js"
 import { nodeIdToLocationId } from "../contracts.js"
 import { formatIdAsName, capitalize, parseLocationIndex } from "../utils.js"
+import { toSlug } from "../resolution.js"
 
 export class GameSession {
   private state: WorldState
@@ -443,10 +444,12 @@ export class GameSession {
 
       const areaName = getAreaDisplayName(destAreaId, destArea)
       const travelTime = Math.round(BASE_TRAVEL_TIME * conn.travelTimeMultiplier)
+      // Use slug for command so users see friendly names instead of internal IDs
+      const commandSlug = toSlug(areaName)
 
       result.push({
         displayName: `Travel to ${areaName}`,
-        command: `go ${destAreaId}`,
+        command: `go ${commandSlug}`,
         action,
         timeCost: travelTime,
         isVariable: false,
@@ -471,10 +474,12 @@ export class GameSession {
 
       const area = this.state.exploration.areas.get(areaId)
       const areaName = getAreaDisplayName(areaId, area)
+      // Use slug for command so users see friendly names instead of internal IDs
+      const commandSlug = toSlug(areaName)
 
       result.push({
         displayName: `Fartravel to ${areaName}`,
-        command: `fartravel ${areaId}`,
+        command: `fartravel ${commandSlug}`,
         action,
         timeCost: travelTime,
         isVariable: false,
