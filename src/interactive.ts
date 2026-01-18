@@ -119,9 +119,9 @@ export async function runAnimatedAction(
     await setTimeout(tickDelay)
   }
 
-  // Only print newline if we printed something
+  // Print blank line after progress (separates dots from final summary)
   if (labelPrinted) {
-    process.stdout.write("\n")
+    process.stdout.write("\n\n")
   }
 
   return {
