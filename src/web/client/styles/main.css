@@ -335,10 +335,12 @@ header {
 
 .result-success {
   color: var(--success);
+  white-space: pre-line;
 }
 
 .result-failure {
   color: var(--error);
+  white-space: pre-line;
 }
 
 .result-details {
