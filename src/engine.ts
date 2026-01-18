@@ -288,6 +288,11 @@ async function* executeAcceptContract(
       areaId: map.targetAreaId,
       nodeLocationId: map.targetNodeId,
     })
+
+    // Immediately add node to knownLocationIds so it appears on the gathering map
+    if (!state.exploration.playerState.knownLocationIds.includes(map.targetNodeId)) {
+      state.exploration.playerState.knownLocationIds.push(map.targetNodeId)
+    }
   }
 
   // If this is a mining contract, refresh the slot with a new contract

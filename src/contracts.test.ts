@@ -969,6 +969,44 @@ describe("Contract Generation", () => {
         expect(acceptLog.stateDeltaSummary).toContain("Accepted contract")
         expect(acceptLog.stateDeltaSummary).toMatch(/discovered|revealed/i)
       })
+
+      it("should immediately add target node to knownLocationIds when accepting contract with map", async () => {
+        const { executeAction } = await import("./engine.js")
+        const { refreshMiningContracts } = await import("./contracts.js")
+
+        const state = createWorld("map-immediate-discovery-test")
+        state.player.skills.Mining = { level: 5, xp: 0 }
+
+        // Generate mining contracts with maps
+        refreshMiningContracts(state)
+
+        // Find the at-level contract
+        const contract = state.world.contracts.find(
+          (c) => c.guildType === "Mining" && c.slot === "at-level"
+        )
+        expect(contract).toBeDefined()
+        expect(contract!.includedMap).toBeDefined()
+
+        const map = contract!.includedMap!
+        const contractId = contract!.id
+
+        // Verify node is NOT known before accepting
+        expect(state.exploration.playerState.knownLocationIds).not.toContain(map.targetNodeId)
+
+        // Go to miners guild and accept the contract
+        state.exploration.playerState.currentAreaId = "TOWN"
+        state.exploration.playerState.currentLocationId = TOWN_LOCATIONS.MINERS_GUILD
+
+        const acceptLog = await executeAction(state, {
+          type: "AcceptContract",
+          contractId,
+        })
+        expect(acceptLog.success).toBe(true)
+
+        // The node should be immediately discoverable on the gathering map
+        // (i.e., added to knownLocationIds, not just pendingNodeDiscoveries)
+        expect(state.exploration.playerState.knownLocationIds).toContain(map.targetNodeId)
+      })
     })
 
     describe("node discovery on area arrival", () => {
