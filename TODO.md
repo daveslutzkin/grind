@@ -79,7 +79,7 @@ Five changes to improve the mining user experience:
 
 ---
 
-## 3. Always Show Time Line in Extraction Results
+## 3. Always Show Time Line in Extraction Results ✅ DONE
 
 **Current behavior:**
 - src/agent/formatters.ts:817 - Only shows Time when `luckDelta !== 0`
@@ -96,7 +96,7 @@ Five changes to improve the mining user experience:
 
 ---
 
-## 4. Show Collateral Damage for Undiscovered Materials
+## 4. Show Collateral Damage for Undiscovered Materials ✅ DONE
 
 **Current behavior:**
 - src/agent/formatters.ts:801-807 - Only shows collateral for visible materials
