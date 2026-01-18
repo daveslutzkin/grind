@@ -1,11 +1,28 @@
 import { useGameState } from "./hooks/useGameState"
+import { ActionHistory } from "./components/ActionHistory"
+import { CommandInput } from "./components/CommandInput"
+import { ValidActions } from "./components/ValidActions"
+import { Sidebar } from "./components/Sidebar"
 
 export function App() {
-  const { state, validActions, isConnected, error, sendCommand, startNewGame } = useGameState()
+  const {
+    state,
+    validActions,
+    isConnected,
+    error,
+    isExecuting,
+    currentCommand,
+    commandHistory,
+    sendCommand,
+    startNewGame,
+    loadGame,
+    saveGame,
+  } = useGameState()
 
   if (!isConnected) {
     return (
       <div class="app loading">
+        <div class="loading-spinner" />
         <p>Connecting to server...</p>
       </div>
     )
@@ -14,18 +31,24 @@ export function App() {
   if (error) {
     return (
       <div class="app error">
-        <p>Error: {error}</p>
+        <h1>Connection Error</h1>
+        <p>{error}</p>
         <button onClick={() => window.location.reload()}>Retry</button>
       </div>
     )
   }
 
   if (!state) {
+    const savedGame = localStorage.getItem("grind_saved_game")
+
     return (
       <div class="app start">
         <h1>Grind</h1>
         <p>A rules-first simulation game</p>
-        <button onClick={() => startNewGame()}>Start New Game</button>
+        <div class="start-buttons">
+          <button onClick={() => startNewGame()}>New Game</button>
+          {savedGame && <button onClick={() => loadGame(savedGame)}>Continue</button>}
+        </div>
       </div>
     )
   }
@@ -33,71 +56,41 @@ export function App() {
   return (
     <div class="app game">
       <header>
-        <h1>Grind</h1>
-        <div class="status">
-          <span>Location: {state.location.locationName}</span>
-          <span>Area: {state.location.areaName}</span>
-          <span>Gold: {state.gold}</span>
-          <span>Tick: {state.time.currentTick}</span>
+        <div class="header-left">
+          <h1>Grind</h1>
+        </div>
+        <div class="header-center">
+          <span class="location">
+            {state.location.locationName} ({state.location.areaName})
+          </span>
+        </div>
+        <div class="header-right">
+          <span class="stat">
+            <span class="stat-label">Gold:</span> {state.gold}
+          </span>
+          <span class="stat">
+            <span class="stat-label">Rep:</span> {state.guildReputation}
+          </span>
+          <span class="stat">
+            <span class="stat-label">Tick:</span> {state.time.currentTick}
+          </span>
+          <button class="save-btn" onClick={saveGame} title="Save Game">
+            Save
+          </button>
         </div>
       </header>
 
-      <main>
-        <section class="main-content">
-          <div class="inventory">
-            <h2>
-              Inventory ({state.inventory.used}/{state.inventory.capacity})
-            </h2>
-            <ul>
-              {state.inventory.items.map((item) => (
-                <li key={item.itemId}>
-                  {item.itemId}: {item.quantity}
-                </li>
-              ))}
-              {state.inventory.items.length === 0 && <li>Empty</li>}
-            </ul>
+      <div class="game-layout">
+        <main class="main-panel">
+          <ActionHistory history={commandHistory} currentCommand={currentCommand} />
+          <div class="input-area">
+            <ValidActions actions={validActions} onAction={sendCommand} disabled={isExecuting} />
+            <CommandInput onSubmit={sendCommand} disabled={isExecuting} />
           </div>
+        </main>
 
-          <div class="skills">
-            <h2>Skills</h2>
-            <ul>
-              {state.skills.map((skill) => (
-                <li key={skill.id}>
-                  {skill.id}: Lv{skill.level} ({skill.xp}/{skill.xpToNextLevel} XP)
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div class="contracts">
-            <h2>Contracts</h2>
-            <ul>
-              {state.contracts.map((contract) => (
-                <li key={contract.id}>
-                  {contract.id} (Lv{contract.level}){contract.isActive && " [ACTIVE]"}
-                  {contract.isComplete && " [COMPLETE]"}
-                </li>
-              ))}
-              {state.contracts.length === 0 && <li>None available</li>}
-            </ul>
-          </div>
-        </section>
-
-        <section class="actions">
-          <h2>Actions</h2>
-          <div class="action-buttons">
-            {validActions.map((action) => (
-              <button
-                key={action.command}
-                onClick={() => sendCommand(action.command)}
-                title={`${action.displayName} (${action.timeCost} ticks)`}
-              >
-                {action.displayName}
-              </button>
-            ))}
-          </div>
-        </section>
-      </main>
+        <Sidebar state={state} />
+      </div>
     </div>
   )
 }

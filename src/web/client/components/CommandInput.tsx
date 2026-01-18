@@ -1,0 +1,56 @@
+import type { JSX } from "preact"
+import { useState, useCallback } from "preact/hooks"
+
+interface CommandInputProps {
+  onSubmit: (command: string) => void
+  disabled?: boolean
+}
+
+export function CommandInput({ onSubmit, disabled = false }: CommandInputProps) {
+  const [value, setValue] = useState("")
+
+  const handleSubmit = useCallback(
+    (e: JSX.TargetedEvent) => {
+      e.preventDefault()
+      const trimmed = value.trim()
+      if (trimmed && !disabled) {
+        onSubmit(trimmed)
+        setValue("")
+      }
+    },
+    [value, onSubmit, disabled]
+  )
+
+  const handleKeyDown = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (e: JSX.TargetedKeyboardEvent<any>) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault()
+        const trimmed = value.trim()
+        if (trimmed && !disabled) {
+          onSubmit(trimmed)
+          setValue("")
+        }
+      }
+    },
+    [value, onSubmit, disabled]
+  )
+
+  return (
+    <form class="command-input" onSubmit={handleSubmit}>
+      <span class="prompt">&gt;</span>
+      <input
+        type="text"
+        value={value}
+        onInput={(e) => setValue(e.currentTarget.value)}
+        onKeyDown={handleKeyDown}
+        placeholder={disabled ? "Executing..." : "Type a command..."}
+        disabled={disabled}
+        autoFocus
+      />
+      <button type="submit" disabled={disabled || !value.trim()}>
+        Send
+      </button>
+    </form>
+  )
+}

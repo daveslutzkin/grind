@@ -1,3 +1,27 @@
+/* ============================================================================
+   CSS Variables
+   ============================================================================ */
+
+:root {
+  --bg-primary: #1a1a2e;
+  --bg-secondary: #16213e;
+  --bg-tertiary: #0f3460;
+  --text-primary: #eee;
+  --text-secondary: #aaa;
+  --text-muted: #666;
+  --accent-gold: #ffd700;
+  --accent-blue: #3b82f6;
+  --success: #4ade80;
+  --warning: #facc15;
+  --error: #ef4444;
+  --border-color: #333;
+  --font-mono: "Courier New", Courier, monospace;
+}
+
+/* ============================================================================
+   Base Styles
+   ============================================================================ */
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -5,15 +29,18 @@
 }
 
 body {
-  font-family: "Courier New", Courier, monospace;
-  background: #1a1a2e;
-  color: #eee;
+  font-family: var(--font-mono);
+  background: var(--bg-primary);
+  color: var(--text-primary);
   line-height: 1.5;
 }
 
+/* ============================================================================
+   App Layout
+   ============================================================================ */
+
 .app {
   min-height: 100vh;
-  padding: 1rem;
 }
 
 .app.loading,
@@ -24,83 +51,518 @@ body {
   align-items: center;
   justify-content: center;
   gap: 1rem;
+  padding: 2rem;
 }
 
 .app.start h1 {
   font-size: 3rem;
-  color: #ffd700;
+  color: var(--accent-gold);
 }
 
-button {
-  font-family: inherit;
-  font-size: 1rem;
-  padding: 0.5rem 1rem;
-  background: #16213e;
-  color: #eee;
-  border: 1px solid #0f3460;
-  cursor: pointer;
-  transition: background 0.2s;
+.start-buttons {
+  display: flex;
+  gap: 1rem;
 }
 
-button:hover {
-  background: #0f3460;
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--accent-gold);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================================================
+   Game Layout
+   ============================================================================ */
+
+.app.game {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
 }
 
 header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #333;
-  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
 }
 
-header h1 {
-  color: #ffd700;
-  font-size: 1.5rem;
+.header-left h1 {
+  color: var(--accent-gold);
+  font-size: 1.25rem;
 }
 
-.status {
+.header-center .location {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.header-right {
   display: flex;
-  gap: 1.5rem;
+  align-items: center;
+  gap: 1rem;
+}
+
+.stat {
+  font-size: 0.85rem;
+}
+
+.stat-label {
+  color: var(--text-secondary);
+}
+
+.save-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+.game-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ============================================================================
+   Main Panel (Left)
+   ============================================================================ */
+
+.main-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--border-color);
+}
+
+.input-area {
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+/* ============================================================================
+   Action History
+   ============================================================================ */
+
+.action-history {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.history-empty {
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 2rem;
+}
+
+.history-entry {
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  border-left: 3px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.history-entry.success {
+  border-left-color: var(--success);
+}
+
+.history-entry.failure {
+  border-left-color: var(--error);
+}
+
+.history-entry.current {
+  border-left-color: var(--accent-blue);
+}
+
+.history-command {
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+}
+
+.history-command .prompt {
+  color: var(--accent-gold);
+  margin-right: 0.5rem;
+}
+
+.history-command .executing {
+  color: var(--text-muted);
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.history-ticks {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  padding-left: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.history-ticks .tick {
+  padding: 0.1rem 0;
+}
+
+.history-result {
+  padding-left: 1rem;
   font-size: 0.9rem;
 }
 
-main {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
+.result-success {
+  color: var(--success);
 }
 
-section h2 {
-  color: #ffd700;
-  font-size: 1.1rem;
-  margin-bottom: 0.5rem;
-  padding-bottom: 0.25rem;
-  border-bottom: 1px solid #333;
+.result-failure {
+  color: var(--error);
 }
 
-.main-content {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
+/* ============================================================================
+   Valid Actions
+   ============================================================================ */
+
+.valid-actions {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-color);
 }
 
-ul {
-  list-style: none;
+.no-actions {
+  color: var(--text-muted);
+  font-size: 0.9rem;
 }
 
-li {
-  padding: 0.25rem 0;
-  border-bottom: 1px dotted #333;
+.action-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.action-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.action-type {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  text-transform: uppercase;
 }
 
 .action-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.25rem;
 }
 
 .action-buttons button {
-  flex: 0 0 auto;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.action-buttons .time-cost {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* ============================================================================
+   Command Input
+   ============================================================================ */
+
+.command-input {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  gap: 0.5rem;
+}
+
+.command-input .prompt {
+  color: var(--accent-gold);
+  font-weight: bold;
+}
+
+.command-input input {
+  flex: 1;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 0.5rem;
+}
+
+.command-input input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+}
+
+.command-input input::placeholder {
+  color: var(--text-muted);
+}
+
+.command-input button {
+  padding: 0.5rem 1rem;
+}
+
+/* ============================================================================
+   Sidebar (Right)
+   ============================================================================ */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-secondary);
+  overflow: hidden;
+}
+
+.sidebar-top {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.sidebar-bottom {
+  border-top: 1px solid var(--border-color);
+  padding: 0.5rem;
+}
+
+/* ============================================================================
+   Panels (Sidebar Sections)
+   ============================================================================ */
+
+.panel {
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+}
+
+.panel h3 {
+  color: var(--accent-gold);
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.panel h4 {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.panel ul {
+  list-style: none;
+}
+
+.panel li {
+  font-size: 0.85rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px dotted var(--border-color);
+}
+
+.panel li:last-child {
+  border-bottom: none;
+}
+
+.panel .empty {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ============================================================================
+   Inventory & Storage
+   ============================================================================ */
+
+.inventory li,
+.storage li {
+  display: flex;
+  justify-content: space-between;
+}
+
+.item-name {
+  color: var(--text-primary);
+}
+
+.item-qty {
+  color: var(--text-secondary);
+}
+
+/* ============================================================================
+   Skills
+   ============================================================================ */
+
+.skills li {
+  padding: 0.35rem 0;
+}
+
+.skill-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+
+.skill-name {
+  text-transform: capitalize;
+}
+
+.skill-level {
+  color: var(--accent-gold);
+}
+
+.skill-progress {
+  position: relative;
+  height: 12px;
+  background: var(--bg-tertiary);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.skill-progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: var(--accent-blue);
+  transition: width 0.3s ease;
+}
+
+.skill-xp {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 0.7rem;
+  line-height: 12px;
+  color: var(--text-primary);
+  text-shadow: 0 0 2px black;
+}
+
+/* ============================================================================
+   Contracts
+   ============================================================================ */
+
+.contracts-section {
+  margin-bottom: 0.5rem;
+}
+
+.contract-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.contract-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contract-level {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.contract-status {
+  color: var(--success);
+  font-size: 0.75rem;
+}
+
+.contract-requirements {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  padding-left: 0.5rem;
+}
+
+.contract-req {
+  display: block;
+}
+
+.contract-location {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.contracts li.complete {
+  background: rgba(74, 222, 128, 0.1);
+}
+
+/* ============================================================================
+   Map
+   ============================================================================ */
+
+.map-svg {
+  width: 100%;
+  height: auto;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+}
+
+.map-label {
+  font-family: var(--font-mono);
+}
+
+/* ============================================================================
+   Buttons
+   ============================================================================ */
+
+button {
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+button:hover:not(:disabled) {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================================================
+   Scrollbar Styling
+   ============================================================================ */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
