@@ -81,7 +81,6 @@ async function main(): Promise<void> {
     },
 
     onActionComplete: (log, state) => {
-      console.log("")
       console.log(formatActionLog(log, state))
       // Only show world state if the action succeeded
       if (log.success) {
