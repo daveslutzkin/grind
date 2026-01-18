@@ -1227,9 +1227,10 @@ describe("Formatters", () => {
 
       const formatted = formatActionLog(mockLog, state)
 
-      // Should indicate undiscovered materials had collateral
-      expect(formatted).toContain("Collateral:")
-      expect(formatted).toContain("undiscovered materials")
+      // Should indicate undiscovered materials had collateral on the Gained line
+      expect(formatted).toContain(
+        "Gained: +1 STONE (some collateral loss of undiscovered materials)"
+      )
     })
 
     it("should show XP progress with percentage when state is provided", async () => {

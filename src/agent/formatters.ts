@@ -799,34 +799,38 @@ export function formatActionLog(log: ActionLog, state?: WorldState): string {
     if (log.extraction.focusWaste > 0) {
       itemLine += ` (${log.extraction.focusWaste} wasted)`
     }
-    lines.push(itemLine)
-
     // Filter collateral damage by material visibility
     if (state) {
       const allCollateral = Object.entries(log.extraction.collateralDamage)
       const visibleCollateral = allCollateral.filter(([m]) => isMaterialVisible(m, state))
       const hasInvisibleCollateral = allCollateral.length > visibleCollateral.length
 
-      if (visibleCollateral.length > 0 || hasInvisibleCollateral) {
-        let collateralLine = "  Collateral:"
-        if (visibleCollateral.length > 0) {
-          const dmg = visibleCollateral.map(([m, d]) => `-${d} ${m}`).join(", ")
-          collateralLine += ` ${dmg}`
-        }
+      if (visibleCollateral.length > 0) {
+        // Show visible collateral on its own line
+        const dmg = visibleCollateral.map(([m, d]) => `-${d} ${m}`).join(", ")
+        let collateralLine = `  Collateral: ${dmg}`
         if (hasInvisibleCollateral) {
-          collateralLine +=
-            visibleCollateral.length > 0
-              ? " (some collateral loss of undiscovered materials)"
-              : " (some collateral loss of undiscovered materials)"
+          collateralLine += " (some collateral loss of undiscovered materials)"
         }
+        lines.push(itemLine)
         lines.push(collateralLine)
+      } else if (hasInvisibleCollateral) {
+        // Only invisible collateral - append to Gained line
+        itemLine += " (some collateral loss of undiscovered materials)"
+        lines.push(itemLine)
+      } else {
+        lines.push(itemLine)
       }
-    } else if (Object.keys(log.extraction.collateralDamage).length > 0) {
-      // No state = show all collateral
-      const dmg = Object.entries(log.extraction.collateralDamage)
-        .map(([m, d]) => `-${d} ${m}`)
-        .join(", ")
-      lines.push(`  Collateral: ${dmg}`)
+    } else {
+      // No state available
+      lines.push(itemLine)
+      if (Object.keys(log.extraction.collateralDamage).length > 0) {
+        // No state = show all collateral
+        const dmg = Object.entries(log.extraction.collateralDamage)
+          .map(([m, d]) => `-${d} ${m}`)
+          .join(", ")
+        lines.push(`  Collateral: ${dmg}`)
+      }
     }
 
     // Show time variance when variance data is present
