@@ -103,7 +103,7 @@ src/
 
 ## Implementation Phases
 
-### Phase 1: GameSession Abstraction
+### Phase 1: GameSession Abstraction ✅ DONE
 
 **Goal:** Create a unified interface that all UIs will use.
 
@@ -193,7 +193,7 @@ interface CommandResult {
 
 ---
 
-### Phase 2: Web Server Setup
+### Phase 2: Web Server Setup ✅ DONE
 
 **Goal:** Fastify server with WebSocket support, serving static files.
 

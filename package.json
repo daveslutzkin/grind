@@ -14,7 +14,7 @@
     "web": "npm run build && node dist/web/server/index.js",
     "web:dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "tsx watch src/web/server/index.ts",
-    "dev:client": "echo 'Client dev server requires Phase 3 (Vite/Preact setup)'",
+    "dev:client": "vite",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
     "lint": "eslint src/",
@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
+    "@preact/preset-vite": "^2.10.2",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.11.0",
     "@typescript-eslint/eslint-plugin": "^8.51.0",
@@ -36,13 +37,15 @@
     "prettier": "^3.7.4",
     "ts-jest": "^29.1.2",
     "tsx": "^4.21.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vite": "^7.3.1"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
     "@fastify/static": "^9.0.0",
     "@fastify/websocket": "^11.2.0",
     "dotenv": "^17.2.3",
-    "fastify": "^5.7.1"
+    "fastify": "^5.7.1",
+    "preact": "^10.28.2"
   }
 }
