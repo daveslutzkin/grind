@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "savedAt": "2026-01-17T23:56:34.320Z",
+  "savedAt": "2026-01-17T23:58:29.730Z",
   "seed": "session-1768692993954",
   "state": {
     "time": {
@@ -1647,6 +1647,18 @@
         ],
         "rngRolls": [],
         "stateDeltaSummary": "Turned in contract mining-contract-1, earned 1.4 gold, +5 reputation"
+      },
+      {
+        "tickBefore": 281,
+        "actionType": "SeeGatheringMap",
+        "parameters": {
+          "skill": "Mining"
+        },
+        "success": true,
+        "timeConsumed": 0,
+        "levelUps": [],
+        "rngRolls": [],
+        "stateDeltaSummary": "Viewed ore veins map"
       }
     ],
     "startingSkills": {
@@ -1675,6 +1687,6 @@
         "xp": 0
       }
     },
-    "sessionStartLogIndex": 18
+    "sessionStartLogIndex": 19
   }
 }

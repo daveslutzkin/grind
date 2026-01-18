@@ -850,8 +850,12 @@ export function formatActionLog(log: ActionLog, state?: WorldState): string {
     lines.push(xpLine)
   }
 
-  // Contracts completed
-  if (log.contractsCompleted && log.contractsCompleted.length > 0) {
+  // Contracts completed (skip for TurnInContract since stateDeltaSummary already describes it)
+  if (
+    log.contractsCompleted &&
+    log.contractsCompleted.length > 0 &&
+    log.actionType !== "TurnInContract"
+  ) {
     for (const cc of log.contractsCompleted) {
       // Show goldEarned for mining contracts, item rewards for others
       let rewardStr: string
