@@ -39,7 +39,11 @@ export function Contracts({ contracts, skills }: ContractsProps) {
                 <div class="contract-header">
                   <span class="contract-name">{formatContractName(contract.id)}</span>
                   <span class="contract-level">Lv {contract.level}</span>
-                  {contract.isComplete && <span class="contract-status">Ready!</span>}
+                  {contract.isComplete && (
+                    <span class="contract-status">
+                      Ready! Turn in at {contract.acceptLocationName}
+                    </span>
+                  )}
                 </div>
                 <div class="contract-requirements">
                   {contract.requirements.map((req, i) => (

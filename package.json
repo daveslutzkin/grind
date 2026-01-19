@@ -34,6 +34,7 @@
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
     "jest": "^29.7.0",
+    "preact-render-to-string": "^6.6.5",
     "prettier": "^3.7.4",
     "ts-jest": "^29.1.2",
     "tsx": "^4.21.0",

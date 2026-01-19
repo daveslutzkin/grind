@@ -26,8 +26,8 @@ Issues discovered during Claude Code playthrough (~15 actions, Tick 0-111).
 **Description:** UI generated `go area-d1-i0-loc-0` commands but `resolveDestination` didn't handle raw location IDs, causing `NO_PATH_TO_DESTINATION` error even for discovered locations.
 **Fix:** Added regex match for `-loc-\d+$` pattern in resolution.ts.
 
-### 5. Show turn-in location for completed contracts
-**Status:** To fix
+### 5. Show turn-in location for completed contracts - DONE
+**Status:** Fixed
 **Description:** When a contract shows "Ready!", player doesn't know where to turn it in. Should show the guild location.
 **File:** `src/web/client/components/Contracts.tsx` line 42
 **Fix:** Change from:
