@@ -1,14 +1,16 @@
-import type { LocationInfo, ContractInfo, ValidAction } from "../../../session/types"
+import type { LocationInfo, ContractInfo, ValidAction, StorageInfo } from "../../../session/types"
 import {
   groupActionsByType,
   filterContractsAtLocation,
   formatContractName,
 } from "./currentAreaUtils"
+import { Storage } from "./Storage"
 
 interface CurrentAreaProps {
   location: LocationInfo
   contracts: ContractInfo[]
   actions: ValidAction[]
+  storage: StorageInfo
   onAction: (command: string) => void
   disabled?: boolean
 }
@@ -17,6 +19,7 @@ export function CurrentArea({
   location,
   contracts,
   actions,
+  storage,
   onAction,
   disabled = false,
 }: CurrentAreaProps) {
@@ -53,6 +56,12 @@ export function CurrentArea({
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {location.locationId === "TOWN_WAREHOUSE" && (
+        <div class="area-storage">
+          <Storage storage={storage} />
         </div>
       )}
 

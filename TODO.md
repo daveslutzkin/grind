@@ -572,7 +572,7 @@ Keep the JSX the same but add CSS:
 
 ---
 
-## 9. Move Storage to Main Content Area (Warehouse Only)
+## 9. Move Storage to Main Content Area (Warehouse Only) - DONE
 
 **Priority:** Medium | **Effort:** Low
 

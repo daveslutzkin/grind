@@ -1,6 +1,5 @@
 import type { GameStateSnapshot } from "../../../session/types"
 import { Inventory } from "./Inventory"
-import { Storage } from "./Storage"
 import { Skills } from "./Skills"
 import { Contracts } from "./Contracts"
 import { GameMap } from "./Map"
@@ -19,7 +18,6 @@ export function Sidebar({ state }: SidebarProps) {
     <aside class="sidebar">
       <div class="sidebar-top">
         <Inventory inventory={state.inventory} />
-        <Storage storage={state.storage} />
         <Skills skills={state.skills} />
         <Contracts contracts={state.contracts} skills={state.skills} />
       </div>

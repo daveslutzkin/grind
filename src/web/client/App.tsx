@@ -151,6 +151,7 @@ export function App() {
             location={state.location}
             contracts={state.contracts}
             actions={validActions}
+            storage={state.storage}
             onAction={sendCommand}
             disabled={isExecuting}
           />
