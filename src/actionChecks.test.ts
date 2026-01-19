@@ -2,7 +2,11 @@
  * Tests for action validation checks
  */
 
-import { getLocationSkillRequirement, checkAcceptContractAction } from "./actionChecks.js"
+import {
+  getLocationSkillRequirement,
+  checkAcceptContractAction,
+  getTotalItemQuantity,
+} from "./actionChecks.js"
 import { createWorld, TOWN_LOCATIONS } from "./world.js"
 import { refreshMiningContracts } from "./contracts.js"
 
@@ -87,5 +91,46 @@ describe("actionChecks", () => {
       expect(getLocationSkillRequirement("unknown-location")).toBe(1)
       expect(getLocationSkillRequirement("")).toBe(1)
     })
+  })
+})
+
+describe("getTotalItemQuantity", () => {
+  it("should sum quantities across inventory and storage", () => {
+    const state = createWorld("test-seed")
+    // Add items to inventory
+    state.player.inventory.push({ itemId: "test_item", quantity: 5 })
+    state.player.inventory.push({ itemId: "test_item", quantity: 3 })
+    // Add items to storage
+    state.player.storage.push({ itemId: "test_item", quantity: 10 })
+
+    const total = getTotalItemQuantity(state, "test_item")
+
+    expect(total).toBe(18) // 5 + 3 + 10
+  })
+
+  it("should return 0 for items not in inventory or storage", () => {
+    const state = createWorld("test-seed")
+
+    const total = getTotalItemQuantity(state, "nonexistent_item")
+
+    expect(total).toBe(0)
+  })
+
+  it("should handle items only in inventory", () => {
+    const state = createWorld("test-seed")
+    state.player.inventory.push({ itemId: "inv_only", quantity: 7 })
+
+    const total = getTotalItemQuantity(state, "inv_only")
+
+    expect(total).toBe(7)
+  })
+
+  it("should handle items only in storage", () => {
+    const state = createWorld("test-seed")
+    state.player.storage.push({ itemId: "storage_only", quantity: 12 })
+
+    const total = getTotalItemQuantity(state, "storage_only")
+
+    expect(total).toBe(12)
   })
 })

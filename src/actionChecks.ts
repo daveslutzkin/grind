@@ -47,6 +47,20 @@ export interface ActionCheckResult {
 }
 
 /**
+ * Get total quantity of an item across player inventory and storage.
+ * Useful for checking if player can fulfill contract requirements.
+ */
+export function getTotalItemQuantity(state: WorldState, itemId: string): number {
+  const inventoryQuantity = state.player.inventory
+    .filter((i) => i.itemId === itemId)
+    .reduce((sum, i) => sum + i.quantity, 0)
+  const storageQuantity = state.player.storage
+    .filter((i) => i.itemId === itemId)
+    .reduce((sum, i) => sum + i.quantity, 0)
+  return inventoryQuantity + storageQuantity
+}
+
+/**
  * Check if inventory has all required items
  * Non-stacking: counts all slots with matching itemId
  */
@@ -269,13 +283,7 @@ export function checkTurnInContractAction(
 
   // Check if all item requirements are met (sum across all inventory slots)
   for (const req of contract.requirements) {
-    const inventoryQuantity = state.player.inventory
-      .filter((i) => i.itemId === req.itemId)
-      .reduce((sum, i) => sum + i.quantity, 0)
-    const storageQuantity = state.player.storage
-      .filter((i) => i.itemId === req.itemId)
-      .reduce((sum, i) => sum + i.quantity, 0)
-    const totalQuantity = inventoryQuantity + storageQuantity
+    const totalQuantity = getTotalItemQuantity(state, req.itemId)
 
     if (totalQuantity < req.quantity) {
       return {
