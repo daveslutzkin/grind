@@ -16,21 +16,10 @@ Issues discovered during Claude Code playthrough (~15 actions, Tick 0-111).
 **Description:** UI buttons showed `go area-d1-i3-loc-0` instead of `go ore-vein`. Area travel already used friendly slugs but location travel within an area used raw IDs.
 **Fix:** Changed `expandGoLocationAction()` in GameSession.ts to use `toSlug(locationName)`. Also added `matchLocationInCurrentArea()` helper in resolution.ts to support resolving slugified location names back to location IDs.
 
-### 3. Contract progress shows wrong count
-**Status:** To fix
+### 3. Contract progress shows wrong count - DONE
+**Status:** Fixed
 **Description:** Contract shows "STONE: 1/5" even when player has 5 stone in inventory. The `buildContractsInfo()` method in `GameSession.ts` uses `.find()` which only returns the first matching inventory slot (quantity: 1) instead of summing all slots.
-**File:** `src/session/GameSession.ts` in `buildContractsInfo()` method (~line 760)
-**Fix:** Change from `.find()` to `.filter().reduce()` to sum quantities across all matching inventory slots:
-```typescript
-// Current (broken):
-const invItem = this.state.player.inventory.find((i) => i.itemId === req.itemId)
-const currentQuantity = invItem?.quantity ?? 0
-
-// Fixed:
-const currentQuantity = this.state.player.inventory
-  .filter((i) => i.itemId === req.itemId)
-  .reduce((sum, item) => sum + item.quantity, 0)
-```
+**Fix:** Changed from `.find()` to `.filter().reduce()` to sum quantities across all matching inventory slots.
 
 ### 4. Raw location ID resolution broken - DONE
 **Status:** Fixed in this session
