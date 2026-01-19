@@ -1455,6 +1455,133 @@ async function* executeSeeGatheringMap(
 }
 
 /**
+ * Execute node map purchase from Mining Guild
+ */
+async function executeNodeMapPurchase(
+  state: WorldState,
+  action: BuyMapAction,
+  tickBefore: number
+): Promise<ActionLog> {
+  const price = getNodeMapPrice(action.materialTier!)!
+  state.player.gold -= price
+
+  // Find a node and generate the map
+  const map = findNodeForMap(action.materialTier!, state)
+  if (!map) {
+    // This shouldn't happen if check passed, but be defensive
+    return createFailureLog(state, action, "NO_MAPS_AVAILABLE", 0, "no_undiscovered_nodes", {
+      materialTier: action.materialTier,
+    })
+  }
+
+  await revealAreasAndConnections(state, map.areaIds, map.connectionIds)
+
+  // Store pending node discovery for later (when player arrives at area)
+  if (!state.player.pendingNodeDiscoveries) {
+    state.player.pendingNodeDiscoveries = []
+  }
+  state.player.pendingNodeDiscoveries.push({
+    areaId: map.targetAreaId,
+    nodeLocationId: map.targetNodeId,
+  })
+
+  // Get the target area name for the summary
+  const targetArea = state.exploration.areas.get(map.targetAreaId)
+  const targetAreaName = getAreaDisplayName(map.targetAreaId, targetArea)
+
+  return {
+    tickBefore,
+    actionType: "BuyMap",
+    parameters: { mapType: action.mapType, materialTier: action.materialTier },
+    success: true,
+    timeConsumed: 0,
+    levelUps: [],
+    rngRolls: [],
+    stateDeltaSummary: `Purchased ${action.materialTier} node map for ${price} gold, revealing path to ${targetAreaName}`,
+  }
+}
+
+/**
+ * Execute area map purchase from Exploration Guild
+ */
+async function executeAreaMapPurchase(
+  state: WorldState,
+  action: BuyMapAction,
+  tickBefore: number
+): Promise<ActionLog> {
+  const price = getAreaMapPrice(action.targetDistance!)
+  state.player.gold -= price
+
+  const targetDistance = action.targetDistance!
+  const exploration = state.exploration
+
+  // Find an undiscovered area at target distance
+  let targetAreaId: string | null = null
+  for (const [areaId, area] of exploration.areas) {
+    if (
+      area.distance === targetDistance &&
+      !exploration.playerState.knownAreaIds.includes(areaId)
+    ) {
+      targetAreaId = areaId
+      break
+    }
+  }
+
+  // If no undiscovered area exists, use the corridor endpoint
+  const corridorEndpoint = `area-d${targetDistance}-i0`
+  if (!targetAreaId) {
+    targetAreaId = corridorEndpoint
+  }
+
+  // Ensure corridor exists from TOWN to target distance
+  ensureCorridorToDistance(state, targetDistance)
+
+  // If target area differs from corridor endpoint, connect them
+  if (targetAreaId !== corridorEndpoint) {
+    const connectionExists = exploration.connections.some(
+      (c) =>
+        (c.fromAreaId === corridorEndpoint && c.toAreaId === targetAreaId) ||
+        (c.fromAreaId === targetAreaId && c.toAreaId === corridorEndpoint)
+    )
+    if (!connectionExists) {
+      exploration.connections.push({
+        fromAreaId: corridorEndpoint,
+        toAreaId: targetAreaId,
+        travelTimeMultiplier: 1.0,
+      })
+    }
+  }
+
+  // Use BFS to find the full path including the connection to target
+  const pathResult = findPathUsingAllConnections(state, "TOWN", targetAreaId)
+
+  if (!pathResult) {
+    // This shouldn't happen since we just ensured the corridor and connection
+    return createFailureLog(state, action, "NO_MAPS_AVAILABLE", 0, "path_not_found", {
+      targetDistance,
+      targetAreaId,
+    })
+  }
+
+  await revealAreasAndConnections(state, pathResult.areaIds, pathResult.connectionIds)
+
+  // Get the target area name for the summary
+  const targetAreaForSummary = exploration.areas.get(targetAreaId)
+  const targetAreaName = getAreaDisplayName(targetAreaId, targetAreaForSummary)
+
+  return {
+    tickBefore,
+    actionType: "BuyMap",
+    parameters: { mapType: action.mapType, targetDistance: action.targetDistance },
+    success: true,
+    timeConsumed: 0,
+    levelUps: [],
+    rngRolls: [],
+    stateDeltaSummary: `Purchased area map for ${price} gold, revealing path to ${targetAreaName}`,
+  }
+}
+
+/**
  * Execute BuyMap action (Phase 3: Map Shops)
  *
  * Handles purchasing maps from guild shops:
@@ -1471,133 +1598,14 @@ async function* executeBuyMap(state: WorldState, action: BuyMapAction): ActionGe
     return
   }
 
+  let log: ActionLog
   if (action.mapType === "node") {
-    // Buy a node map from Mining Guild
-    const price = getNodeMapPrice(action.materialTier!)!
-    state.player.gold -= price
-
-    // Find a node and generate the map
-    const map = findNodeForMap(action.materialTier!, state)
-    if (!map) {
-      // This shouldn't happen if check passed, but be defensive
-      yield {
-        done: true,
-        log: createFailureLog(state, action, "NO_MAPS_AVAILABLE", 0, "no_undiscovered_nodes", {
-          materialTier: action.materialTier,
-        }),
-      }
-      return
-    }
-
-    await revealAreasAndConnections(state, map.areaIds, map.connectionIds)
-
-    // Store pending node discovery for later (when player arrives at area)
-    if (!state.player.pendingNodeDiscoveries) {
-      state.player.pendingNodeDiscoveries = []
-    }
-    state.player.pendingNodeDiscoveries.push({
-      areaId: map.targetAreaId,
-      nodeLocationId: map.targetNodeId,
-    })
-
-    // Get the target area name for the summary
-    const targetArea = state.exploration.areas.get(map.targetAreaId)
-    const targetAreaName = getAreaDisplayName(map.targetAreaId, targetArea)
-
-    yield {
-      done: true,
-      log: {
-        tickBefore,
-        actionType: "BuyMap",
-        parameters: { mapType: action.mapType, materialTier: action.materialTier },
-        success: true,
-        timeConsumed: 0,
-        levelUps: [],
-        rngRolls: [],
-        stateDeltaSummary: `Purchased ${action.materialTier} node map for ${price} gold, revealing path to ${targetAreaName}`,
-      },
-    }
-  } else if (action.mapType === "area") {
-    // Buy an area map from Exploration Guild
-    const price = getAreaMapPrice(action.targetDistance!)
-    state.player.gold -= price
-
-    const targetDistance = action.targetDistance!
-    const exploration = state.exploration
-
-    // Find an undiscovered area at target distance
-    let targetAreaId: string | null = null
-    for (const [areaId, area] of exploration.areas) {
-      if (
-        area.distance === targetDistance &&
-        !exploration.playerState.knownAreaIds.includes(areaId)
-      ) {
-        targetAreaId = areaId
-        break
-      }
-    }
-
-    // If no undiscovered area exists, use the corridor endpoint
-    // (ensureCorridorToDistance will create it if needed)
-    const corridorEndpoint = `area-d${targetDistance}-i0`
-    if (!targetAreaId) {
-      targetAreaId = corridorEndpoint
-    }
-
-    // Ensure corridor exists from TOWN to target distance
-    ensureCorridorToDistance(state, targetDistance)
-
-    // If target area differs from corridor endpoint, connect them
-    if (targetAreaId !== corridorEndpoint) {
-      const connectionExists = exploration.connections.some(
-        (c) =>
-          (c.fromAreaId === corridorEndpoint && c.toAreaId === targetAreaId) ||
-          (c.fromAreaId === targetAreaId && c.toAreaId === corridorEndpoint)
-      )
-      if (!connectionExists) {
-        exploration.connections.push({
-          fromAreaId: corridorEndpoint,
-          toAreaId: targetAreaId,
-          travelTimeMultiplier: 1.0,
-        })
-      }
-    }
-
-    // Use BFS to find the full path including the connection to target
-    const pathResult = findPathUsingAllConnections(state, "TOWN", targetAreaId)
-
-    if (!pathResult) {
-      // This shouldn't happen since we just ensured the corridor and connection
-      yield {
-        done: true,
-        log: createFailureLog(state, action, "NO_MAPS_AVAILABLE", 0, "path_not_found", {
-          targetDistance,
-          targetAreaId,
-        }),
-      }
-      return
-    }
-
-    await revealAreasAndConnections(state, pathResult.areaIds, pathResult.connectionIds)
-
-    // Get the target area name for the summary
-    const targetAreaForSummary = exploration.areas.get(targetAreaId)
-    const targetAreaName = getAreaDisplayName(targetAreaId, targetAreaForSummary)
-
-    yield {
-      done: true,
-      log: {
-        tickBefore,
-        actionType: "BuyMap",
-        parameters: { mapType: action.mapType, targetDistance: action.targetDistance },
-        success: true,
-        timeConsumed: 0,
-        levelUps: [],
-        rngRolls: [],
-        stateDeltaSummary: `Purchased area map for ${price} gold, revealing path to ${targetAreaName}`,
-      },
-    }
+    log = await executeNodeMapPurchase(state, action, tickBefore)
+  } else {
+    log = await executeAreaMapPurchase(state, action, tickBefore)
   }
+
+  yield { done: true, log }
 }
 
 // Export generator functions for use in interactive.ts
