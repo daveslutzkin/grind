@@ -70,7 +70,7 @@ export function App() {
                     </div>
                     <div class="save-stats">
                       <span>Tick: {save.metadata.currentTick}</span>
-                      <span>Gold: {save.metadata.gold}</span>
+                      <span>Gold: {save.metadata.gold.toFixed(2)}</span>
                       <span>Rep: {save.metadata.guildReputation}</span>
                     </div>
                     <div class="save-skills">
@@ -134,7 +134,7 @@ export function App() {
         </div>
         <div class="header-right">
           <span class="stat">
-            <span class="stat-label">Gold:</span> {state.gold}
+            <span class="stat-label">Gold:</span> {state.gold.toFixed(2)}
           </span>
           <span class="stat">
             <span class="stat-label">Rep:</span> {state.guildReputation}

@@ -45,7 +45,7 @@ export function CurrentArea({
                   <span class="contract-level">Lv {contract.level}</span>
                 </div>
                 <div class="contract-rewards">
-                  {contract.rewards.gold && <span>{contract.rewards.gold} gold</span>}
+                  {contract.rewards.gold && <span>{contract.rewards.gold.toFixed(2)} gold</span>}
                   {contract.rewards.reputation > 0 && (
                     <span>{contract.rewards.reputation} rep</span>
                   )}
