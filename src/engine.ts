@@ -600,12 +600,12 @@ function executeMultiMaterialGatherInternal(
     }
   }
 
-  // FOCUS mode - extract one material with variance and collateral
-  if (mode === GatherMode.FOCUS) {
-    return executeFocusExtraction(
+  // FOCUS or CAREFUL_ALL mode - extract with mode-specific behavior
+  if (mode === GatherMode.FOCUS || mode === GatherMode.CAREFUL_ALL) {
+    return executeExtraction(
       state,
       node,
-      action.focusMaterialId!,
+      mode,
       skill,
       skillLevel,
       rolls,
@@ -613,23 +613,8 @@ function executeMultiMaterialGatherInternal(
       actualTicks,
       baseTicks,
       luckDelta,
-      parameters
-    )
-  }
-
-  // CAREFUL_ALL mode - extract all materials slowly, no collateral
-  if (mode === GatherMode.CAREFUL_ALL) {
-    return executeCarefulAllExtraction(
-      state,
-      node,
-      skill,
-      skillLevel,
-      rolls,
-      tickBefore,
-      actualTicks,
-      baseTicks,
-      luckDelta,
-      parameters
+      parameters,
+      action.focusMaterialId // Only used in FOCUS mode
     )
   }
 
@@ -736,17 +721,15 @@ async function* executeChop(state: WorldState, action: ChopAction): ActionGenera
 }
 
 /**
- * Execute FOCUS mode extraction
+ * Execute extraction for FOCUS or CAREFUL_ALL modes.
  *
- * New model (Phase 3):
- * - Extract exactly 1 unit (or 2 with bonus yield)
- * - Collateral damage based on material mastery (getCollateralRate)
- * - XP = 1 per unit extracted
+ * FOCUS mode: Extract specific material with collateral damage to others.
+ * CAREFUL_ALL mode: Extract random M16-unlocked material with no collateral.
  */
-function executeFocusExtraction(
+function executeExtraction(
   state: WorldState,
   node: Node,
-  focusMaterialId: string,
+  mode: GatherMode.FOCUS | GatherMode.CAREFUL_ALL,
   skill: GatheringSkillID,
   skillLevel: number,
   rolls: RngRoll[],
@@ -754,42 +737,59 @@ function executeFocusExtraction(
   actualTicks: number,
   baseTicks: number,
   luckDelta: number,
-  parameters: Record<string, unknown>
+  parameters: Record<string, unknown>,
+  focusMaterialId?: string // Only for FOCUS mode
 ): ActionLog {
-  const focusMaterial = node.materials.find((m) => m.materialId === focusMaterialId)!
+  let selectedMaterial: (typeof node.materials)[number]
+  let materialId: string
+
+  if (mode === GatherMode.FOCUS) {
+    // FOCUS: Use the specified material
+    selectedMaterial = node.materials.find((m) => m.materialId === focusMaterialId)!
+    materialId = focusMaterialId!
+  } else {
+    // CAREFUL_ALL: Random selection from M16-unlocked materials
+    const carefulMaterials = node.materials.filter(
+      (m) => m.remainingUnits > 0 && hasMasteryUnlock(skillLevel, m.materialId, "Careful")
+    )
+    const selectionRoll = rollFloat(state.rng, 0, carefulMaterials.length, "careful_select")
+    const selectedIndex = Math.floor(selectionRoll)
+    selectedMaterial = carefulMaterials[selectedIndex]
+    materialId = selectedMaterial.materialId
+  }
 
   // Check bonus yield (M10 = 5%, M20 = 10%)
-  const bonusChance = getBonusYieldChance(skillLevel, focusMaterialId)
+  const bonusChance = getBonusYieldChance(skillLevel, materialId)
   const bonusRoll = rollFloat(state.rng, 0, 1, "bonus_yield")
   const unitsToExtract = bonusRoll < bonusChance ? 2 : 1
 
   // Extract from node (max available)
-  const actualExtracted = Math.min(unitsToExtract, focusMaterial.remainingUnits)
-  focusMaterial.remainingUnits -= actualExtracted
+  const actualExtracted = Math.min(unitsToExtract, selectedMaterial.remainingUnits)
+  selectedMaterial.remainingUnits -= actualExtracted
 
   const extracted: ItemStack[] =
-    actualExtracted > 0 ? [{ itemId: focusMaterialId, quantity: actualExtracted }] : []
+    actualExtracted > 0 ? [{ itemId: materialId, quantity: actualExtracted }] : []
 
   // Add to inventory with overflow handling
   const discardedItems: ItemStack[] = []
   if (actualExtracted > 0) {
-    const result = addToInventoryWithOverflow(state, focusMaterialId, actualExtracted)
+    const result = addToInventoryWithOverflow(state, materialId, actualExtracted)
     if (result.discarded > 0) {
-      discardedItems.push({ itemId: focusMaterialId, quantity: result.discarded })
+      discardedItems.push({ itemId: materialId, quantity: result.discarded })
     }
   }
 
-  // Apply mastery-based collateral damage to other materials
-  const collateralRate = getCollateralRate(skillLevel, focusMaterialId)
+  // Collateral damage only in FOCUS mode
   const collateralDamage: Record<string, number> = {}
-
-  for (const material of node.materials) {
-    if (material.materialId !== focusMaterialId && material.remainingUnits > 0) {
-      // Fractional damage: extracted units × collateral rate
-      const damage = actualExtracted * collateralRate
-      material.remainingUnits = Math.max(0, material.remainingUnits - damage)
-      if (damage > 0) {
-        collateralDamage[material.materialId] = damage
+  if (mode === GatherMode.FOCUS) {
+    const collateralRate = getCollateralRate(skillLevel, materialId)
+    for (const material of node.materials) {
+      if (material.materialId !== materialId && material.remainingUnits > 0) {
+        const damage = actualExtracted * collateralRate
+        material.remainingUnits = Math.max(0, material.remainingUnits - damage)
+        if (damage > 0) {
+          collateralDamage[material.materialId] = damage
+        }
       }
     }
   }
@@ -804,26 +804,28 @@ function executeFocusExtraction(
   const xpAmount = actualExtracted
   const levelUps = grantXP(state, skill, xpAmount)
 
-  // No focus waste in new model (always 100% of 1 unit)
-  const focusWaste = 0
-
   // Update player's cumulative luck
   state.player.gatheringLuckDelta += luckDelta
 
   const extraction: ExtractionLog = {
-    mode: GatherMode.FOCUS,
-    focusMaterial: focusMaterialId,
+    mode,
+    focusMaterial: mode === GatherMode.FOCUS ? materialId : undefined,
     extracted,
     discardedItems: discardedItems.length > 0 ? discardedItems : undefined,
-    focusWaste,
+    focusWaste: 0,
     collateralDamage,
     variance: {
       expected: baseTicks,
       actual: actualTicks,
-      range: [1, bonusChance > 0 ? 2 : 1], // Yield range
+      range: [1, bonusChance > 0 ? 2 : 1],
       luckDelta,
     },
   }
+
+  const actionDescription =
+    mode === GatherMode.FOCUS
+      ? `Focused extraction of ${actualExtracted} ${materialId}`
+      : `Carefully extracted ${actualExtracted} ${materialId}`
 
   return {
     tickBefore,
@@ -836,103 +838,7 @@ function executeFocusExtraction(
     rngRolls: rolls,
     extraction,
     xpSource: "node_extraction",
-    stateDeltaSummary: `Focused extraction of ${actualExtracted} ${focusMaterialId}`,
-  }
-}
-
-/**
- * Execute CAREFUL_ALL mode extraction
- *
- * New model (Phase 3):
- * - Select 1 random material from M16-unlocked materials
- * - Extract 1 unit (or 2 with bonus yield)
- * - No collateral damage
- * - XP = 1 per unit extracted
- */
-function executeCarefulAllExtraction(
-  state: WorldState,
-  node: Node,
-  skill: GatheringSkillID,
-  skillLevel: number,
-  rolls: RngRoll[],
-  tickBefore: number,
-  actualTicks: number,
-  baseTicks: number,
-  luckDelta: number,
-  parameters: Record<string, unknown>
-): ActionLog {
-  // Get materials with Careful (M16) unlock
-  const carefulMaterials = node.materials.filter(
-    (m) => m.remainingUnits > 0 && hasMasteryUnlock(skillLevel, m.materialId, "Careful")
-  )
-
-  // Random selection from careful-unlocked materials
-  const selectionRoll = rollFloat(state.rng, 0, carefulMaterials.length, "careful_select")
-  const selectedIndex = Math.floor(selectionRoll)
-  const selectedMaterial = carefulMaterials[selectedIndex]
-
-  // Check bonus yield for selected material
-  const bonusChance = getBonusYieldChance(skillLevel, selectedMaterial.materialId)
-  const bonusRoll = rollFloat(state.rng, 0, 1, "bonus_yield")
-  const unitsToExtract = bonusRoll < bonusChance ? 2 : 1
-
-  // Extract from node (max available)
-  const actualExtracted = Math.min(unitsToExtract, selectedMaterial.remainingUnits)
-  selectedMaterial.remainingUnits -= actualExtracted
-
-  const extracted: ItemStack[] =
-    actualExtracted > 0 ? [{ itemId: selectedMaterial.materialId, quantity: actualExtracted }] : []
-
-  // Add to inventory with overflow handling
-  const discardedItems: ItemStack[] = []
-  if (actualExtracted > 0) {
-    const result = addToInventoryWithOverflow(state, selectedMaterial.materialId, actualExtracted)
-    if (result.discarded > 0) {
-      discardedItems.push({ itemId: selectedMaterial.materialId, quantity: result.discarded })
-    }
-  }
-
-  // No collateral damage in CAREFUL mode
-
-  // Check if node is depleted
-  const allDepleted = node.materials.every((m) => m.remainingUnits <= 0)
-  if (allDepleted) {
-    node.depleted = true
-  }
-
-  // Grant XP: 1 per unit extracted
-  const xpAmount = actualExtracted
-  const levelUps = grantXP(state, skill, xpAmount)
-
-  // Update player's cumulative luck
-  state.player.gatheringLuckDelta += luckDelta
-
-  const extraction: ExtractionLog = {
-    mode: GatherMode.CAREFUL_ALL,
-    extracted,
-    discardedItems: discardedItems.length > 0 ? discardedItems : undefined,
-    focusWaste: 0,
-    collateralDamage: {}, // No collateral in CAREFUL mode
-    variance: {
-      expected: baseTicks,
-      actual: actualTicks,
-      range: [1, bonusChance > 0 ? 2 : 1], // Yield range
-      luckDelta,
-    },
-  }
-
-  return {
-    tickBefore,
-    actionType: "Gather",
-    parameters,
-    success: true,
-    timeConsumed: actualTicks,
-    skillGained: { skill, amount: xpAmount },
-    levelUps,
-    rngRolls: rolls,
-    extraction,
-    xpSource: "node_extraction",
-    stateDeltaSummary: `Carefully extracted ${actualExtracted} ${selectedMaterial.materialId}`,
+    stateDeltaSummary: actionDescription,
   }
 }
 
