@@ -18,8 +18,8 @@ export function Sidebar({ state }: SidebarProps) {
     <aside class="sidebar">
       <div class="sidebar-top">
         <Inventory inventory={state.inventory} />
-        <Skills skills={state.skills} />
         <Contracts contracts={state.contracts} skills={state.skills} />
+        <Skills skills={state.skills} />
       </div>
       <div class="sidebar-bottom">
         <GameMap
