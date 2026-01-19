@@ -465,12 +465,16 @@ export class GameSession {
 
   /**
    * Expand "fartravel <area>" to concrete reachable area options.
+   * Only shows destinations that are 2+ hops away (fartravel is for multi-hop journeys).
    */
   private expandFarTravelAction(): ValidAction[] {
     const result: ValidAction[] = []
     const reachableAreas = getReachableAreas(this.state)
 
-    for (const { areaId, travelTime } of reachableAreas) {
+    for (const { areaId, travelTime, hops } of reachableAreas) {
+      // Skip 1-hop destinations - use regular "Travel to" for those
+      if (hops <= 1) continue
+
       const action: Action = { type: "FarTravel", destinationAreaId: areaId }
       const check = checkAction(this.state, action)
       if (!check.valid) continue

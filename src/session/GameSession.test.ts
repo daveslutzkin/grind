@@ -364,6 +364,35 @@ describe("GameSession", () => {
           expect(session.getState().location.areaId).toBe(expectedDestinationId)
         }
       })
+
+      it("does not show Fartravel option for 1-hop adjacent destinations", async () => {
+        const session = GameSession.create("fartravel-no-1hop-test")
+
+        // Setup: discover an adjacent area (1-hop away)
+        await session.executeCommand("go miners guild")
+        await session.executeCommand("enrol")
+        await session.executeCommand("leave") // Back to town square
+        await session.executeCommand("survey") // Discover adjacent area
+
+        const actions = session.getValidActions()
+
+        // Get list of "Travel to" destinations (1-hop, using regular travel)
+        const travelToActions = actions.filter((a) => a.displayName.startsWith("Travel to "))
+        const travelDestinations = travelToActions.map((a) =>
+          a.displayName.replace("Travel to ", "")
+        )
+
+        // Get list of "Fartravel to" destinations
+        const fartravelActions = actions.filter((a) => a.displayName.startsWith("Fartravel to "))
+        const fartravelDestinations = fartravelActions.map((a) =>
+          a.displayName.replace("Fartravel to ", "")
+        )
+
+        // Fartravel should NOT include any destinations that are in Travel to (1-hop away)
+        for (const dest of travelDestinations) {
+          expect(fartravelDestinations).not.toContain(dest)
+        }
+      })
     })
 
     describe("craft <recipe> expansion", () => {
