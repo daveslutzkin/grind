@@ -335,7 +335,7 @@ fontSize={8}  // or 9
 
 ---
 
-## 6. Map Area Content Indicators (Guild-Gated)
+## 6. Map Area Content Indicators (Guild-Gated) - DONE
 
 **Priority:** Medium | **Effort:** Medium
 

@@ -11,6 +11,9 @@ interface SidebarProps {
 
 export function Sidebar({ state }: SidebarProps) {
   const hasExplorationSkill = state.skills.some((s) => s.id === "Exploration" && s.level >= 1)
+  const hasMiningSkill = state.skills.some((s) => s.id === "Mining" && s.level >= 1)
+  const hasWoodcuttingSkill = state.skills.some((s) => s.id === "Woodcutting" && s.level >= 1)
+  const hasCombatSkill = state.skills.some((s) => s.id === "Combat" && s.level >= 1)
 
   return (
     <aside class="sidebar">
@@ -25,6 +28,9 @@ export function Sidebar({ state }: SidebarProps) {
           location={state.location}
           exploration={state.exploration}
           hasExplorationSkill={hasExplorationSkill}
+          hasMiningSkill={hasMiningSkill}
+          hasWoodcuttingSkill={hasWoodcuttingSkill}
+          hasCombatSkill={hasCombatSkill}
         />
       </div>
     </aside>

@@ -1,5 +1,5 @@
 import { useState } from "preact/hooks"
-import type { LocationInfo, ExplorationInfo } from "../../../session/types"
+import type { LocationInfo, ExplorationInfo, AreaActivities } from "../../../session/types"
 import {
   getConnectedAreaPosition,
   getStatusColor,
@@ -13,6 +13,52 @@ interface MapProps {
   location: LocationInfo
   exploration: ExplorationInfo
   hasExplorationSkill: boolean
+  hasMiningSkill: boolean
+  hasWoodcuttingSkill: boolean
+  hasCombatSkill: boolean
+}
+
+// Activity icons for map areas (emoji + small font)
+function ActivityIcons({
+  activities,
+  x,
+  y,
+  fontSize = 8,
+}: {
+  activities?: AreaActivities
+  x: number
+  y: number
+  fontSize?: number
+}) {
+  if (!activities) return null
+
+  const icons: string[] = []
+  if (activities.hasMining) icons.push("⛏")
+  if (activities.hasForestry) icons.push("🌲")
+  if (activities.hasCombat) icons.push("⚔")
+  if (activities.hasUnexploredPaths) icons.push("?")
+
+  if (icons.length === 0) return null
+
+  // Center the icons horizontally
+  const totalWidth = icons.length * (fontSize + 2)
+  const startX = x - totalWidth / 2
+
+  return (
+    <g>
+      {icons.map((icon, i) => (
+        <text
+          key={i}
+          x={startX + i * (fontSize + 2)}
+          y={y}
+          fontSize={fontSize}
+          fill={icon === "?" ? "#f97316" : "#aaa"}
+        >
+          {icon}
+        </text>
+      ))}
+    </g>
+  )
 }
 
 // Mini-map SVG showing current area and connections
@@ -21,10 +67,18 @@ function MiniMap({
   location,
   exploration,
   hasExplorationSkill,
+  hasMiningSkill,
+  hasWoodcuttingSkill,
+  hasCombatSkill,
   onClick,
 }: MapProps & { onClick: () => void }) {
-  const { connections } = exploration
+  const { connections, worldMap } = exploration
   const { centerX, centerY, currentAreaRadius, connectedAreaRadius } = MINI_MAP
+
+  // Helper to get activities for an area from worldMap
+  const getAreaActivities = (areaId: string) => {
+    return worldMap.areas.find((a) => a.areaId === areaId)?.activities
+  }
 
   return (
     <svg
@@ -56,6 +110,7 @@ function MiniMap({
       {connections.map((conn, i) => {
         const pos = getConnectedAreaPosition(i, connections.length)
         const color = getStatusColor(conn.explorationStatus)
+        const activities = getAreaActivities(conn.toAreaId)
         return (
           <g key={conn.toAreaId}>
             <circle
@@ -85,6 +140,13 @@ function MiniMap({
             >
               {conn.travelTime} ticks
             </text>
+            {/* Activity icons below travel time */}
+            <ActivityIcons
+              activities={activities}
+              x={pos.x}
+              y={pos.y + connectedAreaRadius + 22}
+              fontSize={7}
+            />
           </g>
         )
       })}
@@ -126,6 +188,44 @@ function MiniMap({
         </g>
       )}
 
+      {/* Activity icons legend - positioned on right side */}
+      {(hasMiningSkill || hasWoodcuttingSkill || hasCombatSkill) && (
+        <g transform={`translate(${MINI_MAP.width - 80}, ${MINI_MAP.height - 70})`}>
+          {hasMiningSkill && (
+            <g>
+              <text x={0} y={4} fill="#aaa" fontSize={9}>
+                ⛏ Mining
+              </text>
+            </g>
+          )}
+          {hasWoodcuttingSkill && (
+            <g transform={`translate(0, ${hasMiningSkill ? 14 : 0})`}>
+              <text x={0} y={4} fill="#aaa" fontSize={9}>
+                🌲 Forestry
+              </text>
+            </g>
+          )}
+          {hasCombatSkill && (
+            <g
+              transform={`translate(0, ${(hasMiningSkill ? 14 : 0) + (hasWoodcuttingSkill ? 14 : 0)})`}
+            >
+              <text x={0} y={4} fill="#aaa" fontSize={9}>
+                ⚔ Combat
+              </text>
+            </g>
+          )}
+          {hasExplorationSkill && (
+            <g
+              transform={`translate(0, ${(hasMiningSkill ? 14 : 0) + (hasWoodcuttingSkill ? 14 : 0) + (hasCombatSkill ? 14 : 0)})`}
+            >
+              <text x={0} y={4} fill="#f97316" fontSize={9}>
+                ? Unexplored
+              </text>
+            </g>
+          )}
+        </g>
+      )}
+
       {/* Click hint */}
       <text x={MINI_MAP.width - 30} y={MINI_MAP.height - 8} fill="#666" fontSize={10}>
         (click)
@@ -139,6 +239,9 @@ function FullScreenMap({
   location,
   exploration,
   hasExplorationSkill,
+  hasMiningSkill,
+  hasWoodcuttingSkill,
+  hasCombatSkill,
   onClose,
 }: MapProps & { onClose: () => void }) {
   const { worldMap } = exploration
@@ -205,6 +308,13 @@ function FullScreenMap({
                 >
                   {area.areaName}
                 </text>
+                {/* Activity icons below area name */}
+                <ActivityIcons
+                  activities={area.activities}
+                  x={pos.x}
+                  y={pos.y + radius + (isCurrent ? 28 : 12)}
+                  fontSize={9}
+                />
                 {isCurrent && (
                   <text
                     x={pos.x}
@@ -245,6 +355,35 @@ function FullScreenMap({
             </g>
           )}
 
+          {/* Activity icons legend - second row */}
+          {(hasMiningSkill || hasWoodcuttingSkill || hasCombatSkill || hasExplorationSkill) && (
+            <g transform={`translate(20, ${height - 20})`}>
+              <text x={0} y={0} fill="#888" fontSize={11}>
+                Activities:
+              </text>
+              {hasMiningSkill && (
+                <text x={75} y={0} fill="#aaa" fontSize={10}>
+                  ⛏ Mining
+                </text>
+              )}
+              {hasWoodcuttingSkill && (
+                <text x={145} y={0} fill="#aaa" fontSize={10}>
+                  🌲 Forestry
+                </text>
+              )}
+              {hasCombatSkill && (
+                <text x={225} y={0} fill="#aaa" fontSize={10}>
+                  ⚔ Combat
+                </text>
+              )}
+              {hasExplorationSkill && (
+                <text x={300} y={0} fill="#f97316" fontSize={10}>
+                  ? Unexplored paths
+                </text>
+              )}
+            </g>
+          )}
+
           <g transform={`translate(${width - 200}, ${height - 40})`}>
             <text x={0} y={0} fill="#666" fontSize={10}>
               Distance from town →
@@ -257,7 +396,14 @@ function FullScreenMap({
 }
 
 // Main Map component (named GameMap to avoid shadowing JS built-in Map)
-export function GameMap({ location, exploration, hasExplorationSkill }: MapProps) {
+export function GameMap({
+  location,
+  exploration,
+  hasExplorationSkill,
+  hasMiningSkill,
+  hasWoodcuttingSkill,
+  hasCombatSkill,
+}: MapProps) {
   const [showFullMap, setShowFullMap] = useState(false)
 
   if (showFullMap) {
@@ -267,6 +413,9 @@ export function GameMap({ location, exploration, hasExplorationSkill }: MapProps
           location={location}
           exploration={exploration}
           hasExplorationSkill={hasExplorationSkill}
+          hasMiningSkill={hasMiningSkill}
+          hasWoodcuttingSkill={hasWoodcuttingSkill}
+          hasCombatSkill={hasCombatSkill}
           onClose={() => setShowFullMap(false)}
         />
       </div>
@@ -280,6 +429,9 @@ export function GameMap({ location, exploration, hasExplorationSkill }: MapProps
         location={location}
         exploration={exploration}
         hasExplorationSkill={hasExplorationSkill}
+        hasMiningSkill={hasMiningSkill}
+        hasWoodcuttingSkill={hasWoodcuttingSkill}
+        hasCombatSkill={hasCombatSkill}
         onClick={() => setShowFullMap(true)}
       />
     </div>

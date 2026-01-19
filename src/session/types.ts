@@ -139,12 +139,24 @@ export interface ExplorationInfo {
 // World Map (for full-screen map view)
 // ============================================================================
 
+/**
+ * Activity indicators for a map area.
+ * Only populated for activities the player can see (based on guild membership).
+ */
+export interface AreaActivities {
+  hasMining?: boolean // Show pickaxe icon - player is in Miners Guild and area has ore veins
+  hasForestry?: boolean // Show tree icon - player is in Foresters Guild and area has tree stands
+  hasCombat?: boolean // Show sword icon - player is in Combat Guild and area has mob camps
+  hasUnexploredPaths?: boolean // Show "?" icon - area has connections to undiscovered areas
+}
+
 export interface WorldMapAreaInfo {
   areaId: AreaID
   areaName: string
   distance: number // Distance from town (0 = town)
   // Returns null if player doesn't have Exploration skill.
   explorationStatus: "undiscovered" | "unexplored" | "partly explored" | "fully explored" | null
+  activities?: AreaActivities // Activity indicators (guild-gated)
 }
 
 export interface WorldMapConnectionInfo {

@@ -6,7 +6,14 @@
  */
 
 import type { WorldState, ActionLog, Action, SkillID } from "../types.js"
-import { getCurrentAreaId, getCurrentLocationId, isInTown, GatherMode } from "../types.js"
+import {
+  getCurrentAreaId,
+  getCurrentLocationId,
+  isInTown,
+  GatherMode,
+  NodeType,
+  ExplorationLocationType,
+} from "../types.js"
 import { createWorld } from "../world.js"
 import { getActionGenerator, executeToCompletion } from "../engine.js"
 import { parseAction, type ParseContext } from "../runner.js"
@@ -43,6 +50,7 @@ import type {
   WorldMapInfo,
   WorldMapAreaInfo,
   WorldMapConnectionInfo,
+  AreaActivities,
 } from "./types.js"
 import { getVisibleMaterials } from "../visibility.js"
 import { nodeIdToLocationId } from "../contracts.js"
@@ -937,15 +945,34 @@ export class GameSession {
     const knownAreaIds = this.state.exploration.playerState.knownAreaIds
     const knownConnectionIds = new Set(this.state.exploration.playerState.knownConnectionIds)
 
+    // Check which skills the player has (level >= 1 means enrolled in guild)
+    const hasMiningSkill = (this.state.player.skills.Mining?.level ?? 0) >= 1
+    const hasWoodcuttingSkill = (this.state.player.skills.Woodcutting?.level ?? 0) >= 1
+    const hasCombatSkill = (this.state.player.skills.Combat?.level ?? 0) >= 1
+    const hasExplorationSkill = (this.state.player.skills.Exploration?.level ?? 0) >= 1
+
     // Build all known areas
     const areas: WorldMapAreaInfo[] = []
     for (const areaId of knownAreaIds) {
       const area = this.state.exploration.areas.get(areaId)
+
+      // Build activity indicators (guild-gated)
+      const activities = this.buildAreaActivities(
+        areaId,
+        area,
+        knownConnectionIds,
+        hasMiningSkill,
+        hasWoodcuttingSkill,
+        hasCombatSkill,
+        hasExplorationSkill
+      )
+
       areas.push({
         areaId,
         areaName: getAreaDisplayName(areaId, area),
         distance: area?.distance ?? 0,
         explorationStatus: this.getExplorationStatus(areaId),
+        activities: Object.keys(activities).length > 0 ? activities : undefined,
       })
     }
 
@@ -968,6 +995,75 @@ export class GameSession {
     }
 
     return { areas, connections }
+  }
+
+  /**
+   * Build activity indicators for a map area.
+   * Only includes activities for guilds the player has joined.
+   */
+  private buildAreaActivities(
+    areaId: string,
+    area: ReturnType<typeof this.state.exploration.areas.get>,
+    knownConnectionIds: Set<string>,
+    hasMiningSkill: boolean,
+    hasWoodcuttingSkill: boolean,
+    hasCombatSkill: boolean,
+    hasExplorationSkill: boolean
+  ): AreaActivities {
+    const activities: AreaActivities = {}
+
+    // Check for ore veins (Mining)
+    if (hasMiningSkill) {
+      const hasOreVeins = this.state.world.nodes.some(
+        (node) => node.areaId === areaId && node.nodeType === NodeType.ORE_VEIN && !node.depleted
+      )
+      if (hasOreVeins) {
+        activities.hasMining = true
+      }
+    }
+
+    // Check for tree stands (Woodcutting/Forestry)
+    if (hasWoodcuttingSkill) {
+      const hasTreeStands = this.state.world.nodes.some(
+        (node) => node.areaId === areaId && node.nodeType === NodeType.TREE_STAND && !node.depleted
+      )
+      if (hasTreeStands) {
+        activities.hasForestry = true
+      }
+    }
+
+    // Check for mob camps (Combat)
+    if (hasCombatSkill && area) {
+      const hasMobCamps = area.locations.some(
+        (loc) => loc.type === ExplorationLocationType.MOB_CAMP
+      )
+      if (hasMobCamps) {
+        activities.hasCombat = true
+      }
+    }
+
+    // Check for unexplored paths (Exploration)
+    if (hasExplorationSkill) {
+      // Find all connections from this area
+      const connectionsFromArea = this.state.exploration.connections.filter(
+        (conn) => conn.fromAreaId === areaId || conn.toAreaId === areaId
+      )
+      // Check if any lead to unknown areas
+      const hasUnexploredPaths = connectionsFromArea.some((conn) => {
+        const otherId = conn.fromAreaId === areaId ? conn.toAreaId : conn.fromAreaId
+        // Check if the connection is known but the other area is not
+        const connKnown =
+          knownConnectionIds.has(`${conn.fromAreaId}->${conn.toAreaId}`) ||
+          knownConnectionIds.has(`${conn.toAreaId}->${conn.fromAreaId}`)
+        const otherAreaKnown = this.state.exploration.playerState.knownAreaIds.includes(otherId)
+        return connKnown && !otherAreaKnown
+      })
+      if (hasUnexploredPaths) {
+        activities.hasUnexploredPaths = true
+      }
+    }
+
+    return activities
   }
 
   private buildTimeInfo(): TimeInfo {
