@@ -11,19 +11,10 @@ Issues discovered during Claude Code playthrough (~15 actions, Tick 0-111).
 **Description:** Two XP threshold systems exist: "exploration thresholds" (25, 35, 55...) used for Mining/Woodcutting, and N² thresholds (4, 9, 16...) used for other skills. All skills should use exploration thresholds. The N² system is obsolete.
 **Fix:** Renamed `getExplorationXPThreshold` to `getXPThresholdForNextLevel`, deleted obsolete N² functions from types.ts, and updated all imports.
 
-### 2. Location commands show raw IDs instead of friendly slugs
-**Status:** To fix
-**Description:** UI buttons show `go area-d1-i3-loc-0` instead of `go ore-vein`. Area travel already uses friendly slugs (line 455) but location travel within an area still uses raw IDs (line 414).
-**File:** `src/session/GameSession.ts` in `expandGoLocationAction()` method (~line 414)
-**Fix:** Change from:
-```typescript
-command: `go ${location.id}`,
-```
-to:
-```typescript
-command: `go ${toSlug(locationName)}`,
-```
-Ensure `toSlug` is imported from `resolution.ts`.
+### 2. Location commands show raw IDs instead of friendly slugs - DONE
+**Status:** Fixed
+**Description:** UI buttons showed `go area-d1-i3-loc-0` instead of `go ore-vein`. Area travel already used friendly slugs but location travel within an area used raw IDs.
+**Fix:** Changed `expandGoLocationAction()` in GameSession.ts to use `toSlug(locationName)`. Also added `matchLocationInCurrentArea()` helper in resolution.ts to support resolving slugified location names back to location IDs.
 
 ### 3. Contract progress shows wrong count
 **Status:** To fix

@@ -182,6 +182,87 @@ describe("GameSession", () => {
         // In TOWN, traveling to locations is instant (0 ticks)
         expect(goLocationAction!.timeCost).toBe(0)
       })
+
+      it("uses friendly slugs instead of raw location IDs in commands", async () => {
+        const session = GameSession.create("loc-slug-test")
+
+        // First, go to miners guild, enrol, and survey to discover an exploration area
+        await session.executeCommand("go miners guild")
+        await session.executeCommand("enrol")
+
+        // Survey multiple times to ensure we discover an adjacent area
+        for (let i = 0; i < 5; i++) {
+          await session.executeCommand("survey")
+        }
+
+        // Leave guild to go back to town square where Travel actions are available
+        await session.executeCommand("leave")
+
+        // Now travel to an exploration area (not TOWN)
+        let actions = session.getValidActions()
+        const travelAction = actions.find((a) => a.displayName.startsWith("Travel to "))
+        expect(travelAction).toBeDefined() // Fail explicitly if no travel action
+        await session.executeCommand(travelAction!.command)
+
+        // Survey in the exploration area to discover locations like "Ore Vein"
+        for (let i = 0; i < 3; i++) {
+          await session.executeCommand("survey")
+        }
+
+        actions = session.getValidActions()
+
+        // Find "Go to ..." actions for locations within the exploration area
+        const goToActions = actions.filter((a) => a.displayName.startsWith("Go to "))
+
+        // We must have at least one Go to action in an exploration area
+        expect(goToActions.length).toBeGreaterThan(0)
+
+        for (const action of goToActions) {
+          // Command should NOT contain raw location IDs like "area-d1-i3-loc-0"
+          expect(action.command).not.toMatch(/-loc-\d+/)
+          // Command should use the slugified location name from displayName
+          const locationNameFromDisplay = action.displayName.replace("Go to ", "")
+          const expectedSlug = locationNameFromDisplay.toLowerCase().replace(/\s+/g, "-")
+          expect(action.command).toBe(`go ${expectedSlug}`)
+        }
+      })
+
+      it("slug-based go location commands can be executed successfully (round-trip)", async () => {
+        const session = GameSession.create("loc-roundtrip-test")
+
+        // Setup: get to an exploration area and discover locations
+        await session.executeCommand("go miners guild")
+        await session.executeCommand("enrol")
+        for (let i = 0; i < 5; i++) {
+          await session.executeCommand("survey")
+        }
+
+        // Leave guild and travel to exploration area
+        await session.executeCommand("leave")
+        let actions = session.getValidActions()
+        const travelAction = actions.find((a) => a.displayName.startsWith("Travel to "))
+        expect(travelAction).toBeDefined()
+        await session.executeCommand(travelAction!.command)
+
+        // Survey to discover locations
+        for (let i = 0; i < 3; i++) {
+          await session.executeCommand("survey")
+        }
+
+        actions = session.getValidActions()
+        const goToAction = actions.find((a) => a.displayName.startsWith("Go to "))
+        expect(goToAction).toBeDefined()
+
+        // Get expected destination from the action
+        const expectedLocationId = (goToAction!.action as { locationId: string }).locationId
+
+        // Execute the slug-based command
+        const result = await session.executeCommand(goToAction!.command)
+
+        // Verify the command succeeded and player is at the expected location
+        expect(result.success).toBe(true)
+        expect(session.getState().location.locationId).toBe(expectedLocationId)
+      })
     })
 
     describe("go <area> expansion", () => {

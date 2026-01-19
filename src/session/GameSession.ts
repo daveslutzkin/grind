@@ -410,7 +410,7 @@ export class GameSession {
 
       result.push({
         displayName: `Go to ${locationName}`,
-        command: `go ${location.id}`,
+        command: `go ${toSlug(locationName)}`,
         action,
         timeCost: check.timeCost,
         isVariable: false,

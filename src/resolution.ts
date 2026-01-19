@@ -6,7 +6,7 @@
 
 import type { WorldState, ExplorationLocation, GatheringSkillID } from "./types.js"
 import { ExplorationLocationType } from "./types.js"
-import { LOCATION_DISPLAY_NAMES } from "./world.js"
+import { LOCATION_DISPLAY_NAMES, getLocationDisplayName } from "./world.js"
 import { getAreaDisplayName } from "./exploration.js"
 
 /**
@@ -139,7 +139,13 @@ export function resolveDestination(
     }
   }
 
-  // 3. Check LOCATION_DISPLAY_NAMES (fuzzy match - check if input contains display name)
+  // 3. Check locations in current area by display name (handles slugs like "ore-vein" -> "Ore Vein")
+  const currentAreaLocationMatch = matchLocationInCurrentArea(state, normalizedInput)
+  if (currentAreaLocationMatch) {
+    return { type: "location", locationId: currentAreaLocationMatch }
+  }
+
+  // 4. Check LOCATION_DISPLAY_NAMES (fuzzy match - check if input contains display name)
   const matchedLocation = Object.entries(LOCATION_DISPLAY_NAMES).find(([, displayName]) => {
     const normalizedDisplayName = normalizeName(displayName)
     // Match if input contains display name or display name contains input
@@ -152,7 +158,7 @@ export function resolveDestination(
     return { type: "location", locationId: matchedLocation[0] }
   }
 
-  // 4. Check known area names (exact and prefix matches)
+  // 5. Check known area names (exact and prefix matches)
   const areaMatch = matchAreaByName(state, input, mode)
   if (areaMatch) {
     // If mode is "far", use farTravel type
@@ -162,7 +168,7 @@ export function resolveDestination(
     return { type: "area", areaId: areaMatch }
   }
 
-  // 5. Not found
+  // 6. Not found
   return {
     type: "notFound",
     reason: `Unknown destination: "${input}"`,
@@ -246,6 +252,34 @@ function findEnemyCampLocation(state: WorldState, index: number): string | null 
   }
 
   return mobCampLocations[index - 1].id
+}
+
+/**
+ * Match a location in the current area by its display name
+ * This handles slugified names like "ore-vein" matching "Ore Vein"
+ * @param state - Current world state
+ * @param normalizedInput - Normalized input string (lowercase, dashes/underscores converted to spaces)
+ * @returns locationId if found, null otherwise
+ */
+function matchLocationInCurrentArea(state: WorldState, normalizedInput: string): string | null {
+  const currentAreaId = state.exploration.playerState.currentAreaId
+  const area = state.exploration.areas.get(currentAreaId)
+  const knownLocationIds = new Set(state.exploration.playerState.knownLocationIds)
+
+  if (!area) return null
+
+  for (const location of area.locations) {
+    if (!knownLocationIds.has(location.id)) continue
+
+    const displayName = getLocationDisplayName(location.id, currentAreaId, state)
+    const normalizedDisplayName = normalizeName(displayName)
+
+    if (normalizedDisplayName === normalizedInput) {
+      return location.id
+    }
+  }
+
+  return null
 }
 
 /**
