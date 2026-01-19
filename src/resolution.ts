@@ -88,13 +88,22 @@ export function resolveDestination(
   // 1. Check for gathering node aliases
   if (inputLower in GATHERING_NODE_ALIASES) {
     const skillType = GATHERING_NODE_ALIASES[inputLower]
+
+    // First check current area
     const locationId = findGatheringNodeLocation(state, skillType)
     if (locationId) {
       return { type: "location", locationId }
     }
+
+    // If not in current area, check other known areas and fartravel there
+    const areaWithNode = findAreaWithGatheringNode(state, skillType)
+    if (areaWithNode) {
+      return { type: "farTravel", areaId: areaWithNode }
+    }
+
     return {
       type: "notFound",
-      reason: `No ${skillType} node found in current area`,
+      reason: `No ${skillType} node found in any known area`,
     }
   }
 
@@ -167,6 +176,37 @@ function findGatheringNodeLocation(state: WorldState, skillType: GatheringSkillI
   )
 
   return matchingLocation?.id ?? null
+}
+
+/**
+ * Find an area (other than current) that contains a known gathering node of the specified skill type.
+ * Used for "go ore vein" when the player is not in an area with an ore vein but knows of one elsewhere.
+ * @returns areaId if found, null otherwise
+ */
+function findAreaWithGatheringNode(state: WorldState, skillType: GatheringSkillID): string | null {
+  const currentAreaId = state.exploration.playerState.currentAreaId
+  const knownLocationIds = new Set(state.exploration.playerState.knownLocationIds)
+
+  // Search all known areas (except current) for a matching gathering node
+  for (const areaId of state.exploration.playerState.knownAreaIds) {
+    if (areaId === currentAreaId) continue
+
+    const area = state.exploration.areas.get(areaId)
+    if (!area) continue
+
+    const hasMatchingNode = area.locations.some(
+      (loc: ExplorationLocation) =>
+        loc.type === ExplorationLocationType.GATHERING_NODE &&
+        loc.gatheringSkillType === skillType &&
+        knownLocationIds.has(loc.id)
+    )
+
+    if (hasMatchingNode) {
+      return areaId
+    }
+  }
+
+  return null
 }
 
 /**

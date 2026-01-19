@@ -171,7 +171,7 @@ function FullScreenMap({ location, exploration, onClose }: MapProps & { onClose:
 
             const color = getStatusColor(area.explorationStatus)
             const isCurrent = area.areaId === location.areaId
-            const radius = isCurrent ? FULL_MAP.currentNodeRadius : 25
+            const radius = isCurrent ? FULL_MAP.currentNodeRadius : FULL_MAP.minNodeRadius
 
             return (
               <g key={area.areaId}>
@@ -188,10 +188,10 @@ function FullScreenMap({ location, exploration, onClose }: MapProps & { onClose:
                   y={pos.y + 4}
                   textAnchor="middle"
                   fill="white"
-                  fontSize={12}
+                  fontSize={10}
                   fontWeight={isCurrent ? "bold" : "normal"}
                 >
-                  {truncateText(area.areaName, 12)}
+                  {area.areaName}
                 </text>
                 {isCurrent && (
                   <text

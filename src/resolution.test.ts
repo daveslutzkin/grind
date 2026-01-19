@@ -199,8 +199,29 @@ describe("Resolution Module", () => {
       expect(result.locationId).toBe("TEST_AREA-loc-2")
     })
 
-    it("should return notFound when gathering node not in current area", () => {
+    it("should return farTravel when gathering node is in another known area", () => {
+      // Player is in TOWN but the ore vein is in TEST_AREA
       state.exploration.playerState.currentAreaId = "TOWN"
+
+      // Ensure we have a connection from TOWN to TEST_AREA for pathfinding
+      state.exploration.connections.push({
+        fromAreaId: "TOWN",
+        toAreaId: "TEST_AREA",
+        travelTimeMultiplier: 1,
+      })
+      state.exploration.playerState.knownConnectionIds.push("TOWN->TEST_AREA")
+
+      const result = resolveDestination(state, "ore", "near")
+      expect(result.type).toBe("farTravel")
+      expect(result.areaId).toBe("TEST_AREA")
+    })
+
+    it("should return notFound when gathering node not found anywhere", () => {
+      // Create a state with no gathering nodes at all
+      state.exploration.playerState.currentAreaId = "TOWN"
+      // Remove the test area from known locations
+      state.exploration.playerState.knownLocationIds = []
+
       const result = resolveDestination(state, "ore", "near")
       expect(result.type).toBe("notFound")
       expect(result.reason).toContain("No Mining node found")

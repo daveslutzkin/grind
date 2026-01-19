@@ -100,7 +100,7 @@ export function truncateText(text: string, maxLen: number): string {
 export const FULL_MAP = {
   width: 800,
   height: 600,
-  padding: 60,
+  padding: 100, // Extra padding to accommodate text labels
   minNodeRadius: 20,
   maxNodeRadius: 40,
   currentNodeRadius: 30,
