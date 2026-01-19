@@ -1,4 +1,9 @@
-import { executeAction, getActionGenerator, yieldFailureResult } from "./engine.js"
+import {
+  executeAction,
+  getActionGenerator,
+  yieldFailureResult,
+  revealAreasAndConnections,
+} from "./engine.js"
 import type { ActionTick } from "./types.js"
 import { createWorld, TOWN_LOCATIONS } from "./world.js"
 import type {
@@ -1764,5 +1769,66 @@ describe("yieldFailureResult", () => {
     expect(result.log).toBeDefined()
     expect(result.log!.success).toBe(false)
     expect(result.log!.failureDetails?.type).toBe("WRONG_LOCATION")
+  })
+})
+
+describe("revealAreasAndConnections", () => {
+  it("should add unknown areas to knownAreaIds", async () => {
+    const state = createWorld("test-seed")
+    const areaId = getDistance1AreaId(state)
+    // Ensure area is not known
+    state.exploration.playerState.knownAreaIds = state.exploration.playerState.knownAreaIds.filter(
+      (id) => id !== areaId
+    )
+
+    await revealAreasAndConnections(state, [areaId], [])
+
+    expect(state.exploration.playerState.knownAreaIds).toContain(areaId)
+  })
+
+  it("should not duplicate already-known areas", async () => {
+    const state = createWorld("test-seed")
+    const areaId = getDistance1AreaId(state)
+    state.exploration.playerState.knownAreaIds.push(areaId)
+    const countBefore = state.exploration.playerState.knownAreaIds.filter(
+      (id) => id === areaId
+    ).length
+
+    await revealAreasAndConnections(state, [areaId], [])
+
+    const countAfter = state.exploration.playerState.knownAreaIds.filter(
+      (id) => id === areaId
+    ).length
+    expect(countAfter).toBe(countBefore)
+  })
+
+  it("should add unknown connections to knownConnectionIds", async () => {
+    const state = createWorld("test-seed")
+    // Get a connection from the exploration state and create its ID
+    const connection = Array.from(state.exploration.connections.values())[0]
+    const connectionId = `${connection.fromAreaId}->${connection.toAreaId}`
+    state.exploration.playerState.knownConnectionIds =
+      state.exploration.playerState.knownConnectionIds.filter((id) => id !== connectionId)
+
+    await revealAreasAndConnections(state, [], [connectionId])
+
+    expect(state.exploration.playerState.knownConnectionIds).toContain(connectionId)
+  })
+
+  it("should not duplicate already-known connections", async () => {
+    const state = createWorld("test-seed")
+    const connection = Array.from(state.exploration.connections.values())[0]
+    const connectionId = `${connection.fromAreaId}->${connection.toAreaId}`
+    state.exploration.playerState.knownConnectionIds.push(connectionId)
+    const countBefore = state.exploration.playerState.knownConnectionIds.filter(
+      (id) => id === connectionId
+    ).length
+
+    await revealAreasAndConnections(state, [], [connectionId])
+
+    const countAfter = state.exploration.playerState.knownConnectionIds.filter(
+      (id) => id === connectionId
+    ).length
+    expect(countAfter).toBe(countBefore)
   })
 })

@@ -144,6 +144,35 @@ export function yieldFailureResult(
   }
 }
 
+/**
+ * Reveal areas and connections to the player by adding them to known lists.
+ * Also ensures each area is fully generated (content, connections, name).
+ */
+export async function revealAreasAndConnections(
+  state: WorldState,
+  areaIds: string[],
+  connectionIds: string[]
+): Promise<void> {
+  // Reveal all areas and generate their names
+  for (const areaId of areaIds) {
+    if (!state.exploration.playerState.knownAreaIds.includes(areaId)) {
+      state.exploration.playerState.knownAreaIds.push(areaId)
+    }
+    // Ensure area is fully generated (content + connections + name)
+    const area = state.exploration.areas.get(areaId)
+    if (area) {
+      await ensureAreaFullyGenerated(state, area)
+    }
+  }
+
+  // Reveal all connections
+  for (const connectionId of connectionIds) {
+    if (!state.exploration.playerState.knownConnectionIds.includes(connectionId)) {
+      state.exploration.playerState.knownConnectionIds.push(connectionId)
+    }
+  }
+}
+
 function extractParameters(action: Action): Record<string, unknown> {
   const { type: _type, ...params } = action
   return params
@@ -275,24 +304,7 @@ async function* executeAcceptContract(
   if (contract?.includedMap) {
     const map = contract.includedMap
 
-    // Reveal all areas in the path (add to knownAreaIds) and generate their names
-    for (const areaId of map.areaIds) {
-      if (!state.exploration.playerState.knownAreaIds.includes(areaId)) {
-        state.exploration.playerState.knownAreaIds.push(areaId)
-      }
-      // Ensure area is fully generated (content + connections + name)
-      const area = state.exploration.areas.get(areaId)
-      if (area) {
-        await ensureAreaFullyGenerated(state, area)
-      }
-    }
-
-    // Reveal all connections in the path (add to knownConnectionIds)
-    for (const connectionId of map.connectionIds) {
-      if (!state.exploration.playerState.knownConnectionIds.includes(connectionId)) {
-        state.exploration.playerState.knownConnectionIds.push(connectionId)
-      }
-    }
+    await revealAreasAndConnections(state, map.areaIds, map.connectionIds)
 
     // Store pending node discovery for later (when player arrives at area)
     if (!state.player.pendingNodeDiscoveries) {
@@ -1571,24 +1583,7 @@ async function* executeBuyMap(state: WorldState, action: BuyMapAction): ActionGe
       return
     }
 
-    // Reveal all areas in the path (add to knownAreaIds) and generate their names
-    for (const areaId of map.areaIds) {
-      if (!state.exploration.playerState.knownAreaIds.includes(areaId)) {
-        state.exploration.playerState.knownAreaIds.push(areaId)
-      }
-      // Ensure area is fully generated (content + connections + name)
-      const area = state.exploration.areas.get(areaId)
-      if (area) {
-        await ensureAreaFullyGenerated(state, area)
-      }
-    }
-
-    // Reveal all connections in the path (add to knownConnectionIds)
-    for (const connectionId of map.connectionIds) {
-      if (!state.exploration.playerState.knownConnectionIds.includes(connectionId)) {
-        state.exploration.playerState.knownConnectionIds.push(connectionId)
-      }
-    }
+    await revealAreasAndConnections(state, map.areaIds, map.connectionIds)
 
     // Store pending node discovery for later (when player arrives at area)
     if (!state.player.pendingNodeDiscoveries) {
@@ -1677,24 +1672,7 @@ async function* executeBuyMap(state: WorldState, action: BuyMapAction): ActionGe
       return
     }
 
-    // Reveal all areas in the path and generate their names
-    for (const areaId of pathResult.areaIds) {
-      if (!exploration.playerState.knownAreaIds.includes(areaId)) {
-        exploration.playerState.knownAreaIds.push(areaId)
-      }
-      // Ensure area is fully generated (content + connections + name)
-      const area = exploration.areas.get(areaId)
-      if (area) {
-        await ensureAreaFullyGenerated(state, area)
-      }
-    }
-
-    // Reveal all connections in the path
-    for (const connectionId of pathResult.connectionIds) {
-      if (!exploration.playerState.knownConnectionIds.includes(connectionId)) {
-        exploration.playerState.knownConnectionIds.push(connectionId)
-      }
-    }
+    await revealAreasAndConnections(state, pathResult.areaIds, pathResult.connectionIds)
 
     // Get the target area name for the summary
     const targetAreaForSummary = exploration.areas.get(targetAreaId)
