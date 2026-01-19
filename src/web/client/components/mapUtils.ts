@@ -4,7 +4,7 @@
  * Pure functions for mini-map and full-screen map calculations.
  */
 
-import type { ConnectionInfo, ExplorationInfo, LocationInfo } from "../../../session/types"
+import type { ConnectionInfo, WorldMapAreaInfo, WorldMapInfo } from "../../../session/types"
 import type { AreaID } from "../../../types"
 
 // ============================================================================
@@ -94,85 +94,6 @@ export function truncateText(text: string, maxLen: number): string {
 }
 
 // ============================================================================
-// World Map Data
-// ============================================================================
-
-export interface WorldMapArea {
-  areaId: AreaID
-  areaName: string
-  distance: number // Distance from town (0 = town)
-  explorationStatus: ExplorationStatus
-  isCurrent: boolean
-}
-
-export interface WorldMapConnection {
-  fromAreaId: AreaID
-  toAreaId: AreaID
-}
-
-export interface WorldMapData {
-  areas: WorldMapArea[]
-  connections: WorldMapConnection[]
-}
-
-/**
- * Build world map data from exploration info plus full world graph.
- * This is used for the full-screen map view.
- */
-export function buildWorldMapData(
-  currentLocation: LocationInfo,
-  exploration: ExplorationInfo,
-  knownAreaIds: AreaID[],
-  knownConnectionIds: string[],
-  areaDistances: Map<AreaID, number>,
-  areaNames: Map<AreaID, string>
-): WorldMapData {
-  const areas: WorldMapArea[] = []
-  const connections: WorldMapConnection[] = []
-  const addedConnections = new Set<string>()
-
-  // Build area nodes
-  for (const areaId of knownAreaIds) {
-    const distance = areaDistances.get(areaId) ?? 0
-    const name = areaNames.get(areaId) ?? areaId
-
-    // Find exploration status - check if it's in the current area's connections
-    let explorationStatus: ExplorationStatus = "unexplored"
-    const conn = exploration.connections.find((c) => c.toAreaId === areaId)
-    if (conn) {
-      explorationStatus = conn.explorationStatus
-    } else if (areaId === currentLocation.areaId) {
-      // Current area uses the location's exploration status
-      explorationStatus = currentLocation.explorationStatus
-    }
-
-    areas.push({
-      areaId,
-      areaName: name,
-      distance,
-      explorationStatus,
-      isCurrent: areaId === currentLocation.areaId,
-    })
-  }
-
-  // Build connections
-  for (const connId of knownConnectionIds) {
-    const [from, to] = connId.split("->")
-    // Only add if both areas are known
-    if (knownAreaIds.includes(from) && knownAreaIds.includes(to)) {
-      // Avoid duplicate connections (A->B and B->A)
-      const normalizedId = [from, to].sort().join("-")
-      if (!addedConnections.has(normalizedId)) {
-        addedConnections.add(normalizedId)
-        connections.push({ fromAreaId: from, toAreaId: to })
-      }
-    }
-  }
-
-  return { areas, connections }
-}
-
-// ============================================================================
 // Full-Screen Map Layout
 // ============================================================================
 
@@ -190,7 +111,7 @@ export const FULL_MAP = {
  * Uses a simple layout: horizontal by distance from town.
  */
 export function calculateFullMapPositions(
-  worldMap: WorldMapData,
+  worldMap: WorldMapInfo,
   config = FULL_MAP
 ): Map<AreaID, Position> {
   const positions = new Map<AreaID, Position>()
@@ -200,7 +121,7 @@ export function calculateFullMapPositions(
   }
 
   // Group areas by distance
-  const byDistance = new Map<number, WorldMapArea[]>()
+  const byDistance = new Map<number, WorldMapAreaInfo[]>()
   let maxDistance = 0
 
   for (const area of worldMap.areas) {

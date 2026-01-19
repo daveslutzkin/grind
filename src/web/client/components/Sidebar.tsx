@@ -3,7 +3,7 @@ import { Inventory } from "./Inventory"
 import { Storage } from "./Storage"
 import { Skills } from "./Skills"
 import { Contracts } from "./Contracts"
-import { Map } from "./Map"
+import { GameMap } from "./Map"
 
 interface SidebarProps {
   state: GameStateSnapshot
@@ -19,7 +19,7 @@ export function Sidebar({ state }: SidebarProps) {
         <Contracts contracts={state.contracts} skills={state.skills} />
       </div>
       <div class="sidebar-bottom">
-        <Map location={state.location} exploration={state.exploration} />
+        <GameMap location={state.location} exploration={state.exploration} />
       </div>
     </aside>
   )

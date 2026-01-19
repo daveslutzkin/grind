@@ -4,13 +4,11 @@ import {
   getStatusColor,
   getDistanceLineStyle,
   truncateText,
-  buildWorldMapData,
   calculateFullMapPositions,
   MINI_MAP,
   FULL_MAP,
-  type WorldMapData,
 } from "./mapUtils"
-import type { ExplorationInfo, LocationInfo, ConnectionInfo } from "../../../session/types"
+import type { WorldMapInfo } from "../../../session/types"
 
 describe("mapUtils", () => {
   describe("getConnectedAreaPosition", () => {
@@ -117,141 +115,21 @@ describe("mapUtils", () => {
     })
   })
 
-  describe("buildWorldMapData", () => {
-    const mockLocation: LocationInfo = {
-      areaId: "TOWN",
-      areaName: "Town",
-      areaDistance: 0,
-      locationId: null,
-      locationName: "Town Square",
-      isInTown: true,
-      explorationStatus: "fully explored",
-    }
-
-    const mockConnection: ConnectionInfo = {
-      toAreaId: "area-1",
-      toAreaName: "Rocky Clearing",
-      travelTime: 10,
-      explorationStatus: "partly explored",
-      relativeDistance: "further",
-    }
-
-    const mockExploration: ExplorationInfo = {
-      connections: [mockConnection],
-      knownGatheringNodes: [],
-      hasUndiscoveredAreas: false,
-      hasUndiscoveredLocations: false,
-    }
-
-    it("includes current area in world map", () => {
-      const result = buildWorldMapData(
-        mockLocation,
-        mockExploration,
-        ["TOWN"],
-        [],
-        new Map([["TOWN", 0]]),
-        new Map([["TOWN", "Town"]])
-      )
-
-      expect(result.areas).toHaveLength(1)
-      expect(result.areas[0].areaId).toBe("TOWN")
-      expect(result.areas[0].isCurrent).toBe(true)
-    })
-
-    it("includes connected areas with correct exploration status", () => {
-      const result = buildWorldMapData(
-        mockLocation,
-        mockExploration,
-        ["TOWN", "area-1"],
-        ["TOWN->area-1"],
-        new Map([
-          ["TOWN", 0],
-          ["area-1", 1],
-        ]),
-        new Map([
-          ["TOWN", "Town"],
-          ["area-1", "Rocky Clearing"],
-        ])
-      )
-
-      expect(result.areas).toHaveLength(2)
-
-      const area1 = result.areas.find((a) => a.areaId === "area-1")
-      expect(area1).toBeDefined()
-      expect(area1!.explorationStatus).toBe("partly explored")
-      expect(area1!.isCurrent).toBe(false)
-    })
-
-    it("builds connections between known areas", () => {
-      const result = buildWorldMapData(
-        mockLocation,
-        mockExploration,
-        ["TOWN", "area-1"],
-        ["TOWN->area-1"],
-        new Map([
-          ["TOWN", 0],
-          ["area-1", 1],
-        ]),
-        new Map([
-          ["TOWN", "Town"],
-          ["area-1", "Rocky Clearing"],
-        ])
-      )
-
-      expect(result.connections).toHaveLength(1)
-      expect(result.connections[0].fromAreaId).toBe("TOWN")
-      expect(result.connections[0].toAreaId).toBe("area-1")
-    })
-
-    it("deduplicates bidirectional connections", () => {
-      const result = buildWorldMapData(
-        mockLocation,
-        mockExploration,
-        ["TOWN", "area-1"],
-        ["TOWN->area-1", "area-1->TOWN"],
-        new Map([
-          ["TOWN", 0],
-          ["area-1", 1],
-        ]),
-        new Map([
-          ["TOWN", "Town"],
-          ["area-1", "Rocky Clearing"],
-        ])
-      )
-
-      expect(result.connections).toHaveLength(1)
-    })
-
-    it("only includes connections where both areas are known", () => {
-      const result = buildWorldMapData(
-        mockLocation,
-        mockExploration,
-        ["TOWN"], // Only TOWN is known
-        ["TOWN->area-1", "TOWN->area-2"],
-        new Map([["TOWN", 0]]),
-        new Map([["TOWN", "Town"]])
-      )
-
-      expect(result.connections).toHaveLength(0)
-    })
-  })
-
   describe("calculateFullMapPositions", () => {
     it("returns empty map for empty world", () => {
-      const worldMap: WorldMapData = { areas: [], connections: [] }
+      const worldMap: WorldMapInfo = { areas: [], connections: [] }
       const positions = calculateFullMapPositions(worldMap)
       expect(positions.size).toBe(0)
     })
 
     it("places single area at center", () => {
-      const worldMap: WorldMapData = {
+      const worldMap: WorldMapInfo = {
         areas: [
           {
             areaId: "TOWN",
             areaName: "Town",
             distance: 0,
             explorationStatus: "fully explored",
-            isCurrent: true,
           },
         ],
         connections: [],
@@ -265,28 +143,25 @@ describe("mapUtils", () => {
     })
 
     it("places areas horizontally by distance", () => {
-      const worldMap: WorldMapData = {
+      const worldMap: WorldMapInfo = {
         areas: [
           {
             areaId: "TOWN",
             areaName: "Town",
             distance: 0,
             explorationStatus: "fully explored",
-            isCurrent: false,
           },
           {
             areaId: "area-1",
             areaName: "Area 1",
             distance: 1,
             explorationStatus: "unexplored",
-            isCurrent: true,
           },
           {
             areaId: "area-2",
             areaName: "Area 2",
             distance: 2,
             explorationStatus: "unexplored",
-            isCurrent: false,
           },
         ],
         connections: [],
@@ -305,28 +180,25 @@ describe("mapUtils", () => {
     })
 
     it("spreads areas at same distance vertically", () => {
-      const worldMap: WorldMapData = {
+      const worldMap: WorldMapInfo = {
         areas: [
           {
             areaId: "TOWN",
             areaName: "Town",
             distance: 0,
             explorationStatus: "fully explored",
-            isCurrent: true,
           },
           {
             areaId: "area-1",
             areaName: "Area 1",
             distance: 1,
             explorationStatus: "unexplored",
-            isCurrent: false,
           },
           {
             areaId: "area-2",
             areaName: "Area 2",
             distance: 1, // Same distance as area-1
             explorationStatus: "unexplored",
-            isCurrent: false,
           },
         ],
         connections: [],
@@ -344,13 +216,12 @@ describe("mapUtils", () => {
     })
 
     it("keeps all positions within bounds", () => {
-      const worldMap: WorldMapData = {
+      const worldMap: WorldMapInfo = {
         areas: Array.from({ length: 10 }, (_, i) => ({
           areaId: `area-${i}`,
           areaName: `Area ${i}`,
           distance: i % 3,
           explorationStatus: "unexplored" as const,
-          isCurrent: i === 0,
         })),
         connections: [],
       }

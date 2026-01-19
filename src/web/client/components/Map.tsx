@@ -5,6 +5,7 @@ import {
   getStatusColor,
   getDistanceLineStyle,
   truncateText,
+  calculateFullMapPositions,
   MINI_MAP,
   FULL_MAP,
 } from "./mapUtils"
@@ -129,42 +130,10 @@ function MiniMap({ location, exploration, onClick }: MapProps & { onClick: () =>
 // Full-screen map showing entire known world
 function FullScreenMap({ location, exploration, onClose }: MapProps & { onClose: () => void }) {
   const { worldMap } = exploration
-  const { width, height, padding } = FULL_MAP
+  const { width, height } = FULL_MAP
 
-  // Calculate positions for areas based on distance from town
-  const positions = new Map<string, { x: number; y: number }>()
-
-  if (worldMap.areas.length > 0) {
-    // Group areas by distance
-    const byDistance = new Map<number, typeof worldMap.areas>()
-    let maxDistance = 0
-
-    for (const area of worldMap.areas) {
-      const group = byDistance.get(area.distance) || []
-      group.push(area)
-      byDistance.set(area.distance, group)
-      maxDistance = Math.max(maxDistance, area.distance)
-    }
-
-    // Calculate positions
-    const usableWidth = width - 2 * padding
-    const usableHeight = height - 2 * padding
-
-    for (const [distance, areas] of byDistance.entries()) {
-      // X position based on distance (town on left, far areas on right)
-      const x = maxDistance === 0 ? width / 2 : padding + (distance / maxDistance) * usableWidth
-
-      // Y positions spread vertically
-      const ySpacing = usableHeight / (areas.length + 1)
-
-      areas.forEach((area, index) => {
-        positions.set(area.areaId, {
-          x,
-          y: padding + ySpacing * (index + 1),
-        })
-      })
-    }
-  }
+  // Calculate positions for areas using the utility function
+  const positions = calculateFullMapPositions(worldMap)
 
   return (
     <div class="full-map-modal">
@@ -271,8 +240,8 @@ function FullScreenMap({ location, exploration, onClose }: MapProps & { onClose:
   )
 }
 
-// Main Map component
-export function Map({ location, exploration }: MapProps) {
+// Main Map component (named GameMap to avoid shadowing JS built-in Map)
+export function GameMap({ location, exploration }: MapProps) {
   const [showFullMap, setShowFullMap] = useState(false)
 
   if (showFullMap) {
