@@ -1,5 +1,5 @@
 import type { JSX } from "preact"
-import { useState, useCallback } from "preact/hooks"
+import { useState, useCallback, useRef, useEffect } from "preact/hooks"
 
 interface CommandInputProps {
   onSubmit: (command: string) => void
@@ -8,6 +8,15 @@ interface CommandInputProps {
 
 export function CommandInput({ onSubmit, disabled = false }: CommandInputProps) {
   const [value, setValue] = useState("")
+  // eslint-disable-next-line no-undef
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // Refocus input when command execution completes (disabled becomes false)
+  useEffect(() => {
+    if (!disabled && inputRef.current) {
+      inputRef.current.focus()
+    }
+  }, [disabled])
 
   const handleSubmit = useCallback(
     (e: JSX.TargetedEvent) => {
@@ -16,6 +25,8 @@ export function CommandInput({ onSubmit, disabled = false }: CommandInputProps) 
       if (trimmed && !disabled) {
         onSubmit(trimmed)
         setValue("")
+        // Refocus immediately after submission
+        inputRef.current?.focus()
       }
     },
     [value, onSubmit, disabled]
@@ -30,6 +41,8 @@ export function CommandInput({ onSubmit, disabled = false }: CommandInputProps) 
         if (trimmed && !disabled) {
           onSubmit(trimmed)
           setValue("")
+          // Refocus immediately after submission
+          inputRef.current?.focus()
         }
       }
     },
@@ -40,6 +53,7 @@ export function CommandInput({ onSubmit, disabled = false }: CommandInputProps) 
     <form class="command-input" onSubmit={handleSubmit}>
       <span class="prompt">&gt;</span>
       <input
+        ref={inputRef}
         type="text"
         value={value}
         onInput={(e) => setValue(e.currentTarget.value)}
