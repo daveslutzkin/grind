@@ -29,7 +29,7 @@ export function CurrentArea({
       <div class="area-header">
         <h2 class="area-title">{location.areaName}</h2>
         <span class="area-location">{location.locationName}</span>
-        {location.explorationStatus !== "fully explored" && (
+        {location.explorationStatus && location.explorationStatus !== "fully explored" && (
           <span class="area-status">{location.explorationStatus}</span>
         )}
       </div>

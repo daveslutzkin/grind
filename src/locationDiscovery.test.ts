@@ -66,6 +66,7 @@ describe("Location Discovery", () => {
   describe("Nodes not visible until discovered", () => {
     it("should NOT show nodes at an area until locations are discovered", async () => {
       const state = createWorld("ore-test")
+      state.player.skills.Exploration = { level: 1, xp: 0 } // Need Exploration skill to see status
       const oreAreaId = getOreAreaId(state)
       makeAreaKnown(state, oreAreaId)
       state.exploration.playerState.currentAreaId = oreAreaId

@@ -288,6 +288,7 @@ describe("Formatters", () => {
     describe("wilderness exploration status", () => {
       it("should show 'unexplored' when nothing discovered in area", () => {
         const state = createWorld("explore-status-1")
+        state.player.skills.Exploration = { level: 1, xp: 0 } // Need Exploration skill to see status
         const areaId = getOreAreaId(state)
         makeAreaKnown(state, areaId)
         state.exploration.playerState.currentAreaId = areaId
@@ -301,6 +302,7 @@ describe("Formatters", () => {
 
       it("should show 'unexplored' when only one connection is discovered", () => {
         const state = createWorld("explore-status-2")
+        state.player.skills.Exploration = { level: 1, xp: 0 } // Need Exploration skill to see status
         const areaId = getOreAreaId(state)
         makeAreaKnown(state, areaId)
         state.exploration.playerState.currentAreaId = areaId
@@ -326,6 +328,7 @@ describe("Formatters", () => {
 
       it("should show 'partly explored' when locations done but unknown-area connections remain", () => {
         const state = createWorld("explore-status-3")
+        state.player.skills.Exploration = { level: 1, xp: 0 } // Need Exploration skill to see status
         const areaId = getOreAreaId(state)
         makeAreaKnown(state, areaId)
         state.exploration.playerState.currentAreaId = areaId
@@ -353,6 +356,7 @@ describe("Formatters", () => {
 
       it("should show 'fully explored' when all locations AND connections discovered", () => {
         const state = createWorld("explore-status-4")
+        state.player.skills.Exploration = { level: 1, xp: 0 } // Need Exploration skill to see status
         const areaId = getOreAreaId(state)
         makeAreaKnown(state, areaId)
         state.exploration.playerState.currentAreaId = areaId
@@ -415,6 +419,7 @@ describe("Formatters", () => {
 
       it("should show discovered enemy camp with difficulty", () => {
         const state = createWorld("mob-camp-1")
+        state.player.skills.Exploration = { level: 1, xp: 0 } // Need Exploration skill to see status
         const areaId = getOreAreaId(state)
         makeAreaKnown(state, areaId)
         state.exploration.playerState.currentAreaId = areaId

@@ -85,6 +85,37 @@ describe("GameSession", () => {
       expect(typeof location.areaDistance).toBe("number")
       expect(typeof location.locationName).toBe("string")
       expect(typeof location.isInTown).toBe("boolean")
+      expect([null, "unexplored", "partly explored", "fully explored"]).toContain(
+        location.explorationStatus
+      )
+    })
+
+    it("returns null explorationStatus when player has no Exploration skill", () => {
+      const session = GameSession.create("no-exploration-skill-test")
+      const { location, skills } = session.getState()
+
+      // Verify player doesn't have Exploration skill (not enrolled)
+      const explorationSkill = skills.find((s) => s.id === "Exploration")
+      expect(explorationSkill?.isEnrolled).toBe(false)
+
+      // explorationStatus should be null when player has no Exploration skill
+      expect(location.explorationStatus).toBeNull()
+    })
+
+    it("returns explorationStatus when player has Exploration skill", async () => {
+      const session = GameSession.create("has-exploration-skill-test")
+
+      // Enrol in Explorers Guild to get Exploration skill
+      await session.executeCommand("go explorers guild")
+      await session.executeCommand("enrol")
+
+      const { location, skills } = session.getState()
+
+      // Verify player has Exploration skill (level > 0 means enrolled)
+      const explorationSkill = skills.find((s) => s.id === "Exploration")
+      expect(explorationSkill?.level).toBeGreaterThan(0)
+
+      // explorationStatus should be a string status
       expect(["unexplored", "partly explored", "fully explored"]).toContain(
         location.explorationStatus
       )

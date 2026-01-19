@@ -30,7 +30,8 @@ export interface LocationInfo {
   isInTown: boolean
   // Note: No "undiscovered" status - player's current location is always discovered.
   // See ConnectionInfo.explorationStatus for areas that may be undiscovered.
-  explorationStatus: "unexplored" | "partly explored" | "fully explored"
+  // Returns null if player doesn't have Exploration skill (can't see exploration status).
+  explorationStatus: "unexplored" | "partly explored" | "fully explored" | null
 }
 
 // ============================================================================
@@ -100,7 +101,8 @@ export interface ConnectionInfo {
   travelTime: number
   // Includes "undiscovered" for areas the player knows about but hasn't visited.
   // Compare to LocationInfo.explorationStatus which excludes "undiscovered".
-  explorationStatus: "undiscovered" | "unexplored" | "partly explored" | "fully explored"
+  // Returns null if player doesn't have Exploration skill.
+  explorationStatus: "undiscovered" | "unexplored" | "partly explored" | "fully explored" | null
   relativeDistance: "closer" | "same" | "further"
 }
 
@@ -141,7 +143,8 @@ export interface WorldMapAreaInfo {
   areaId: AreaID
   areaName: string
   distance: number // Distance from town (0 = town)
-  explorationStatus: "undiscovered" | "unexplored" | "partly explored" | "fully explored"
+  // Returns null if player doesn't have Exploration skill.
+  explorationStatus: "undiscovered" | "unexplored" | "partly explored" | "fully explored" | null
 }
 
 export interface WorldMapConnectionInfo {

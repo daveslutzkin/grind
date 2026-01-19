@@ -343,57 +343,62 @@ export function formatWorldState(state: WorldState): string {
       return knownConnectionIds.has(connId)
     })
 
+    // Only show exploration status if player has Exploration skill
+    const hasExplorationSkill = (state.player.skills.Exploration?.level ?? 0) >= 1
+
     // Determine exploration status for Location line
     let explorationStatus = ""
 
-    // Every area has 1 connection discovered (that's how the player got there)
-    // so only MORE THAN one connection counts as a discovery
-    const hasAnyDiscovery = knownLocs > 0 || discoveredConnectionsFromArea.length > 1
+    if (hasExplorationSkill) {
+      // Every area has 1 connection discovered (that's how the player got there)
+      // so only MORE THAN one connection counts as a discovery
+      const hasAnyDiscovery = knownLocs > 0 || discoveredConnectionsFromArea.length > 1
 
-    // Check if area is fully explored
-    const remainingLocations = area
-      ? area.locations.filter((loc) => !knownLocationIds.includes(loc.id))
-      : []
-    const remainingKnownConnections = state.exploration.connections.filter((conn) => {
-      const isFromCurrent = conn.fromAreaId === currentArea
-      const isToCurrent = conn.toAreaId === currentArea
-      if (!isFromCurrent && !isToCurrent) return false
-      // Check both forward and reverse connection IDs
-      const connId = `${conn.fromAreaId}->${conn.toAreaId}`
-      const reverseConnId = `${conn.toAreaId}->${conn.fromAreaId}`
-      const isDiscovered = knownConnectionIds.has(connId) || knownConnectionIds.has(reverseConnId)
-      const targetId = isFromCurrent ? conn.toAreaId : conn.fromAreaId
-      const targetIsKnown = state.exploration.playerState.knownAreaIds.includes(targetId)
-      return !isDiscovered && targetIsKnown
-    })
-    // Also check for undiscovered connections to UNKNOWN areas
-    const remainingUnknownConnections = state.exploration.connections.filter((conn) => {
-      const isFromCurrent = conn.fromAreaId === currentArea
-      const isToCurrent = conn.toAreaId === currentArea
-      if (!isFromCurrent && !isToCurrent) return false
-      // Check both forward and reverse connection IDs
-      const connId = `${conn.fromAreaId}->${conn.toAreaId}`
-      const reverseConnId = `${conn.toAreaId}->${conn.fromAreaId}`
-      const isDiscovered = knownConnectionIds.has(connId) || knownConnectionIds.has(reverseConnId)
-      const targetId = isFromCurrent ? conn.toAreaId : conn.fromAreaId
-      const targetIsKnown = state.exploration.playerState.knownAreaIds.includes(targetId)
-      // Connection to unknown area that hasn't been discovered yet
-      return !isDiscovered && !targetIsKnown
-    })
-    const isFullyExplored =
-      remainingLocations.length === 0 &&
-      remainingKnownConnections.length === 0 &&
-      remainingUnknownConnections.length === 0
+      // Check if area is fully explored
+      const remainingLocations = area
+        ? area.locations.filter((loc) => !knownLocationIds.includes(loc.id))
+        : []
+      const remainingKnownConnections = state.exploration.connections.filter((conn) => {
+        const isFromCurrent = conn.fromAreaId === currentArea
+        const isToCurrent = conn.toAreaId === currentArea
+        if (!isFromCurrent && !isToCurrent) return false
+        // Check both forward and reverse connection IDs
+        const connId = `${conn.fromAreaId}->${conn.toAreaId}`
+        const reverseConnId = `${conn.toAreaId}->${conn.fromAreaId}`
+        const isDiscovered = knownConnectionIds.has(connId) || knownConnectionIds.has(reverseConnId)
+        const targetId = isFromCurrent ? conn.toAreaId : conn.fromAreaId
+        const targetIsKnown = state.exploration.playerState.knownAreaIds.includes(targetId)
+        return !isDiscovered && targetIsKnown
+      })
+      // Also check for undiscovered connections to UNKNOWN areas
+      const remainingUnknownConnections = state.exploration.connections.filter((conn) => {
+        const isFromCurrent = conn.fromAreaId === currentArea
+        const isToCurrent = conn.toAreaId === currentArea
+        if (!isFromCurrent && !isToCurrent) return false
+        // Check both forward and reverse connection IDs
+        const connId = `${conn.fromAreaId}->${conn.toAreaId}`
+        const reverseConnId = `${conn.toAreaId}->${conn.fromAreaId}`
+        const isDiscovered = knownConnectionIds.has(connId) || knownConnectionIds.has(reverseConnId)
+        const targetId = isFromCurrent ? conn.toAreaId : conn.fromAreaId
+        const targetIsKnown = state.exploration.playerState.knownAreaIds.includes(targetId)
+        // Connection to unknown area that hasn't been discovered yet
+        return !isDiscovered && !targetIsKnown
+      })
+      const isFullyExplored =
+        remainingLocations.length === 0 &&
+        remainingKnownConnections.length === 0 &&
+        remainingUnknownConnections.length === 0
 
-    if (!hasAnyDiscovery) {
-      // Nothing discovered yet (no locations AND no connections from here)
-      explorationStatus = "Unexplored (use explore action to start)"
-    } else if (isFullyExplored) {
-      // All locations and all connections discovered
-      explorationStatus = "Fully explored!"
-    } else {
-      // Something discovered but not everything
-      explorationStatus = "Partly explored"
+      if (!hasAnyDiscovery) {
+        // Nothing discovered yet (no locations AND no connections from here)
+        explorationStatus = "Unexplored (use explore action to start)"
+      } else if (isFullyExplored) {
+        // All locations and all connections discovered
+        explorationStatus = "Fully explored!"
+      } else {
+        // Something discovered but not everything
+        explorationStatus = "Partly explored"
+      }
     }
 
     // Title format: just area name at hub, "Location Name (area)" at a location
@@ -402,7 +407,9 @@ export function formatWorldState(state: WorldState): string {
     if (isAtHub) {
       lines.push(`** ${areaName} **`)
       lines.push("")
-      lines.push(explorationStatus)
+      if (explorationStatus) {
+        lines.push(explorationStatus)
+      }
     } else {
       // At a sub-location - don't show exploration status
       lines.push(`${locationName} (${areaName})`)

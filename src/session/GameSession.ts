@@ -659,7 +659,11 @@ export class GameSession {
 
   private getExplorationStatus(
     areaId: string
-  ): "unexplored" | "partly explored" | "fully explored" {
+  ): "unexplored" | "partly explored" | "fully explored" | null {
+    // Only show exploration status if player has Exploration skill
+    const hasExplorationSkill = (this.state.player.skills.Exploration?.level ?? 0) >= 1
+    if (!hasExplorationSkill) return null
+
     const area = this.state.exploration.areas.get(areaId)
     if (!area) return "unexplored"
 
