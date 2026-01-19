@@ -43,21 +43,10 @@ to:
 )}
 ```
 
-### 6. Only show exploration status if player has Exploration skill
-**Status:** To fix
+### 6. Only show exploration status if player has Exploration skill - DONE
+**Status:** Fixed
 **Description:** "Partly explored" badge is confusing for players who don't have Exploration skill - they can't act on it. Only show exploration status to players who can explore.
-**Changes:**
-1. `src/session/GameSession.ts` - `getExplorationStatus()` (~line 661)
-   - Add skill check: `const hasExplorationSkill = (this.state.player.skills.Exploration?.level ?? 0) >= 1`
-   - Return `null` if no skill
-   - Update return type to include `| null`
-2. `src/session/types.ts` - Update `LocationInfo.explorationStatus` type (~line 33)
-   - Change to: `"unexplored" | "partly explored" | "fully explored" | null`
-3. `src/web/client/components/CurrentArea.tsx` - Handle null (line 32)
-   - Add null check: `{location.explorationStatus && location.explorationStatus !== "fully explored" && ...}`
-4. `src/agent/formatters.ts` - Skip exploration status section (~line 348)
-   - Add skill check before computing exploration status
-   - Only show status if player has Exploration skill
+**Fix:** Added skill check in `getExplorationStatus()` to return null when player lacks Exploration skill. Updated types to allow null, and handled null in CurrentArea.tsx and formatters.ts.
 
 ---
 
