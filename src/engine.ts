@@ -2,6 +2,7 @@ import type {
   WorldState,
   Action,
   ActionLog,
+  ActionTick,
   RngRoll,
   AcceptContractAction,
   TurnInContractAction,
@@ -53,6 +54,7 @@ import {
   checkBuyMapAction,
   checkSeeGatheringMapAction,
   getNodeSkill,
+  type ActionCheckResult,
 } from "./actionChecks.js"
 import { getCollateralRate, getBonusYieldChance, hasMasteryUnlock } from "./masteryData.js"
 import {
@@ -117,6 +119,28 @@ function createFailureLog(
     timeConsumed,
     rngRolls: [],
     stateDeltaSummary: `Failed: ${failureType}`,
+  }
+}
+
+/**
+ * Create a failure ActionTick from a failed check result.
+ * Use this when a check returns valid=false to yield a consistent failure response.
+ */
+export function yieldFailureResult(
+  state: WorldState,
+  action: Action,
+  check: ActionCheckResult
+): ActionTick & { done: true } {
+  return {
+    done: true,
+    log: createFailureLog(
+      state,
+      action,
+      check.failureType!,
+      0,
+      check.failureReason,
+      check.failureContext
+    ),
   }
 }
 
@@ -237,17 +261,7 @@ async function* executeAcceptContract(
   // Use shared precondition check
   const check = checkAcceptContractAction(state, action)
   if (!check.valid) {
-    yield {
-      done: true,
-      log: createFailureLog(
-        state,
-        action,
-        check.failureType!,
-        0,
-        check.failureReason,
-        check.failureContext
-      ),
-    }
+    yield yieldFailureResult(state, action, check)
     return
   }
 
@@ -335,17 +349,7 @@ async function* executeTurnInContract(
   // Use shared precondition check
   const check = checkTurnInContractAction(state, action)
   if (!check.valid) {
-    yield {
-      done: true,
-      log: createFailureLog(
-        state,
-        action,
-        check.failureType!,
-        0,
-        check.failureReason,
-        check.failureContext
-      ),
-    }
+    yield yieldFailureResult(state, action, check)
     return
   }
 
@@ -480,17 +484,7 @@ async function* executeGather(state: WorldState, action: GatherAction): ActionGe
   // Use shared precondition check
   const check = checkGatherAction(state, resolvedAction)
   if (!check.valid) {
-    yield {
-      done: true,
-      log: createFailureLog(
-        state,
-        resolvedAction,
-        check.failureType!,
-        0,
-        check.failureReason,
-        check.failureContext
-      ),
-    }
+    yield yieldFailureResult(state, resolvedAction, check)
     return
   }
 
@@ -938,17 +932,7 @@ async function* executeFight(state: WorldState, action: FightAction): ActionGene
   // Use shared precondition check (will always fail - no enemies exist)
   const check = checkFightAction(state, action)
   if (!check.valid) {
-    yield {
-      done: true,
-      log: createFailureLog(
-        state,
-        action,
-        check.failureType!,
-        0,
-        check.failureReason,
-        check.failureContext
-      ),
-    }
+    yield yieldFailureResult(state, action, check)
     return
   }
 
@@ -963,17 +947,7 @@ async function* executeCraft(state: WorldState, action: CraftAction): ActionGene
   // Use shared precondition check
   const check = checkCraftAction(state, action)
   if (!check.valid) {
-    yield {
-      done: true,
-      log: createFailureLog(
-        state,
-        action,
-        check.failureType!,
-        0,
-        check.failureReason,
-        check.failureContext
-      ),
-    }
+    yield yieldFailureResult(state, action, check)
     return
   }
 
@@ -1025,17 +999,7 @@ async function* executeStore(state: WorldState, action: StoreAction): ActionGene
   // Use shared precondition check
   const check = checkStoreAction(state, action)
   if (!check.valid) {
-    yield {
-      done: true,
-      log: createFailureLog(
-        state,
-        action,
-        check.failureType!,
-        0,
-        check.failureReason,
-        check.failureContext
-      ),
-    }
+    yield yieldFailureResult(state, action, check)
     return
   }
 
@@ -1068,17 +1032,7 @@ async function* executeDrop(state: WorldState, action: DropAction): ActionGenera
   // Use shared precondition check
   const check = checkDropAction(state, action)
   if (!check.valid) {
-    yield {
-      done: true,
-      log: createFailureLog(
-        state,
-        action,
-        check.failureType!,
-        0,
-        check.failureReason,
-        check.failureContext
-      ),
-    }
+    yield yieldFailureResult(state, action, check)
     return
   }
 
@@ -1113,17 +1067,7 @@ async function* executeTurnInCombatToken(
   // Use shared precondition check
   const check = checkTurnInCombatTokenAction(state, action)
   if (!check.valid) {
-    yield {
-      done: true,
-      log: createFailureLog(
-        state,
-        action,
-        check.failureType!,
-        0,
-        check.failureReason,
-        check.failureContext
-      ),
-    }
+    yield yieldFailureResult(state, action, check)
     return
   }
 
@@ -1288,17 +1232,7 @@ async function* executeGuildEnrolment(
   // Use shared precondition check
   const check = checkGuildEnrolmentAction(state, action)
   if (!check.valid) {
-    yield {
-      done: true,
-      log: createFailureLog(
-        state,
-        action,
-        check.failureType!,
-        0,
-        check.failureReason,
-        check.failureContext
-      ),
-    }
+    yield yieldFailureResult(state, action, check)
     return
   }
 
@@ -1400,17 +1334,7 @@ async function* executeTravelToLocation(
   // Use shared precondition check
   const check = checkTravelToLocationAction(state, action)
   if (!check.valid) {
-    yield {
-      done: true,
-      log: createFailureLog(
-        state,
-        action,
-        check.failureType!,
-        0,
-        check.failureReason,
-        check.failureContext
-      ),
-    }
+    yield yieldFailureResult(state, action, check)
     return
   }
 
@@ -1452,17 +1376,7 @@ async function* executeLeave(state: WorldState, action: LeaveAction): ActionGene
   // Use shared precondition check
   const check = checkLeaveAction(state, action)
   if (!check.valid) {
-    yield {
-      done: true,
-      log: createFailureLog(
-        state,
-        action,
-        check.failureType!,
-        0,
-        check.failureReason,
-        check.failureContext
-      ),
-    }
+    yield yieldFailureResult(state, action, check)
     return
   }
 
@@ -1509,17 +1423,7 @@ async function* executeSeeGatheringMap(
   // Use shared precondition check
   const check = checkSeeGatheringMapAction(state, action)
   if (!check.valid) {
-    yield {
-      done: true,
-      log: createFailureLog(
-        state,
-        action,
-        check.failureType!,
-        0,
-        check.failureReason,
-        check.failureContext
-      ),
-    }
+    yield yieldFailureResult(state, action, check)
     return
   }
 
@@ -1645,17 +1549,7 @@ async function* executeBuyMap(state: WorldState, action: BuyMapAction): ActionGe
   // Use shared precondition check
   const check = checkBuyMapAction(state, action)
   if (!check.valid) {
-    yield {
-      done: true,
-      log: createFailureLog(
-        state,
-        action,
-        check.failureType!,
-        0,
-        check.failureReason,
-        check.failureContext
-      ),
-    }
+    yield yieldFailureResult(state, action, check)
     return
   }
 

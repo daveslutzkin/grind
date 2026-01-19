@@ -1,4 +1,4 @@
-import { executeAction, getActionGenerator } from "./engine.js"
+import { executeAction, getActionGenerator, yieldFailureResult } from "./engine.js"
 import type { ActionTick } from "./types.js"
 import { createWorld, TOWN_LOCATIONS } from "./world.js"
 import type {
@@ -1742,5 +1742,27 @@ describe("Engine", () => {
       expect(log.success).toBe(false)
       expect(log.failureDetails?.type).toBe("NO_PATH_TO_DESTINATION")
     })
+  })
+})
+
+describe("yieldFailureResult", () => {
+  it("should create an ActionTick with done=true and failure log", () => {
+    const state = createWorld("test-seed")
+    const action: MoveAction = { type: "Move", destination: "nonexistent" }
+    const check = {
+      valid: false,
+      failureType: "WRONG_LOCATION" as const,
+      failureReason: "location_not_found",
+      failureContext: { locationId: "nonexistent" },
+      timeCost: 0,
+      successProbability: 0,
+    }
+
+    const result = yieldFailureResult(state, action, check)
+
+    expect(result.done).toBe(true)
+    expect(result.log).toBeDefined()
+    expect(result.log!.success).toBe(false)
+    expect(result.log!.failureDetails?.type).toBe("WRONG_LOCATION")
   })
 })
