@@ -194,7 +194,7 @@ export function Inventory({ inventory }: InventoryProps) {
 
 ---
 
-## 4. Add Action Tooltips
+## 4. Add Action Tooltips - DONE
 
 **Priority:** High | **Effort:** Medium
 

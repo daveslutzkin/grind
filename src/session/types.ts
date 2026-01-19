@@ -230,4 +230,5 @@ export interface ValidAction {
   timeCost: number
   isVariable: boolean
   successProbability: number
+  description?: string // Explains what this action does (for tooltips)
 }

@@ -346,6 +346,9 @@ export class GameSession {
 
     const action = parseAction(command, context) ?? { type: "Move" as const, destination: "" }
 
+    // Add description based on action type
+    const description = this.getActionDescription(available.displayName)
+
     return {
       displayName: available.displayName,
       command,
@@ -353,7 +356,35 @@ export class GameSession {
       timeCost: available.timeCost,
       isVariable: available.isVariable,
       successProbability: available.successProbability,
+      description,
     }
+  }
+
+  private getActionDescription(displayName: string): string | undefined {
+    const descriptions: Record<string, string> = {
+      leave: "Return to the area hub",
+      enrol: "Join this guild to learn its skills",
+      "turn-in": "Complete your contract and claim rewards",
+      survey: "Search for paths to adjacent areas",
+      explore: "Search for locations and resource nodes in this area",
+      fight: "Battle the enemies at this camp",
+      "see gathering map": "View discovered resource nodes",
+      turn_in_combat_token: "Exchange combat tokens for XP",
+      "buy node map": "Purchase a map revealing resource node locations",
+      "buy area map": "Purchase a map revealing area connections",
+    }
+
+    // Handle gathering mode commands
+    if (displayName.match(/^(mine|chop) (appraise|careful_all)$/)) {
+      if (displayName.includes("appraise")) {
+        return "Examine the node to see remaining resources"
+      }
+      if (displayName.includes("careful_all")) {
+        return "Carefully gather all available materials"
+      }
+    }
+
+    return descriptions[displayName]
   }
 
   /**
@@ -415,6 +446,7 @@ export class GameSession {
         timeCost: check.timeCost,
         isVariable: false,
         successProbability: 1,
+        description: `Travel to ${locationName}`,
       })
     }
 
@@ -456,6 +488,7 @@ export class GameSession {
         timeCost: travelTime,
         isVariable: false,
         successProbability: 1,
+        description: `Travel to adjacent area ${areaName}`,
       })
     }
 
@@ -490,6 +523,7 @@ export class GameSession {
         timeCost: travelTime,
         isVariable: false,
         successProbability: 1,
+        description: `Journey to distant area ${areaName}`,
       })
     }
 
@@ -536,6 +570,7 @@ export class GameSession {
         timeCost: recipe.craftTime,
         isVariable: false,
         successProbability: 1,
+        description: `Craft a ${recipeName}`,
       })
     }
 
@@ -571,6 +606,7 @@ export class GameSession {
         timeCost: check.timeCost,
         isVariable: false,
         successProbability: 1,
+        description: "Take on this contract for rewards",
       })
     }
 
@@ -613,6 +649,7 @@ export class GameSession {
 
       const materialName = formatIdAsName(mat.materialId)
 
+      const gatherVerb = skill === "Mining" ? "Extract" : "Harvest"
       result.push({
         displayName: `${capitalize(commandName)} ${materialName}`,
         command: `${commandName} ${mat.materialId}`,
@@ -620,6 +657,7 @@ export class GameSession {
         timeCost: check.timeCost,
         isVariable: false,
         successProbability: 1,
+        description: `${gatherVerb} ${materialName} from this node`,
       })
     }
 

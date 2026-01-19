@@ -956,6 +956,124 @@ describe("GameSession", () => {
     })
   })
 
+  describe("action descriptions", () => {
+    it("includes description field for common actions", () => {
+      const session = GameSession.create("description-test")
+      const actions = session.getValidActions()
+
+      // Go to location actions should have descriptions
+      const goToAction = actions.find((a) => a.displayName.startsWith("Go to "))
+      expect(goToAction).toBeDefined()
+      expect(goToAction!.description).toBeDefined()
+      expect(typeof goToAction!.description).toBe("string")
+      expect(goToAction!.description!.length).toBeGreaterThan(0)
+    })
+
+    it("includes descriptions for guild actions", async () => {
+      const session = GameSession.create("guild-description-test")
+
+      await session.executeCommand("go miners guild")
+
+      const actions = session.getValidActions()
+
+      // enrol action should have a description
+      const enrolAction = actions.find((a) => a.displayName === "enrol")
+      expect(enrolAction).toBeDefined()
+      expect(enrolAction!.description).toBeDefined()
+      expect(enrolAction!.description).toMatch(/guild|join|learn/i)
+
+      // leave action should have a description
+      const leaveAction = actions.find((a) => a.displayName === "leave")
+      expect(leaveAction).toBeDefined()
+      expect(leaveAction!.description).toBeDefined()
+    })
+
+    it("includes descriptions for exploration actions", async () => {
+      const session = GameSession.create("explore-description-test")
+
+      // Enrol in exploration guild to get exploration actions
+      await session.executeCommand("go explorers guild")
+      await session.executeCommand("enrol")
+      await session.executeCommand("leave")
+
+      const actions = session.getValidActions()
+
+      // survey action should have a description
+      const surveyAction = actions.find((a) => a.displayName === "survey")
+      if (surveyAction) {
+        expect(surveyAction.description).toBeDefined()
+        expect(surveyAction.description).toMatch(/area|path|discover/i)
+      }
+
+      // explore action should have a description
+      const exploreAction = actions.find((a) => a.displayName === "explore")
+      if (exploreAction) {
+        expect(exploreAction.description).toBeDefined()
+        expect(exploreAction.description).toMatch(/location|node|discover/i)
+      }
+    })
+
+    it("includes descriptions for accept contract actions", async () => {
+      const session = GameSession.create("accept-description-test")
+
+      await session.executeCommand("go miners guild")
+      await session.executeCommand("enrol")
+
+      const actions = session.getValidActions()
+
+      const acceptAction = actions.find((a) => a.displayName.startsWith("Accept "))
+      expect(acceptAction).toBeDefined()
+      expect(acceptAction!.description).toBeDefined()
+      expect(acceptAction!.description).toMatch(/contract|reward/i)
+    })
+
+    it("includes descriptions for travel actions", async () => {
+      const session = GameSession.create("travel-description-test")
+
+      await session.executeCommand("go miners guild")
+      await session.executeCommand("enrol")
+      // Survey to discover adjacent areas
+      for (let i = 0; i < 5; i++) {
+        await session.executeCommand("survey")
+      }
+
+      const actions = session.getValidActions()
+
+      const travelAction = actions.find((a) => a.displayName.startsWith("Travel to "))
+      if (travelAction) {
+        expect(travelAction.description).toBeDefined()
+        expect(travelAction.description).toMatch(/travel|adjacent/i)
+      }
+    })
+
+    it("includes descriptions for gathering actions", async () => {
+      const session = GameSession.create("gather-description-test")
+
+      // Setup: get to a mining node
+      await session.executeCommand("go miners guild")
+      await session.executeCommand("enrol")
+      await session.executeCommand("survey")
+
+      // Try to find and go to an ore vein
+      const actionsAfterSurvey = session.getValidActions()
+      const oreVeinAction = actionsAfterSurvey.find(
+        (a) => a.displayName.toLowerCase().includes("ore vein") || a.command.includes("ORE_VEIN")
+      )
+
+      if (oreVeinAction) {
+        await session.executeCommand(oreVeinAction.command)
+
+        const actions = session.getValidActions()
+        const mineAction = actions.find((a) => a.displayName.startsWith("Mine "))
+
+        if (mineAction) {
+          expect(mineAction.description).toBeDefined()
+          expect(mineAction.description).toMatch(/extract|gather|mine/i)
+        }
+      }
+    })
+  })
+
   describe("edge cases", () => {
     it("handles invalid command gracefully", async () => {
       const session = GameSession.create("invalid-cmd-test")

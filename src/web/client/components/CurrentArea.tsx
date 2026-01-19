@@ -71,7 +71,10 @@ export function CurrentArea({
                       <button
                         onClick={() => onAction(action.command)}
                         disabled={disabled}
-                        title={`${action.displayName} (${action.timeCost} ticks)${action.isVariable ? " - variable" : ""}`}
+                        title={
+                          action.description ||
+                          `${action.displayName} (${action.timeCost} ticks)${action.isVariable ? " - variable" : ""}`
+                        }
                       >
                         {action.displayName}
                         {action.timeCost > 0 && (
