@@ -11,11 +11,10 @@
 
 import type { WorldState, SkillID, SkillState } from "../types.js"
 import { ExplorationLocationType } from "../types.js"
-import { getTotalXP } from "../types.js"
 import { createWorld } from "../world.js"
 import { executeAction } from "../engine.js"
 import { consumeTime } from "../stateHelpers.js"
-import { buildDiscoverables } from "../exploration.js"
+import { buildDiscoverables, getTotalXP } from "../exploration.js"
 
 import type {
   RunConfig,

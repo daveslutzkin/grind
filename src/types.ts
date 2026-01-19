@@ -679,56 +679,8 @@ export interface ActionLog {
   explorationLog?: ExplorationLog // For exploration actions
 }
 
-// Level calculation utilities
-// XP required to reach level N is N²
-// Level 1 → 2 requires 4 XP (2²)
-// Level 2 → 3 requires 9 XP (3²)
-// Level 3 → 4 requires 16 XP (4²)
-
-/**
- * Get XP threshold to reach the next level from current level
- * To go from level N to level N+1, you need (N+1)² XP
- */
-export function getXPThresholdForNextLevel(currentLevel: number): number {
-  return (currentLevel + 1) * (currentLevel + 1)
-}
-
-/**
- * Add XP to a skill and handle level-ups
- * Returns the updated skill state and any level-ups that occurred
- */
-export function addXPToSkill(
-  skill: SkillState,
-  xpGain: number
-): { skill: SkillState; levelUps: LevelUp[]; skillId?: SkillID } {
-  const levelUps: LevelUp[] = []
-  let { level, xp } = skill
-  xp += xpGain
-
-  // Check for level-ups (can be multiple)
-  let threshold = getXPThresholdForNextLevel(level)
-  while (xp >= threshold) {
-    const fromLevel = level
-    xp -= threshold
-    level++
-    levelUps.push({ skill: "" as SkillID, fromLevel, toLevel: level }) // skillId filled in by caller
-    threshold = getXPThresholdForNextLevel(level)
-  }
-
-  return { skill: { level, xp }, levelUps }
-}
-
-/**
- * Get total XP earned for a skill (level + current XP)
- * This is the sum of all thresholds passed plus current XP
- */
-export function getTotalXP(skill: SkillState): number {
-  let total = skill.xp
-  for (let l = 1; l < skill.level; l++) {
-    total += getXPThresholdForNextLevel(l)
-  }
-  return total
-}
+// NOTE: XP threshold functions have been moved to exploration.ts
+// All skills now use the unified exploration XP thresholds (25, 35, 55...)
 
 // ============================================================================
 // Save/Resume Constants

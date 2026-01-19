@@ -6,15 +6,10 @@ Issues discovered during Claude Code playthrough (~15 actions, Tick 0-111).
 
 ## Bugs
 
-### 1. Unify XP thresholds - remove obsolete N² system
-**Status:** To fix
+### 1. Unify XP thresholds - remove obsolete N² system - DONE
+**Status:** Fixed
 **Description:** Two XP threshold systems exist: "exploration thresholds" (25, 35, 55...) used for Mining/Woodcutting, and N² thresholds (4, 9, 16...) used for other skills. All skills should use exploration thresholds. The N² system is obsolete.
-**Changes:**
-1. `src/exploration.ts` - Rename `getExplorationXPThreshold` → `getXPThresholdForNextLevel`
-2. `src/types.ts` - Delete `getXPThresholdForNextLevel`, `addXPToSkill`, `getTotalXPForLevel`
-3. `src/stateHelpers.ts` - Remove `addXPToSkill` import, update to use renamed function, simplify `grantXP` to remove branching
-4. `src/agent/formatters.ts` - Update imports, remove conditional threshold logic (lines 858-859)
-5. `src/session/GameSession.ts` - Change import from types.js to exploration.js
+**Fix:** Renamed `getExplorationXPThreshold` to `getXPThresholdForNextLevel`, deleted obsolete N² functions from types.ts, and updated all imports.
 
 ### 2. Location commands show raw IDs instead of friendly slugs
 **Status:** To fix

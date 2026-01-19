@@ -5,13 +5,12 @@
 
 import type { Action, ActionLog, WorldState, SkillID, SkillState, AreaID } from "./types.js"
 import {
-  getTotalXP,
   getCurrentAreaId,
   getCurrentLocationId,
   GatherMode,
   ExplorationLocationType,
 } from "./types.js"
-import { getReachableAreas, getAreaDisplayName } from "./exploration.js"
+import { getReachableAreas, getAreaDisplayName, getTotalXP } from "./exploration.js"
 import { formatWorldState, formatActionLog } from "./agent/formatters.js"
 
 // Re-export agent formatters for unified display

@@ -7,9 +7,8 @@
  */
 
 import type { WorldState, Node, Area, AreaID } from "../types.js"
-import { getTotalXP } from "../types.js"
 import type { PolicyObservation, KnownArea, KnownNode, FrontierArea } from "./types.js"
-import { buildDiscoverables, isConnectionKnown } from "../exploration.js"
+import { buildDiscoverables, isConnectionKnown, getTotalXP } from "../exploration.js"
 
 // Cache for fully explored areas - once fully explored, always fully explored
 // This cache is per-run and should be cleared at the start of each run

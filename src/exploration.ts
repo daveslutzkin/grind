@@ -21,6 +21,7 @@ import type {
   LevelUp,
   ActionGenerator,
   FailureType,
+  SkillState,
 } from "./types.js"
 import { ExplorationLocationType, NodeType } from "./types.js"
 import { rollFloat, roll, rollNormal } from "./rng.js"
@@ -717,7 +718,7 @@ const EXPLORATION_XP_THRESHOLDS = [
   1500, // L10→L11: D10 has ~1451 discoveries
 ]
 
-export function getExplorationXPThreshold(currentLevel: number): number {
+export function getXPThresholdForNextLevel(currentLevel: number): number {
   if (currentLevel <= 0) return EXPLORATION_XP_THRESHOLDS[0]
   if (currentLevel <= EXPLORATION_XP_THRESHOLDS.length) {
     return EXPLORATION_XP_THRESHOLDS[currentLevel - 1]
@@ -726,6 +727,18 @@ export function getExplorationXPThreshold(currentLevel: number): number {
   const lastThreshold = EXPLORATION_XP_THRESHOLDS[EXPLORATION_XP_THRESHOLDS.length - 1]
   const levelsOver = currentLevel - EXPLORATION_XP_THRESHOLDS.length
   return Math.round(lastThreshold * Math.pow(1.6, levelsOver))
+}
+
+/**
+ * Get total XP earned for a skill (level + current XP)
+ * This is the sum of all thresholds passed plus current XP
+ */
+export function getTotalXP(skill: SkillState): number {
+  let total = skill.xp
+  for (let l = 1; l < skill.level; l++) {
+    total += getXPThresholdForNextLevel(l)
+  }
+  return total
 }
 
 /**
@@ -742,13 +755,13 @@ function grantExplorationXP(
   xp += amount
 
   // Check for level-ups using Exploration-specific thresholds
-  let threshold = getExplorationXPThreshold(level)
+  let threshold = getXPThresholdForNextLevel(level)
   while (xp >= threshold) {
     const fromLevel = level
     xp -= threshold
     level++
     levelUps.push({ skill: "Exploration", fromLevel, toLevel: level })
-    threshold = getExplorationXPThreshold(level)
+    threshold = getXPThresholdForNextLevel(level)
   }
 
   state.player.skills.Exploration = { level, xp }

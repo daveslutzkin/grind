@@ -6,8 +6,7 @@
  */
 
 import type { WorldState, ItemID, ItemStack, ContractID, LevelUp, SkillID } from "./types.js"
-import { addXPToSkill } from "./types.js"
-import { getExplorationXPThreshold } from "./exploration.js"
+import { getXPThresholdForNextLevel } from "./exploration.js"
 import { refreshMiningContracts } from "./contracts.js"
 
 // ============================================================================
@@ -169,33 +168,20 @@ export function grantContractRewards(state: WorldState, rewards: ItemStack[]): v
  * Grant XP to a skill and handle level-ups
  * Returns any level-ups that occurred
  *
- * Per canonical-gathering.md: Mining/Woodcutting use exploration XP thresholds
- * Other skills use the standard N² thresholds
+ * All skills use the unified XP thresholds (25, 35, 55...)
  */
 export function grantXP(state: WorldState, skill: SkillID, amount: number): LevelUp[] {
-  // Gathering skills use exploration XP thresholds per canonical-gathering.md
-  const useExplorationThresholds = skill === "Mining" || skill === "Woodcutting"
-
-  if (useExplorationThresholds) {
-    // Use exploration XP thresholds for gathering skills
-    const result = addXPToSkillWithThreshold(
-      state.player.skills[skill],
-      amount,
-      getExplorationXPThreshold
-    )
-    state.player.skills[skill] = result.skill
-    return result.levelUps.map((lu) => ({ ...lu, skill }))
-  } else {
-    // Use standard N² thresholds for other skills
-    const result = addXPToSkill(state.player.skills[skill], amount)
-    state.player.skills[skill] = result.skill
-    return result.levelUps.map((lu) => ({ ...lu, skill }))
-  }
+  const result = addXPToSkillWithThreshold(
+    state.player.skills[skill],
+    amount,
+    getXPThresholdForNextLevel
+  )
+  state.player.skills[skill] = result.skill
+  return result.levelUps.map((lu) => ({ ...lu, skill }))
 }
 
 /**
  * Add XP to a skill using a custom threshold function
- * Used for gathering skills which use exploration thresholds
  */
 function addXPToSkillWithThreshold(
   skill: { level: number; xp: number },

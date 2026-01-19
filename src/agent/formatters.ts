@@ -1,5 +1,4 @@
 import type { WorldState, ActionLog, TickFeedback } from "../types.js"
-import { getXPThresholdForNextLevel } from "../types.js"
 import { getCurrentAreaId, getCurrentLocationId, ExplorationLocationType } from "../types.js"
 import {
   getUnlockedModes,
@@ -12,7 +11,7 @@ import {
   BASE_TRAVEL_TIME,
   getAreaDisplayName as getAreaDisplayNameBase,
   getRollInterval,
-  getExplorationXPThreshold,
+  getXPThresholdForNextLevel,
 } from "../exploration.js"
 import {
   getPlayerNodeView,
@@ -849,14 +848,7 @@ export function formatActionLog(log: ActionLog, state?: WorldState): string {
     if (state) {
       const skill = state.player.skills[log.skillGained.skill]
       if (skill) {
-        // Mining and Woodcutting use exploration XP thresholds per canonical-gathering.md
-        const useExplorationThresholds =
-          log.skillGained.skill === "Exploration" ||
-          log.skillGained.skill === "Mining" ||
-          log.skillGained.skill === "Woodcutting"
-        const threshold = useExplorationThresholds
-          ? getExplorationXPThreshold(skill.level)
-          : getXPThresholdForNextLevel(skill.level)
+        const threshold = getXPThresholdForNextLevel(skill.level)
         const remaining = threshold - skill.xp
         const percentToNext = Math.round((skill.xp / threshold) * 100)
         xpLine += ` (${remaining} to next level, ${percentToNext}% there)`

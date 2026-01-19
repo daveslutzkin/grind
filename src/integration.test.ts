@@ -298,7 +298,7 @@ describe("Integration: Full Session Flow", () => {
       requirements: [{ itemId: "IRON_BAR", quantity: 1 }],
       rewards: [],
       reputationReward: 5,
-      xpReward: { skill: "Smithing", amount: 5 }, // Enough to level up (need 4 XP for level 2)
+      xpReward: { skill: "Smithing", amount: 26 }, // Enough to level up (need 25 XP for level 2)
     })
 
     // Must be at the guild location to accept
@@ -325,7 +325,7 @@ describe("Integration: Full Session Flow", () => {
 
     expect(turnInLog.success).toBe(true)
     expect(turnInLog.contractsCompleted).toHaveLength(1)
-    expect(turnInLog.contractsCompleted![0].xpGained).toEqual({ skill: "Smithing", amount: 5 })
+    expect(turnInLog.contractsCompleted![0].xpGained).toEqual({ skill: "Smithing", amount: 26 })
 
     // Level-ups from contract should appear in ContractCompletion.levelUps
     expect(turnInLog.contractsCompleted![0].levelUps).toBeDefined()
@@ -347,7 +347,7 @@ describe("Integration: Full Session Flow", () => {
 
     // Verify skill actually leveled up
     expect(state.player.skills.Smithing.level).toBe(2)
-    expect(state.player.skills.Smithing.xp).toBe(1) // 5 - 4 (threshold) = 1 carry-over
+    expect(state.player.skills.Smithing.xp).toBe(1) // 26 - 25 (threshold) = 1 carry-over
   })
 
   it("should merge action level-ups with contract level-ups", async () => {

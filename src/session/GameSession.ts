@@ -6,21 +6,20 @@
  */
 
 import type { WorldState, ActionLog, Action, SkillID } from "../types.js"
-import {
-  getCurrentAreaId,
-  getCurrentLocationId,
-  isInTown,
-  getXPThresholdForNextLevel,
-  GatherMode,
-} from "../types.js"
+import { getCurrentAreaId, getCurrentLocationId, isInTown, GatherMode } from "../types.js"
 import { createWorld } from "../world.js"
 import { getActionGenerator, executeToCompletion } from "../engine.js"
 import { parseAction, type ParseContext } from "../runner.js"
 import { getAvailableActions, type AvailableAction } from "../availableActions.js"
 import { getLocationDisplayName } from "../world.js"
-import { getAreaDisplayName, BASE_TRAVEL_TIME } from "../exploration.js"
+import {
+  getAreaDisplayName,
+  BASE_TRAVEL_TIME,
+  getXPThresholdForNextLevel,
+  getReachableAreas,
+  isConnectionKnown,
+} from "../exploration.js"
 import { getUnlockedModes, checkAction } from "../actionChecks.js"
-import { getReachableAreas, isConnectionKnown } from "../exploration.js"
 import { deserializeSession, type SaveFile } from "../persistence.js"
 import { SAVE_VERSION } from "../types.js"
 import type { SessionStats } from "../runner.js"
