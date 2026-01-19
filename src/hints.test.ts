@@ -1,10 +1,10 @@
 // Unit tests for hint generation
 
 import { describe, it, expect } from "@jest/globals"
-import { generateFailureHint } from "../src/hints.js"
-import type { FailureDetails } from "../src/types.js"
-import { GatherMode, NodeType, getCurrentAreaId, ExplorationLocationType } from "../src/types.js"
-import { createWorld } from "../src/world.js"
+import { generateFailureHint } from "./hints.js"
+import type { FailureDetails } from "./types.js"
+import { GatherMode, NodeType, getCurrentAreaId, ExplorationLocationType } from "./types.js"
+import { createWorld } from "./world.js"
 
 describe("generateFailureHint", () => {
   it("should return a generic message for unimplemented failure types", () => {
