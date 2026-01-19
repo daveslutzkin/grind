@@ -507,7 +507,7 @@ In CurrentArea.tsx, update the button to show explanation:
 
 ---
 
-## 8. Hide Redundant Command Text
+## 8. Hide Redundant Command Text - DONE
 
 **Priority:** Low | **Effort:** Low
 
