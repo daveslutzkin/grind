@@ -4,7 +4,6 @@ import {
   getConnectedAreaPosition,
   getStatusColor,
   getDistanceLineStyle,
-  truncateText,
   calculateFullMapPositions,
   MINI_MAP,
   FULL_MAP,
@@ -72,10 +71,10 @@ function MiniMap({
               y={pos.y + 3}
               textAnchor="middle"
               fill="white"
-              fontSize={9}
+              fontSize={7}
               fontWeight="bold"
             >
-              {truncateText(conn.toAreaName, 9)}
+              {conn.toAreaName}
             </text>
             <text
               x={pos.x}
@@ -102,7 +101,7 @@ function MiniMap({
 
       {/* Current location label below the mini-map area */}
       <text x={centerX} y={MINI_MAP.height - 25} textAnchor="middle" fill="#aaa" fontSize={9}>
-        You: {truncateText(location.areaName, 20)}
+        You: {location.areaName}
       </text>
 
       {/* Legend - vertical layout, only shown if player has Exploration skill */}
@@ -201,7 +200,7 @@ function FullScreenMap({
                   y={pos.y + 4}
                   textAnchor="middle"
                   fill="white"
-                  fontSize={10}
+                  fontSize={8}
                   fontWeight={isCurrent ? "bold" : "normal"}
                 >
                   {area.areaName}

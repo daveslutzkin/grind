@@ -262,7 +262,7 @@ title={action.description || `${action.displayName} (${action.timeCost} ticks)${
 
 ---
 
-## 5. Map Labels - Smaller Text, No Truncation
+## 5. Map Labels - Smaller Text, No Truncation - DONE
 
 **Priority:** Low | **Effort:** Low
 
