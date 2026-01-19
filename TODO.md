@@ -52,31 +52,10 @@ to:
 
 ## UI/UX Issues
 
-### 7. Sidebar + Map layout improvements
-**Status:** To fix
+### 7. Sidebar + Map layout improvements - DONE
+**Status:** Fixed
 **Description:** Map legend is cramped, sidebar is too narrow. Make sidebar 50% wider (320px→480px) and map 50% bigger. Redesign legend for future expansion (ore veins, etc.) and hide it if player lacks Exploration skill.
-**Changes:**
-1. `src/web/client/styles/main.css` (~line 243)
-   - Change: `grid-template-columns: 1fr 480px;` (was 320px)
-2. `src/web/client/components/mapUtils.ts` (lines 14-22)
-   - Scale MINI_MAP dimensions 50%:
-   ```typescript
-   export const MINI_MAP = {
-     width: 450,      // was 300
-     height: 300,     // was 200
-     centerX: 225,    // was 150
-     centerY: 130,    // was 85
-     currentAreaRadius: 12,     // was 8
-     connectedAreaRadius: 27,   // was 18
-     connectionDistance: 82,    // was 55
-   } as const
-   ```
-3. `src/web/client/components/Map.tsx` - Legend redesign
-   - Move legend to vertical layout (room for future items like ore veins)
-   - Add skill check: only show legend if player has Exploration skill
-   - Need to receive `hasExplorationSkill` prop
-4. `src/web/client/components/Sidebar.tsx`
-   - Pass `hasExplorationSkill` down to Map component
+**Fix:** Widened sidebar to 480px, scaled mini-map 50% larger, redesigned legend to vertical layout, and added skill check to hide legend if player lacks Exploration skill.
 
 ### 8. Prominent display for most recent action result
 **Status:** To fix
