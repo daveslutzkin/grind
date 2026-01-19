@@ -340,6 +340,17 @@ export class GameSession {
   // Private Helpers
   // ============================================================================
 
+  /**
+   * Convert a travel time multiplier to a human-readable terrain description.
+   * Multiplier ranges from 0.5 (easy) to 4.5 (very difficult).
+   */
+  private getTerrainDescription(multiplier: number): string {
+    if (multiplier <= 1.0) return "Clear path"
+    if (multiplier <= 2.0) return "Standard path"
+    if (multiplier <= 3.0) return "Rough terrain"
+    return "Difficult terrain"
+  }
+
   private convertToValidAction(available: AvailableAction): ValidAction {
     // Parse the display name to get a command string
     const command = available.displayName
@@ -357,6 +368,11 @@ export class GameSession {
     // Add description based on action type
     const description = this.getActionDescription(available.displayName)
 
+    // Add cost explanation for variable-cost actions
+    const costExplanation = available.isVariable
+      ? this.getCostExplanation(available.displayName)
+      : undefined
+
     return {
       displayName: available.displayName,
       command,
@@ -365,7 +381,27 @@ export class GameSession {
       isVariable: available.isVariable,
       successProbability: available.successProbability,
       description,
+      costExplanation,
     }
+  }
+
+  /**
+   * Get a cost explanation for variable-cost actions based on current state.
+   * Returns undefined for fixed-cost actions.
+   */
+  private getCostExplanation(displayName: string): string | undefined {
+    const currentAreaId = getCurrentAreaId(this.state)
+    const currentArea = this.state.exploration.areas.get(currentAreaId)
+    const distance = currentArea?.distance ?? 0
+
+    // Survey and explore costs depend on area distance (further = harder terrain)
+    if (displayName === "survey" || displayName === "explore") {
+      if (distance <= 1) return "Open terrain"
+      if (distance <= 2) return "Moderate terrain"
+      return "Rough terrain"
+    }
+
+    return undefined
   }
 
   private getActionDescription(displayName: string): string | undefined {
@@ -497,6 +533,7 @@ export class GameSession {
         isVariable: false,
         successProbability: 1,
         description: `Travel to adjacent area ${areaName}`,
+        costExplanation: this.getTerrainDescription(conn.travelTimeMultiplier),
       })
     }
 
@@ -532,6 +569,7 @@ export class GameSession {
         isVariable: false,
         successProbability: 1,
         description: `Journey to distant area ${areaName}`,
+        costExplanation: `${hops} areas away`,
       })
     }
 

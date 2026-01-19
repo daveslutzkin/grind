@@ -78,7 +78,12 @@ export function CurrentArea({
                       >
                         {action.displayName}
                         {action.timeCost > 0 && (
-                          <span class="time-cost">{action.timeCost} ticks</span>
+                          <span class="time-cost">
+                            {action.timeCost} ticks
+                            {action.costExplanation && (
+                              <span class="cost-explanation"> ({action.costExplanation})</span>
+                            )}
+                          </span>
                         )}
                       </button>
                       <code class="action-command">{action.command}</code>

@@ -558,6 +558,11 @@ header {
   color: var(--text-muted);
 }
 
+.action-item .cost-explanation {
+  font-style: italic;
+  color: var(--text-muted);
+}
+
 .action-item .action-command {
   font-size: 0.8rem;
   color: var(--text-muted);

@@ -445,7 +445,7 @@ In the legend, conditionally show:
 
 ---
 
-## 7. Explain Tick Cost Variation
+## 7. Explain Tick Cost Variation - DONE
 
 **Priority:** Medium | **Effort:** Low
 

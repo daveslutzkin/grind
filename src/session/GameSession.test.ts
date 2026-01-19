@@ -1099,4 +1099,115 @@ describe("GameSession", () => {
       expect(result.success).toBe(true)
     })
   })
+
+  describe("cost explanations", () => {
+    it("includes costExplanation for area travel actions", async () => {
+      const session = GameSession.create("cost-explanation-travel-test")
+
+      // Setup: discover adjacent areas
+      await session.executeCommand("go miners guild")
+      await session.executeCommand("enrol")
+      for (let i = 0; i < 5; i++) {
+        await session.executeCommand("survey")
+      }
+
+      const actions = session.getValidActions()
+      const travelAction = actions.find((a) => a.displayName.startsWith("Travel to "))
+
+      if (travelAction) {
+        // Travel actions should have terrain-based explanations
+        expect(travelAction.costExplanation).toBeDefined()
+        expect(travelAction.costExplanation).toMatch(
+          /Clear path|Standard path|Rough terrain|Difficult terrain/
+        )
+      }
+    })
+
+    it("includes costExplanation for fartravel actions", async () => {
+      const session = GameSession.create("cost-explanation-fartravel-test")
+
+      // Setup: discover multiple areas
+      await session.executeCommand("go miners guild")
+      await session.executeCommand("enrol")
+      for (let i = 0; i < 10; i++) {
+        await session.executeCommand("survey")
+      }
+
+      // Travel to an adjacent area first
+      let actions = session.getValidActions()
+      const travelAction = actions.find((a) => a.displayName.startsWith("Travel to "))
+      if (travelAction) {
+        await session.executeCommand(travelAction.command)
+
+        // Now survey more to discover farther areas
+        for (let i = 0; i < 10; i++) {
+          await session.executeCommand("survey")
+        }
+      }
+
+      // Go back to town to see fartravel options
+      actions = session.getValidActions()
+      const fartravelAction = actions.find((a) => a.displayName.startsWith("Fartravel to "))
+
+      if (fartravelAction) {
+        // Fartravel actions should show hop count
+        expect(fartravelAction.costExplanation).toBeDefined()
+        expect(fartravelAction.costExplanation).toMatch(/\d+ areas away/)
+      }
+    })
+
+    it("includes costExplanation for survey/explore actions in exploration areas", async () => {
+      const session = GameSession.create("cost-explanation-explore-test")
+
+      // Setup: travel to an exploration area
+      await session.executeCommand("go explorers guild")
+      await session.executeCommand("enrol")
+      await session.executeCommand("leave")
+      await session.executeCommand("survey")
+
+      // Travel to discovered area
+      let actions = session.getValidActions()
+      const travelAction = actions.find((a) => a.displayName.startsWith("Travel to "))
+      if (travelAction) {
+        await session.executeCommand(travelAction.command)
+
+        actions = session.getValidActions()
+
+        // Survey action should have terrain explanation
+        const surveyAction = actions.find((a) => a.displayName === "survey")
+        if (surveyAction) {
+          expect(surveyAction.costExplanation).toBeDefined()
+          expect(surveyAction.costExplanation).toMatch(
+            /Open terrain|Moderate terrain|Rough terrain/
+          )
+        }
+
+        // Explore action should have terrain explanation
+        const exploreAction = actions.find((a) => a.displayName === "explore")
+        if (exploreAction) {
+          expect(exploreAction.costExplanation).toBeDefined()
+          expect(exploreAction.costExplanation).toMatch(
+            /Open terrain|Moderate terrain|Rough terrain/
+          )
+        }
+      }
+    })
+
+    it("does not include costExplanation for fixed-cost actions", async () => {
+      const session = GameSession.create("cost-explanation-fixed-test")
+
+      await session.executeCommand("go miners guild")
+
+      const actions = session.getValidActions()
+
+      // enrol and leave are fixed-cost actions
+      const enrolAction = actions.find((a) => a.displayName === "enrol")
+      expect(enrolAction).toBeDefined()
+      expect(enrolAction!.costExplanation).toBeUndefined()
+
+      const leaveAction = actions.find((a) => a.displayName === "leave")
+      expect(leaveAction).toBeDefined()
+      expect(leaveAction!.costExplanation).toBeUndefined()
+    })
+  })
 })

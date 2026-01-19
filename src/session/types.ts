@@ -243,4 +243,5 @@ export interface ValidAction {
   isVariable: boolean
   successProbability: number
   description?: string // Explains what this action does (for tooltips)
+  costExplanation?: string // Brief explanation of why this action costs what it costs
 }
