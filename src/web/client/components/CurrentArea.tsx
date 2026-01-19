@@ -74,7 +74,9 @@ export function CurrentArea({
                         title={`${action.displayName} (${action.timeCost} ticks)${action.isVariable ? " - variable" : ""}`}
                       >
                         {action.displayName}
-                        {action.timeCost > 0 && <span class="time-cost">{action.timeCost}t</span>}
+                        {action.timeCost > 0 && (
+                          <span class="time-cost">{action.timeCost} ticks</span>
+                        )}
                       </button>
                       <code class="action-command">{action.command}</code>
                     </div>

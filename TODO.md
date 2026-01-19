@@ -80,61 +80,48 @@ Based on playtesting session evaluating the web UI.
 
 ## Phase 3: Isolated Fixes (no dependencies)
 
-### 3.1 Fix Pathfinding Bug - "Go to" Buttons Fail
+### ~~3.1 Fix Pathfinding Bug - "Go to" Buttons Fail~~ [DONE]
 **Type:** Bug
 
-"Go to Ore vein" and "Go to Tree stand" buttons appear clickable but always fail with `NO_PATH_TO_DESTINATION` error. This happens even though the game says "go there to begin your mining career" after enrolling.
+~~"Go to Ore vein" and "Go to Tree stand" buttons appear clickable but always fail with `NO_PATH_TO_DESTINATION` error. This happens even though the game says "go there to begin your mining career" after enrolling.~~
 
-**Expected behavior:**
-- After enrolling in Miners/Foresters Guild, player should be able to reach resource locations
-- If a "Go to X" button is shown, the action should succeed
-- Investigate whether paths aren't being generated when areas are discovered
+**Fixed:** When a gathering node alias (like "ore vein") isn't found in the current area but exists in another known area, the system now uses fartravel to reach that area instead of failing.
 
 ---
 
-### 3.2 Hide Fartravel for 1-Hop Destinations
+### ~~3.2 Hide Fartravel for 1-Hop Destinations~~ [DONE]
 **Type:** Bug/UX
 
-Both "Travel to Town" and "Fartravel to Town" buttons appear with the same cost for adjacent locations. Fartravel is only useful for multi-hop journeys.
+~~Both "Travel to Town" and "Fartravel to Town" buttons appear with the same cost for adjacent locations. Fartravel is only useful for multi-hop journeys.~~
 
-**Expected behavior:**
-- Fartravel buttons should be hidden when destination is only 1 connection away
-- Only show Fartravel for destinations 2+ hops away
+**Fixed:** Fartravel buttons now only appear for destinations 2+ hops away. Adjacent areas show only "Travel to X".
 
 ---
 
-### 3.3 Fix Text Input Focus
+### ~~3.3 Fix Text Input Focus~~ [DONE]
 **Type:** Bug
 
-The command text input loses focus after submitting a command. Players who prefer typing have to click back into the input each time.
+~~The command text input loses focus after submitting a command. Players who prefer typing have to click back into the input each time.~~
 
-**Expected behavior:**
-- After submitting a command, text input should retain focus
-- Player can immediately type next command without clicking
+**Fixed:** Command input now retains focus after submitting, using a ref to refocus the input element.
 
 ---
 
-### 3.4 Add Help Command
+### ~~3.4 Add Help Command~~ [DONE]
 **Type:** Feature
 
-Typing "help" returns "Invalid command". There's no way to discover available commands.
+~~Typing "help" returns "Invalid command". There's no way to discover available commands.~~
 
-**Expected behavior:**
-- `help` lists available commands
-- Consider `help <command>` for detailed help on specific commands
-- The game shouldn't be buttons-only; text commands are a valid play style
+**Fixed:** Typing "help" now displays a comprehensive list of available commands with descriptions.
 
 ---
 
-### 3.5 Spell Out Costs
+### ~~3.5 Spell Out Costs~~ [DONE]
 **Type:** UX Enhancement
 
-Button costs like "20g" are ambiguous - looks like "20 gold" but actually means "20 ticks" (time).
+~~Button costs like "20g" are ambiguous - looks like "20 gold" but actually means "20 ticks" (time).~~
 
-**Expected behavior:**
-- Show "20 ticks" or "20 gold" spelled out
-- Part of broader information architecture improvement
-- Apply consistently to buttons and anywhere costs are shown
+**Fixed:** Button costs now show "20 ticks" instead of "20t" to eliminate confusion with gold.
 
 ---
 
