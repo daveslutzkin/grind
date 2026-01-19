@@ -134,6 +134,25 @@ describe("WebSocketHandler", () => {
         const resultMsg = sentMessages[sentMessages.length - 2]
         expect(resultMsg.type).toBe("command_result")
       })
+
+      it("handles help command and returns help text", async () => {
+        await handler.handleMessage({ type: "new_game" }, mockSend)
+        sentMessages = []
+
+        await handler.handleMessage({ type: "command", command: "help" }, mockSend)
+
+        // Should return a command_result with success=true and help text
+        expect(sentMessages.length).toBe(2)
+        expect(sentMessages[0].type).toBe("command_result")
+        expect(sentMessages[1].type).toBe("valid_actions")
+
+        const resultMsg = sentMessages[0] as {
+          type: "command_result"
+          result: { success: boolean; log: { stateDeltaSummary: string } }
+        }
+        expect(resultMsg.result.success).toBe(true)
+        expect(resultMsg.result.log.stateDeltaSummary).toContain("Available commands")
+      })
     })
 
     describe("save_game", () => {

@@ -131,6 +131,26 @@ export class WebSocketHandler {
 
     this.logger?.info(`[ACTION] command="${command}"`)
 
+    // Handle "help" as a special meta-command
+    if (command.trim().toLowerCase() === "help") {
+      const helpResult: CommandResult = {
+        success: true,
+        log: {
+          tickBefore: this.session.getElapsedTicks(),
+          actionType: "Unknown" as const, // Help is a meta-command, not a game action
+          parameters: { command: "help" },
+          success: true,
+          timeConsumed: 0,
+          rngRolls: [],
+          stateDeltaSummary: this.getHelpText(),
+        },
+        stateAfter: this.session.getState(),
+      }
+      send({ type: "command_result", result: helpResult })
+      send({ type: "valid_actions", actions: this.session.getValidActions() })
+      return
+    }
+
     // Use the streaming API to send progress updates
     for await (const tick of this.session.executeCommandWithProgress(command)) {
       if (this.isCommandResult(tick)) {
@@ -207,5 +227,41 @@ export class WebSocketHandler {
 
   private isCommandResult(tick: unknown): tick is CommandResult {
     return typeof tick === "object" && tick !== null && "success" in tick && "log" in tick
+  }
+
+  private getHelpText(): string {
+    return `Available commands:
+
+MOVEMENT
+  go <dest>              Travel to an area or location
+  fartravel <dest>       Multi-hop travel to distant areas
+  leave                  Leave current location, return to hub
+
+EXPLORATION
+  survey                 Discover new areas (connections)
+  explore                Discover locations in current area
+
+GATHERING
+  mine [material]        Mine at ore vein (focus mode)
+  mine careful           Mine all materials carefully
+  mine appraise          Inspect ore vein contents
+  chop [material]        Chop at tree stand (focus mode)
+  chop careful           Chop all wood carefully
+  chop appraise          Inspect tree stand contents
+
+SKILLS & GUILDS
+  enrol                  Enroll in guild at current location
+  craft <recipe>         Craft an item at guild hall
+
+CONTRACTS
+  accept <contract>      Accept a contract at guild
+  turn-in                Turn in completed contract
+
+INVENTORY
+  store <item> <qty>     Store items at warehouse
+  drop <item> <qty>      Drop items
+
+Type a command or click a button to perform an action.
+Destinations can be area names, location types (e.g., "ore vein"), or slugs.`
   }
 }
