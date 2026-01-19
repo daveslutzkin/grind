@@ -150,6 +150,31 @@ describe("Resolution Module", () => {
     state.exploration.playerState.currentAreaId = "TEST_AREA"
   })
 
+  describe("resolveDestination - raw location IDs", () => {
+    it("should resolve known raw location ID", () => {
+      // TEST_AREA-loc-1 is the ore vein, already in knownLocationIds
+      const result = resolveDestination(state, "TEST_AREA-loc-1", "near")
+      expect(result.type).toBe("location")
+      expect(result.locationId).toBe("TEST_AREA-loc-1")
+    })
+
+    it("should resolve raw location ID with area-d*-i*-loc-* format", () => {
+      // Add a location with the generated ID format
+      const generatedLocationId = "area-d1-i0-loc-0"
+      state.exploration.playerState.knownLocationIds.push(generatedLocationId)
+
+      const result = resolveDestination(state, generatedLocationId, "near")
+      expect(result.type).toBe("location")
+      expect(result.locationId).toBe(generatedLocationId)
+    })
+
+    it("should return notFound for unknown raw location ID", () => {
+      const result = resolveDestination(state, "area-d1-i0-loc-99", "near")
+      expect(result.type).toBe("notFound")
+      expect(result.reason).toContain("not discovered")
+    })
+  })
+
   describe("resolveDestination - gathering node aliases", () => {
     it("should resolve 'ore' to ore vein location", () => {
       const result = resolveDestination(state, "ore", "near")

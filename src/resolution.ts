@@ -85,6 +85,18 @@ export function resolveDestination(
   const inputLower = input.toLowerCase().trim()
   const normalizedInput = normalizeName(input)
 
+  // 0. Check for raw location IDs (e.g., "area-d1-i0-loc-0" or "TEST_AREA-loc-1")
+  if (input.match(/-loc-\d+$/)) {
+    const knownLocationIds = state.exploration.playerState.knownLocationIds
+    if (knownLocationIds.includes(input)) {
+      return { type: "location", locationId: input }
+    }
+    return {
+      type: "notFound",
+      reason: `Location "${input}" not discovered`,
+    }
+  }
+
   // 1. Check for gathering node aliases
   if (inputLower in GATHERING_NODE_ALIASES) {
     const skillType = GATHERING_NODE_ALIASES[inputLower]
