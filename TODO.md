@@ -57,24 +57,7 @@ to:
 **Description:** Map legend is cramped, sidebar is too narrow. Make sidebar 50% wider (320px→480px) and map 50% bigger. Redesign legend for future expansion (ore veins, etc.) and hide it if player lacks Exploration skill.
 **Fix:** Widened sidebar to 480px, scaled mini-map 50% larger, redesigned legend to vertical layout, and added skill check to hide legend if player lacks Exploration skill.
 
-### 8. Prominent display for most recent action result
-**Status:** To fix
+### 8. Prominent display for most recent action result - DONE
+**Status:** Fixed
 **Description:** Important feedback (discoveries, results) appears in small text, easy to miss. Display the most recent completed action prominently above the compact log.
-**Changes:**
-1. `src/web/client/components/CompactActionLog.tsx`
-   - Split most recent completed entry from rest of history
-   - Render latest in a "prominent" wrapper div above the log
-   - Render remaining history in compact format below
-   ```tsx
-   const [latestEntry, ...olderHistory] = [...history].reverse()
-   return (
-     <div class="compact-action-log">
-       {latestEntry && <div class="latest-action">...</div>}
-       <div class="action-history">{/* older entries */}</div>
-       {currentCommand && <CurrentCompactEntry ... />}
-     </div>
-   )
-   ```
-2. `src/web/client/styles/main.css`
-   - Add `.latest-action` styles (larger font, highlight color, padding)
-   - Subtle border or background to distinguish from history
+**Fix:** Split latest entry from history in CompactActionLog.tsx, render in `.latest-action` wrapper with larger font and accent border. Added CSS styles for prominent display.
