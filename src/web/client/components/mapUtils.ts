@@ -12,13 +12,13 @@ import type { AreaID } from "../../../types"
 // ============================================================================
 
 export const MINI_MAP = {
-  width: 300,
-  height: 200,
-  centerX: 150,
-  centerY: 85, // Shifted up to leave room for legend
-  currentAreaRadius: 8, // Small dot for current area
-  connectedAreaRadius: 18, // Larger dots for connected areas (where can I go?)
-  connectionDistance: 55, // Distance from center to connected area dots
+  width: 450,
+  height: 300,
+  centerX: 225,
+  centerY: 130, // Shifted up to leave room for legend
+  currentAreaRadius: 12, // Small dot for current area
+  connectedAreaRadius: 27, // Larger dots for connected areas (where can I go?)
+  connectionDistance: 82, // Distance from center to connected area dots
 } as const
 
 // ============================================================================

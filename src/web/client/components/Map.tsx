@@ -13,11 +13,17 @@ import {
 interface MapProps {
   location: LocationInfo
   exploration: ExplorationInfo
+  hasExplorationSkill: boolean
 }
 
 // Mini-map SVG showing current area and connections
 // Design: small dot for current area, larger dots for "where can I go?" destinations
-function MiniMap({ location, exploration, onClick }: MapProps & { onClick: () => void }) {
+function MiniMap({
+  location,
+  exploration,
+  hasExplorationSkill,
+  onClick,
+}: MapProps & { onClick: () => void }) {
   const { connections } = exploration
   const { centerX, centerY, currentAreaRadius, connectedAreaRadius } = MINI_MAP
 
@@ -99,36 +105,43 @@ function MiniMap({ location, exploration, onClick }: MapProps & { onClick: () =>
         You: {truncateText(location.areaName, 20)}
       </text>
 
-      {/* Legend row */}
-      <g class="map-legend" transform={`translate(10, ${MINI_MAP.height - 12})`}>
-        <circle cx={5} cy={0} r={4} fill="#4ade80" />
-        <text x={12} y={3} fill="#aaa" fontSize={7}>
-          Explored
-        </text>
-        <circle cx={70} cy={0} r={4} fill="#facc15" />
-        <text x={77} y={3} fill="#aaa" fontSize={7}>
-          Partial
-        </text>
-        <circle cx={130} cy={0} r={4} fill="#f97316" />
-        <text x={137} y={3} fill="#aaa" fontSize={7}>
-          New
-        </text>
-        <circle cx={175} cy={0} r={4} fill="#6b7280" />
-        <text x={182} y={3} fill="#aaa" fontSize={7}>
-          Unknown
-        </text>
+      {/* Legend - vertical layout, only shown if player has Exploration skill */}
+      {hasExplorationSkill && (
+        <g class="map-legend" transform={`translate(10, ${MINI_MAP.height - 70})`}>
+          <circle cx={6} cy={0} r={5} fill="#4ade80" />
+          <text x={16} y={4} fill="#aaa" fontSize={10}>
+            Explored
+          </text>
+          <circle cx={6} cy={18} r={5} fill="#facc15" />
+          <text x={16} y={22} fill="#aaa" fontSize={10}>
+            Partial
+          </text>
+          <circle cx={6} cy={36} r={5} fill="#f97316" />
+          <text x={16} y={40} fill="#aaa" fontSize={10}>
+            New
+          </text>
+          <circle cx={6} cy={54} r={5} fill="#6b7280" />
+          <text x={16} y={58} fill="#aaa" fontSize={10}>
+            Unknown
+          </text>
+        </g>
+      )}
 
-        {/* Click hint */}
-        <text x={MINI_MAP.width - 20} y={3} fill="#666" fontSize={7}>
-          (click)
-        </text>
-      </g>
+      {/* Click hint */}
+      <text x={MINI_MAP.width - 30} y={MINI_MAP.height - 8} fill="#666" fontSize={10}>
+        (click)
+      </text>
     </svg>
   )
 }
 
 // Full-screen map showing entire known world
-function FullScreenMap({ location, exploration, onClose }: MapProps & { onClose: () => void }) {
+function FullScreenMap({
+  location,
+  exploration,
+  hasExplorationSkill,
+  onClose,
+}: MapProps & { onClose: () => void }) {
   const { worldMap } = exploration
   const { width, height } = FULL_MAP
 
@@ -208,29 +221,33 @@ function FullScreenMap({ location, exploration, onClose }: MapProps & { onClose:
             )
           })}
 
-          {/* Legend */}
-          <g transform={`translate(20, ${height - 40})`}>
-            <text x={0} y={0} fill="#888" fontSize={11}>
-              Legend:
-            </text>
-            <circle cx={60} cy={-4} r={6} fill="#4ade80" />
-            <text x={70} y={0} fill="#aaa" fontSize={10}>
-              Explored
-            </text>
-            <circle cx={140} cy={-4} r={6} fill="#facc15" />
-            <text x={150} y={0} fill="#aaa" fontSize={10}>
-              Partial
-            </text>
-            <circle cx={210} cy={-4} r={6} fill="#f97316" />
-            <text x={220} y={0} fill="#aaa" fontSize={10}>
-              New
-            </text>
-            <circle cx={265} cy={-4} r={6} fill="#6b7280" />
-            <text x={275} y={0} fill="#aaa" fontSize={10}>
-              Unknown
-            </text>
+          {/* Legend - only shown if player has Exploration skill */}
+          {hasExplorationSkill && (
+            <g transform={`translate(20, ${height - 40})`}>
+              <text x={0} y={0} fill="#888" fontSize={11}>
+                Legend:
+              </text>
+              <circle cx={60} cy={-4} r={6} fill="#4ade80" />
+              <text x={70} y={0} fill="#aaa" fontSize={10}>
+                Explored
+              </text>
+              <circle cx={140} cy={-4} r={6} fill="#facc15" />
+              <text x={150} y={0} fill="#aaa" fontSize={10}>
+                Partial
+              </text>
+              <circle cx={210} cy={-4} r={6} fill="#f97316" />
+              <text x={220} y={0} fill="#aaa" fontSize={10}>
+                New
+              </text>
+              <circle cx={265} cy={-4} r={6} fill="#6b7280" />
+              <text x={275} y={0} fill="#aaa" fontSize={10}>
+                Unknown
+              </text>
+            </g>
+          )}
 
-            <text x={width - 200} y={0} fill="#666" fontSize={10}>
+          <g transform={`translate(${width - 200}, ${height - 40})`}>
+            <text x={0} y={0} fill="#666" fontSize={10}>
               Distance from town →
             </text>
           </g>
@@ -241,7 +258,7 @@ function FullScreenMap({ location, exploration, onClose }: MapProps & { onClose:
 }
 
 // Main Map component (named GameMap to avoid shadowing JS built-in Map)
-export function GameMap({ location, exploration }: MapProps) {
+export function GameMap({ location, exploration, hasExplorationSkill }: MapProps) {
   const [showFullMap, setShowFullMap] = useState(false)
 
   if (showFullMap) {
@@ -250,6 +267,7 @@ export function GameMap({ location, exploration }: MapProps) {
         <FullScreenMap
           location={location}
           exploration={exploration}
+          hasExplorationSkill={hasExplorationSkill}
           onClose={() => setShowFullMap(false)}
         />
       </div>
@@ -259,7 +277,12 @@ export function GameMap({ location, exploration }: MapProps) {
   return (
     <div class="map panel">
       <h3>Map</h3>
-      <MiniMap location={location} exploration={exploration} onClick={() => setShowFullMap(true)} />
+      <MiniMap
+        location={location}
+        exploration={exploration}
+        hasExplorationSkill={hasExplorationSkill}
+        onClick={() => setShowFullMap(true)}
+      />
     </div>
   )
 }

@@ -10,6 +10,8 @@ interface SidebarProps {
 }
 
 export function Sidebar({ state }: SidebarProps) {
+  const hasExplorationSkill = state.skills.some((s) => s.id === "Exploration" && s.level >= 1)
+
   return (
     <aside class="sidebar">
       <div class="sidebar-top">
@@ -19,7 +21,11 @@ export function Sidebar({ state }: SidebarProps) {
         <Contracts contracts={state.contracts} skills={state.skills} />
       </div>
       <div class="sidebar-bottom">
-        <GameMap location={state.location} exploration={state.exploration} />
+        <GameMap
+          location={state.location}
+          exploration={state.exploration}
+          hasExplorationSkill={hasExplorationSkill}
+        />
       </div>
     </aside>
   )

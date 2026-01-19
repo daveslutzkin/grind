@@ -240,7 +240,7 @@ header {
 
 .game-layout {
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: 1fr 480px;
   flex: 1;
   min-height: 0;
 }
