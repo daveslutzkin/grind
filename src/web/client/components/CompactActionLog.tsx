@@ -71,8 +71,11 @@ function CurrentCompactEntry({ entry }: { entry: CommandHistoryEntry }) {
 export function CompactActionLog({ history, currentCommand }: CompactActionLogProps) {
   const [showFullHistory, setShowFullHistory] = useState(false)
 
-  // Get last 2 entries from history (excluding current)
-  const recentHistory = history.slice(-2)
+  // Split into latest entry and older history
+  const reversedHistory = [...history].reverse()
+  const [latestEntry, ...olderHistory] = reversedHistory
+  // Show at most 1 older entry in compact view
+  const recentOlderHistory = olderHistory.slice(0, 1)
 
   const hasHistory = history.length > 0 || currentCommand !== null
 
@@ -95,9 +98,16 @@ export function CompactActionLog({ history, currentCommand }: CompactActionLogPr
   return (
     <div class="compact-action-log">
       {!hasHistory && <div class="compact-empty">Type a command or click an action to begin.</div>}
-      {recentHistory.map((entry) => (
-        <CompactEntry key={entry.timestamp} entry={entry} />
-      ))}
+      {latestEntry && (
+        <div class="latest-action">
+          <CompactEntry key={latestEntry.timestamp} entry={latestEntry} />
+        </div>
+      )}
+      <div class="action-history">
+        {recentOlderHistory.map((entry) => (
+          <CompactEntry key={entry.timestamp} entry={entry} />
+        ))}
+      </div>
       {currentCommand && <CurrentCompactEntry entry={currentCommand} />}
       {history.length > 2 && (
         <button class="view-history-btn" onClick={() => setShowFullHistory(true)}>

@@ -678,6 +678,43 @@ header {
 }
 
 /* ============================================================================
+   Latest Action (Prominent Display)
+   ============================================================================ */
+
+.latest-action {
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--accent-blue);
+  border-radius: 4px;
+}
+
+.latest-action .compact-entry {
+  font-size: 1rem;
+  padding: 0.5rem;
+  margin-bottom: 0;
+  background: transparent;
+  border-left: 3px solid var(--accent-blue);
+}
+
+.latest-action .compact-entry.success {
+  border-left-color: var(--success);
+}
+
+.latest-action .compact-entry.failure {
+  border-left-color: var(--error);
+}
+
+.latest-action .compact-result {
+  font-size: 1rem;
+  font-weight: bold;
+}
+
+.latest-action .compact-entry-details {
+  font-size: 0.9rem;
+}
+
+/* ============================================================================
    Full History Modal
    ============================================================================ */
 
