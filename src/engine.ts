@@ -1355,9 +1355,9 @@ async function* executeGuildEnrolment(
 
   // For gathering guilds, replace summary with skill-specific orientation text
   if (skill === "Mining" && gatheringBenefits?.discoveredAreaName) {
-    summary = `Enrolled in Miners Guild, congratulations! (${check.timeCost}t)\n\nYou now know how to mine! There's a promising ore vein at ${gatheringBenefits.discoveredAreaName} - go there to begin your mining career.\n\nDiscover more locations by accepting contracts, or join the Explorers Guild to survey the wilderness yourself.`
+    summary = `Enrolled in Miners Guild, congratulations! (${check.timeCost} ticks)\n\nYou now know how to mine! There's a promising ore vein at ${gatheringBenefits.discoveredAreaName} - go there to begin your mining career.\n\nDiscover more locations by accepting contracts, or join the Explorers Guild to survey the wilderness yourself.`
   } else if (skill === "Woodcutting" && gatheringBenefits?.discoveredAreaName) {
-    summary = `Enrolled in Foresters Guild, congratulations! (${check.timeCost}t)\n\nYou now know how to chop wood! There's a fine stand of trees at ${gatheringBenefits.discoveredAreaName} - go there to start harvesting lumber.\n\nDiscover more locations by accepting contracts, or join the Explorers Guild to survey the wilderness yourself.`
+    summary = `Enrolled in Foresters Guild, congratulations! (${check.timeCost} ticks)\n\nYou now know how to chop wood! There's a fine stand of trees at ${gatheringBenefits.discoveredAreaName} - go there to start harvesting lumber.\n\nDiscover more locations by accepting contracts, or join the Explorers Guild to survey the wilderness yourself.`
   }
 
   // Build exploration log for either gathering or exploration benefits

@@ -100,7 +100,6 @@ function CurrentEntry({ entry }: { entry: CommandHistoryEntry }) {
 }
 
 export function ActionHistory({ history, currentCommand }: ActionHistoryProps) {
-  // eslint-disable-next-line no-undef
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to bottom when new entries are added

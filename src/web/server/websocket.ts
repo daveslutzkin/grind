@@ -249,9 +249,16 @@ GATHERING
   chop careful           Chop all wood carefully
   chop appraise          Inspect tree stand contents
 
+COMBAT
+  fight                  Fight enemies at mob camp
+
 SKILLS & GUILDS
   enrol                  Enroll in guild at current location
   craft <recipe>         Craft an item at guild hall
+  see gathering map      View known gathering nodes (at gathering guild)
+  buy node map           Purchase gathering node map (at gathering guild)
+  buy area map           Purchase area map (at Explorers Guild)
+  turn_in_combat_token   Turn in combat token (at Combat Guild)
 
 CONTRACTS
   accept <contract>      Accept a contract at guild

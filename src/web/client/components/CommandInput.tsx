@@ -8,7 +8,6 @@ interface CommandInputProps {
 
 export function CommandInput({ onSubmit, disabled = false }: CommandInputProps) {
   const [value, setValue] = useState("")
-  // eslint-disable-next-line no-undef
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Refocus input when command execution completes (disabled becomes false)
@@ -33,7 +32,6 @@ export function CommandInput({ onSubmit, disabled = false }: CommandInputProps) 
   )
 
   const handleKeyDown = useCallback(
-    // eslint-disable-next-line no-undef
     (e: JSX.TargetedKeyboardEvent<HTMLInputElement>) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault()

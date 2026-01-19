@@ -31,6 +31,7 @@ export default [
     },
     rules: {
       ...tseslint.configs.recommended.rules,
+      "no-undef": "off", // TypeScript handles this better than ESLint
       "no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars": [
         "error",
