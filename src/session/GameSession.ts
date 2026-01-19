@@ -750,8 +750,10 @@ export class GameSession {
       // Check if requirements are met
       let isComplete = true
       const requirements: ContractRequirement[] = contract.requirements.map((req) => {
-        const invItem = this.state.player.inventory.find((i) => i.itemId === req.itemId)
-        const currentQuantity = invItem?.quantity ?? 0
+        // Sum quantities across all matching inventory slots (items may be in separate stacks)
+        const currentQuantity = this.state.player.inventory
+          .filter((i) => i.itemId === req.itemId)
+          .reduce((sum, item) => sum + item.quantity, 0)
         if (currentQuantity < req.quantity) {
           isComplete = false
         }

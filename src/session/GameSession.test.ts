@@ -882,6 +882,47 @@ describe("GameSession", () => {
       expect(activeAtTownSquare.length).toBeGreaterThan(0)
       expect(activeAtTownSquare[0].id).toBe("mining-contract-1")
     })
+
+    it("sums quantities across multiple inventory slots for contract progress", async () => {
+      const session = GameSession.create("contracts-multi-slot-test")
+
+      // Go to Miners Guild and accept a contract
+      await session.executeCommand("go miners guild")
+      await session.executeCommand("enrol")
+      await session.executeCommand("accept mining-contract-1")
+
+      // Get the contract to find out what item it requires
+      const stateWithContract = session.getState()
+      const contract = stateWithContract.contracts.find((c) => c.id === "mining-contract-1")
+      expect(contract).toBeDefined()
+      expect(contract!.requirements.length).toBeGreaterThan(0)
+
+      const requiredItemId = contract!.requirements[0].itemId
+      const requiredQuantity = contract!.requirements[0].quantity
+
+      // Serialize the session, then modify inventory to have multiple slots
+      // with the same item (simulating the bug scenario)
+      const json = session.serialize()
+      const save = JSON.parse(json)
+
+      // Clear inventory and add multiple slots with the same item
+      // Each slot has 1 item, total equals required quantity
+      save.state.player.inventory = []
+      for (let i = 0; i < requiredQuantity; i++) {
+        save.state.player.inventory.push({ itemId: requiredItemId, quantity: 1 })
+      }
+
+      // Restore session from modified save
+      const modifiedSession = GameSession.fromSavedState(JSON.stringify(save))
+
+      // Get the contract progress - it should sum all slots
+      const state = modifiedSession.getState()
+      const modifiedContract = state.contracts.find((c) => c.id === "mining-contract-1")
+
+      expect(modifiedContract).toBeDefined()
+      expect(modifiedContract!.requirements[0].currentQuantity).toBe(requiredQuantity)
+      expect(modifiedContract!.isComplete).toBe(true)
+    })
   })
 
   describe("edge cases", () => {
