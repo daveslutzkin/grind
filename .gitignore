@@ -1,5 +1,6 @@
 .env
 .DS_Store
+.multi-cc
 node_modules/
 dist/
 .*sw?

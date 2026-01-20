@@ -5,15 +5,14 @@ This document captures findings from a comprehensive code review conducted on 20
 ## Table of Contents
 
 1. [Large Monolithic Files](#1-large-monolithic-files)
-2. [Duplicate Code Patterns](#2-duplicate-code-patterns)
-3. [Functions Over 100 Lines](#3-functions-over-100-lines)
-4. [TODO Comments to Address](#4-todo-comments-to-address)
-5. [Magic Numbers to Extract](#5-magic-numbers-to-extract)
-6. [Test Coverage Gaps](#6-test-coverage-gaps)
-7. [Deprecated Code to Clean Up](#7-deprecated-code-to-clean-up)
-8. [Inconsistent Patterns](#8-inconsistent-patterns)
-9. [Abstraction Opportunities](#9-abstraction-opportunities)
-10. [Overall Assessment](#10-overall-assessment)
+2. [Functions Over 100 Lines](#2-functions-over-100-lines)
+3. [TODO Comments to Address](#3-todo-comments-to-address)
+4. [Magic Numbers to Extract](#4-magic-numbers-to-extract)
+5. [Test Coverage Gaps](#5-test-coverage-gaps)
+6. [Deprecated Code to Clean Up](#6-deprecated-code-to-clean-up)
+7. [Inconsistent Patterns](#7-inconsistent-patterns)
+8. [Abstraction Opportunities](#8-abstraction-opportunities)
+9. [Overall Assessment](#9-overall-assessment)
 
 ---
 
@@ -23,9 +22,9 @@ These files have grown large and could benefit from being split into domain-spec
 
 | File | Lines | Issue |
 |------|-------|-------|
-| `src/engine.ts` | 1,840 | Action execution monolith - handles all gather, craft, travel, contract actions |
 | `src/exploration.ts` | 1,739 | Exploration + travel + discovery all combined |
-| `src/actionChecks.ts` | 1,439 | All validation logic for every action type |
+| `src/engine.ts` | 1,626 | Action execution monolith - handles all gather, craft, travel, contract actions |
+| `src/actionChecks.ts` | 1,458 | All validation logic for every action type |
 | `src/runner.ts` | 1,160 | Large REPL runner |
 | `src/session/GameSession.ts` | 1,113 | Unified session with many responsibilities |
 
@@ -38,82 +37,24 @@ Consider splitting into domain-specific modules:
 
 ---
 
-## 2. Duplicate Code Patterns
-
-> ✅ **PLANNED** - See `PLAN.md` for implementation details
-
-### 2.1 Failure Handling Pattern (10+ occurrences)
-
-**Locations:** `engine.ts:240-252, 338-350, 1403-1415, 1454-1466, 1513-1523, 1648-1659`
-
-```typescript
-if (!check.valid) {
-  yield {
-    done: true,
-    log: createFailureLog(state, action, check.failureType!, 0, check.failureReason, check.failureContext),
-  }
-  return
-}
-```
-
-**Recommendation:** Extract `yieldFailure(state, action, check)` helper function.
-
-### 2.2 Inventory + Storage Quantity Calculation (2 occurrences)
-
-**Locations:** `actionChecks.ts:272-278, 809-814`
-
-```typescript
-const inventoryQuantity = state.player.inventory
-  .filter((i) => i.itemId === req.itemId)
-  .reduce((sum, i) => sum + i.quantity, 0)
-const storageQuantity = state.player.storage
-  .filter((i) => i.itemId === req.itemId)
-  .reduce((sum, i) => sum + i.quantity, 0)
-const totalQuantity = inventoryQuantity + storageQuantity
-```
-
-**Recommendation:** Create `getTotalItemQuantity(state, itemId)` function.
-
-### 2.3 Area/Connection Discovery Loops (3 occurrences)
-
-**Locations:** `engine.ts:264-281, 1681-1697, 1786-1803`
-
-Nearly identical loops for discovering areas and connections when revealing maps.
-
-**Recommendation:** Extract `revealAreasAndConnections(state, areaIds, connectionIds)` helper.
-
-### 2.4 Focus/Careful Extraction Logic (90 nearly identical lines)
-
-**Locations:** `engine.ts:740-835` vs `engine.ts:846-931`
-
-These two functions share ~90 lines of nearly identical code with only minor variations for mode-specific behavior.
-
-**Recommendation:** Consolidate into single `executeExtraction(mode, ...)` with mode-specific branches.
-
----
-
-## 3. Functions Over 100 Lines
+## 2. Functions Over 100 Lines
 
 These functions are candidates for decomposition into smaller, focused helpers.
 
 | Function | File | Lines | Size |
 |----------|------|-------|------|
 | `checkGatherAction` / `checkMultiMaterialGatherAction` | actionChecks.ts | 423-667 | 244 lines |
-| `checkBuyMapAction` | actionChecks.ts | 1197-1394 | 197 lines |
-| `executeBuyMap` | engine.ts | 1642-1823 | 181 lines |
 | `executeGuildEnrolment` | engine.ts | 1278-1391 | 113 lines |
 | `generateFailureHint` | hints.ts | 59+ | Large switch statement |
 
 ### Specific Recommendations
 
 - **`checkGatherAction`**: Extract helpers like `validateNodeExists()`, `validatePlayerEnrollment()`, `validateModeUnlocked()`, `validateMaterials()`
-- **`checkBuyMapAction`**: Split into `checkNodeMapAction()` and `checkAreaMapAction()`
-- **`executeBuyMap`**: Extract `executeNodeMapPurchase()` and `executeAreaMapPurchase()`
 - **`generateFailureHint`**: Use a Map of failureType → hint generator functions
 
 ---
 
-## 4. TODO Comments to Address
+## 3. TODO Comments to Address
 
 | Location | TODO Description |
 |----------|------------------|
@@ -125,7 +66,7 @@ These functions are candidates for decomposition into smaller, focused helpers.
 
 ---
 
-## 5. Magic Numbers to Extract
+## 4. Magic Numbers to Extract
 
 | Location | Current Code | Suggested Constant Name |
 |----------|--------------|------------------------|
@@ -137,7 +78,7 @@ These functions are candidates for decomposition into smaller, focused helpers.
 
 ---
 
-## 6. Test Coverage Gaps
+## 5. Test Coverage Gaps
 
 The following 19 source files do not have corresponding test files:
 
@@ -171,7 +112,7 @@ The following 19 source files do not have corresponding test files:
 
 ---
 
-## 7. Deprecated Code to Clean Up
+## 6. Deprecated Code to Clean Up
 
 | Location | Issue | Action |
 |----------|-------|--------|
@@ -181,23 +122,9 @@ The following 19 source files do not have corresponding test files:
 
 ---
 
-## 8. Inconsistent Patterns
+## 7. Inconsistent Patterns
 
-### 8.1 Import Paths in hints.test.ts ✅ PLANNED
-
-**Location:** `src/hints.test.ts:4-7`
-
-```typescript
-// Current (inconsistent):
-import { generateFailureHint } from "../src/hints.js"
-import { createWorld } from "../src/world.js"
-
-// Should be (like other test files):
-import { generateFailureHint } from "./hints.js"
-import { createWorld } from "./world.js"
-```
-
-### 8.2 Location Checking Approaches
+### 7.1 Location Checking Approaches
 
 Different functions in `actionChecks.ts` check locations differently:
 
@@ -207,7 +134,7 @@ Different functions in `actionChecks.ts` check locations differently:
 
 **Recommendation:** Create standardized location comparison helper.
 
-### 8.3 Validation Result Creation
+### 7.2 Validation Result Creation
 
 `ActionCheckResult` creation is verbose and repetitive throughout `actionChecks.ts`:
 
@@ -226,9 +153,9 @@ return {
 
 ---
 
-## 9. Abstraction Opportunities
+## 8. Abstraction Opportunities
 
-### 9.1 Missing: "Discoverable" Concept
+### 8.1 Missing: "Discoverable" Concept
 
 **Files:** `src/exploration.ts`, `src/interactive.ts`
 
@@ -236,7 +163,7 @@ Areas, connections, nodes, and mob camps all follow similar discovery patterns b
 
 **Recommendation:** Create `Discoverable` interface and consolidate discovery logic.
 
-### 9.2 Missing: "Reward" System
+### 8.2 Missing: "Reward" System
 
 **Files:** `src/engine.ts` (scattered throughout)
 
@@ -244,7 +171,7 @@ Gold rewards, XP rewards, and reputation rewards are handled separately in diffe
 
 **Recommendation:** Create `RewardGranter` utility with methods: `grantGold()`, `grantXP()`, `grantReputation()`.
 
-### 9.3 Missing: "Material Tracking"
+### 8.3 Missing: "Material Tracking"
 
 **Files:** `src/actionChecks.ts`, `src/engine.ts`
 
@@ -252,7 +179,7 @@ Material checking is repeated in gather, craft, and trade actions.
 
 **Recommendation:** Create `MaterialInventory` class to abstract quantity queries and depletion logic.
 
-### 9.4 Potential Over-Abstraction: Resolution System
+### 8.4 Potential Over-Abstraction: Resolution System
 
 **File:** `src/resolution.ts`
 
@@ -262,7 +189,7 @@ Has multiple overlapping layers (`normalizeName`, `toSlug`, various alias maps) 
 
 ---
 
-## 10. Overall Assessment
+## 9. Overall Assessment
 
 ### Strengths
 
@@ -283,9 +210,10 @@ Has multiple overlapping layers (`normalizeName`, `toSlug`, various alias maps) 
 
 ### Priority Order
 
-1. ~~**High**: Extract duplicate code patterns (failure handling, inventory calculations)~~ ✅ PLANNED
-2. ~~**High**: Fix inconsistent import paths in `hints.test.ts`~~ ✅ PLANNED
-3. **Medium**: Break up large functions (>100 lines)
-4. **Medium**: Add test coverage for core untested files
-5. **Low**: Consider file reorganization for large modules
-6. **Low**: Clean up deprecated code and unused properties
+1. ~~**High**: Extract duplicate code patterns (failure handling, inventory calculations)~~ ✅ DONE
+2. ~~**High**: Fix inconsistent import paths in `hints.test.ts`~~ ✅ DONE
+3. ~~**High**: Split checkBuyMapAction and executeBuyMap~~ ✅ DONE
+4. **Medium**: Break up large functions (>100 lines)
+5. **Medium**: Add test coverage for core untested files
+6. **Low**: Consider file reorganization for large modules
+7. **Low**: Clean up deprecated code and unused properties
