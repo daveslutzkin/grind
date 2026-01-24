@@ -8,7 +8,12 @@
 
 import type { WorldState, Node, Area, AreaID } from "../types.js"
 import type { PolicyObservation, KnownArea, KnownNode, FrontierArea } from "./types.js"
-import { buildDiscoverables, isConnectionKnown, getTotalXP } from "../exploration.js"
+import {
+  buildDiscoverables,
+  isConnectionKnown,
+  getTotalXP,
+  getConnectionsForArea,
+} from "../exploration.js"
 
 // Cache for fully explored areas - once fully explored, always fully explored
 // This cache is per-run and should be cleared at the start of each run
@@ -240,53 +245,49 @@ export function getObservation(state: WorldState): PolicyObservation {
     : estimateTravelTicks(currentAreaId, currentDistance, "TOWN", 0)
 
   // Build frontier areas - unknown areas reachable via known connections
+  // Optimized: iterate through known areas and their connections (O(known_areas))
+  // instead of all connections (O(all_connections))
   const knownAreaIds = new Set(exploration.playerState.knownAreaIds)
   const knownConnectionIds = new Set(exploration.playerState.knownConnectionIds)
   const frontierAreas: FrontierArea[] = []
   const seenFrontierAreaIds = new Set<AreaID>() // O(1) deduplication
 
-  // Find all connections that lead to unknown areas
-  for (const conn of exploration.connections) {
-    // Check if this connection is known
-    if (!isConnectionKnown(knownConnectionIds, conn.fromAreaId, conn.toAreaId)) {
-      continue
-    }
+  // For each known area, check its connections for unknown areas
+  for (const knownAreaId of exploration.playerState.knownAreaIds) {
+    const areaConnections = getConnectionsForArea(exploration, knownAreaId)
 
-    // Check if one end is known and the other is unknown
-    const fromKnown = knownAreaIds.has(conn.fromAreaId)
-    const toKnown = knownAreaIds.has(conn.toAreaId)
-
-    let unknownAreaId: AreaID | null = null
-    let knownAreaId: AreaID | null = null
-
-    if (fromKnown && !toKnown) {
-      unknownAreaId = conn.toAreaId
-      knownAreaId = conn.fromAreaId
-    } else if (!fromKnown && toKnown) {
-      unknownAreaId = conn.fromAreaId
-      knownAreaId = conn.toAreaId
-    }
-
-    if (unknownAreaId && knownAreaId) {
-      // Check if we already have this frontier area (O(1) Set lookup)
-      if (seenFrontierAreaIds.has(unknownAreaId)) {
+    for (const conn of areaConnections) {
+      // Check if this connection is known
+      if (!isConnectionKnown(knownConnectionIds, conn.fromAreaId, conn.toAreaId)) {
         continue
       }
-      seenFrontierAreaIds.add(unknownAreaId)
 
-      const unknownArea = exploration.areas.get(unknownAreaId)
+      // Determine target area
+      const targetId = conn.fromAreaId === knownAreaId ? conn.toAreaId : conn.fromAreaId
+
+      // Skip if target is also known (not a frontier)
+      if (knownAreaIds.has(targetId)) {
+        continue
+      }
+
+      // Skip if already seen this frontier area
+      if (seenFrontierAreaIds.has(targetId)) {
+        continue
+      }
+      seenFrontierAreaIds.add(targetId)
+
+      const unknownArea = exploration.areas.get(targetId)
       if (unknownArea) {
         // Use O(1) heuristic for travel time to frontier
-        // Frontier is 1 distance further than the known connecting area
         const totalTravelTime = estimateTravelTicks(
           currentAreaId,
           currentDistance,
-          unknownAreaId,
+          targetId,
           unknownArea.distance
         )
 
         frontierAreas.push({
-          areaId: unknownAreaId,
+          areaId: targetId,
           distance: unknownArea.distance,
           travelTicksFromCurrent: totalTravelTime,
           reachableFrom: knownAreaId,

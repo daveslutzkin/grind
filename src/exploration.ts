@@ -117,6 +117,72 @@ export function findConnection(
 }
 
 // ============================================================================
+// Connection Index (O(1) lookup by area)
+// ============================================================================
+
+/**
+ * WeakMap to cache connection indexes per exploration state.
+ * This avoids polluting the serializable state while providing O(1) lookups.
+ * The index is rebuilt lazily when connections change.
+ */
+type ExplorationState = NonNullable<WorldState["exploration"]>
+const connectionIndexCache = new WeakMap<
+  ExplorationState,
+  { index: Map<AreaID, AreaConnection[]>; connectionCount: number }
+>()
+
+/**
+ * Build or retrieve the connection index for an exploration state.
+ * Index maps each areaId to all connections touching that area.
+ */
+function getConnectionIndex(exploration: ExplorationState): Map<AreaID, AreaConnection[]> {
+  const cached = connectionIndexCache.get(exploration)
+
+  // Rebuild if cache doesn't exist or connection count changed
+  if (!cached || cached.connectionCount !== exploration.connections.length) {
+    const index = new Map<AreaID, AreaConnection[]>()
+
+    for (const conn of exploration.connections) {
+      // Add to fromAreaId's list
+      let fromList = index.get(conn.fromAreaId)
+      if (!fromList) {
+        fromList = []
+        index.set(conn.fromAreaId, fromList)
+      }
+      fromList.push(conn)
+
+      // Add to toAreaId's list
+      let toList = index.get(conn.toAreaId)
+      if (!toList) {
+        toList = []
+        index.set(conn.toAreaId, toList)
+      }
+      toList.push(conn)
+    }
+
+    connectionIndexCache.set(exploration, {
+      index,
+      connectionCount: exploration.connections.length,
+    })
+    return index
+  }
+
+  return cached.index
+}
+
+/**
+ * Get all connections touching a specific area. O(1) lookup using cached index.
+ * Returns empty array if area has no connections.
+ */
+export function getConnectionsForArea(
+  exploration: ExplorationState,
+  areaId: AreaID
+): AreaConnection[] {
+  const index = getConnectionIndex(exploration)
+  return index.get(areaId) ?? []
+}
+
+// ============================================================================
 // Core Utility Functions
 // ============================================================================
 
@@ -894,12 +960,8 @@ export function prepareSurveyData(state: WorldState, currentArea: Area): SurveyI
   const expectedTicks = calculateExpectedTicks(successChance, rollInterval)
 
   // Get ALL connections from current area (including to known areas per spec)
-  const allConnections = exploration.connections.filter((conn) => {
-    return (
-      conn.fromAreaId === exploration.playerState.currentAreaId ||
-      conn.toAreaId === exploration.playerState.currentAreaId
-    )
-  })
+  // Use O(1) indexed lookup instead of filtering all connections
+  const allConnections = getConnectionsForArea(exploration, exploration.playerState.currentAreaId)
 
   // Check if there are ANY undiscovered areas connected
   const knownAreaIds = new Set(exploration.playerState.knownAreaIds)
@@ -1126,35 +1188,28 @@ export function buildDiscoverables(
   const knownConnectionIds = new Set(exploration.playerState.knownConnectionIds)
   const knownAreaIds = new Set(exploration.playerState.knownAreaIds)
 
+  // Use O(1) indexed lookup instead of filtering all connections
+  const areaConnections = getConnectionsForArea(exploration, currentArea.id)
+
   // Connections to KNOWN areas (higher priority)
-  const undiscoveredKnownConnections = exploration.connections.filter((conn) => {
-    const isFromCurrent = conn.fromAreaId === currentArea.id
-    const isToCurrent = conn.toAreaId === currentArea.id
-    if (!isFromCurrent && !isToCurrent) return false
-
-    const connId = createConnectionId(conn.fromAreaId, conn.toAreaId)
-    const reverseConnId = createConnectionId(conn.toAreaId, conn.fromAreaId)
-    if (knownConnectionIds.has(connId) || knownConnectionIds.has(reverseConnId)) return false
-
-    // Target area must be known
-    const targetId = isFromCurrent ? conn.toAreaId : conn.fromAreaId
-    return knownAreaIds.has(targetId)
-  })
-
+  const undiscoveredKnownConnections: AreaConnection[] = []
   // Connections to UNKNOWN areas (lower probability per spec)
-  const undiscoveredUnknownConnections = exploration.connections.filter((conn) => {
-    const isFromCurrent = conn.fromAreaId === currentArea.id
-    const isToCurrent = conn.toAreaId === currentArea.id
-    if (!isFromCurrent && !isToCurrent) return false
+  const undiscoveredUnknownConnections: AreaConnection[] = []
 
+  for (const conn of areaConnections) {
     const connId = createConnectionId(conn.fromAreaId, conn.toAreaId)
     const reverseConnId = createConnectionId(conn.toAreaId, conn.fromAreaId)
-    if (knownConnectionIds.has(connId) || knownConnectionIds.has(reverseConnId)) return false
+    if (knownConnectionIds.has(connId) || knownConnectionIds.has(reverseConnId)) continue
 
-    // Target area must be UNknown
-    const targetId = isFromCurrent ? conn.toAreaId : conn.fromAreaId
-    return !knownAreaIds.has(targetId)
-  })
+    // Determine target area
+    const targetId = conn.fromAreaId === currentArea.id ? conn.toAreaId : conn.fromAreaId
+
+    if (knownAreaIds.has(targetId)) {
+      undiscoveredKnownConnections.push(conn)
+    } else {
+      undiscoveredUnknownConnections.push(conn)
+    }
+  }
 
   // Calculate base success chance (used to derive individual thresholds)
   const knowledgeParams = getKnowledgeParams(state, currentArea)
@@ -1374,12 +1429,11 @@ export async function* executeExplore(state: WorldState, _action: ExploreAction)
     (loc) => !exploration.playerState.knownLocationIds.includes(loc.id)
   )
   const knownAreaIds = new Set(exploration.playerState.knownAreaIds)
-  const remainingKnownConnections = exploration.connections.filter((conn) => {
-    const isFromCurrent = conn.fromAreaId === currentArea.id
-    const isToCurrent = conn.toAreaId === currentArea.id
-    if (!isFromCurrent && !isToCurrent) return false
+  // Use O(1) indexed lookup instead of filtering all connections
+  const areaConnections = getConnectionsForArea(exploration, currentArea.id)
+  const remainingKnownConnections = areaConnections.filter((conn) => {
     const connId = createConnectionId(conn.fromAreaId, conn.toAreaId)
-    const targetId = isFromCurrent ? conn.toAreaId : conn.fromAreaId
+    const targetId = conn.fromAreaId === currentArea.id ? conn.toAreaId : conn.fromAreaId
     return (
       !exploration.playerState.knownConnectionIds.includes(connId) && knownAreaIds.has(targetId)
     )

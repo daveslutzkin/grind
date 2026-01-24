@@ -1302,6 +1302,58 @@ describe("Explore Discovering Unknown Connections", () => {
   })
 })
 
+describe("getConnectionsForArea", () => {
+  it("should return all connections touching a specific area", async () => {
+    const state = createExplorationWorld("conn-index-test")
+
+    // Get connections for TOWN
+    const { getConnectionsForArea } = await import("./exploration.js")
+    const townConnections = getConnectionsForArea(state.exploration!, "TOWN")
+
+    // TOWN should have connections to all distance-1 areas
+    expect(townConnections.length).toBe(5) // 5 distance-1 areas
+
+    // Verify all connections touch TOWN
+    for (const conn of townConnections) {
+      expect(conn.fromAreaId === "TOWN" || conn.toAreaId === "TOWN").toBe(true)
+    }
+  })
+
+  it("should return empty array for area with no connections", async () => {
+    const state = createExplorationWorld("conn-index-empty")
+
+    const { getConnectionsForArea } = await import("./exploration.js")
+    // A newly created area that's not connected to anything
+    const connections = getConnectionsForArea(state.exploration!, "nonexistent-area")
+
+    expect(connections).toEqual([])
+  })
+
+  it("should be consistent with filtering all connections", async () => {
+    const state = createExplorationWorld("conn-index-consistent")
+    state.player.skills.Exploration = { level: 1, xp: 0 }
+
+    // Discover some areas to generate more connections
+    await grantExplorationGuildBenefits(state)
+
+    const { getConnectionsForArea } = await import("./exploration.js")
+
+    // Test for multiple areas
+    for (const areaId of state.exploration!.playerState.knownAreaIds) {
+      const indexed = getConnectionsForArea(state.exploration!, areaId)
+      const filtered = state.exploration!.connections.filter(
+        (c) => c.fromAreaId === areaId || c.toAreaId === areaId
+      )
+
+      // Should return same connections (order may differ)
+      expect(indexed.length).toBe(filtered.length)
+      for (const conn of indexed) {
+        expect(filtered).toContainEqual(conn)
+      }
+    }
+  })
+})
+
 describe("rollTravelMultiplier", () => {
   it("should return values in range 0.5-4.5", () => {
     const rng = createRng("test-travel-range")
