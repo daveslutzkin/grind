@@ -137,18 +137,35 @@ function buildKnownArea(
 }
 
 /**
+ * Cached Sets for building observations.
+ * Used to avoid O(n) array→Set conversion on each rebuild.
+ */
+interface CachedSets {
+  knownLocationIds: Set<string>
+  knownAreaIds: Set<AreaID>
+  knownConnectionIds: Set<string>
+}
+
+/**
  * Build a fresh observation from scratch. This is the original O(state_size)
  * implementation that iterates all known areas/locations/connections.
  *
  * @param state The current world state (read-only access)
+ * @param cachedSets Optional pre-built Sets to avoid O(n) array conversion
  * @returns A sanitized PolicyObservation
  */
-function buildObservationFresh(state: WorldState): PolicyObservation {
+function buildObservationFresh(state: WorldState, cachedSets?: CachedSets): PolicyObservation {
   const miningSkill = state.player.skills.Mining
   const miningLevel = miningSkill.level
   const exploration = state.exploration
   const currentAreaId = exploration.playerState.currentAreaId
-  const knownLocationIds = new Set(exploration.playerState.knownLocationIds)
+
+  // Use cached Sets if provided, otherwise build from arrays
+  const knownLocationIds =
+    cachedSets?.knownLocationIds ?? new Set(exploration.playerState.knownLocationIds)
+  const knownAreaIds = cachedSets?.knownAreaIds ?? new Set(exploration.playerState.knownAreaIds)
+  const knownConnectionIds =
+    cachedSets?.knownConnectionIds ?? new Set(exploration.playerState.knownConnectionIds)
 
   // Build O(1) node lookup map
   const nodesByNodeId = new Map<string, Node>()
@@ -165,7 +182,7 @@ function buildObservationFresh(state: WorldState): PolicyObservation {
   // Build known areas (only areas the player has discovered)
   // Skip areas that are fully explored with no mineable nodes - they're not useful
   const knownAreas: KnownArea[] = []
-  for (const areaId of exploration.playerState.knownAreaIds) {
+  for (const areaId of knownAreaIds) {
     const area = exploration.areas.get(areaId)
     if (area && area.id !== "TOWN") {
       const knownArea = buildKnownArea(area, miningLevel, knownLocationIds, nodesByNodeId)
@@ -253,13 +270,12 @@ function buildObservationFresh(state: WorldState): PolicyObservation {
   // Build frontier areas - unknown areas reachable via known connections
   // Optimized: iterate through known areas and their connections (O(known_areas))
   // instead of all connections (O(all_connections))
-  const knownAreaIds = new Set(exploration.playerState.knownAreaIds)
-  const knownConnectionIds = new Set(exploration.playerState.knownConnectionIds)
+  // Note: knownAreaIds and knownConnectionIds are already defined above (from cached or fresh)
   const frontierAreas: FrontierArea[] = []
   const seenFrontierAreaIds = new Set<AreaID>() // O(1) deduplication
 
   // For each known area, check its connections for unknown areas
-  for (const knownAreaId of exploration.playerState.knownAreaIds) {
+  for (const knownAreaId of knownAreaIds) {
     const areaConnections = getConnectionsForArea(exploration, knownAreaId)
 
     for (const conn of areaConnections) {
@@ -374,12 +390,19 @@ export class ObservationManager {
     }
 
     // First call or after reset - build fresh
-    this.observation = buildObservationFresh(state)
+    // Initialize cached Sets if not already done
+    if (!this.cachedKnownLocationIds) {
+      this.cachedKnownLocationIds = new Set(state.exploration.playerState.knownLocationIds)
+      this.cachedKnownAreaIds = new Set(state.exploration.playerState.knownAreaIds)
+      this.cachedKnownConnectionIds = new Set(state.exploration.playerState.knownConnectionIds)
+    }
 
-    // Cache the Sets for incremental updates
-    this.cachedKnownLocationIds = new Set(state.exploration.playerState.knownLocationIds)
-    this.cachedKnownAreaIds = new Set(state.exploration.playerState.knownAreaIds)
-    this.cachedKnownConnectionIds = new Set(state.exploration.playerState.knownConnectionIds)
+    // Build using cached Sets (avoids O(n) array→Set conversion)
+    this.observation = buildObservationFresh(state, {
+      knownLocationIds: this.cachedKnownLocationIds,
+      knownAreaIds: this.cachedKnownAreaIds!,
+      knownConnectionIds: this.cachedKnownConnectionIds!,
+    })
 
     return this.observation
   }
@@ -528,12 +551,30 @@ export class ObservationManager {
     this.observation.canDeposit = this.observation.isInTown && atWarehouse && hasItems
 
     // Check if we traveled to a frontier (new area discovered)
-    if (result.areasDiscovered && result.areasDiscovered > 0 && result.newAreaIds) {
-      // Need to rebuild observation for new discoveries
-      this.observation = buildObservationFresh(state)
-      this.cachedKnownLocationIds = new Set(exploration.playerState.knownLocationIds)
-      this.cachedKnownAreaIds = new Set(exploration.playerState.knownAreaIds)
-      this.cachedKnownConnectionIds = new Set(exploration.playerState.knownConnectionIds)
+    if (result.areasDiscovered && result.areasDiscovered > 0) {
+      // Update cached Sets incrementally for new discoveries
+      if (this.cachedKnownLocationIds) {
+        for (const locId of exploration.playerState.knownLocationIds) {
+          this.cachedKnownLocationIds.add(locId)
+        }
+      }
+      if (this.cachedKnownAreaIds) {
+        for (const areaId of exploration.playerState.knownAreaIds) {
+          this.cachedKnownAreaIds.add(areaId)
+        }
+      }
+      if (this.cachedKnownConnectionIds) {
+        for (const connId of exploration.playerState.knownConnectionIds) {
+          this.cachedKnownConnectionIds.add(connId)
+        }
+      }
+
+      // Rebuild observation using cached Sets
+      this.observation = buildObservationFresh(state, {
+        knownLocationIds: this.cachedKnownLocationIds!,
+        knownAreaIds: this.cachedKnownAreaIds!,
+        knownConnectionIds: this.cachedKnownConnectionIds!,
+      })
       return
     }
 
@@ -618,35 +659,60 @@ export class ObservationManager {
   /**
    * Apply Explore action result: handle new discoveries.
    * This is the most complex case - new locations/areas/connections may be discovered.
+   *
+   * Phase 4 optimization: Update cached Sets incrementally instead of rebuilding.
    */
   private applyExploreResult(state: WorldState, _result: ActionResult): void {
     if (!this.observation) return
 
-    // Explore can discover new locations within the current area
-    // Check if knownLocationIds changed
-    const newKnownLocationIds = new Set(state.exploration.playerState.knownLocationIds)
+    const exploration = state.exploration
+
+    // Check for new discoveries by comparing array lengths (O(1))
+    // This avoids creating new Sets just to compare sizes
     const locationIdsChanged =
-      !this.cachedKnownLocationIds || newKnownLocationIds.size !== this.cachedKnownLocationIds.size
+      !this.cachedKnownLocationIds ||
+      exploration.playerState.knownLocationIds.length !== this.cachedKnownLocationIds.size
 
-    // Check if knownAreaIds changed (exploring can reveal paths to new areas)
-    const newKnownAreaIds = new Set(state.exploration.playerState.knownAreaIds)
     const areaIdsChanged =
-      !this.cachedKnownAreaIds || newKnownAreaIds.size !== this.cachedKnownAreaIds.size
+      !this.cachedKnownAreaIds ||
+      exploration.playerState.knownAreaIds.length !== this.cachedKnownAreaIds.size
 
-    // Check if knownConnectionIds changed
-    const newKnownConnectionIds = new Set(state.exploration.playerState.knownConnectionIds)
     const connectionIdsChanged =
       !this.cachedKnownConnectionIds ||
-      newKnownConnectionIds.size !== this.cachedKnownConnectionIds.size
+      exploration.playerState.knownConnectionIds.length !== this.cachedKnownConnectionIds.size
 
-    if (locationIdsChanged || areaIdsChanged || connectionIdsChanged) {
-      // Rebuild observation for new discoveries
-      // This is the fallback for complex changes - Phase 4 will optimize this
-      this.observation = buildObservationFresh(state)
-      this.cachedKnownLocationIds = newKnownLocationIds
-      this.cachedKnownAreaIds = newKnownAreaIds
-      this.cachedKnownConnectionIds = newKnownConnectionIds
+    if (!locationIdsChanged && !areaIdsChanged && !connectionIdsChanged) {
+      // No new discoveries - nothing to update
+      return
     }
+
+    // Update cached Sets incrementally by adding only new IDs
+    // This is O(new_discoveries) instead of O(all_known)
+    if (locationIdsChanged && this.cachedKnownLocationIds) {
+      for (const locId of exploration.playerState.knownLocationIds) {
+        this.cachedKnownLocationIds.add(locId)
+      }
+    }
+
+    if (areaIdsChanged && this.cachedKnownAreaIds) {
+      for (const areaId of exploration.playerState.knownAreaIds) {
+        this.cachedKnownAreaIds.add(areaId)
+      }
+    }
+
+    if (connectionIdsChanged && this.cachedKnownConnectionIds) {
+      for (const connId of exploration.playerState.knownConnectionIds) {
+        this.cachedKnownConnectionIds.add(connId)
+      }
+    }
+
+    // Rebuild observation using updated cached Sets
+    // This still iterates all known areas, but avoids the O(n) array→Set conversion
+    this.observation = buildObservationFresh(state, {
+      knownLocationIds: this.cachedKnownLocationIds!,
+      knownAreaIds: this.cachedKnownAreaIds!,
+      knownConnectionIds: this.cachedKnownConnectionIds!,
+    })
   }
 
   /**
