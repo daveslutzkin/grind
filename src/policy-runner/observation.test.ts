@@ -524,6 +524,205 @@ describe("observation", () => {
       expect(updatedNode).toBeDefined()
       expect(updatedNode!.remainingCharges).toBe(originalCharges - 1)
     })
+
+    it("applyExploreResult incrementally adds newly discovered node", async () => {
+      const state = createWorld("test-seed-explore-node")
+
+      // Enrol in Mining and Exploration guilds
+      state.exploration.playerState.currentLocationId = "TOWN_MINERS_GUILD"
+      await executeAction(state, { type: "Enrol" })
+      state.exploration.playerState.currentLocationId = "TOWN_EXPLORERS_GUILD"
+      await executeAction(state, { type: "Enrol" })
+      state.exploration.playerState.currentLocationId = null
+
+      const manager = new ObservationManager()
+
+      // Travel to a known area with undiscovered nodes
+      const initialObs = manager.getObservation(state)
+      expect(initialObs.knownAreas.length).toBeGreaterThan(0)
+
+      const targetArea = initialObs.knownAreas[0]
+      state.exploration.playerState.currentAreaId = targetArea.areaId
+
+      // Apply travel result to update current area
+      manager.applyActionResult(
+        state,
+        { type: "Travel", toAreaId: targetArea.areaId },
+        { ticksConsumed: 22, success: true, nodesDiscovered: 0 }
+      )
+
+      // Get the current observation
+      const obsBeforeExplore = manager.getObservation(state)
+      const nodesBeforeExplore = obsBeforeExplore.currentArea?.discoveredNodes.length ?? 0
+
+      // Find an undiscovered location in current area
+      const currentAreaData = state.exploration.areas.get(targetArea.areaId)!
+      const undiscoveredLoc = currentAreaData.locations.find(
+        (loc) => !state.exploration.playerState.knownLocationIds.includes(loc.id)
+      )
+
+      if (undiscoveredLoc) {
+        // Simulate discovering a location (as Explore action would do)
+        state.exploration.playerState.knownLocationIds.push(undiscoveredLoc.id)
+
+        // Apply explore result
+        manager.applyActionResult(
+          state,
+          { type: "Explore", areaId: targetArea.areaId },
+          { ticksConsumed: 10, success: true, nodesDiscovered: 1 }
+        )
+
+        // Verify the observation still matches fresh rebuild
+        const incrementalObs = manager.getObservation(state)
+        const freshObs = getObservationFresh(state)
+
+        const diffs = diffObservations(freshObs, incrementalObs)
+        expect(diffs).toEqual([])
+
+        // Verify node count increased (if the location was a mining node)
+        if (undiscoveredLoc.gatheringSkillType === "Mining") {
+          expect(incrementalObs.currentArea?.discoveredNodes.length).toBeGreaterThan(
+            nodesBeforeExplore
+          )
+        }
+      }
+    })
+
+    it("applyExploreResult incrementally adds new frontier when connection to unknown area discovered", async () => {
+      const state = createWorld("test-seed-explore-frontier")
+
+      // Enrol in Mining and Exploration guilds
+      state.exploration.playerState.currentLocationId = "TOWN_MINERS_GUILD"
+      await executeAction(state, { type: "Enrol" })
+      state.exploration.playerState.currentLocationId = "TOWN_EXPLORERS_GUILD"
+      await executeAction(state, { type: "Enrol" })
+      state.exploration.playerState.currentLocationId = null
+
+      const manager = new ObservationManager()
+
+      // Travel to a known area
+      const initialObs = manager.getObservation(state)
+      expect(initialObs.knownAreas.length).toBeGreaterThan(0)
+
+      const targetArea = initialObs.knownAreas[0]
+      state.exploration.playerState.currentAreaId = targetArea.areaId
+
+      // Apply travel result
+      manager.applyActionResult(
+        state,
+        { type: "Travel", toAreaId: targetArea.areaId },
+        { ticksConsumed: 22, success: true, nodesDiscovered: 0 }
+      )
+
+      const obsBeforeExplore = manager.getObservation(state)
+      const frontiersBeforeExplore = obsBeforeExplore.frontierAreas.length
+
+      // Find a connection to an unknown area
+      const currentAreaData = state.exploration.areas.get(targetArea.areaId)!
+      const knownAreaIds = new Set(state.exploration.playerState.knownAreaIds)
+
+      const undiscoveredConnection = state.exploration.connections.find((conn) => {
+        const isFromCurrentArea =
+          conn.fromAreaId === currentAreaData.id || conn.toAreaId === currentAreaData.id
+        if (!isFromCurrentArea) return false
+
+        const targetId = conn.fromAreaId === currentAreaData.id ? conn.toAreaId : conn.fromAreaId
+        const connId = `${conn.fromAreaId}->${conn.toAreaId}`
+        const reverseConnId = `${conn.toAreaId}->${conn.fromAreaId}`
+
+        return (
+          !knownAreaIds.has(targetId) &&
+          !state.exploration.playerState.knownConnectionIds.includes(connId) &&
+          !state.exploration.playerState.knownConnectionIds.includes(reverseConnId)
+        )
+      })
+
+      if (undiscoveredConnection) {
+        // Simulate discovering the connection
+        const connId = `${undiscoveredConnection.fromAreaId}->${undiscoveredConnection.toAreaId}`
+        state.exploration.playerState.knownConnectionIds.push(connId)
+
+        // Apply explore result
+        manager.applyActionResult(
+          state,
+          { type: "Explore", areaId: targetArea.areaId },
+          { ticksConsumed: 10, success: true, nodesDiscovered: 0 }
+        )
+
+        // Verify the observation matches fresh rebuild
+        const incrementalObs = manager.getObservation(state)
+        const freshObs = getObservationFresh(state)
+
+        const diffs = diffObservations(freshObs, incrementalObs)
+        expect(diffs).toEqual([])
+
+        // Verify frontier count increased
+        expect(incrementalObs.frontierAreas.length).toBeGreaterThan(frontiersBeforeExplore)
+      }
+    })
+
+    it("applyExploreResult updates isFullyExplored when area becomes fully explored", async () => {
+      const state = createWorld("test-seed-explore-full")
+
+      // Enrol in Mining and Exploration guilds
+      state.exploration.playerState.currentLocationId = "TOWN_MINERS_GUILD"
+      await executeAction(state, { type: "Enrol" })
+      state.exploration.playerState.currentLocationId = "TOWN_EXPLORERS_GUILD"
+      await executeAction(state, { type: "Enrol" })
+      state.exploration.playerState.currentLocationId = null
+
+      const manager = new ObservationManager()
+      const initialObs = manager.getObservation(state)
+
+      // Find a known area to travel to
+      expect(initialObs.knownAreas.length).toBeGreaterThan(0)
+      const targetAreaId = initialObs.knownAreas[0].areaId
+
+      // Travel to the area
+      state.exploration.playerState.currentAreaId = targetAreaId
+      manager.applyActionResult(
+        state,
+        { type: "Travel", toAreaId: targetAreaId },
+        { ticksConsumed: 22, success: true, nodesDiscovered: 0 }
+      )
+
+      // Get area data
+      const areaData = state.exploration.areas.get(targetAreaId)!
+
+      // Discover ALL locations in this area
+      for (const loc of areaData.locations) {
+        if (!state.exploration.playerState.knownLocationIds.includes(loc.id)) {
+          state.exploration.playerState.knownLocationIds.push(loc.id)
+        }
+      }
+
+      // Discover ALL connections from this area (including to unknown areas)
+      for (const conn of state.exploration.connections) {
+        if (conn.fromAreaId === targetAreaId || conn.toAreaId === targetAreaId) {
+          const connId = `${conn.fromAreaId}->${conn.toAreaId}`
+          if (!state.exploration.playerState.knownConnectionIds.includes(connId)) {
+            state.exploration.playerState.knownConnectionIds.push(connId)
+          }
+        }
+      }
+
+      // Apply explore result
+      manager.applyActionResult(
+        state,
+        { type: "Explore", areaId: targetAreaId },
+        { ticksConsumed: 10, success: true, nodesDiscovered: 1 }
+      )
+
+      // Verify the observation matches fresh rebuild
+      const incrementalObs = manager.getObservation(state)
+      const freshObs = getObservationFresh(state)
+
+      const diffs = diffObservations(freshObs, incrementalObs)
+      expect(diffs).toEqual([])
+
+      // Verify isFullyExplored is true for the current area
+      expect(incrementalObs.currentArea?.isFullyExplored).toBe(true)
+    })
   })
 
   describe("getTravelTicks", () => {
