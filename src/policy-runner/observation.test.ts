@@ -5,7 +5,7 @@
 import { createWorld } from "./../world.js"
 import { executeAction } from "./../engine.js"
 import {
-  getObservation,
+  getObservationFresh,
   findNearestMineableArea,
   findBestNodeInArea,
   ObservationManager,
@@ -15,7 +15,7 @@ import {
 import type { PolicyObservation } from "./types.js"
 
 describe("observation", () => {
-  describe("getObservation", () => {
+  describe("getObservationFresh", () => {
     it("returns correct initial state for new world", async () => {
       const state = createWorld("test-seed")
 
@@ -24,7 +24,7 @@ describe("observation", () => {
       await executeAction(state, { type: "Enrol" })
       state.exploration.playerState.currentLocationId = null
 
-      const obs = getObservation(state)
+      const obs = getObservationFresh(state)
 
       expect(obs.miningLevel).toBe(1)
       expect(obs.miningXpInLevel).toBe(0)
@@ -45,7 +45,7 @@ describe("observation", () => {
       state.player.inventory.push({ itemId: "COPPER_ORE", quantity: 3 })
       state.player.inventory.push({ itemId: "STONE", quantity: 1 })
 
-      const obs = getObservation(state)
+      const obs = getObservationFresh(state)
 
       expect(obs.inventorySlotsUsed).toBe(3)
       expect(obs.inventoryByItem["COPPER_ORE"]).toBe(5) // 2 + 3
@@ -56,7 +56,7 @@ describe("observation", () => {
       const state = createWorld("test-seed")
 
       // Initially only TOWN is known
-      const obs = getObservation(state)
+      const obs = getObservationFresh(state)
 
       // knownAreas should not include TOWN (it has no mining)
       expect(obs.knownAreas.every((a) => a.areaId !== "TOWN")).toBe(true)
@@ -73,7 +73,7 @@ describe("observation", () => {
       state.exploration.playerState.currentLocationId = null
 
       // At this point, one distance-1 area should be known
-      const obs = getObservation(state)
+      const obs = getObservationFresh(state)
 
       // Check that we have at least one known area
       expect(obs.knownAreas.length).toBeGreaterThan(0)
@@ -91,22 +91,22 @@ describe("observation", () => {
       const state = createWorld("test-seed")
 
       // Not at warehouse, no items
-      let obs = getObservation(state)
+      let obs = getObservationFresh(state)
       expect(obs.canDeposit).toBe(false)
 
       // At warehouse, no items
       state.exploration.playerState.currentLocationId = "TOWN_WAREHOUSE"
-      obs = getObservation(state)
+      obs = getObservationFresh(state)
       expect(obs.canDeposit).toBe(false)
 
       // At warehouse, with items
       state.player.inventory.push({ itemId: "COPPER_ORE", quantity: 1 })
-      obs = getObservation(state)
+      obs = getObservationFresh(state)
       expect(obs.canDeposit).toBe(true)
 
       // Not at warehouse, with items
       state.exploration.playerState.currentLocationId = null
-      obs = getObservation(state)
+      obs = getObservationFresh(state)
       expect(obs.canDeposit).toBe(false)
     })
 
@@ -121,7 +121,7 @@ describe("observation", () => {
       state.exploration.playerState.currentLocationId = null
 
       // Get initial observation to find an area with mineable nodes
-      let obs = getObservation(state)
+      let obs = getObservationFresh(state)
       const areaWithNodes = obs.knownAreas.find((a) => a.discoveredNodes.length > 0)
       expect(areaWithNodes).toBeDefined()
 
@@ -146,7 +146,7 @@ describe("observation", () => {
       }
 
       // Now get observation again - area should be fully explored but still have mineable nodes
-      obs = getObservation(state)
+      obs = getObservationFresh(state)
       const updatedArea = obs.knownAreas.find((a) => a.areaId === areaWithNodes!.areaId)
       expect(updatedArea).toBeDefined()
       expect(updatedArea!.discoveredNodes.length).toBeGreaterThan(0) // Still has mineable nodes
@@ -325,7 +325,7 @@ describe("observation", () => {
 
       const manager = new ObservationManager()
       const managerObs = manager.getObservation(state)
-      const directObs = getObservation(state)
+      const directObs = getObservationFresh(state)
 
       expect(managerObs).toEqual(directObs)
     })
@@ -341,7 +341,7 @@ describe("observation", () => {
       state.exploration.playerState.currentLocationId = null
 
       // Simulate exploration by manually setting player location to a known area
-      const initialObs = getObservation(state)
+      const initialObs = getObservationFresh(state)
       if (initialObs.knownAreas.length > 0) {
         const targetArea = initialObs.knownAreas[0].areaId
         // Directly update player state to simulate travel (avoids Travel action complexity)
@@ -350,7 +350,7 @@ describe("observation", () => {
 
       const manager = new ObservationManager()
       const managerObs = manager.getObservation(state)
-      const directObs = getObservation(state)
+      const directObs = getObservationFresh(state)
 
       expect(managerObs).toEqual(directObs)
     })
@@ -364,7 +364,7 @@ describe("observation", () => {
 
       const manager = new ObservationManager()
       const managerObs = manager.getObservation(state)
-      const directObs = getObservation(state)
+      const directObs = getObservationFresh(state)
 
       expect(managerObs).toEqual(directObs)
     })
@@ -381,7 +381,7 @@ describe("observation", () => {
 
       // Should still work and produce correct output
       const managerObs = manager.getObservation(state)
-      const directObs = getObservation(state)
+      const directObs = getObservationFresh(state)
 
       expect(managerObs).toEqual(directObs)
     })

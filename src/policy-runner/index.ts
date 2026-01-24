@@ -19,7 +19,7 @@ export { safeMiner, allPolicies, getPolicyById } from "./policies/index.js"
 
 // Observation
 export {
-  getObservation,
+  getObservationFresh,
   findNearestMineableArea,
   findBestNodeInArea,
   getMaxDiscoveredDistance,

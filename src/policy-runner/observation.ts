@@ -832,13 +832,16 @@ export class ObservationManager {
 }
 
 /**
- * Get the observation for a policy to make a decision.
- * This is the only view of the world that policies receive.
+ * Build a fresh PolicyObservation from scratch. Used for:
+ * - Testing observation logic directly
+ * - Validating ObservationManager incremental updates
+ *
+ * Production code should use ObservationManager.getObservation() instead.
  *
  * @param state The current world state (read-only access)
  * @returns A sanitized PolicyObservation
  */
-export function getObservation(state: WorldState): PolicyObservation {
+export function getObservationFresh(state: WorldState): PolicyObservation {
   return buildObservationFresh(state)
 }
 
