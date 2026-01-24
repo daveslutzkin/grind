@@ -6,11 +6,13 @@ The policy runner currently rebuilds the entire observation from scratch on ever
 
 ---
 
-## Task 1: Incremental `applyExploreResult`
+## Task 1: Incremental `applyExploreResult` ✅ DONE
 
 **Location:** `observation.ts:722-777`
 
-**Current behavior:** When any discovery is made (new location, area, or connection), the entire observation is rebuilt via `buildObservationFresh`.
+**Status:** Implemented in commit 3111826. The `applyExploreResult` method now updates the observation incrementally without calling `buildObservationFresh`.
+
+~~**Current behavior:** When any discovery is made (new location, area, or connection), the entire observation is rebuilt via `buildObservationFresh`.~~
 
 **New behavior:** Update only the affected parts of the observation.
 
