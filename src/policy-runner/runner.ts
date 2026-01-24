@@ -26,7 +26,11 @@ import type {
   SkillSnapshot,
   RunSummary,
 } from "./types.js"
-import { getObservation, getMaxDiscoveredDistance, clearObservationCache } from "./observation.js"
+import {
+  getMaxDiscoveredDistance,
+  clearObservationCache,
+  ObservationManager,
+} from "./observation.js"
 import { toEngineActions, type ConversionFailure } from "./action-converter.js"
 import {
   createStallDetector,
@@ -287,6 +291,7 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
   const state = await initializeWorld(seed)
   const stallDetector = createStallDetector(stallWindowSize)
   const metrics = createMetricsCollector()
+  const observationManager = new ObservationManager(5000) // Validate every 5000 ticks
 
   // Track last action for stall snapshot
   let lastPolicyAction: PolicyAction = { type: "Wait" }
@@ -352,7 +357,7 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
     }
 
     // Get observation and make decision
-    const observation = getObservation(state)
+    const observation = observationManager.getObservation(state)
     const policyAction = policy.decide(observation)
     lastPolicyAction = policyAction
 
@@ -424,5 +429,9 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
         actionCount
       )
     }
+
+    // Validate observation integrity (every 5000 ticks)
+    // This will throw if drift is detected, indicating a bug in incremental updates
+    observationManager.validate(state, state.time.currentTick)
   }
 }

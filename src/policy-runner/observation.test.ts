@@ -9,7 +9,9 @@ import {
   findNearestMineableArea,
   findBestNodeInArea,
   ObservationManager,
+  diffObservations,
 } from "./observation.js"
+import type { PolicyObservation } from "./types.js"
 
 describe("observation", () => {
   describe("getObservation", () => {
@@ -336,6 +338,147 @@ describe("observation", () => {
       const directObs = getObservation(state)
 
       expect(managerObs).toEqual(directObs)
+    })
+
+    it("validate does not throw when observation matches state", async () => {
+      const state = createWorld("test-seed")
+      const manager = new ObservationManager(100) // Validate every 100 ticks
+
+      // Get observation at tick 0
+      manager.getObservation(state)
+
+      // Validation at tick 100 should pass (no drift)
+      expect(() => manager.validate(state, 100)).not.toThrow()
+    })
+
+    it("validate only runs at configured interval", async () => {
+      const state = createWorld("test-seed")
+      const manager = new ObservationManager(100)
+
+      manager.getObservation(state)
+
+      // Validation at non-interval ticks should do nothing (not throw)
+      expect(() => manager.validate(state, 50)).not.toThrow()
+      expect(() => manager.validate(state, 99)).not.toThrow()
+    })
+
+    it("shouldValidate returns true only at interval", () => {
+      const manager = new ObservationManager(100)
+
+      expect(manager.shouldValidate(0)).toBe(true)
+      expect(manager.shouldValidate(50)).toBe(false)
+      expect(manager.shouldValidate(100)).toBe(true)
+      expect(manager.shouldValidate(200)).toBe(true)
+    })
+
+    it("validation can be disabled", () => {
+      const manager = new ObservationManager(100)
+
+      manager.setValidationEnabled(false)
+      expect(manager.shouldValidate(100)).toBe(false)
+
+      manager.setValidationEnabled(true)
+      expect(manager.shouldValidate(100)).toBe(true)
+    })
+  })
+
+  describe("diffObservations", () => {
+    const baseObservation: PolicyObservation = {
+      miningLevel: 1,
+      miningXpInLevel: 0,
+      miningTotalXp: 0,
+      inventoryCapacity: 10,
+      inventorySlotsUsed: 0,
+      inventoryByItem: {},
+      currentAreaId: "TOWN",
+      knownAreas: [],
+      knownMineableMaterials: [],
+      frontierAreas: [],
+      currentArea: null,
+      isInTown: true,
+      canDeposit: false,
+      returnTimeToTown: 0,
+    }
+
+    it("returns empty array for identical observations", () => {
+      const diffs = diffObservations(baseObservation, { ...baseObservation })
+      expect(diffs).toEqual([])
+    })
+
+    it("detects miningLevel difference", () => {
+      const modified = { ...baseObservation, miningLevel: 2 }
+      const diffs = diffObservations(baseObservation, modified)
+      expect(diffs).toContainEqual({
+        field: "miningLevel",
+        expected: 1,
+        actual: 2,
+      })
+    })
+
+    it("detects miningXpInLevel difference", () => {
+      const modified = { ...baseObservation, miningXpInLevel: 50 }
+      const diffs = diffObservations(baseObservation, modified)
+      expect(diffs).toContainEqual({
+        field: "miningXpInLevel",
+        expected: 0,
+        actual: 50,
+      })
+    })
+
+    it("detects inventoryByItem differences", () => {
+      const obs1 = { ...baseObservation, inventoryByItem: { COPPER_ORE: 5 } }
+      const obs2 = { ...baseObservation, inventoryByItem: { COPPER_ORE: 3 } }
+      const diffs = diffObservations(obs1, obs2)
+      expect(diffs).toContainEqual({
+        field: "inventoryByItem",
+        expected: { COPPER_ORE: 5 },
+        actual: { COPPER_ORE: 3 },
+      })
+    })
+
+    it("detects knownAreas length difference", () => {
+      const obs1 = { ...baseObservation, knownAreas: [] }
+      const obs2 = {
+        ...baseObservation,
+        knownAreas: [
+          {
+            areaId: "area-d1-i0",
+            distance: 1,
+            travelTicksFromCurrent: 22,
+            discoveredNodes: [],
+            isFullyExplored: false,
+          },
+        ],
+      }
+      const diffs = diffObservations(obs1, obs2)
+      expect(diffs.some((d) => d.field === "knownAreas.length")).toBe(true)
+    })
+
+    it("detects currentAreaId difference", () => {
+      const modified = { ...baseObservation, currentAreaId: "area-d1-i0" as const }
+      const diffs = diffObservations(baseObservation, modified)
+      expect(diffs).toContainEqual({
+        field: "currentAreaId",
+        expected: "TOWN",
+        actual: "area-d1-i0",
+      })
+    })
+
+    it("detects isInTown difference", () => {
+      const modified = { ...baseObservation, isInTown: false }
+      const diffs = diffObservations(baseObservation, modified)
+      expect(diffs).toContainEqual({
+        field: "isInTown",
+        expected: true,
+        actual: false,
+      })
+    })
+
+    it("detects knownMineableMaterials difference", () => {
+      const obs1 = { ...baseObservation, knownMineableMaterials: ["COPPER_ORE"] }
+      const obs2 = { ...baseObservation, knownMineableMaterials: ["COPPER_ORE", "STONE"] }
+      const diffs = diffObservations(obs1, obs2)
+      expect(diffs.some((d) => d.field.includes("knownMineableMaterials"))).toBe(true)
     })
   })
 })

@@ -321,10 +321,21 @@ function buildObservationFresh(state: WorldState): PolicyObservation {
  * ObservationManager - maintains observation state and supports incremental updates.
  *
  * Phase 1: Wraps buildObservationFresh() with no incremental logic yet.
+ * Phase 2: Adds validation infrastructure for drift detection.
  * Later phases will add incremental update methods.
  */
 export class ObservationManager {
   private observation: PolicyObservation | null = null
+  private readonly validationInterval: number
+  private validationEnabled: boolean = true
+
+  /**
+   * Create an ObservationManager.
+   * @param validationInterval How often to validate (in ticks). Default 5000.
+   */
+  constructor(validationInterval: number = 5000) {
+    this.validationInterval = validationInterval
+  }
 
   /**
    * Get the current observation. For Phase 1, this always rebuilds from scratch.
@@ -333,6 +344,48 @@ export class ObservationManager {
   getObservation(state: WorldState): PolicyObservation {
     this.observation = buildObservationFresh(state)
     return this.observation
+  }
+
+  /**
+   * Validate the cached observation against a fresh rebuild.
+   * Throws an error if drift is detected.
+   *
+   * @param state The current world state
+   * @param tick The current tick number (for error reporting)
+   * @throws Error if observation drift is detected
+   */
+  validate(state: WorldState, tick: number): void {
+    if (!this.validationEnabled || !this.observation) {
+      return
+    }
+
+    // Only validate at the configured interval
+    if (tick % this.validationInterval !== 0) {
+      return
+    }
+
+    const rebuilt = buildObservationFresh(state)
+    const diffs = diffObservations(rebuilt, this.observation)
+
+    if (diffs.length > 0) {
+      throw new Error(
+        `Observation drift detected at tick ${tick}: ${JSON.stringify(diffs, null, 2)}`
+      )
+    }
+  }
+
+  /**
+   * Enable or disable validation. Useful for performance testing.
+   */
+  setValidationEnabled(enabled: boolean): void {
+    this.validationEnabled = enabled
+  }
+
+  /**
+   * Check if validation should run this tick.
+   */
+  shouldValidate(tick: number): boolean {
+    return this.validationEnabled && tick % this.validationInterval === 0
   }
 
   /**
@@ -393,4 +446,125 @@ export function findBestNodeInArea(area: KnownArea): KnownNode | null {
 export function getMaxDiscoveredDistance(obs: PolicyObservation): number {
   if (obs.knownAreas.length === 0) return 0
   return Math.max(...obs.knownAreas.map((a) => a.distance))
+}
+
+/**
+ * A single difference between two observations.
+ */
+export interface ObservationDiff {
+  field: string
+  expected: unknown
+  actual: unknown
+}
+
+/**
+ * Compare two PolicyObservation objects and return a list of differences.
+ * Used for validation to detect observation drift.
+ */
+export function diffObservations(
+  expected: PolicyObservation,
+  actual: PolicyObservation
+): ObservationDiff[] {
+  const diffs: ObservationDiff[] = []
+
+  // Simple scalar fields
+  const scalarFields: (keyof PolicyObservation)[] = [
+    "miningLevel",
+    "miningXpInLevel",
+    "miningTotalXp",
+    "inventoryCapacity",
+    "inventorySlotsUsed",
+    "currentAreaId",
+    "isInTown",
+    "canDeposit",
+    "returnTimeToTown",
+  ]
+
+  for (const field of scalarFields) {
+    if (expected[field] !== actual[field]) {
+      diffs.push({
+        field,
+        expected: expected[field],
+        actual: actual[field],
+      })
+    }
+  }
+
+  // inventoryByItem - compare as objects
+  if (JSON.stringify(expected.inventoryByItem) !== JSON.stringify(actual.inventoryByItem)) {
+    diffs.push({
+      field: "inventoryByItem",
+      expected: expected.inventoryByItem,
+      actual: actual.inventoryByItem,
+    })
+  }
+
+  // knownAreas - compare length and contents
+  if (expected.knownAreas.length !== actual.knownAreas.length) {
+    diffs.push({
+      field: "knownAreas.length",
+      expected: expected.knownAreas.length,
+      actual: actual.knownAreas.length,
+    })
+  } else {
+    // Sort both by areaId for stable comparison
+    const sortedExpected = [...expected.knownAreas].sort((a, b) => a.areaId.localeCompare(b.areaId))
+    const sortedActual = [...actual.knownAreas].sort((a, b) => a.areaId.localeCompare(b.areaId))
+    for (let i = 0; i < sortedExpected.length; i++) {
+      if (JSON.stringify(sortedExpected[i]) !== JSON.stringify(sortedActual[i])) {
+        diffs.push({
+          field: `knownAreas[${sortedExpected[i].areaId}]`,
+          expected: sortedExpected[i],
+          actual: sortedActual[i],
+        })
+      }
+    }
+  }
+
+  // knownMineableMaterials - compare as sorted arrays
+  const sortedExpectedMaterials = [...expected.knownMineableMaterials].sort()
+  const sortedActualMaterials = [...actual.knownMineableMaterials].sort()
+  if (JSON.stringify(sortedExpectedMaterials) !== JSON.stringify(sortedActualMaterials)) {
+    diffs.push({
+      field: "knownMineableMaterials",
+      expected: sortedExpectedMaterials,
+      actual: sortedActualMaterials,
+    })
+  }
+
+  // frontierAreas - compare length and contents
+  if (expected.frontierAreas.length !== actual.frontierAreas.length) {
+    diffs.push({
+      field: "frontierAreas.length",
+      expected: expected.frontierAreas.length,
+      actual: actual.frontierAreas.length,
+    })
+  } else {
+    const sortedExpectedFrontier = [...expected.frontierAreas].sort((a, b) =>
+      a.areaId.localeCompare(b.areaId)
+    )
+    const sortedActualFrontier = [...actual.frontierAreas].sort((a, b) =>
+      a.areaId.localeCompare(b.areaId)
+    )
+    for (let i = 0; i < sortedExpectedFrontier.length; i++) {
+      if (JSON.stringify(sortedExpectedFrontier[i]) !== JSON.stringify(sortedActualFrontier[i])) {
+        diffs.push({
+          field: `frontierAreas[${sortedExpectedFrontier[i].areaId}]`,
+          expected: sortedExpectedFrontier[i],
+          actual: sortedActualFrontier[i],
+        })
+      }
+    }
+  }
+
+  // currentArea - compare as objects (can be null)
+  if (JSON.stringify(expected.currentArea) !== JSON.stringify(actual.currentArea)) {
+    diffs.push({
+      field: "currentArea",
+      expected: expected.currentArea,
+      actual: actual.currentArea,
+    })
+  }
+
+  return diffs
 }
