@@ -7,7 +7,13 @@
  */
 
 import type { WorldState, Node, Area, AreaID } from "../types.js"
-import type { PolicyObservation, KnownArea, KnownNode, FrontierArea } from "./types.js"
+import type {
+  PolicyObservation,
+  KnownArea,
+  KnownNode,
+  FrontierArea,
+  PolicyAction,
+} from "./types.js"
 import {
   buildDiscoverables,
   isConnectionKnown,
@@ -318,16 +324,37 @@ function buildObservationFresh(state: WorldState): PolicyObservation {
 }
 
 /**
+ * Result of action execution, used for incremental observation updates.
+ */
+export interface ActionResult {
+  /** Number of ticks consumed by the action */
+  ticksConsumed: number
+  /** Whether the action succeeded */
+  success: boolean
+  /** Number of new locations discovered (for Explore actions) */
+  nodesDiscovered: number
+  /** Number of areas that became known (for travel to frontier) */
+  areasDiscovered?: number
+  /** IDs of newly discovered areas */
+  newAreaIds?: AreaID[]
+}
+
+/**
  * ObservationManager - maintains observation state and supports incremental updates.
  *
  * Phase 1: Wraps buildObservationFresh() with no incremental logic yet.
  * Phase 2: Adds validation infrastructure for drift detection.
- * Later phases will add incremental update methods.
+ * Phase 3: Implements incremental updates for each action type.
  */
 export class ObservationManager {
   private observation: PolicyObservation | null = null
   private readonly validationInterval: number
   private validationEnabled: boolean = true
+
+  // Cached state for incremental updates
+  private cachedKnownLocationIds: Set<string> | null = null
+  private cachedKnownAreaIds: Set<AreaID> | null = null
+  private cachedKnownConnectionIds: Set<string> | null = null
 
   /**
    * Create an ObservationManager.
@@ -338,12 +365,288 @@ export class ObservationManager {
   }
 
   /**
-   * Get the current observation. For Phase 1, this always rebuilds from scratch.
-   * Later phases will use cached observation with incremental updates.
+   * Get the current observation.
+   * Returns cached observation if available, otherwise builds fresh.
    */
   getObservation(state: WorldState): PolicyObservation {
+    if (this.observation) {
+      return this.observation
+    }
+
+    // First call or after reset - build fresh
     this.observation = buildObservationFresh(state)
+
+    // Cache the Sets for incremental updates
+    this.cachedKnownLocationIds = new Set(state.exploration.playerState.knownLocationIds)
+    this.cachedKnownAreaIds = new Set(state.exploration.playerState.knownAreaIds)
+    this.cachedKnownConnectionIds = new Set(state.exploration.playerState.knownConnectionIds)
+
     return this.observation
+  }
+
+  /**
+   * Apply an action result to incrementally update the cached observation.
+   * Call this after executePolicyAction completes.
+   *
+   * @param state The current world state (after action execution)
+   * @param action The policy action that was executed
+   * @param result The result of executing the action
+   */
+  applyActionResult(state: WorldState, action: PolicyAction, result: ActionResult): void {
+    if (!this.observation) {
+      // No cached observation - nothing to update
+      return
+    }
+
+    // Dispatch to action-specific update methods
+    switch (action.type) {
+      case "Mine":
+        this.applyMineResult(state, action.nodeId)
+        break
+      case "DepositInventory":
+        this.applyDepositResult(state)
+        break
+      case "Travel":
+        this.applyTravelResult(state, result)
+        break
+      case "ReturnToTown":
+        this.applyReturnToTownResult(state)
+        break
+      case "Explore":
+        this.applyExploreResult(state, result)
+        break
+      case "Wait":
+        // Nothing to update
+        break
+    }
+  }
+
+  /**
+   * Apply Mine action result: update inventory and XP fields, node charges.
+   */
+  private applyMineResult(state: WorldState, nodeId: string): void {
+    if (!this.observation) return
+
+    const miningSkill = state.player.skills.Mining
+
+    // Update XP fields
+    this.observation.miningLevel = miningSkill.level
+    this.observation.miningXpInLevel = miningSkill.xp
+    this.observation.miningTotalXp = getTotalXP(miningSkill)
+
+    // Update inventory
+    this.observation.inventorySlotsUsed = state.player.inventory.length
+    this.observation.inventoryByItem = {}
+    for (const stack of state.player.inventory) {
+      this.observation.inventoryByItem[stack.itemId] =
+        (this.observation.inventoryByItem[stack.itemId] ?? 0) + stack.quantity
+    }
+
+    // Update canDeposit
+    const exploration = state.exploration
+    const hasItems = state.player.inventory.length > 0
+    const atWarehouse = exploration.playerState.currentLocationId === "TOWN_WAREHOUSE"
+    this.observation.canDeposit = this.observation.isInTown && atWarehouse && hasItems
+
+    // Update the mined node's remaining charges in knownAreas
+    for (const area of this.observation.knownAreas) {
+      for (const node of area.discoveredNodes) {
+        if (node.nodeId === nodeId) {
+          // Find the actual node to get updated charges
+          const actualNode = state.world.nodes?.find((n) => n.nodeId === nodeId)
+          if (actualNode) {
+            const remainingCharges = actualNode.materials.reduce(
+              (sum, m) => sum + m.remainingUnits,
+              0
+            )
+            node.remainingCharges = remainingCharges > 0 ? remainingCharges : null
+            node.isMineable = actualNode.materials.some(
+              (m) =>
+                m.requiresSkill === "Mining" &&
+                this.observation!.miningLevel >= m.requiredLevel &&
+                m.remainingUnits > 0
+            )
+          }
+          break
+        }
+      }
+    }
+
+    // Update currentArea if we're in a known area
+    if (this.observation.currentArea) {
+      const updatedArea = this.observation.knownAreas.find(
+        (a) => a.areaId === this.observation!.currentAreaId
+      )
+      if (updatedArea) {
+        this.observation.currentArea = updatedArea
+      }
+    }
+  }
+
+  /**
+   * Apply DepositInventory action result: update inventory fields.
+   */
+  private applyDepositResult(state: WorldState): void {
+    if (!this.observation) return
+
+    // Update inventory
+    this.observation.inventorySlotsUsed = state.player.inventory.length
+    this.observation.inventoryByItem = {}
+    for (const stack of state.player.inventory) {
+      this.observation.inventoryByItem[stack.itemId] =
+        (this.observation.inventoryByItem[stack.itemId] ?? 0) + stack.quantity
+    }
+
+    // Update canDeposit
+    const exploration = state.exploration
+    const hasItems = state.player.inventory.length > 0
+    const atWarehouse = exploration.playerState.currentLocationId === "TOWN_WAREHOUSE"
+    this.observation.canDeposit = this.observation.isInTown && atWarehouse && hasItems
+  }
+
+  /**
+   * Apply Travel action result: update location fields and travel times.
+   */
+  private applyTravelResult(state: WorldState, result: ActionResult): void {
+    if (!this.observation) return
+
+    const exploration = state.exploration
+    const newAreaId = exploration.playerState.currentAreaId
+    const newAreaData = exploration.areas.get(newAreaId)
+    const newDistance = newAreaData?.distance ?? 0
+
+    // Update location fields
+    this.observation.currentAreaId = newAreaId
+    this.observation.isInTown = newAreaId === "TOWN"
+    this.observation.returnTimeToTown = this.observation.isInTown
+      ? 0
+      : estimateTravelTicks(newAreaId, newDistance, "TOWN", 0)
+
+    // Update canDeposit
+    const hasItems = state.player.inventory.length > 0
+    const atWarehouse = exploration.playerState.currentLocationId === "TOWN_WAREHOUSE"
+    this.observation.canDeposit = this.observation.isInTown && atWarehouse && hasItems
+
+    // Check if we traveled to a frontier (new area discovered)
+    if (result.areasDiscovered && result.areasDiscovered > 0 && result.newAreaIds) {
+      // Need to rebuild observation for new discoveries
+      this.observation = buildObservationFresh(state)
+      this.cachedKnownLocationIds = new Set(exploration.playerState.knownLocationIds)
+      this.cachedKnownAreaIds = new Set(exploration.playerState.knownAreaIds)
+      this.cachedKnownConnectionIds = new Set(exploration.playerState.knownConnectionIds)
+      return
+    }
+
+    // Update travel times for all known areas
+    for (const area of this.observation.knownAreas) {
+      const areaData = exploration.areas.get(area.areaId)
+      if (areaData) {
+        area.travelTicksFromCurrent = estimateTravelTicks(
+          newAreaId,
+          newDistance,
+          area.areaId,
+          areaData.distance
+        )
+      }
+    }
+
+    // Update frontier travel times
+    for (const frontier of this.observation.frontierAreas) {
+      frontier.travelTicksFromCurrent = estimateTravelTicks(
+        newAreaId,
+        newDistance,
+        frontier.areaId,
+        frontier.distance
+      )
+    }
+
+    // Re-sort frontier areas by new travel time
+    this.observation.frontierAreas.sort(
+      (a, b) => a.travelTicksFromCurrent - b.travelTicksFromCurrent
+    )
+
+    // Update currentArea
+    this.observation.currentArea =
+      newAreaId === "TOWN"
+        ? null
+        : (this.observation.knownAreas.find((a) => a.areaId === newAreaId) ?? null)
+  }
+
+  /**
+   * Apply ReturnToTown action result: update location fields.
+   */
+  private applyReturnToTownResult(state: WorldState): void {
+    if (!this.observation) return
+
+    const exploration = state.exploration
+
+    // Update location fields
+    this.observation.currentAreaId = "TOWN"
+    this.observation.isInTown = true
+    this.observation.returnTimeToTown = 0
+    this.observation.currentArea = null
+
+    // Update canDeposit
+    const hasItems = state.player.inventory.length > 0
+    const atWarehouse = exploration.playerState.currentLocationId === "TOWN_WAREHOUSE"
+    this.observation.canDeposit = this.observation.isInTown && atWarehouse && hasItems
+
+    // Update travel times for all known areas (from TOWN)
+    for (const area of this.observation.knownAreas) {
+      const areaData = exploration.areas.get(area.areaId)
+      if (areaData) {
+        area.travelTicksFromCurrent = estimateTravelTicks("TOWN", 0, area.areaId, areaData.distance)
+      }
+    }
+
+    // Update frontier travel times (from TOWN)
+    for (const frontier of this.observation.frontierAreas) {
+      frontier.travelTicksFromCurrent = estimateTravelTicks(
+        "TOWN",
+        0,
+        frontier.areaId,
+        frontier.distance
+      )
+    }
+
+    // Re-sort frontier areas by new travel time
+    this.observation.frontierAreas.sort(
+      (a, b) => a.travelTicksFromCurrent - b.travelTicksFromCurrent
+    )
+  }
+
+  /**
+   * Apply Explore action result: handle new discoveries.
+   * This is the most complex case - new locations/areas/connections may be discovered.
+   */
+  private applyExploreResult(state: WorldState, _result: ActionResult): void {
+    if (!this.observation) return
+
+    // Explore can discover new locations within the current area
+    // Check if knownLocationIds changed
+    const newKnownLocationIds = new Set(state.exploration.playerState.knownLocationIds)
+    const locationIdsChanged =
+      !this.cachedKnownLocationIds || newKnownLocationIds.size !== this.cachedKnownLocationIds.size
+
+    // Check if knownAreaIds changed (exploring can reveal paths to new areas)
+    const newKnownAreaIds = new Set(state.exploration.playerState.knownAreaIds)
+    const areaIdsChanged =
+      !this.cachedKnownAreaIds || newKnownAreaIds.size !== this.cachedKnownAreaIds.size
+
+    // Check if knownConnectionIds changed
+    const newKnownConnectionIds = new Set(state.exploration.playerState.knownConnectionIds)
+    const connectionIdsChanged =
+      !this.cachedKnownConnectionIds ||
+      newKnownConnectionIds.size !== this.cachedKnownConnectionIds.size
+
+    if (locationIdsChanged || areaIdsChanged || connectionIdsChanged) {
+      // Rebuild observation for new discoveries
+      // This is the fallback for complex changes - Phase 4 will optimize this
+      this.observation = buildObservationFresh(state)
+      this.cachedKnownLocationIds = newKnownLocationIds
+      this.cachedKnownAreaIds = newKnownAreaIds
+      this.cachedKnownConnectionIds = newKnownConnectionIds
+    }
   }
 
   /**
@@ -393,6 +696,9 @@ export class ObservationManager {
    */
   reset(): void {
     this.observation = null
+    this.cachedKnownLocationIds = null
+    this.cachedKnownAreaIds = null
+    this.cachedKnownConnectionIds = null
   }
 }
 

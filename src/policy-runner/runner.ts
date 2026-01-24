@@ -368,9 +368,24 @@ export async function runSimulation(config: RunConfig): Promise<RunResult> {
     // Record tick before execution for action log
     const tickBefore = state.time.currentTick
 
+    // Track known areas before action (for detecting frontier travel)
+    const areasBefore = state.exploration.playerState.knownAreaIds.length
+
     // Execute the action
     const { ticksConsumed, xpGained, levelUps, nodesDiscovered, success, failure } =
       await executePolicyAction(state, policyAction)
+
+    // Calculate areas discovered
+    const areasAfter = state.exploration.playerState.knownAreaIds.length
+    const areasDiscovered = areasAfter - areasBefore
+
+    // Apply incremental update to cached observation
+    observationManager.applyActionResult(state, policyAction, {
+      ticksConsumed,
+      success,
+      nodesDiscovered,
+      areasDiscovered,
+    })
 
     // Check for conversion failure (e.g., no mineable materials in node)
     if (failure === "node_depleted") {
