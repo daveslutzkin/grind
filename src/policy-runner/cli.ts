@@ -10,8 +10,6 @@ import { runSimulation } from "./runner.js"
 import { runBatch } from "./batch.js"
 import { runBatchParallel } from "./parallel-batch.js"
 import { safeMiner } from "./policies/safe.js"
-import { greedyMiner } from "./policies/greedy.js"
-import { balancedMiner } from "./policies/balanced.js"
 import type {
   Policy,
   PolicyAction,
@@ -24,8 +22,6 @@ import type { SkillID } from "../types.js"
 
 const POLICIES: Record<string, Policy> = {
   safe: safeMiner,
-  greedy: greedyMiner,
-  balanced: balancedMiner,
 }
 
 /**
@@ -125,7 +121,7 @@ OPTIONS:
   -s, --seed <seed>       Single seed for reproducible run
   --seeds <s1,s2,...>     Comma-separated list of seeds for batch
   -n, --seed-count <n>    Generate N random seeds for batch (default: 100)
-  -p, --policy <name>     Policy to use: safe, greedy, balanced (default: safe)
+  -p, --policy <name>     Policy to use: safe (default: safe)
   -l, --target-level <n>  Target mining level to reach (default: 5)
   -t, --max-ticks <n>     Maximum ticks before timeout (default: 50000)
   --stall-window <n>      Ticks without progress before stall (default: 1000)
@@ -141,7 +137,7 @@ EXAMPLES:
   npx tsx src/policy-runner/cli.ts --seed test-1 --policy safe --target-level 3
 
   # Batch run with 50 random seeds
-  npx tsx src/policy-runner/cli.ts --batch --seed-count 50 --policy greedy
+  npx tsx src/policy-runner/cli.ts --batch --seed-count 50 --policy safe
 
   # Parallel batch run (uses all CPU cores)
   npx tsx src/policy-runner/cli.ts --batch --parallel --seed-count 50 --policy safe
@@ -153,12 +149,10 @@ EXAMPLES:
   npx tsx src/policy-runner/cli.ts --batch --seed-count 20 --policy all
 
   # Batch run with specific seeds
-  npx tsx src/policy-runner/cli.ts --batch --seeds seed1,seed2,seed3 --policy balanced
+  npx tsx src/policy-runner/cli.ts --batch --seeds seed1,seed2,seed3 --policy safe
 
 POLICIES:
   safe      - Conservative, prefers closer areas, reliable progression
-  greedy    - Aggressive, pushes to highest unlocked distance
-  balanced  - Optimizes XP/tick ratio accounting for travel time
   all       - Run all policies (batch mode only)
 `)
 }

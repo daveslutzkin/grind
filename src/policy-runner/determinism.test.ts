@@ -7,8 +7,6 @@
 
 import { runSimulation } from "./runner.js"
 import { safeMiner } from "./policies/safe.js"
-import { greedyMiner } from "./policies/greedy.js"
-import { balancedMiner } from "./policies/balanced.js"
 
 describe("determinism", () => {
   it("produces identical results for same seed and policy", async () => {
@@ -57,56 +55,5 @@ describe("determinism", () => {
       result1.maxDistanceReached !== result2.maxDistanceReached
 
     expect(differs).toBe(true)
-  })
-
-  it("produces deterministic results with greedy policy", async () => {
-    const config = {
-      seed: "greedy-determinism-test",
-      policy: greedyMiner,
-      targetLevel: 2,
-      maxTicks: 20000,
-    }
-
-    const result1 = await runSimulation(config)
-    const result2 = await runSimulation(config)
-
-    expect(result1.totalTicks).toBe(result2.totalTicks)
-    expect(result1.finalLevel).toBe(result2.finalLevel)
-  })
-
-  it("produces deterministic results with balanced policy", async () => {
-    const config = {
-      seed: "balanced-determinism-test",
-      policy: balancedMiner,
-      targetLevel: 2,
-      maxTicks: 20000,
-    }
-
-    const result1 = await runSimulation(config)
-    const result2 = await runSimulation(config)
-
-    expect(result1.totalTicks).toBe(result2.totalTicks)
-    expect(result1.finalLevel).toBe(result2.finalLevel)
-  })
-
-  it("different policies produce different results on same seed", async () => {
-    const seed = "policy-comparison-seed"
-    const baseConfig = {
-      seed,
-      targetLevel: 2,
-      maxTicks: 30000,
-    }
-
-    const safeResult = await runSimulation({ ...baseConfig, policy: safeMiner })
-    const greedyResult = await runSimulation({ ...baseConfig, policy: greedyMiner })
-    const balancedResult = await runSimulation({ ...baseConfig, policy: balancedMiner })
-
-    // All policies should complete (this is the main test)
-    expect(safeResult.terminationReason).toBeDefined()
-    expect(greedyResult.terminationReason).toBeDefined()
-    expect(balancedResult.terminationReason).toBeDefined()
-
-    // Note: Different policies may or may not produce different results
-    // depending on the seed. The important thing is they all run successfully.
   })
 })

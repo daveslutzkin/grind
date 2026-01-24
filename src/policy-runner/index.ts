@@ -15,13 +15,7 @@ export { runBatchParallel } from "./parallel-batch.js"
 export type { ParallelBatchConfig } from "./parallel-batch.js"
 
 // Policies
-export {
-  safeMiner,
-  greedyMiner,
-  balancedMiner,
-  allPolicies,
-  getPolicyById,
-} from "./policies/index.js"
+export { safeMiner, allPolicies, getPolicyById } from "./policies/index.js"
 
 // Observation
 export {

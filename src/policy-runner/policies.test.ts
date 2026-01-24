@@ -1,10 +1,8 @@
 /**
- * Tests for policies - Safe, Greedy, and Balanced miners
+ * Tests for policies - Safe miner
  */
 
 import { safeMiner } from "./policies/safe.js"
-import { greedyMiner } from "./policies/greedy.js"
-import { balancedMiner } from "./policies/balanced.js"
 import type { PolicyObservation, KnownArea } from "./types.js"
 
 // Helper to create a minimal observation
@@ -55,18 +53,16 @@ function createMineableArea(
 }
 
 describe("policies", () => {
-  describe("all policies", () => {
-    const policies = [safeMiner, greedyMiner, balancedMiner]
-
-    it.each(policies)("%s returns valid action for empty observation", (policy) => {
+  describe("safeMiner", () => {
+    it("returns valid action for empty observation", () => {
       const obs = createObservation()
-      const action = policy.decide(obs)
+      const action = safeMiner.decide(obs)
 
       expect(action).toBeDefined()
       expect(action.type).toBeDefined()
     })
 
-    it.each(policies)("%s handles full inventory correctly", (policy) => {
+    it("handles full inventory correctly", () => {
       const obs = createObservation({
         inventorySlotsUsed: 10,
         inventoryCapacity: 10,
@@ -74,37 +70,35 @@ describe("policies", () => {
         currentAreaId: "area-d1-i0",
       })
 
-      const action = policy.decide(obs)
+      const action = safeMiner.decide(obs)
 
       // Should return to town when inventory is full and not in town
       expect(action.type).toBe("ReturnToTown")
     })
 
-    it.each(policies)("%s deposits when in town with full inventory", (policy) => {
+    it("deposits when in town with full inventory", () => {
       const obs = createObservation({
         inventorySlotsUsed: 10,
         inventoryCapacity: 10,
         isInTown: true,
       })
 
-      const action = policy.decide(obs)
+      const action = safeMiner.decide(obs)
 
       expect(action.type).toBe("DepositInventory")
     })
 
-    it.each(policies)("%s handles no known nodes (empty world)", (policy) => {
+    it("handles no known nodes (empty world)", () => {
       const obs = createObservation({
         knownAreas: [],
       })
 
-      const action = policy.decide(obs)
+      const action = safeMiner.decide(obs)
 
       // Should either wait or try to explore
       expect(["Wait", "Explore"].includes(action.type)).toBe(true)
     })
-  })
 
-  describe("safeMiner", () => {
     it("prefers lower distance areas", () => {
       const obs = createObservation({
         isInTown: true,
@@ -133,82 +127,6 @@ describe("policies", () => {
 
       const action = safeMiner.decide(obs)
 
-      expect(action.type).toBe("Mine")
-    })
-  })
-
-  describe("greedyMiner", () => {
-    it("prefers higher distance areas when level allows", () => {
-      const obs = createObservation({
-        miningLevel: 5, // Unlocks distance 2
-        isInTown: true,
-        knownAreas: [
-          createMineableArea("area-d1-i0", 1, 15, 1),
-          createMineableArea("area-d2-i0", 2, 30, 3),
-        ],
-      })
-
-      const action = greedyMiner.decide(obs)
-
-      expect(action.type).toBe("Travel")
-      if (action.type === "Travel") {
-        expect(action.toAreaId).toBe("area-d2-i0") // Prefers higher distance
-      }
-    })
-
-    it("falls back to lower distance when nothing at preferred", () => {
-      const obs = createObservation({
-        miningLevel: 5, // Unlocks distance 2
-        isInTown: true,
-        knownAreas: [
-          createMineableArea("area-d1-i0", 1, 15, 1), // Only d1 available
-        ],
-      })
-
-      const action = greedyMiner.decide(obs)
-
-      expect(action.type).toBe("Travel")
-      if (action.type === "Travel") {
-        expect(action.toAreaId).toBe("area-d1-i0")
-      }
-    })
-  })
-
-  describe("balancedMiner", () => {
-    it("picks highest XP/tick node accounting for travel", () => {
-      const obs = createObservation({
-        isInTown: true,
-        knownAreas: [
-          createMineableArea("area-d1-i0", 1, 5, 1), // Close, low tier: 5/(5+5) = 0.5
-          createMineableArea("area-d1-i1", 1, 50, 3), // Far, high tier: 15/(50+5) = 0.27
-        ],
-      })
-
-      const action = balancedMiner.decide(obs)
-
-      expect(action.type).toBe("Travel")
-      if (action.type === "Travel") {
-        // Should prefer higher XP/tick
-        expect(action.toAreaId).toBe("area-d1-i0")
-      }
-    })
-
-    it("prefers current area node when travel time is factored in", () => {
-      const currentArea = createMineableArea("area-d1-i0", 1, 0, 1) // At this area
-      const obs = createObservation({
-        isInTown: false,
-        currentAreaId: "area-d1-i0",
-        currentArea,
-        knownAreas: [
-          currentArea,
-          createMineableArea("area-d1-i1", 1, 20, 2), // Better tier but far
-        ],
-      })
-
-      const action = balancedMiner.decide(obs)
-
-      // Current area: tier 1, 0 travel = 5/5 = 1.0 XP/tick
-      // Other area: tier 2, 20 travel = 10/25 = 0.4 XP/tick
       expect(action.type).toBe("Mine")
     })
   })
