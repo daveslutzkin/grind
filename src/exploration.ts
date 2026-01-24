@@ -839,24 +839,31 @@ function grantExplorationXP(
  */
 export function getKnowledgeParams(
   state: WorldState,
-  currentArea: Area
+  currentArea: Area,
+  cachedSets?: { knownAreaIds: Set<AreaID>; knownConnectionIds: Set<string> }
 ): {
   connectedKnownAreas: number
   nonConnectedKnownAreas: number
   totalAreasAtDistance: number
 } {
   const exploration = state.exploration!
-  const knownAreaIds = new Set(exploration.playerState.knownAreaIds)
-  const knownConnectionIds = new Set(exploration.playerState.knownConnectionIds)
+  const knownAreaIds = cachedSets?.knownAreaIds ?? new Set(exploration.playerState.knownAreaIds)
+  const knownConnectionIds =
+    cachedSets?.knownConnectionIds ?? new Set(exploration.playerState.knownConnectionIds)
+
+  // Use O(1) indexed lookup instead of iterating all connections
+  const areaConnections = getConnectionsForArea(exploration, currentArea.id)
 
   // Count connected known areas (where connection is also known)
+  // Also build a set for O(1) lookup in the second loop
   let connectedKnownAreas = 0
-  for (const conn of exploration.connections) {
+  const connectedKnownAreaIds = new Set<AreaID>()
+  for (const conn of areaConnections) {
     if (isConnectionKnown(knownConnectionIds, conn.fromAreaId, conn.toAreaId)) {
-      if (conn.fromAreaId === currentArea.id && knownAreaIds.has(conn.toAreaId)) {
+      const targetId = conn.fromAreaId === currentArea.id ? conn.toAreaId : conn.fromAreaId
+      if (knownAreaIds.has(targetId)) {
         connectedKnownAreas++
-      } else if (conn.toAreaId === currentArea.id && knownAreaIds.has(conn.fromAreaId)) {
-        connectedKnownAreas++
+        connectedKnownAreaIds.add(targetId)
       }
     }
   }
@@ -866,17 +873,8 @@ export function getKnowledgeParams(
   for (const areaId of knownAreaIds) {
     const area = exploration.areas.get(areaId)
     if (area && area.distance === currentArea.distance && area.id !== currentArea.id) {
-      // Check if there's no known connection to this area
-      const hasKnownConnection = exploration.connections.some((conn) => {
-        const isConnectedToCurrent =
-          (conn.fromAreaId === currentArea.id && conn.toAreaId === area.id) ||
-          (conn.toAreaId === currentArea.id && conn.fromAreaId === area.id)
-        return (
-          isConnectedToCurrent &&
-          isConnectionKnown(knownConnectionIds, conn.fromAreaId, conn.toAreaId)
-        )
-      })
-      if (!hasKnownConnection) {
+      // O(1) lookup instead of iterating all connections
+      if (!connectedKnownAreaIds.has(areaId)) {
         nonConnectedKnownAreas++
       }
     }
@@ -1175,18 +1173,25 @@ export type Discoverable = {
  */
 export function buildDiscoverables(
   state: WorldState,
-  currentArea: Area
+  currentArea: Area,
+  cachedSets?: {
+    knownLocationIds: Set<string>
+    knownAreaIds: Set<AreaID>
+    knownConnectionIds: Set<string>
+  }
 ): { discoverables: Discoverable[]; baseChance: number } {
   const exploration = state.exploration!
   const level = state.player.skills.Exploration.level
 
   // Find undiscovered locations in current area
-  const knownLocationIds = new Set(exploration.playerState.knownLocationIds)
+  const knownLocationIds =
+    cachedSets?.knownLocationIds ?? new Set(exploration.playerState.knownLocationIds)
   const undiscoveredLocations = currentArea.locations.filter((loc) => !knownLocationIds.has(loc.id))
 
   // Find undiscovered connections from current area
-  const knownConnectionIds = new Set(exploration.playerState.knownConnectionIds)
-  const knownAreaIds = new Set(exploration.playerState.knownAreaIds)
+  const knownConnectionIds =
+    cachedSets?.knownConnectionIds ?? new Set(exploration.playerState.knownConnectionIds)
+  const knownAreaIds = cachedSets?.knownAreaIds ?? new Set(exploration.playerState.knownAreaIds)
 
   // Use O(1) indexed lookup instead of filtering all connections
   const areaConnections = getConnectionsForArea(exploration, currentArea.id)
@@ -1212,7 +1217,10 @@ export function buildDiscoverables(
   }
 
   // Calculate base success chance (used to derive individual thresholds)
-  const knowledgeParams = getKnowledgeParams(state, currentArea)
+  const knowledgeParams = getKnowledgeParams(state, currentArea, {
+    knownAreaIds,
+    knownConnectionIds,
+  })
   const baseChance = calculateSuccessChance({
     level,
     distance: currentArea.distance,
