@@ -717,13 +717,25 @@ export class ObservationManager {
    * Apply Explore action result: handle new discoveries.
    * This is the most complex case - new locations/areas/connections may be discovered.
    *
+   * IMPORTANT: The policy's "Explore" action may be converted to a "FarTravel" engine action
+   * if the player isn't at the target area. This means Explore can change the player's
+   * currentAreaId, so we must detect and handle that case.
+   *
    * Incremental implementation: Update only the affected parts of the observation
    * without calling buildObservationFresh.
    */
-  private applyExploreResult(state: WorldState, _result: ActionResult): void {
+  private applyExploreResult(state: WorldState, result: ActionResult): void {
     if (!this.observation) return
 
     const exploration = state.exploration
+
+    // Check if the player's area changed (Explore was converted to FarTravel)
+    const stateAreaId = exploration.playerState.currentAreaId
+    if (this.observation.currentAreaId !== stateAreaId) {
+      // The player traveled - delegate to applyTravelResult to handle this correctly
+      this.applyTravelResult(state, result)
+      return
+    }
 
     // Check for new discoveries by comparing array lengths (O(1))
     // This avoids creating new Sets just to compare sizes
@@ -742,6 +754,17 @@ export class ObservationManager {
     if (!locationIdsChanged && !areaIdsChanged && !connectionIdsChanged) {
       // No new discoveries - nothing to update
       return
+    }
+
+    // IMPORTANT: Identify NEW items BEFORE updating caches
+    // so we know which connections to process for frontiers
+    const newConnectionIds: string[] = []
+    if (connectionIdsChanged && this.cachedKnownConnectionIds) {
+      for (const connId of exploration.playerState.knownConnectionIds) {
+        if (!this.cachedKnownConnectionIds.has(connId)) {
+          newConnectionIds.push(connId)
+        }
+      }
     }
 
     // Update cached Sets incrementally by adding only new IDs
@@ -846,17 +869,9 @@ export class ObservationManager {
     }
 
     // INCREMENTAL UPDATE: Add new frontier areas from new connections
-    if (connectionIdsChanged) {
-      // Check newly discovered connections for frontier areas
-      for (const connId of exploration.playerState.knownConnectionIds) {
-        if (
-          this.cachedKnownConnectionIds?.has(connId) &&
-          this.cachedKnownConnectionIds.size !== exploration.playerState.knownConnectionIds.length
-        ) {
-          // This connection was already known before this update
-          continue
-        }
-
+    if (newConnectionIds.length > 0) {
+      // Only process newly discovered connections for frontier areas
+      for (const connId of newConnectionIds) {
         // Parse connection ID to get area IDs
         const [fromAreaId, toAreaId] = connId.split("->")
         if (!fromAreaId || !toAreaId) continue
