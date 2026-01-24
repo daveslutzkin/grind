@@ -367,11 +367,6 @@ export class ObservationManager {
   private cachedKnownAreaIds: Set<AreaID> | null = null
   private cachedKnownConnectionIds: Set<string> | null = null
 
-  // O(1) node lookup cache - maps nodeId to KnownNode in observation
-  private nodeById: Map<string, KnownNode> | null = null
-  // O(1) world node lookup cache - maps nodeId to world Node
-  private worldNodeById: Map<string, Node> | null = null
-
   /**
    * Create an ObservationManager.
    * @param validationInterval How often to validate (in ticks). Default 5000.
@@ -404,72 +399,7 @@ export class ObservationManager {
       knownConnectionIds: this.cachedKnownConnectionIds!,
     })
 
-    // Build O(1) node lookup cache
-    this.rebuildNodeCache()
-
     return this.observation
-  }
-
-  /**
-   * Rebuild the nodeById cache from the current observation.
-   * Called after observation is built or rebuilt.
-   */
-  private rebuildNodeCache(): void {
-    if (!this.observation) return
-
-    this.nodeById = new Map()
-    for (const area of this.observation.knownAreas) {
-      for (const node of area.discoveredNodes) {
-        this.nodeById.set(node.nodeId, node)
-      }
-    }
-  }
-
-  /**
-   * Filter out areas from knownAreas that are no longer useful.
-   * An area is removed if it's:
-   * - Fully explored AND
-   * - Has no mineable nodes AND
-   * - Is not the current area
-   *
-   * This replicates the filtering done in buildObservationFresh.
-   * Uses the fullyExploredCache to match the behavior of buildObservationFresh.
-   */
-  private filterUselessAreas(_state?: WorldState): void {
-    if (!this.observation) return
-
-    const currentAreaId = this.observation.currentAreaId
-    this.observation.knownAreas = this.observation.knownAreas.filter((area) => {
-      const hasMineableNode = area.discoveredNodes.some((n) => n.isMineable && n.remainingCharges)
-      const isCurrentArea = area.areaId === currentAreaId
-
-      // Use cached isFullyExplored value - same as buildObservationFresh
-      // Once fully explored, always fully explored (locations/connections can't be undiscovered)
-      const cachedFullyExplored = fullyExploredCache.get(area.areaId)
-      if (cachedFullyExplored === true) {
-        area.isFullyExplored = true
-      }
-
-      // Keep if: has mineable nodes OR not fully explored OR is current area
-      return hasMineableNode || !area.isFullyExplored || isCurrentArea
-    })
-  }
-
-  /**
-   * Rebuild the world node cache for O(1) lookups.
-   * Called when needed and cached for subsequent lookups.
-   */
-  private getWorldNodeById(state: WorldState, nodeId: string): Node | undefined {
-    // Lazily build cache if needed or if world nodes have changed
-    if (!this.worldNodeById || this.worldNodeById.size !== (state.world.nodes?.length ?? 0)) {
-      this.worldNodeById = new Map()
-      if (state.world.nodes) {
-        for (const node of state.world.nodes) {
-          this.worldNodeById.set(node.nodeId, node)
-        }
-      }
-    }
-    return this.worldNodeById.get(nodeId)
   }
 
   /**
@@ -515,59 +445,6 @@ export class ObservationManager {
   private applyMineResult(state: WorldState, nodeId: string): void {
     if (!this.observation) return
 
-    const exploration = state.exploration
-
-    // Check if the player's area changed (Mine action included FarTravel)
-    // This happens when the policy says "Mine at node X" but player isn't at the right area yet
-    const currentStateAreaId = exploration.playerState.currentAreaId
-    if (this.observation.currentAreaId !== currentStateAreaId) {
-      // Player moved - update location fields
-      const newAreaData = exploration.areas.get(currentStateAreaId)
-      const newDistance = newAreaData?.distance ?? 0
-      this.observation.currentAreaId = currentStateAreaId
-      this.observation.isInTown = currentStateAreaId === "TOWN"
-      this.observation.returnTimeToTown = this.observation.isInTown
-        ? 0
-        : estimateTravelTicks(currentStateAreaId, newDistance, "TOWN", 0)
-
-      // Update travel times for all known areas
-      for (const area of this.observation.knownAreas) {
-        const areaData = exploration.areas.get(area.areaId)
-        if (areaData) {
-          area.travelTicksFromCurrent = estimateTravelTicks(
-            currentStateAreaId,
-            newDistance,
-            area.areaId,
-            areaData.distance
-          )
-        }
-      }
-
-      // Update frontier travel times
-      for (const frontier of this.observation.frontierAreas) {
-        frontier.travelTicksFromCurrent = estimateTravelTicks(
-          currentStateAreaId,
-          newDistance,
-          frontier.areaId,
-          frontier.distance
-        )
-      }
-
-      // Re-sort frontier areas by new travel time
-      this.observation.frontierAreas.sort(
-        (a, b) => a.travelTicksFromCurrent - b.travelTicksFromCurrent
-      )
-
-      // Filter out areas that are no longer useful
-      this.filterUselessAreas(state)
-
-      // Update currentArea
-      this.observation.currentArea =
-        currentStateAreaId === "TOWN"
-          ? null
-          : (this.observation.knownAreas.find((a) => a.areaId === currentStateAreaId) ?? null)
-    }
-
     const miningSkill = state.player.skills.Mining
 
     // Update XP fields
@@ -584,64 +461,59 @@ export class ObservationManager {
     }
 
     // Update canDeposit
+    const exploration = state.exploration
     const hasItems = state.player.inventory.length > 0
     const atWarehouse = exploration.playerState.currentLocationId === "TOWN_WAREHOUSE"
     this.observation.canDeposit = this.observation.isInTown && atWarehouse && hasItems
 
-    // Update the mined node's remaining charges using O(1) cache lookup
-    const node = this.nodeById?.get(nodeId)
-    let nodeWasMineable = false
-    let nodeBecameUnmineable = false
-
-    if (node) {
-      nodeWasMineable = node.isMineable && !!node.remainingCharges
-
-      // O(1) lookup for world node
-      const actualNode = this.getWorldNodeById(state, nodeId)
-      if (actualNode) {
-        const remainingCharges = actualNode.materials.reduce((sum, m) => sum + m.remainingUnits, 0)
-        node.remainingCharges = remainingCharges > 0 ? remainingCharges : null
-        node.isMineable = actualNode.materials.some(
-          (m) =>
-            m.requiresSkill === "Mining" &&
-            this.observation!.miningLevel >= m.requiredLevel &&
-            m.remainingUnits > 0
-        )
-
-        nodeBecameUnmineable = nodeWasMineable && (!node.isMineable || !node.remainingCharges)
+    // Update the mined node's remaining charges in knownAreas
+    for (const area of this.observation.knownAreas) {
+      for (const node of area.discoveredNodes) {
+        if (node.nodeId === nodeId) {
+          // Find the actual node to get updated charges
+          const actualNode = state.world.nodes?.find((n) => n.nodeId === nodeId)
+          if (actualNode) {
+            const remainingCharges = actualNode.materials.reduce(
+              (sum, m) => sum + m.remainingUnits,
+              0
+            )
+            node.remainingCharges = remainingCharges > 0 ? remainingCharges : null
+            node.isMineable = actualNode.materials.some(
+              (m) =>
+                m.requiresSkill === "Mining" &&
+                this.observation!.miningLevel >= m.requiredLevel &&
+                m.remainingUnits > 0
+            )
+          }
+          break
+        }
       }
     }
 
-    // Update currentArea reference (the area object itself was already updated in place)
-    // Note: currentArea is a reference to an item in knownAreas, so no update needed
+    // Update currentArea if we're in a known area
+    if (this.observation.currentArea) {
+      const updatedArea = this.observation.knownAreas.find(
+        (a) => a.areaId === this.observation!.currentAreaId
+      )
+      if (updatedArea) {
+        this.observation.currentArea = updatedArea
+      }
+    }
 
-    // Only rebuild knownMineableMaterials if a node became depleted/unmineable
-    // This avoids O(areas × nodes) work on every Mine action
-    if (nodeBecameUnmineable) {
-      const mineableMaterials = new Set<string>()
-      for (const area of this.observation.knownAreas) {
-        for (const n of area.discoveredNodes) {
-          if (n.isMineable && n.remainingCharges) {
-            mineableMaterials.add(n.primaryMaterial)
-            for (const matId of n.secondaryMaterials) {
-              mineableMaterials.add(matId)
-            }
+    // Rebuild knownMineableMaterials from current node states
+    // Required because mining may deplete nodes, removing materials from availability
+    const mineableMaterials = new Set<string>()
+    for (const area of this.observation.knownAreas) {
+      for (const node of area.discoveredNodes) {
+        if (node.isMineable && node.remainingCharges) {
+          mineableMaterials.add(node.primaryMaterial)
+          for (const matId of node.secondaryMaterials) {
+            mineableMaterials.add(matId)
           }
         }
       }
-      this.observation.knownMineableMaterials = [...mineableMaterials]
-
-      // Filter out areas that lost their last mineable node
-      this.filterUselessAreas(state)
-
-      // Update currentArea in case it was filtered out or changed
-      this.observation.currentArea =
-        this.observation.currentAreaId === "TOWN"
-          ? null
-          : (this.observation.knownAreas.find(
-              (a) => a.areaId === this.observation!.currentAreaId
-            ) ?? null)
     }
+    this.observation.knownMineableMaterials = [...mineableMaterials]
   }
 
   /**
@@ -690,7 +562,7 @@ export class ObservationManager {
 
     // Check if we traveled to a frontier (new area discovered)
     if (result.areasDiscovered && result.areasDiscovered > 0) {
-      // Update cached Sets for new discoveries
+      // Update cached Sets incrementally for new discoveries
       if (this.cachedKnownLocationIds) {
         for (const locId of exploration.playerState.knownLocationIds) {
           this.cachedKnownLocationIds.add(locId)
@@ -707,13 +579,12 @@ export class ObservationManager {
         }
       }
 
-      // Use full rebuild for frontier discovery to avoid edge case bugs
+      // Rebuild observation using cached Sets
       this.observation = buildObservationFresh(state, {
         knownLocationIds: this.cachedKnownLocationIds!,
         knownAreaIds: this.cachedKnownAreaIds!,
         knownConnectionIds: this.cachedKnownConnectionIds!,
       })
-      this.rebuildNodeCache()
       return
     }
 
@@ -744,9 +615,6 @@ export class ObservationManager {
     this.observation.frontierAreas.sort(
       (a, b) => a.travelTicksFromCurrent - b.travelTicksFromCurrent
     )
-
-    // Filter out areas that are no longer useful (leaving an area may make it filterable)
-    this.filterUselessAreas(state)
 
     // Update currentArea
     this.observation.currentArea =
@@ -796,9 +664,6 @@ export class ObservationManager {
     this.observation.frontierAreas.sort(
       (a, b) => a.travelTicksFromCurrent - b.travelTicksFromCurrent
     )
-
-    // Filter out areas that are no longer useful (leaving an area may make it filterable)
-    this.filterUselessAreas(state)
   }
 
   /**
@@ -807,21 +672,13 @@ export class ObservationManager {
    *
    * Phase 4 optimization: Update cached Sets incrementally instead of rebuilding.
    */
-  private applyExploreResult(state: WorldState, result: ActionResult): void {
+  private applyExploreResult(state: WorldState, _result: ActionResult): void {
     if (!this.observation) return
 
     const exploration = state.exploration
 
-    // Check if the player's area changed (Explore action was converted to FarTravel)
-    // This happens when the policy says "Explore in area X" but player isn't at X yet
-    const currentStateAreaId = exploration.playerState.currentAreaId
-    if (this.observation.currentAreaId !== currentStateAreaId) {
-      // Player moved - delegate to travel handling
-      this.applyTravelResult(state, result)
-      return
-    }
-
     // Check for new discoveries by comparing array lengths (O(1))
+    // This avoids creating new Sets just to compare sizes
     const locationIdsChanged =
       !this.cachedKnownLocationIds ||
       exploration.playerState.knownLocationIds.length !== this.cachedKnownLocationIds.size
@@ -839,26 +696,8 @@ export class ObservationManager {
       return
     }
 
-    // Find what's new before updating cached Sets
-    const newLocationIds: string[] = []
-    if (locationIdsChanged && this.cachedKnownLocationIds) {
-      for (const locId of exploration.playerState.knownLocationIds) {
-        if (!this.cachedKnownLocationIds.has(locId)) {
-          newLocationIds.push(locId)
-        }
-      }
-    }
-
-    const newConnectionIds: string[] = []
-    if (connectionIdsChanged && this.cachedKnownConnectionIds) {
-      for (const connId of exploration.playerState.knownConnectionIds) {
-        if (!this.cachedKnownConnectionIds.has(connId)) {
-          newConnectionIds.push(connId)
-        }
-      }
-    }
-
-    // Update cached Sets incrementally
+    // Update cached Sets incrementally by adding only new IDs
+    // This is O(new_discoveries) instead of O(all_known)
     if (locationIdsChanged && this.cachedKnownLocationIds) {
       for (const locId of exploration.playerState.knownLocationIds) {
         this.cachedKnownLocationIds.add(locId)
@@ -877,14 +716,13 @@ export class ObservationManager {
       }
     }
 
-    // Use full rebuild for any discoveries to avoid edge case bugs
-    // This is still faster than rebuilding on every action
+    // Rebuild observation using updated cached Sets
+    // This still iterates all known areas, but avoids the O(n) array→Set conversion
     this.observation = buildObservationFresh(state, {
       knownLocationIds: this.cachedKnownLocationIds!,
       knownAreaIds: this.cachedKnownAreaIds!,
       knownConnectionIds: this.cachedKnownConnectionIds!,
     })
-    this.rebuildNodeCache()
   }
 
   /**
