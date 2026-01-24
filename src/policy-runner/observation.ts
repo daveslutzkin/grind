@@ -90,7 +90,7 @@ function buildKnownArea(
   area: Area,
   miningLevel: number,
   knownLocationIds: Set<string>,
-  worldNodes: Node[] | undefined
+  nodesByNodeId: Map<string, Node>
 ): KnownArea {
   // Find all discovered mining nodes in this area
   const discoveredNodes: KnownNode[] = []
@@ -102,14 +102,14 @@ function buildKnownArea(
     // Only include gathering nodes (mining)
     if (location.gatheringSkillType !== "Mining") continue
 
-    // Find the corresponding node
+    // Find the corresponding node (O(1) Map lookup)
     // Node ID format: "{areaId}-node-{index}" where location ID is "{areaId}-loc-{index}"
     const locMatch = location.id.match(/^(.+)-loc-(\d+)$/)
     if (!locMatch) continue
 
     const [, areaId, locIndex] = locMatch
     const nodeId = `${areaId}-node-${locIndex}`
-    const node = worldNodes?.find((n) => n.nodeId === nodeId)
+    const node = nodesByNodeId.get(nodeId)
 
     if (node && !node.depleted) {
       discoveredNodes.push(buildKnownNode(node, miningLevel, location.id))
@@ -139,6 +139,14 @@ export function getObservation(state: WorldState): PolicyObservation {
   const currentAreaId = exploration.playerState.currentAreaId
   const knownLocationIds = new Set(exploration.playerState.knownLocationIds)
 
+  // Build O(1) node lookup map
+  const nodesByNodeId = new Map<string, Node>()
+  if (state.world.nodes) {
+    for (const node of state.world.nodes) {
+      nodesByNodeId.set(node.nodeId, node)
+    }
+  }
+
   // Get current area's distance (TOWN = 0)
   const currentAreaData = exploration.areas.get(currentAreaId)
   const currentDistance = currentAreaData?.distance ?? 0
@@ -149,7 +157,7 @@ export function getObservation(state: WorldState): PolicyObservation {
   for (const areaId of exploration.playerState.knownAreaIds) {
     const area = exploration.areas.get(areaId)
     if (area && area.id !== "TOWN") {
-      const knownArea = buildKnownArea(area, miningLevel, knownLocationIds, state.world.nodes)
+      const knownArea = buildKnownArea(area, miningLevel, knownLocationIds, nodesByNodeId)
       const isCurrentArea = area.id === currentAreaId
 
       // Check if this area has mineable nodes
@@ -235,6 +243,7 @@ export function getObservation(state: WorldState): PolicyObservation {
   const knownAreaIds = new Set(exploration.playerState.knownAreaIds)
   const knownConnectionIds = new Set(exploration.playerState.knownConnectionIds)
   const frontierAreas: FrontierArea[] = []
+  const seenFrontierAreaIds = new Set<AreaID>() // O(1) deduplication
 
   // Find all connections that lead to unknown areas
   for (const conn of exploration.connections) {
@@ -259,10 +268,11 @@ export function getObservation(state: WorldState): PolicyObservation {
     }
 
     if (unknownAreaId && knownAreaId) {
-      // Check if we already have this frontier area
-      if (frontierAreas.some((f) => f.areaId === unknownAreaId)) {
+      // Check if we already have this frontier area (O(1) Set lookup)
+      if (seenFrontierAreaIds.has(unknownAreaId)) {
         continue
       }
+      seenFrontierAreaIds.add(unknownAreaId)
 
       const unknownArea = exploration.areas.get(unknownAreaId)
       if (unknownArea) {
