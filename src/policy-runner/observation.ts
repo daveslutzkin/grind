@@ -504,6 +504,21 @@ export class ObservationManager {
         this.observation.currentArea = updatedArea
       }
     }
+
+    // Rebuild knownMineableMaterials from current node states
+    // Required because mining may deplete nodes, removing materials from availability
+    const mineableMaterials = new Set<string>()
+    for (const area of this.observation.knownAreas) {
+      for (const node of area.discoveredNodes) {
+        if (node.isMineable && node.remainingCharges) {
+          mineableMaterials.add(node.primaryMaterial)
+          for (const matId of node.secondaryMaterials) {
+            mineableMaterials.add(matId)
+          }
+        }
+      }
+    }
+    this.observation.knownMineableMaterials = [...mineableMaterials]
   }
 
   /**
