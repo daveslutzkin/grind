@@ -4,7 +4,12 @@
 
 import { createWorld } from "./../world.js"
 import { executeAction } from "./../engine.js"
-import { getObservation, findNearestMineableArea, findBestNodeInArea } from "./observation.js"
+import {
+  getObservation,
+  findNearestMineableArea,
+  findBestNodeInArea,
+  ObservationManager,
+} from "./observation.js"
 
 describe("observation", () => {
   describe("getObservation", () => {
@@ -258,6 +263,79 @@ describe("observation", () => {
 
       const result = findBestNodeInArea(area)
       expect(result?.nodeId).toBe("node-1") // Only non-depleted
+    })
+  })
+
+  describe("ObservationManager", () => {
+    it("produces identical output to getObservation for initial state", async () => {
+      const state = createWorld("test-seed")
+
+      // Enrol in Mining guild
+      state.exploration.playerState.currentLocationId = "TOWN_MINERS_GUILD"
+      await executeAction(state, { type: "Enrol" })
+      state.exploration.playerState.currentLocationId = null
+
+      const manager = new ObservationManager()
+      const managerObs = manager.getObservation(state)
+      const directObs = getObservation(state)
+
+      expect(managerObs).toEqual(directObs)
+    })
+
+    it("produces identical output after exploration actions", async () => {
+      const state = createWorld("test-seed-2")
+
+      // Enrol in both guilds
+      state.exploration.playerState.currentLocationId = "TOWN_MINERS_GUILD"
+      await executeAction(state, { type: "Enrol" })
+      state.exploration.playerState.currentLocationId = "TOWN_EXPLORERS_GUILD"
+      await executeAction(state, { type: "Enrol" })
+      state.exploration.playerState.currentLocationId = null
+
+      // Simulate exploration by manually setting player location to a known area
+      const initialObs = getObservation(state)
+      if (initialObs.knownAreas.length > 0) {
+        const targetArea = initialObs.knownAreas[0].areaId
+        // Directly update player state to simulate travel (avoids Travel action complexity)
+        state.exploration.playerState.currentAreaId = targetArea
+      }
+
+      const manager = new ObservationManager()
+      const managerObs = manager.getObservation(state)
+      const directObs = getObservation(state)
+
+      expect(managerObs).toEqual(directObs)
+    })
+
+    it("produces identical output with inventory items", async () => {
+      const state = createWorld("test-seed-3")
+
+      // Add items to inventory
+      state.player.inventory.push({ itemId: "COPPER_ORE", quantity: 2 })
+      state.player.inventory.push({ itemId: "STONE", quantity: 5 })
+
+      const manager = new ObservationManager()
+      const managerObs = manager.getObservation(state)
+      const directObs = getObservation(state)
+
+      expect(managerObs).toEqual(directObs)
+    })
+
+    it("reset clears internal state", async () => {
+      const state = createWorld("test-seed")
+      const manager = new ObservationManager()
+
+      // Get observation (builds internal state)
+      manager.getObservation(state)
+
+      // Reset should clear state
+      manager.reset()
+
+      // Should still work and produce correct output
+      const managerObs = manager.getObservation(state)
+      const directObs = getObservation(state)
+
+      expect(managerObs).toEqual(directObs)
     })
   })
 })

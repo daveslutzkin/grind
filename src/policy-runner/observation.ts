@@ -131,13 +131,13 @@ function buildKnownArea(
 }
 
 /**
- * Get the observation for a policy to make a decision.
- * This is the only view of the world that policies receive.
+ * Build a fresh observation from scratch. This is the original O(state_size)
+ * implementation that iterates all known areas/locations/connections.
  *
  * @param state The current world state (read-only access)
  * @returns A sanitized PolicyObservation
  */
-export function getObservation(state: WorldState): PolicyObservation {
+function buildObservationFresh(state: WorldState): PolicyObservation {
   const miningSkill = state.player.skills.Mining
   const miningLevel = miningSkill.level
   const exploration = state.exploration
@@ -315,6 +315,43 @@ export function getObservation(state: WorldState): PolicyObservation {
     canDeposit,
     returnTimeToTown,
   }
+}
+
+/**
+ * ObservationManager - maintains observation state and supports incremental updates.
+ *
+ * Phase 1: Wraps buildObservationFresh() with no incremental logic yet.
+ * Later phases will add incremental update methods.
+ */
+export class ObservationManager {
+  private observation: PolicyObservation | null = null
+
+  /**
+   * Get the current observation. For Phase 1, this always rebuilds from scratch.
+   * Later phases will use cached observation with incremental updates.
+   */
+  getObservation(state: WorldState): PolicyObservation {
+    this.observation = buildObservationFresh(state)
+    return this.observation
+  }
+
+  /**
+   * Reset the manager state. Called at the start of each simulation run.
+   */
+  reset(): void {
+    this.observation = null
+  }
+}
+
+/**
+ * Get the observation for a policy to make a decision.
+ * This is the only view of the world that policies receive.
+ *
+ * @param state The current world state (read-only access)
+ * @returns A sanitized PolicyObservation
+ */
+export function getObservation(state: WorldState): PolicyObservation {
+  return buildObservationFresh(state)
 }
 
 /**
