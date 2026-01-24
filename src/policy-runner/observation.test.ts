@@ -423,6 +423,58 @@ describe("observation", () => {
       manager.setValidationEnabled(true)
       expect(manager.shouldValidate(100)).toBe(true)
     })
+
+    it("applyActionResult updates node charges after mining", async () => {
+      const state = createWorld("test-seed-mine")
+
+      // Enrol in Mining and Exploration guilds
+      state.exploration.playerState.currentLocationId = "TOWN_MINERS_GUILD"
+      await executeAction(state, { type: "Enrol" })
+      state.exploration.playerState.currentLocationId = "TOWN_EXPLORERS_GUILD"
+      await executeAction(state, { type: "Enrol" })
+      state.exploration.playerState.currentLocationId = null
+
+      const manager = new ObservationManager()
+      const obs = manager.getObservation(state)
+
+      // Find a mineable node
+      const areaWithNode = obs.knownAreas.find((a) =>
+        a.discoveredNodes.some((n) => n.isMineable && n.remainingCharges)
+      )
+      expect(areaWithNode).toBeDefined()
+
+      const mineableNode = areaWithNode!.discoveredNodes.find(
+        (n) => n.isMineable && n.remainingCharges
+      )
+      expect(mineableNode).toBeDefined()
+      const originalCharges = mineableNode!.remainingCharges!
+
+      // Directly modify the world state to simulate mining (reduce charges by 1)
+      const actualNode = state.world.nodes?.find((n) => n.nodeId === mineableNode!.nodeId)
+      expect(actualNode).toBeDefined()
+      const material = actualNode!.materials[0]
+      material.remainingUnits -= 1
+
+      // Apply the mine action result
+      manager.applyActionResult(
+        state,
+        { type: "Mine", nodeId: mineableNode!.nodeId },
+        { ticksConsumed: 10, success: true, nodesDiscovered: 0 }
+      )
+
+      // Get the observation (should be the cached one updated incrementally)
+      const updatedObs = manager.getObservation(state)
+
+      // Find the same node in the updated observation
+      const updatedArea = updatedObs.knownAreas.find((a) => a.areaId === areaWithNode!.areaId)
+      expect(updatedArea).toBeDefined()
+
+      const updatedNode = updatedArea!.discoveredNodes.find(
+        (n) => n.nodeId === mineableNode!.nodeId
+      )
+      expect(updatedNode).toBeDefined()
+      expect(updatedNode!.remainingCharges).toBe(originalCharges - 1)
+    })
   })
 
   describe("diffObservations", () => {

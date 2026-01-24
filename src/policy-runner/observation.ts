@@ -367,12 +367,29 @@ export class ObservationManager {
   private cachedKnownAreaIds: Set<AreaID> | null = null
   private cachedKnownConnectionIds: Set<string> | null = null
 
+  // Node index for O(1) lookup by nodeId (optimization #1 from TODO.md)
+  private nodeIndex: Map<string, { area: KnownArea; node: KnownNode }> | null = null
+
   /**
    * Create an ObservationManager.
    * @param validationInterval How often to validate (in ticks). Default 5000.
    */
   constructor(validationInterval: number = 5000) {
     this.validationInterval = validationInterval
+  }
+
+  /**
+   * Build the node index for O(1) lookup by nodeId.
+   * Called after building or rebuilding the observation.
+   */
+  private buildNodeIndex(): void {
+    if (!this.observation) return
+    this.nodeIndex = new Map()
+    for (const area of this.observation.knownAreas) {
+      for (const node of area.discoveredNodes) {
+        this.nodeIndex.set(node.nodeId, { area, node })
+      }
+    }
   }
 
   /**
@@ -398,6 +415,9 @@ export class ObservationManager {
       knownAreaIds: this.cachedKnownAreaIds!,
       knownConnectionIds: this.cachedKnownConnectionIds!,
     })
+
+    // Build node index for O(1) lookup
+    this.buildNodeIndex()
 
     return this.observation
   }
@@ -466,27 +486,21 @@ export class ObservationManager {
     const atWarehouse = exploration.playerState.currentLocationId === "TOWN_WAREHOUSE"
     this.observation.canDeposit = this.observation.isInTown && atWarehouse && hasItems
 
-    // Update the mined node's remaining charges in knownAreas
-    for (const area of this.observation.knownAreas) {
-      for (const node of area.discoveredNodes) {
-        if (node.nodeId === nodeId) {
-          // Find the actual node to get updated charges
-          const actualNode = state.world.nodes?.find((n) => n.nodeId === nodeId)
-          if (actualNode) {
-            const remainingCharges = actualNode.materials.reduce(
-              (sum, m) => sum + m.remainingUnits,
-              0
-            )
-            node.remainingCharges = remainingCharges > 0 ? remainingCharges : null
-            node.isMineable = actualNode.materials.some(
-              (m) =>
-                m.requiresSkill === "Mining" &&
-                this.observation!.miningLevel >= m.requiredLevel &&
-                m.remainingUnits > 0
-            )
-          }
-          break
-        }
+    // Update the mined node's remaining charges using O(1) index lookup
+    const nodeEntry = this.nodeIndex?.get(nodeId)
+    if (nodeEntry) {
+      const { node } = nodeEntry
+      // Find the actual node to get updated charges
+      const actualNode = state.world.nodes?.find((n) => n.nodeId === nodeId)
+      if (actualNode) {
+        const remainingCharges = actualNode.materials.reduce((sum, m) => sum + m.remainingUnits, 0)
+        node.remainingCharges = remainingCharges > 0 ? remainingCharges : null
+        node.isMineable = actualNode.materials.some(
+          (m) =>
+            m.requiresSkill === "Mining" &&
+            this.observation!.miningLevel >= m.requiredLevel &&
+            m.remainingUnits > 0
+        )
       }
     }
 
@@ -585,6 +599,9 @@ export class ObservationManager {
         knownAreaIds: this.cachedKnownAreaIds!,
         knownConnectionIds: this.cachedKnownConnectionIds!,
       })
+
+      // Rebuild node index after observation rebuild
+      this.buildNodeIndex()
       return
     }
 
@@ -723,6 +740,9 @@ export class ObservationManager {
       knownAreaIds: this.cachedKnownAreaIds!,
       knownConnectionIds: this.cachedKnownConnectionIds!,
     })
+
+    // Rebuild node index after observation rebuild
+    this.buildNodeIndex()
   }
 
   /**
@@ -775,6 +795,7 @@ export class ObservationManager {
     this.cachedKnownLocationIds = null
     this.cachedKnownAreaIds = null
     this.cachedKnownConnectionIds = null
+    this.nodeIndex = null
   }
 }
 
