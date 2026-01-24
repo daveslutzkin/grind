@@ -188,24 +188,7 @@ function buildObservationFresh(state: WorldState, cachedSets?: CachedSets): Poli
       const knownArea = buildKnownArea(area, miningLevel, knownLocationIds, nodesByNodeId)
       const isCurrentArea = area.id === currentAreaId
 
-      // Check if this area has mineable nodes
-      const hasMineableNode = knownArea.discoveredNodes.some(
-        (n) => n.isMineable && n.remainingCharges
-      )
-
-      if (hasMineableNode) {
-        // Area has mineable nodes - include it
-        knownArea.travelTicksFromCurrent = estimateTravelTicks(
-          currentAreaId,
-          currentDistance,
-          area.id,
-          area.distance
-        )
-        knownAreas.push(knownArea)
-        continue
-      }
-
-      // No mineable nodes - check if fully explored (use cache)
+      // Always check if fully explored (use cache) - even for areas with mineable nodes
       let isFullyExplored = fullyExploredCache.get(areaId)
       if (isFullyExplored === undefined) {
         // Not in cache - compute it
@@ -216,10 +199,18 @@ function buildObservationFresh(state: WorldState, cachedSets?: CachedSets): Poli
           fullyExploredCache.set(areaId, true)
         }
       }
+      knownArea.isFullyExplored = isFullyExplored
 
-      // Include the area if it still has content OR it's the current area
-      if (!isFullyExplored || isCurrentArea) {
-        knownArea.isFullyExplored = isFullyExplored
+      // Check if this area has mineable nodes
+      const hasMineableNode = knownArea.discoveredNodes.some(
+        (n) => n.isMineable && n.remainingCharges
+      )
+
+      // Include the area if:
+      // - it has mineable nodes (useful for mining)
+      // - OR it's not fully explored (useful for exploration)
+      // - OR it's the current area
+      if (hasMineableNode || !isFullyExplored || isCurrentArea) {
         knownArea.travelTicksFromCurrent = estimateTravelTicks(
           currentAreaId,
           currentDistance,
@@ -228,7 +219,7 @@ function buildObservationFresh(state: WorldState, cachedSets?: CachedSets): Poli
         )
         knownAreas.push(knownArea)
       }
-      // else: fully explored with no mineable nodes - skip it entirely
+      // else: no mineable nodes AND fully explored - skip it entirely
     }
   }
 

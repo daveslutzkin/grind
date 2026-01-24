@@ -108,6 +108,49 @@ describe("observation", () => {
       obs = getObservation(state)
       expect(obs.canDeposit).toBe(false)
     })
+
+    it("sets isFullyExplored correctly even when area has mineable nodes", async () => {
+      const state = createWorld("test-seed")
+
+      // Enrol in Mining and Exploration guilds
+      state.exploration.playerState.currentLocationId = "TOWN_MINERS_GUILD"
+      await executeAction(state, { type: "Enrol" })
+      state.exploration.playerState.currentLocationId = "TOWN_EXPLORERS_GUILD"
+      await executeAction(state, { type: "Enrol" })
+      state.exploration.playerState.currentLocationId = null
+
+      // Get initial observation to find an area with mineable nodes
+      let obs = getObservation(state)
+      const areaWithNodes = obs.knownAreas.find((a) => a.discoveredNodes.length > 0)
+      expect(areaWithNodes).toBeDefined()
+
+      // Get the actual area from state
+      const area = state.exploration.areas.get(areaWithNodes!.areaId)!
+
+      // Mark ALL locations in this area as discovered (making it fully explored)
+      for (const location of area.locations) {
+        if (!state.exploration.playerState.knownLocationIds.includes(location.id)) {
+          state.exploration.playerState.knownLocationIds.push(location.id)
+        }
+      }
+
+      // Mark ALL connections from this area as discovered (including to unknown areas)
+      for (const conn of state.exploration.connections) {
+        if (conn.fromAreaId === area.id || conn.toAreaId === area.id) {
+          const connId = `${conn.fromAreaId}->${conn.toAreaId}`
+          if (!state.exploration.playerState.knownConnectionIds.includes(connId)) {
+            state.exploration.playerState.knownConnectionIds.push(connId)
+          }
+        }
+      }
+
+      // Now get observation again - area should be fully explored but still have mineable nodes
+      obs = getObservation(state)
+      const updatedArea = obs.knownAreas.find((a) => a.areaId === areaWithNodes!.areaId)
+      expect(updatedArea).toBeDefined()
+      expect(updatedArea!.discoveredNodes.length).toBeGreaterThan(0) // Still has mineable nodes
+      expect(updatedArea!.isFullyExplored).toBe(true) // Should be marked as fully explored
+    })
   })
 
   describe("findNearestMineableArea", () => {
