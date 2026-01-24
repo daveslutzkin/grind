@@ -616,9 +616,31 @@ export class ObservationManager {
     if (!this.observation) return
 
     const exploration = state.exploration
+    const oldAreaId = this.observation.currentAreaId
     const newAreaId = exploration.playerState.currentAreaId
     const newAreaData = exploration.areas.get(newAreaId)
     const newDistance = newAreaData?.distance ?? 0
+
+    // CLEANUP: Remove old area from knownAreas if it's now "useless"
+    // (no mineable nodes AND fully explored AND no longer current)
+    if (oldAreaId !== "TOWN" && oldAreaId !== newAreaId) {
+      const oldArea = this.observation.knownAreas.find((a) => a.areaId === oldAreaId)
+      if (oldArea && oldArea.isFullyExplored) {
+        const hasMineableNode = oldArea.discoveredNodes.some(
+          (n) => n.isMineable && n.remainingCharges
+        )
+        if (!hasMineableNode) {
+          // Remove from knownAreas
+          this.observation.knownAreas = this.observation.knownAreas.filter(
+            (a) => a.areaId !== oldAreaId
+          )
+          // Remove from node index
+          for (const node of oldArea.discoveredNodes) {
+            this.nodeIndex?.delete(node.nodeId)
+          }
+        }
+      }
+    }
 
     // Update location fields
     this.observation.currentAreaId = newAreaId
@@ -695,35 +717,25 @@ export class ObservationManager {
         // Set travel time to 0 since it's now current
         newKnownArea.travelTicksFromCurrent = 0
 
-        // Check if this area has mineable nodes
-        const hasMineableNode = newKnownArea.discoveredNodes.some(
-          (n) => n.isMineable && n.remainingCharges
-        )
+        // Add to knownAreas - current area is always included
+        // (buildObservationFresh includes area if: has mineable nodes OR not fully explored OR is current)
+        this.observation.knownAreas.push(newKnownArea)
 
-        // Only add to knownAreas if it has mineable nodes OR is not fully explored
-        // (same logic as buildObservationFresh)
-        if (hasMineableNode || !isFullyExplored) {
-          this.observation.knownAreas.push(newKnownArea)
+        // Update node index for new area's nodes
+        for (const node of newKnownArea.discoveredNodes) {
+          this.nodeIndex?.set(node.nodeId, { area: newKnownArea, node })
 
-          // Update node index for new area's nodes
-          for (const node of newKnownArea.discoveredNodes) {
-            this.nodeIndex?.set(node.nodeId, { area: newKnownArea, node })
-
-            // Update material ref counts
-            if (node.isMineable && node.remainingCharges) {
-              this.incrementMaterialRef(node.primaryMaterial)
-              for (const matId of node.secondaryMaterials) {
-                this.incrementMaterialRef(matId)
-              }
+          // Update material ref counts
+          if (node.isMineable && node.remainingCharges) {
+            this.incrementMaterialRef(node.primaryMaterial)
+            for (const matId of node.secondaryMaterials) {
+              this.incrementMaterialRef(matId)
             }
           }
-
-          // Update currentArea
-          this.observation.currentArea = newKnownArea
-        } else {
-          // Area has no mineable nodes and is fully explored - don't add to knownAreas
-          this.observation.currentArea = null
         }
+
+        // Update currentArea
+        this.observation.currentArea = newKnownArea
       }
 
       // INCREMENTAL UPDATE: Add new frontier areas from new area's connections
@@ -801,6 +813,28 @@ export class ObservationManager {
     if (!this.observation) return
 
     const exploration = state.exploration
+    const oldAreaId = this.observation.currentAreaId
+
+    // CLEANUP: Remove old area from knownAreas if it's now "useless"
+    // (no mineable nodes AND fully explored AND no longer current)
+    if (oldAreaId !== "TOWN") {
+      const oldArea = this.observation.knownAreas.find((a) => a.areaId === oldAreaId)
+      if (oldArea && oldArea.isFullyExplored) {
+        const hasMineableNode = oldArea.discoveredNodes.some(
+          (n) => n.isMineable && n.remainingCharges
+        )
+        if (!hasMineableNode) {
+          // Remove from knownAreas
+          this.observation.knownAreas = this.observation.knownAreas.filter(
+            (a) => a.areaId !== oldAreaId
+          )
+          // Remove from node index
+          for (const node of oldArea.discoveredNodes) {
+            this.nodeIndex?.delete(node.nodeId)
+          }
+        }
+      }
+    }
 
     // Update location fields
     this.observation.currentAreaId = "TOWN"
