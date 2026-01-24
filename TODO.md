@@ -74,7 +74,7 @@ Add a `Map<string, { area: KnownArea, node: KnownNode }>` to `ObservationManager
 
 ---
 
-## 2. Incremental `knownMineableMaterials` Updates
+## 2. ~~Incremental `knownMineableMaterials` Updates~~ ✅ DONE
 
 **Goal:** Eliminate O(areas × nodes) rebuild of materials set after every Mine action.
 
@@ -354,7 +354,7 @@ Recommended order based on impact and risk:
 
 1. ~~**Task 3: Cache `findNearestMineableArea`** - Easiest, self-contained in safe.ts~~ ✅ DONE
 2. ~~**Task 1: Node Index Map** - High impact, straightforward~~ ✅ DONE
-3. **Task 2: Incremental materials** - High impact, medium complexity
+3. ~~**Task 2: Incremental materials** - High impact, medium complexity~~ ✅ DONE
 4. **Task 4: Lazy travel times** - Medium impact, requires more changes
 
 ## Benchmarking

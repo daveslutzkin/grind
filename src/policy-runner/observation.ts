@@ -370,6 +370,10 @@ export class ObservationManager {
   // Node index for O(1) lookup by nodeId (optimization #1 from TODO.md)
   private nodeIndex: Map<string, { area: KnownArea; node: KnownNode }> | null = null
 
+  // Material reference counts for incremental knownMineableMaterials updates (optimization #2 from TODO.md)
+  // Key: materialId, Value: count of mineable nodes providing this material
+  private materialRefCounts: Map<string, number> | null = null
+
   /**
    * Create an ObservationManager.
    * @param validationInterval How often to validate (in ticks). Default 5000.
@@ -389,6 +393,48 @@ export class ObservationManager {
       for (const node of area.discoveredNodes) {
         this.nodeIndex.set(node.nodeId, { area, node })
       }
+    }
+  }
+
+  /**
+   * Build the material reference counts for incremental knownMineableMaterials updates.
+   * Called after building or rebuilding the observation.
+   */
+  private buildMaterialRefCounts(): void {
+    if (!this.observation) return
+    this.materialRefCounts = new Map()
+    for (const area of this.observation.knownAreas) {
+      for (const node of area.discoveredNodes) {
+        if (node.isMineable && node.remainingCharges) {
+          this.incrementMaterialRef(node.primaryMaterial)
+          for (const matId of node.secondaryMaterials) {
+            this.incrementMaterialRef(matId)
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Increment the reference count for a material.
+   */
+  private incrementMaterialRef(materialId: string): void {
+    if (!this.materialRefCounts) return
+    const count = this.materialRefCounts.get(materialId) ?? 0
+    this.materialRefCounts.set(materialId, count + 1)
+  }
+
+  /**
+   * Decrement the reference count for a material.
+   * Removes the material from the map if count reaches zero.
+   */
+  private decrementMaterialRef(materialId: string): void {
+    if (!this.materialRefCounts) return
+    const count = this.materialRefCounts.get(materialId) ?? 0
+    if (count <= 1) {
+      this.materialRefCounts.delete(materialId)
+    } else {
+      this.materialRefCounts.set(materialId, count - 1)
     }
   }
 
@@ -418,6 +464,9 @@ export class ObservationManager {
 
     // Build node index for O(1) lookup
     this.buildNodeIndex()
+
+    // Build material ref counts for incremental updates
+    this.buildMaterialRefCounts()
 
     return this.observation
   }
@@ -490,6 +539,10 @@ export class ObservationManager {
     const nodeEntry = this.nodeIndex?.get(nodeId)
     if (nodeEntry) {
       const { node } = nodeEntry
+
+      // Track if node was mineable before update (for ref counting)
+      const wasMineable = node.isMineable && node.remainingCharges
+
       // Find the actual node to get updated charges
       const actualNode = state.world.nodes?.find((n) => n.nodeId === nodeId)
       if (actualNode) {
@@ -502,6 +555,19 @@ export class ObservationManager {
             m.remainingUnits > 0
         )
       }
+
+      // Check if node is now mineable
+      const isNowMineable = node.isMineable && node.remainingCharges
+
+      // Update material ref counts incrementally if node became non-mineable
+      if (wasMineable && !isNowMineable && this.materialRefCounts) {
+        this.decrementMaterialRef(node.primaryMaterial)
+        for (const matId of node.secondaryMaterials) {
+          this.decrementMaterialRef(matId)
+        }
+        // Rebuild the array from the map keys (O(materials) not O(areas × nodes))
+        this.observation.knownMineableMaterials = [...this.materialRefCounts.keys()]
+      }
     }
 
     // Update currentArea if we're in a known area
@@ -513,21 +579,6 @@ export class ObservationManager {
         this.observation.currentArea = updatedArea
       }
     }
-
-    // Rebuild knownMineableMaterials from current node states
-    // Required because mining may deplete nodes, removing materials from availability
-    const mineableMaterials = new Set<string>()
-    for (const area of this.observation.knownAreas) {
-      for (const node of area.discoveredNodes) {
-        if (node.isMineable && node.remainingCharges) {
-          mineableMaterials.add(node.primaryMaterial)
-          for (const matId of node.secondaryMaterials) {
-            mineableMaterials.add(matId)
-          }
-        }
-      }
-    }
-    this.observation.knownMineableMaterials = [...mineableMaterials]
   }
 
   /**
@@ -600,8 +651,9 @@ export class ObservationManager {
         knownConnectionIds: this.cachedKnownConnectionIds!,
       })
 
-      // Rebuild node index after observation rebuild
+      // Rebuild node index and material ref counts after observation rebuild
       this.buildNodeIndex()
+      this.buildMaterialRefCounts()
       return
     }
 
@@ -741,8 +793,9 @@ export class ObservationManager {
       knownConnectionIds: this.cachedKnownConnectionIds!,
     })
 
-    // Rebuild node index after observation rebuild
+    // Rebuild node index and material ref counts after observation rebuild
     this.buildNodeIndex()
+    this.buildMaterialRefCounts()
   }
 
   /**
@@ -796,6 +849,7 @@ export class ObservationManager {
     this.cachedKnownAreaIds = null
     this.cachedKnownConnectionIds = null
     this.nodeIndex = null
+    this.materialRefCounts = null
   }
 }
 
