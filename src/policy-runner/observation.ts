@@ -635,7 +635,7 @@ export class ObservationManager {
 
     // Check if we traveled to a frontier (new area discovered)
     if (result.areasDiscovered && result.areasDiscovered > 0) {
-      // Update cached Sets incrementally for new discoveries
+      // INCREMENTAL UPDATE: Update cached Sets incrementally for new discoveries
       if (this.cachedKnownLocationIds) {
         for (const locId of exploration.playerState.knownLocationIds) {
           this.cachedKnownLocationIds.add(locId)
@@ -652,16 +652,127 @@ export class ObservationManager {
         }
       }
 
-      // Rebuild observation using cached Sets
-      this.observation = buildObservationFresh(state, {
-        knownLocationIds: this.cachedKnownLocationIds!,
-        knownAreaIds: this.cachedKnownAreaIds!,
-        knownConnectionIds: this.cachedKnownConnectionIds!,
-      })
+      // INCREMENTAL UPDATE: Remove the new area from frontierAreas
+      this.observation.frontierAreas = this.observation.frontierAreas.filter(
+        (f) => f.areaId !== newAreaId
+      )
 
-      // Rebuild node index and material ref counts after observation rebuild
-      this.buildNodeIndex()
-      this.buildMaterialRefCounts()
+      // INCREMENTAL UPDATE: Build only the new area
+      if (newAreaData && newAreaId !== "TOWN") {
+        // Build O(1) node lookup map for just this area's nodes
+        const nodesByNodeId = new Map<string, Node>()
+        if (state.world.nodes) {
+          for (const node of state.world.nodes) {
+            if (node.areaId === newAreaId) {
+              nodesByNodeId.set(node.nodeId, node)
+            }
+          }
+        }
+
+        // Build KnownArea for just this one area
+        const newKnownArea = buildKnownArea(
+          newAreaData,
+          this.observation.miningLevel,
+          this.cachedKnownLocationIds!,
+          nodesByNodeId
+        )
+
+        // Check if fully explored
+        let isFullyExplored = fullyExploredCache.get(newAreaId)
+        if (isFullyExplored === undefined) {
+          const { discoverables } = buildDiscoverables(state, newAreaData, {
+            knownLocationIds: this.cachedKnownLocationIds!,
+            knownAreaIds: this.cachedKnownAreaIds!,
+            knownConnectionIds: this.cachedKnownConnectionIds!,
+          })
+          isFullyExplored = discoverables.length === 0
+          if (isFullyExplored) {
+            fullyExploredCache.set(newAreaId, true)
+          }
+        }
+        newKnownArea.isFullyExplored = isFullyExplored
+
+        // Set travel time to 0 since it's now current
+        newKnownArea.travelTicksFromCurrent = 0
+
+        // Check if this area has mineable nodes
+        const hasMineableNode = newKnownArea.discoveredNodes.some(
+          (n) => n.isMineable && n.remainingCharges
+        )
+
+        // Only add to knownAreas if it has mineable nodes OR is not fully explored
+        // (same logic as buildObservationFresh)
+        if (hasMineableNode || !isFullyExplored) {
+          this.observation.knownAreas.push(newKnownArea)
+
+          // Update node index for new area's nodes
+          for (const node of newKnownArea.discoveredNodes) {
+            this.nodeIndex?.set(node.nodeId, { area: newKnownArea, node })
+
+            // Update material ref counts
+            if (node.isMineable && node.remainingCharges) {
+              this.incrementMaterialRef(node.primaryMaterial)
+              for (const matId of node.secondaryMaterials) {
+                this.incrementMaterialRef(matId)
+              }
+            }
+          }
+
+          // Update currentArea
+          this.observation.currentArea = newKnownArea
+        } else {
+          // Area has no mineable nodes and is fully explored - don't add to knownAreas
+          this.observation.currentArea = null
+        }
+      }
+
+      // INCREMENTAL UPDATE: Add new frontier areas from new area's connections
+      const areaConnections = getConnectionsForArea(exploration, newAreaId)
+
+      for (const conn of areaConnections) {
+        // Check if connection is known
+        if (!isConnectionKnown(this.cachedKnownConnectionIds!, conn.fromAreaId, conn.toAreaId)) {
+          continue
+        }
+
+        // Determine target area
+        const targetId = conn.fromAreaId === newAreaId ? conn.toAreaId : conn.fromAreaId
+
+        // Skip if already known or already frontier
+        if (this.cachedKnownAreaIds?.has(targetId)) continue
+        if (this.observation.frontierAreas.some((f) => f.areaId === targetId)) continue
+
+        const targetArea = exploration.areas.get(targetId)
+        if (targetArea) {
+          this.observation.frontierAreas.push({
+            areaId: targetId,
+            distance: targetArea.distance,
+            travelTicksFromCurrent: -1, // Lazy computation
+            reachableFrom: newAreaId,
+          })
+        }
+      }
+
+      // INCREMENTAL UPDATE: Update knownMineableMaterials array from ref counts
+      if (this.materialRefCounts) {
+        this.observation.knownMineableMaterials = [...this.materialRefCounts.keys()]
+      }
+
+      // Mark travel times as stale for all areas and frontiers (-1) for lazy computation
+      for (const area of this.observation.knownAreas) {
+        if (area.areaId !== newAreaId) {
+          area.travelTicksFromCurrent = -1
+        }
+      }
+      for (const frontier of this.observation.frontierAreas) {
+        frontier.travelTicksFromCurrent = -1
+      }
+
+      // Sort frontiers by travel time (will be computed lazily via getTravelTicks)
+      this.observation.frontierAreas.sort(
+        (a, b) => getTravelTicks(this.observation!, a) - getTravelTicks(this.observation!, b)
+      )
+
       return
     }
 

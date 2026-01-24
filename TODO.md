@@ -144,13 +144,23 @@ The policy runner currently rebuilds the entire observation from scratch on ever
 
 ---
 
-## Task 2: Incremental `applyTravelResult` for Frontier Travel
+## Task 2: Incremental `applyTravelResult` for Frontier Travel ✅ DONE
 
-**Location:** `observation.ts:619-666`
+**Location:** `observation.ts:615-749`
 
-**Current behavior:** When traveling to a frontier (new area), the entire observation is rebuilt via `buildObservationFresh`.
+**Status:** Implemented. The `applyTravelResult` method now updates the observation incrementally when traveling to a frontier (new area) without calling `buildObservationFresh`.
 
-**New behavior:** Build only the new area and update frontier lists.
+~~**Current behavior:** When traveling to a frontier (new area), the entire observation is rebuilt via `buildObservationFresh`.~~
+
+**New behavior:** Build only the new area and update frontier lists incrementally:
+- Remove traveled-to area from `frontierAreas`
+- Build only the new area using `buildKnownArea`
+- Check if fully explored using `buildDiscoverables` (with cache)
+- Add to `knownAreas` if it has mineable nodes or is not fully explored
+- Update node index and material ref counts for new area's nodes
+- Add new frontier areas from new area's connections
+- Update `knownMineableMaterials` from ref counts
+- Mark all travel times as stale (-1) for lazy computation
 
 ### What changes on Frontier Travel
 
@@ -312,7 +322,7 @@ node dist/policy-runner/cli.js --seed test --policy safe --target-level 5 --vali
 
 ## Success Criteria
 
-- `buildObservationFresh` only called once per simulation (initial build)
-- Level 7 runtime drops from ~20s to <10s
-- All existing tests pass
-- No observation drift detected in validation mode
+- ✅ `buildObservationFresh` only called once per simulation (initial build)
+- Level 7 runtime drops from ~20s to <10s (to be verified with benchmarks)
+- ✅ All existing tests pass
+- ✅ No observation drift detected in validation mode
