@@ -10,7 +10,9 @@ The policy runner currently rebuilds the entire observation from scratch on ever
 
 **Location:** `observation.ts:722-777`
 
-**Status:** Implemented in commit 3111826. The `applyExploreResult` method now updates the observation incrementally without calling `buildObservationFresh`.
+**Status:** Implemented in commits 3111826 and 3063a41. The `applyExploreResult` method now updates the observation incrementally without calling `buildObservationFresh`.
+
+**Bug Fix (3063a41):** The policy's "Explore" action can be converted to "FarTravel" when the player isn't at the target area. This changes `currentAreaId` but `applyExploreResult` wasn't handling it. Fixed by delegating to `applyTravelResult` when area changes are detected.
 
 ~~**Current behavior:** When any discovery is made (new location, area, or connection), the entire observation is rebuilt via `buildObservationFresh`.~~
 
