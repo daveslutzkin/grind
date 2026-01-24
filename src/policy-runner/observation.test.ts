@@ -10,6 +10,7 @@ import {
   findBestNodeInArea,
   ObservationManager,
   diffObservations,
+  getTravelTicks,
 } from "./observation.js"
 import type { PolicyObservation } from "./types.js"
 
@@ -163,6 +164,7 @@ describe("observation", () => {
         inventorySlotsUsed: 0,
         inventoryByItem: {},
         currentAreaId: "TOWN",
+        currentAreaDistance: 0,
         knownAreas: [],
         knownMineableMaterials: [],
         frontierAreas: [],
@@ -184,6 +186,7 @@ describe("observation", () => {
         inventorySlotsUsed: 0,
         inventoryByItem: {},
         currentAreaId: "TOWN",
+        currentAreaDistance: 0,
         knownAreas: [
           {
             areaId: "area-d1-i0",
@@ -424,6 +427,52 @@ describe("observation", () => {
       expect(manager.shouldValidate(100)).toBe(true)
     })
 
+    it("applyActionResult marks travel times as stale after travel", async () => {
+      const state = createWorld("test-seed-travel")
+
+      // Enrol in Mining and Exploration guilds
+      state.exploration.playerState.currentLocationId = "TOWN_MINERS_GUILD"
+      await executeAction(state, { type: "Enrol" })
+      state.exploration.playerState.currentLocationId = "TOWN_EXPLORERS_GUILD"
+      await executeAction(state, { type: "Enrol" })
+      state.exploration.playerState.currentLocationId = null
+
+      const manager = new ObservationManager()
+      const obs = manager.getObservation(state)
+
+      // Find a known area to travel to
+      expect(obs.knownAreas.length).toBeGreaterThan(0)
+      const targetArea = obs.knownAreas[0]
+
+      // Verify travel times are initially computed (non-negative)
+      expect(targetArea.travelTicksFromCurrent).toBeGreaterThanOrEqual(0)
+
+      // Simulate travel by updating player location
+      state.exploration.playerState.currentAreaId = targetArea.areaId
+
+      // Apply travel action result
+      manager.applyActionResult(
+        state,
+        { type: "Travel", toAreaId: targetArea.areaId },
+        { ticksConsumed: 22, success: true, nodesDiscovered: 0 }
+      )
+
+      // Get the updated observation
+      const updatedObs = manager.getObservation(state)
+
+      // Current area distance should be updated
+      expect(updatedObs.currentAreaDistance).toBe(targetArea.distance)
+
+      // Other areas should have stale travel times (-1) which getTravelTicks can compute
+      for (const area of updatedObs.knownAreas) {
+        if (area.areaId !== targetArea.areaId) {
+          // Travel time might be stale (-1) or computed, but getTravelTicks should work
+          const travelTicks = getTravelTicks(updatedObs, area)
+          expect(travelTicks).toBeGreaterThanOrEqual(0)
+        }
+      }
+    })
+
     it("applyActionResult updates node charges after mining", async () => {
       const state = createWorld("test-seed-mine")
 
@@ -477,6 +526,54 @@ describe("observation", () => {
     })
   })
 
+  describe("getTravelTicks", () => {
+    it("returns cached value when travelTicksFromCurrent is non-negative", () => {
+      const obs = {
+        currentAreaId: "TOWN",
+        currentAreaDistance: 0,
+      } as any
+
+      const area = {
+        areaId: "area-d1-i0",
+        distance: 1,
+        travelTicksFromCurrent: 22, // Already computed
+      } as any
+
+      expect(getTravelTicks(obs, area)).toBe(22)
+    })
+
+    it("computes travel time when travelTicksFromCurrent is -1 (stale)", () => {
+      const obs = {
+        currentAreaId: "area-d1-i0",
+        currentAreaDistance: 1,
+      } as any
+
+      const area = {
+        areaId: "area-d2-i0",
+        distance: 2,
+        travelTicksFromCurrent: -1, // Stale - needs computation
+      } as any
+
+      // From distance 1 to distance 2 = 1 hop = 22 ticks (BASE_TRAVEL_TICKS)
+      expect(getTravelTicks(obs, area)).toBe(22)
+    })
+
+    it("returns 0 for current area", () => {
+      const obs = {
+        currentAreaId: "area-d1-i0",
+        currentAreaDistance: 1,
+      } as any
+
+      const area = {
+        areaId: "area-d1-i0",
+        distance: 1,
+        travelTicksFromCurrent: -1,
+      } as any
+
+      expect(getTravelTicks(obs, area)).toBe(0)
+    })
+  })
+
   describe("diffObservations", () => {
     const baseObservation: PolicyObservation = {
       miningLevel: 1,
@@ -486,6 +583,7 @@ describe("observation", () => {
       inventorySlotsUsed: 0,
       inventoryByItem: {},
       currentAreaId: "TOWN",
+      currentAreaDistance: 0,
       knownAreas: [],
       knownMineableMaterials: [],
       frontierAreas: [],

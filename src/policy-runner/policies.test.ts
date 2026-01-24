@@ -15,6 +15,7 @@ function createObservation(overrides: Partial<PolicyObservation> = {}): PolicyOb
     inventorySlotsUsed: 0,
     inventoryByItem: {},
     currentAreaId: "TOWN",
+    currentAreaDistance: 0,
     knownAreas: [],
     knownMineableMaterials: [],
     frontierAreas: [],

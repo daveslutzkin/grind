@@ -78,6 +78,9 @@ export interface PolicyObservation {
   isInTown: boolean
   canDeposit: boolean // true if at storage location with items
   returnTimeToTown: number // Ticks to travel back to town
+
+  // For lazy travel time computation (optimization #4 from TODO.md)
+  currentAreaDistance: number // Distance of current area (0 for TOWN)
 }
 
 // ============================================================================

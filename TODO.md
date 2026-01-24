@@ -255,7 +255,7 @@ Cache the result in `ObservationManager` and invalidate when relevant state chan
 
 ---
 
-## 4. Skip Travel Time Updates for Irrelevant Areas
+## 4. ~~Skip Travel Time Updates for Irrelevant Areas~~ ✅ DONE
 
 **Goal:** Reduce O(all_areas) to O(relevant_areas) when updating travel times.
 
@@ -355,7 +355,7 @@ Recommended order based on impact and risk:
 1. ~~**Task 3: Cache `findNearestMineableArea`** - Easiest, self-contained in safe.ts~~ ✅ DONE
 2. ~~**Task 1: Node Index Map** - High impact, straightforward~~ ✅ DONE
 3. ~~**Task 2: Incremental materials** - High impact, medium complexity~~ ✅ DONE
-4. **Task 4: Lazy travel times** - Medium impact, requires more changes
+4. ~~**Task 4: Lazy travel times** - Medium impact, requires more changes~~ ✅ DONE
 
 ## Benchmarking
 

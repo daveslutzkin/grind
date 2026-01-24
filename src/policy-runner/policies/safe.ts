@@ -8,7 +8,7 @@
  */
 
 import type { Policy, PolicyObservation, PolicyAction } from "../types.js"
-import { findNearestMineableArea, findBestNodeInArea } from "../observation.js"
+import { findNearestMineableArea, findBestNodeInArea, getTravelTicks } from "../observation.js"
 
 /**
  * Find an area to explore based on distance preference.
@@ -51,8 +51,8 @@ function findNearestUnexploredArea(
 
   if (candidates.length === 0) return null
 
-  // Sort by travel time (nearest first)
-  candidates.sort((a, b) => a.travelTicksFromCurrent - b.travelTicksFromCurrent)
+  // Sort by travel time (nearest first) using lazy computation
+  candidates.sort((a, b) => getTravelTicks(obs, a) - getTravelTicks(obs, b))
   return candidates[0].areaId
 }
 
@@ -120,10 +120,10 @@ export const safeMiner: Policy = {
 
     // 8. Travel to nearest frontier area (unknown area with known connection)
     if (obs.frontierAreas.length > 0) {
-      // Sort by distance first (prefer closer distances), then by travel time
+      // Sort by distance first (prefer closer distances), then by travel time using lazy computation
       const sortedFrontier = [...obs.frontierAreas].sort((a, b) => {
         if (a.distance !== b.distance) return a.distance - b.distance
-        return a.travelTicksFromCurrent - b.travelTicksFromCurrent
+        return getTravelTicks(obs, a) - getTravelTicks(obs, b)
       })
       return { type: "Travel", toAreaId: sortedFrontier[0].areaId }
     }

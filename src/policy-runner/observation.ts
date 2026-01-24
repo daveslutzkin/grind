@@ -72,7 +72,11 @@ function buildKnownNode(node: Node, miningLevel: number, locationId: string): Kn
  */
 const BASE_TRAVEL_TICKS = 22 // Average travel time per distance level (accounts for varying multipliers)
 
-function estimateTravelTicks(
+/**
+ * Estimate travel time from current area to target area using O(1) heuristic.
+ * Exported for use by getTravelTicks helper.
+ */
+export function estimateTravelTicks(
   fromAreaId: AreaID,
   fromDistance: number,
   toAreaId: AreaID,
@@ -331,6 +335,7 @@ function buildObservationFresh(state: WorldState, cachedSets?: CachedSets): Poli
     isInTown,
     canDeposit,
     returnTimeToTown,
+    currentAreaDistance: currentDistance,
   }
 }
 
@@ -603,7 +608,9 @@ export class ObservationManager {
   }
 
   /**
-   * Apply Travel action result: update location fields and travel times.
+   * Apply Travel action result: update location fields.
+   * Travel times are marked as stale (-1) for lazy computation instead of
+   * being eagerly updated for all areas (optimization #4 from TODO.md).
    */
   private applyTravelResult(state: WorldState, result: ActionResult): void {
     if (!this.observation) return
@@ -615,6 +622,7 @@ export class ObservationManager {
 
     // Update location fields
     this.observation.currentAreaId = newAreaId
+    this.observation.currentAreaDistance = newDistance
     this.observation.isInTown = newAreaId === "TOWN"
     this.observation.returnTimeToTown = this.observation.isInTown
       ? 0
@@ -657,33 +665,14 @@ export class ObservationManager {
       return
     }
 
-    // Update travel times for all known areas
+    // Mark travel times as stale (-1) for lazy computation
+    // This avoids O(all_areas) iteration - times will be computed on demand
     for (const area of this.observation.knownAreas) {
-      const areaData = exploration.areas.get(area.areaId)
-      if (areaData) {
-        area.travelTicksFromCurrent = estimateTravelTicks(
-          newAreaId,
-          newDistance,
-          area.areaId,
-          areaData.distance
-        )
-      }
+      area.travelTicksFromCurrent = -1
     }
-
-    // Update frontier travel times
     for (const frontier of this.observation.frontierAreas) {
-      frontier.travelTicksFromCurrent = estimateTravelTicks(
-        newAreaId,
-        newDistance,
-        frontier.areaId,
-        frontier.distance
-      )
+      frontier.travelTicksFromCurrent = -1
     }
-
-    // Re-sort frontier areas by new travel time
-    this.observation.frontierAreas.sort(
-      (a, b) => a.travelTicksFromCurrent - b.travelTicksFromCurrent
-    )
 
     // Update currentArea
     this.observation.currentArea =
@@ -694,6 +683,8 @@ export class ObservationManager {
 
   /**
    * Apply ReturnToTown action result: update location fields.
+   * Travel times are marked as stale (-1) for lazy computation instead of
+   * being eagerly updated for all areas (optimization #4 from TODO.md).
    */
   private applyReturnToTownResult(state: WorldState): void {
     if (!this.observation) return
@@ -702,6 +693,7 @@ export class ObservationManager {
 
     // Update location fields
     this.observation.currentAreaId = "TOWN"
+    this.observation.currentAreaDistance = 0
     this.observation.isInTown = true
     this.observation.returnTimeToTown = 0
     this.observation.currentArea = null
@@ -711,28 +703,14 @@ export class ObservationManager {
     const atWarehouse = exploration.playerState.currentLocationId === "TOWN_WAREHOUSE"
     this.observation.canDeposit = this.observation.isInTown && atWarehouse && hasItems
 
-    // Update travel times for all known areas (from TOWN)
+    // Mark travel times as stale (-1) for lazy computation
+    // This avoids O(all_areas) iteration - times will be computed on demand
     for (const area of this.observation.knownAreas) {
-      const areaData = exploration.areas.get(area.areaId)
-      if (areaData) {
-        area.travelTicksFromCurrent = estimateTravelTicks("TOWN", 0, area.areaId, areaData.distance)
-      }
+      area.travelTicksFromCurrent = -1
     }
-
-    // Update frontier travel times (from TOWN)
     for (const frontier of this.observation.frontierAreas) {
-      frontier.travelTicksFromCurrent = estimateTravelTicks(
-        "TOWN",
-        0,
-        frontier.areaId,
-        frontier.distance
-      )
+      frontier.travelTicksFromCurrent = -1
     }
-
-    // Re-sort frontier areas by new travel time
-    this.observation.frontierAreas.sort(
-      (a, b) => a.travelTicksFromCurrent - b.travelTicksFromCurrent
-    )
   }
 
   /**
@@ -867,6 +845,7 @@ export function getObservation(state: WorldState): PolicyObservation {
 /**
  * Helper: Find the nearest known area with mineable nodes.
  * Returns null if no such area exists.
+ * Uses getTravelTicks for lazy travel time computation.
  */
 export function findNearestMineableArea(obs: PolicyObservation): KnownArea | null {
   const areasWithMineableNodes = obs.knownAreas.filter((area) =>
@@ -875,8 +854,8 @@ export function findNearestMineableArea(obs: PolicyObservation): KnownArea | nul
 
   if (areasWithMineableNodes.length === 0) return null
 
-  // Sort by travel time
-  areasWithMineableNodes.sort((a, b) => a.travelTicksFromCurrent - b.travelTicksFromCurrent)
+  // Sort by travel time using lazy computation
+  areasWithMineableNodes.sort((a, b) => getTravelTicks(obs, a) - getTravelTicks(obs, b))
 
   return areasWithMineableNodes[0]
 }
@@ -906,6 +885,35 @@ export function getMaxDiscoveredDistance(obs: PolicyObservation): number {
 }
 
 /**
+ * Helper: Get travel ticks to an area, computing lazily if needed.
+ * This supports lazy travel time computation (optimization #4 from TODO.md).
+ *
+ * When travel times are stale (travelTicksFromCurrent === -1), this function
+ * computes the travel time on demand using the observation's current location info.
+ *
+ * @param obs The policy observation (must have currentAreaId and currentAreaDistance)
+ * @param targetArea The area to get travel time to (KnownArea or FrontierArea)
+ * @returns The travel time in ticks
+ */
+export function getTravelTicks(
+  obs: Pick<PolicyObservation, "currentAreaId" | "currentAreaDistance">,
+  targetArea: { areaId: string; distance: number; travelTicksFromCurrent: number }
+): number {
+  // If cached value is valid (non-negative), return it
+  if (targetArea.travelTicksFromCurrent >= 0) {
+    return targetArea.travelTicksFromCurrent
+  }
+
+  // Compute lazily
+  return estimateTravelTicks(
+    obs.currentAreaId,
+    obs.currentAreaDistance,
+    targetArea.areaId,
+    targetArea.distance
+  )
+}
+
+/**
  * A single difference between two observations.
  */
 export interface ObservationDiff {
@@ -932,6 +940,7 @@ export function diffObservations(
     "inventoryCapacity",
     "inventorySlotsUsed",
     "currentAreaId",
+    "currentAreaDistance",
     "isInTown",
     "canDeposit",
     "returnTimeToTown",
@@ -968,11 +977,20 @@ export function diffObservations(
     const sortedExpected = [...expected.knownAreas].sort((a, b) => a.areaId.localeCompare(b.areaId))
     const sortedActual = [...actual.knownAreas].sort((a, b) => a.areaId.localeCompare(b.areaId))
     for (let i = 0; i < sortedExpected.length; i++) {
-      if (JSON.stringify(sortedExpected[i]) !== JSON.stringify(sortedActual[i])) {
+      // Normalize travel times for comparison (compute if stale)
+      const expectedArea = {
+        ...sortedExpected[i],
+        travelTicksFromCurrent: getTravelTicks(expected, sortedExpected[i]),
+      }
+      const actualArea = {
+        ...sortedActual[i],
+        travelTicksFromCurrent: getTravelTicks(actual, sortedActual[i]),
+      }
+      if (JSON.stringify(expectedArea) !== JSON.stringify(actualArea)) {
         diffs.push({
           field: `knownAreas[${sortedExpected[i].areaId}]`,
-          expected: sortedExpected[i],
-          actual: sortedActual[i],
+          expected: expectedArea,
+          actual: actualArea,
         })
       }
     }
@@ -1004,22 +1022,46 @@ export function diffObservations(
       a.areaId.localeCompare(b.areaId)
     )
     for (let i = 0; i < sortedExpectedFrontier.length; i++) {
-      if (JSON.stringify(sortedExpectedFrontier[i]) !== JSON.stringify(sortedActualFrontier[i])) {
+      // Normalize travel times for comparison (compute if stale)
+      const expectedFrontier = {
+        ...sortedExpectedFrontier[i],
+        travelTicksFromCurrent: getTravelTicks(expected, sortedExpectedFrontier[i]),
+      }
+      const actualFrontier = {
+        ...sortedActualFrontier[i],
+        travelTicksFromCurrent: getTravelTicks(actual, sortedActualFrontier[i]),
+      }
+      if (JSON.stringify(expectedFrontier) !== JSON.stringify(actualFrontier)) {
         diffs.push({
           field: `frontierAreas[${sortedExpectedFrontier[i].areaId}]`,
-          expected: sortedExpectedFrontier[i],
-          actual: sortedActualFrontier[i],
+          expected: expectedFrontier,
+          actual: actualFrontier,
         })
       }
     }
   }
 
   // currentArea - compare as objects (can be null)
-  if (JSON.stringify(expected.currentArea) !== JSON.stringify(actual.currentArea)) {
+  // Normalize travel times for comparison (compute if stale)
+  const normalizedExpectedCurrentArea = expected.currentArea
+    ? {
+        ...expected.currentArea,
+        travelTicksFromCurrent: getTravelTicks(expected, expected.currentArea),
+      }
+    : null
+  const normalizedActualCurrentArea = actual.currentArea
+    ? {
+        ...actual.currentArea,
+        travelTicksFromCurrent: getTravelTicks(actual, actual.currentArea),
+      }
+    : null
+  if (
+    JSON.stringify(normalizedExpectedCurrentArea) !== JSON.stringify(normalizedActualCurrentArea)
+  ) {
     diffs.push({
       field: "currentArea",
-      expected: expected.currentArea,
-      actual: actual.currentArea,
+      expected: normalizedExpectedCurrentArea,
+      actual: normalizedActualCurrentArea,
     })
   }
 
