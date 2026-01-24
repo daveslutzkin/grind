@@ -9,7 +9,7 @@ Per-tick cost increases ~6× from Level 5 to Level 7 because operations scale wi
 
 ---
 
-## 1. Add Node Index Map
+## 1. ~~Add Node Index Map~~ ✅ DONE
 
 **Goal:** Eliminate O(areas × nodes) linear search when updating a mined node.
 
@@ -353,7 +353,7 @@ Mark areas as "relevant" and only update travel times for those. Alternatively, 
 Recommended order based on impact and risk:
 
 1. ~~**Task 3: Cache `findNearestMineableArea`** - Easiest, self-contained in safe.ts~~ ✅ DONE
-2. **Task 1: Node Index Map** - High impact, straightforward
+2. ~~**Task 1: Node Index Map** - High impact, straightforward~~ ✅ DONE
 3. **Task 2: Incremental materials** - High impact, medium complexity
 4. **Task 4: Lazy travel times** - Medium impact, requires more changes
 
