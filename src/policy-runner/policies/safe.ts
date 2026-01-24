@@ -64,6 +64,16 @@ export const safeMiner: Policy = {
   name: "Safe Miner",
 
   decide(obs: PolicyObservation): PolicyAction {
+    // Cache findNearestMineableArea result within this decision
+    // undefined = not computed, null = computed but no result
+    let cachedNearestMineable: ReturnType<typeof findNearestMineableArea> | undefined = undefined
+    const getNearestMineable = () => {
+      if (cachedNearestMineable === undefined) {
+        cachedNearestMineable = findNearestMineableArea(obs)
+      }
+      return cachedNearestMineable
+    }
+
     // 1. If inventory full → Return + Deposit
     if (obs.inventorySlotsUsed >= obs.inventoryCapacity) {
       return obs.isInTown ? { type: "DepositInventory" } : { type: "ReturnToTown" }
@@ -84,7 +94,7 @@ export const safeMiner: Policy = {
 
     // 4. If in town and known mineable node exists → Travel to nearest
     if (obs.isInTown) {
-      const nearestMineable = findNearestMineableArea(obs)
+      const nearestMineable = getNearestMineable()
       if (nearestMineable) {
         return { type: "Travel", toAreaId: nearestMineable.areaId }
       }
@@ -103,7 +113,7 @@ export const safeMiner: Policy = {
     }
 
     // 7. If anywhere else is mineable, go there
-    const anyMineable = findNearestMineableArea(obs)
+    const anyMineable = getNearestMineable()
     if (anyMineable) {
       return { type: "Travel", toAreaId: anyMineable.areaId }
     }

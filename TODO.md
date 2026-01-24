@@ -176,7 +176,7 @@ Maintain a reference count per material. Only remove a material when its count r
 
 ---
 
-## 3. Cache `findNearestMineableArea` Result
+## 3. ~~Cache `findNearestMineableArea` Result~~ ✅ DONE
 
 **Goal:** Avoid recomputing the same search result multiple times per tick.
 
@@ -352,7 +352,7 @@ Mark areas as "relevant" and only update travel times for those. Alternatively, 
 
 Recommended order based on impact and risk:
 
-1. **Task 3: Cache `findNearestMineableArea`** - Easiest, self-contained in safe.ts
+1. ~~**Task 3: Cache `findNearestMineableArea`** - Easiest, self-contained in safe.ts~~ ✅ DONE
 2. **Task 1: Node Index Map** - High impact, straightforward
 3. **Task 2: Incremental materials** - High impact, medium complexity
 4. **Task 4: Lazy travel times** - Medium impact, requires more changes
